@@ -23,7 +23,6 @@ from ..models import (
     Rate,
 )
 from ..parse import fold
-from ..parse import term_unit as unit
 from .base import RATE_ALIASES, BaseBank, UnsupportedProduct
 
 logger = logging.getLogger(__name__)
@@ -285,7 +284,7 @@ class KuveytTurk(BaseBank):
             chosen.__class__(**{**chosen.__dict__, "min_amount": low, "max_amount": high}),
             amount=amount,
         )
-        for days in _day_attempts(term, unit(term_unit)):
+        for days in _day_attempts(term, self._require_unit(term, term_unit)):
             body = {
                 "i": False,
                 "p1": str(int(amount)),
@@ -487,7 +486,7 @@ def _resolve_rate_code(code: str, by_code: dict[str, Rate]) -> str:
     )
 
 
-def _day_attempts(term: int, term_unit: str | None) -> list[int]:
+def _day_attempts(term: int, term_unit: str) -> list[int]:
     """The day counts to ask for, in order.
 
     This endpoint counts days and nothing else. The p10 flag is documented as
@@ -501,16 +500,9 @@ def _day_attempts(term: int, term_unit: str | None) -> list[int]:
     while accepting 60, 90 and 180. So both are offered and the bank picks. This
     finds a day count, not a price.
 
-    With no unit given the number is taken as days first, then as months. That
-    second reading is what answers for products with a day floor — Dijital
-    Katılma refuses anything under 31 days and Altına Altın under 92.
+    The unit is always stated: BaseBank._require_unit refuses a bare number
+    rather than reading it as days at this bank and as months at the next.
     """
-    months = [term * DAYS_PER_MONTH, term * DAYS_PER_MONTH + 1]
-    if term_unit:
-        unit = term_unit.lower().rstrip("s")
-        if unit == "day":
-            return [term]
-        if unit == "month":
-            return months
-        raise ValueError(f"term_unit must be 'day' or 'month', got {term_unit!r}")
-    return [term, *months]
+    if term_unit == "day":
+        return [term]
+    return [term * DAYS_PER_MONTH, term * DAYS_PER_MONTH + 1]

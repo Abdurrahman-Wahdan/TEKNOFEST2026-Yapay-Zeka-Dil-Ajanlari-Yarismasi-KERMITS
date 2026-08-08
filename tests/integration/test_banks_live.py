@@ -298,7 +298,7 @@ def test_the_tools_answer_for_both_banks(live):
 
     turkish = tools["finance_quote"].invoke(
         {"bank": "kuveytturk", "product": "ihtiyaç finansmanı",
-         "amount": 100000, "term": 24}
+         "amount": 100000, "term_months": 24}
     )
     assert '"monthly_installment"' in turkish
 

@@ -90,3 +90,8 @@ logs/
 
 # ===== Notebooks =====
 .ipynb_checkpoints/
+
+# ===== Health checks =====
+# Written by `python -m banks.health`. Machine-local runtime state: which bank
+# was unreachable this morning is not a fact about the repository.
+bank_status.json

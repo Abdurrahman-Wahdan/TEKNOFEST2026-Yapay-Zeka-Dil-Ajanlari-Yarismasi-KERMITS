@@ -16,6 +16,7 @@ def clear_caches():
     state leaks between tests and failures depend on ordering.
     """
     from banks import clear_catalogue_cache, clear_http_cache
+    from banks import status
     from embeddings import clear_embedding_cache
     from vector_stores import clear_client_cache
 
@@ -24,6 +25,9 @@ def clear_caches():
         clear_client_cache()
         clear_catalogue_cache()
         clear_http_cache()
+        # The recorded outages too: a test that marks a bank down must not
+        # leave the next one refusing.
+        status.clear_cache()
 
     clear()
     yield

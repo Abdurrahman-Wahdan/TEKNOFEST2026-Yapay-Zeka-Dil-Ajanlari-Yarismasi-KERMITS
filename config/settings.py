@@ -82,6 +82,31 @@ class Settings(BaseSettings):
         description="These are public browser endpoints; they expect a browser.",
     )
 
+    # ===== Health checks =====
+    HEALTH_STATUS_FILE: str = Field(
+        default=str(PROJECT_ROOT / "bank_status.json"),
+        description="Where the checker records which bank capabilities are down. "
+        "The tools read it, so a broken endpoint refuses instead of guessing.",
+    )
+    HEALTH_WEBHOOK_URL: str = Field(
+        default="",
+        description="POSTed a JSON summary when a bank changes state. "
+        "Empty disables it; the run still logs and still writes the status file.",
+    )
+    HEALTH_SCHEDULE: str = Field(
+        default="0 6 * * *",
+        description="Cron expression for the scheduled run, in the local "
+        "timezone. Nothing reads this at run time -- it is the value used when "
+        "generating a crontab line or launchd plist, so the schedule lives in "
+        "settings rather than being baked into the code.",
+    )
+    HEALTH_TIMEOUT: float = Field(
+        default=60.0,
+        gt=0,
+        description="Per-capability budget. Higher than BANK_HTTP_TIMEOUT "
+        "because one check may call a catalogue and then a quote.",
+    )
+
     # ===== Application =====
     LOG_LEVEL: str = "INFO"
     ENVIRONMENT: str = "development"

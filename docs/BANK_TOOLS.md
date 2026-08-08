@@ -101,24 +101,25 @@ banks/http.py            httpx │ httpx+CSRF │ curl_cffi, one cached client e
 
 ---
 
-## 3. The seven tools
+## 3. The eight tools
 
 | tool | arguments | returns |
 |---|---|---|
 | `list_banks` | — | every bank, what it publishes, why it publishes no more |
 | `list_products` | `bank`, `category` | codes, Turkish names, amount/term limits, currencies, rate |
-| `finance_quote` | `bank`, `product`, `amount`, `term`, `include_schedule` | instalment, total, profit rate, annual cost rate, fees, and the payment plan on request |
-| `profit_share_quote` | `bank`, `product`, `amount`, `term`, `currency`, `term_unit` | ratio, gross/net profit, gross/net annual rate |
+| `finance_quote` | `bank`, `product`, `amount`, `term_months`, `include_schedule` | instalment, total, profit rate, annual cost rate, fees, and the payment plan on request |
+| `profit_share_quote` | `bank`, `product`, `amount`, `term_months` **or** `term_days`, `currency` | ratio, gross/net profit, gross/net annual rate, and the term the bank really priced |
 | `exchange_rates` | `bank`, `codes` | buy, sell, unit and as-of per currency |
 | `card_installment_quote` | `bank`, `card`, `amount`, `installments` | instalment, total, profit rate |
 | `convert_currency` | `bank`, `source`, `target`, `amount` | result, rate, **`derived`** |
+| `check_bank_health` | `bank` (empty for all) | per capability: ok, down or known |
 
 `convert_currency` is the seventh and was added by decision: it is the only home
 for the brief's one agreed arithmetic exception (Kuveyt Türk and Hayat publish
 gold and FX rates but no converter) and for the four banks that do convert
 server-side. `leasing_quote` was deliberately not added.
 
-`tools.py` holds fifteen `def`s, and only seven are tools. The rest are seven
+`tools.py` holds sixteen `def`s, and only eight are tools. The rest are seven
 `_`-prefixed formatters that turn a dataclass into a dict, plus `build_tools()`.
 A function is a tool if and only if it carries `@tool`.
 
@@ -605,12 +606,97 @@ Three banks are worth knowing about individually:
   supplies a partner credential, Adil has nothing to integrate. `notes` carries
   the distinction.
 
-## 15. What is not built
+## 15. Health checks
 
-- **No health checker.** `transport` and `capabilities` exist for it, and the
-  `verify_<bank>.py` scripts are its assertions, but nothing runs them daily yet.
-  Adil and T.O.M. must stay out of it: there is no endpoint to watch, and a 401
-  polled every morning trains people to ignore alerts.
+`python -m banks.health` calls every capability every bank declares, records
+what is down, and tells someone when that changes. It exercises the shipped
+provider path rather than the raw endpoints, so a provider bug is caught as well
+as an endpoint change. Checks are contract checks — a field is present, a number
+is in a sane range — never exact values, because rates change daily and that
+change is not a failure.
+
+### Three ways to run it
+
+```bash
+python -m banks.health                                   # everything
+python -m banks.health --bank vakif                      # one bank
+python -m banks.health --capability finance --json       # one capability
+python -m banks.health --no-write --no-notify            # dry run
+```
+
+```python
+from banks.health import run
+run(banks=["vakif"], capabilities=["profit_share"])
+```
+
+And the agent can run one itself: `check_bank_health` is a tool, for when a
+quote fails or a user says a figure looks wrong. Exit status is 0 when healthy,
+1 when something is down, 2 for an unknown bank name.
+
+### Three outcomes, not two
+
+`ok` answered and satisfied its contract. `down` errored, or answered something
+the contract rejects. `known` means the **bank itself** said it does not offer
+that combination — visible in the report, but nobody is paged, because there is
+nothing to fix. Adil and T.O.M. are skipped outright: there is no endpoint to
+watch, and a 401 polled every morning trains people to ignore alerts.
+
+### The status file, and what the agent says
+
+A run writes `HEALTH_STATUS_FILE` (default `bank_status.json`, gitignored — it
+is machine-local runtime state). Every capability method consults it before
+doing any work and raises `TemporarilyUnavailable` when it is marked down, so a
+bank known to be broken costs nothing to ask.
+
+The refusal deliberately reads differently from a bank that publishes nothing:
+
+```
+Vakıf Katılım Bankası's financing calculator is temporarily unavailable: the
+bank could not be reached. The bank does publish this — it cannot be reached
+right now, so no figure can be quoted. Try again later.
+
+Adil Katılım Bankası does not publish a financing calculator. Adil Katılım
+publishes no public calculator at all …
+```
+
+"This bank does not offer that" is a complete answer for a user. "The calculator
+broke this morning" is an apology about a figure that does exist. Only the
+second should invite trying again.
+
+The reason stored in the file is a plain sentence; the exception text stays in
+the report and the log. An errno does not belong in an answer somebody reads.
+
+The gate is applied in `BaseBank.__init_subclass__`, so it wraps every
+capability a provider implements at class-definition time and a bank added later
+cannot forget it. `status.bypass()` suspends it for the checker — without that,
+a capability marked down would refuse the very probe meant to clear it and
+nothing would ever recover on its own.
+
+### Notification
+
+Log always; POST to `HEALTH_WEBHOOK_URL` when set. **Only on a change** —
+green→red and red→green. The first sight of a working bank is not news, and a
+message every morning saying everything is fine is a message people stop
+reading. A failed webhook never fails the run: the status file is the thing that
+actually protects users.
+
+### Scheduling
+
+The runner knows nothing about time. `HEALTH_SCHEDULE` holds the cron
+expression, so the schedule lives in settings rather than in the code, and
+ad-hoc runs are never blocked by it.
+
+```cron
+0 6 * * * cd /path/to/TF26 && ~/.pyenv/versions/tf26/bin/python -m banks.health
+```
+
+On macOS, a `launchd` plist calling the same command works the same way. Probes
+live in `banks/probes.py`, one known-good call per capability; a unit test fails
+if a bank declares a capability with no probe, so a new bank cannot be added and
+silently go unchecked.
+
+## 16. What is not built
+
 - **No agent or graph.** `build_tools()` is ready for
   `get_llm().bind_tools(...)`; nothing binds it in the repo yet, and neither
   does the system prompt or the Turkish output conventions.

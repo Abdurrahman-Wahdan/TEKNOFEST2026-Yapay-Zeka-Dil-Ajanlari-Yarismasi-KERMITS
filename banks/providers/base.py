@@ -1,7 +1,9 @@
 """Base class for banks."""
 
+import functools
 from abc import ABC
 
+from .. import status
 from ..http import csrf_token, request_json, request_text
 from ..models import (
     CardInstallmentQuote,
@@ -14,6 +16,7 @@ from ..models import (
 import time
 
 from ..parse import fold
+from ..parse import term_unit as parse_term_unit
 
 # The curl_cffi target for WAF-guarded hosts. One version for all of them: it
 # has to be a profile curl_cffi actually ships, not an arbitrary string.
@@ -33,6 +36,16 @@ CAPABILITY_METHODS = {
 }
 
 TRANSPORTS = ("httpx", "csrf", "impersonate", "none")
+
+# What to call each capability when apologising for it.
+CAPABILITY_LABELS = {
+    "products": "product catalogue",
+    "finance": "financing calculator",
+    "profit_share": "profit-share calculator",
+    "card": "card instalment calculator",
+    "rates": "exchange rates",
+    "convert": "currency converter",
+}
 
 # How far a requested term may sit from a bank's nearest published band before
 # answering it would be answering a different question. 15% lets a month read as
@@ -94,6 +107,42 @@ class UnsupportedProduct(ValueError):
     """
 
 
+class TemporarilyUnavailable(UnsupportedProduct):
+    """The bank publishes this, but we cannot reach it right now.
+
+    Kept apart from a plain UnsupportedProduct because the two deserve different
+    answers. "This bank does not offer that" is a complete answer for a user.
+    "The calculator broke this morning" is an apology, and a figure that does
+    exist — so the agent should say so rather than imply the product is missing.
+
+    Raised from the recorded health status, before any network call, so a bank
+    known to be down costs nothing to ask.
+    """
+
+
+def _gated(capability: str, method):
+    """Refuse a capability the last health check found broken.
+
+    Applied automatically to every provider override (see __init_subclass__), so
+    a bank added later cannot forget it.
+    """
+
+    @functools.wraps(method)
+    def guarded(self, *args, **kwargs):
+        reason = status.outage(self.name, capability)
+        if reason:
+            label = CAPABILITY_LABELS.get(capability, capability)
+            raise TemporarilyUnavailable(
+                f"{self.display_name}'s {label} is temporarily unavailable: "
+                f"{reason}. The bank does publish this — it cannot be reached "
+                f"right now, so no figure can be quoted. Try again later."
+            )
+        return method(self, *args, **kwargs)
+
+    guarded._status_gated = True
+    return guarded
+
+
 class BaseBank(ABC):
     """One participation bank, behind the tools the agent binds.
 
@@ -126,6 +175,20 @@ class BaseBank(ABC):
     # Standard code -> this bank's own name for the same currency or metal.
     # Empty where the bank already uses standard codes.
     rate_aliases: dict[str, str] = {}
+
+    def __init_subclass__(cls, **kwargs) -> None:
+        """Wrap every capability this provider implements in the status gate.
+
+        Doing it here rather than in each provider means the check cannot be
+        left out of a bank added later, and providers stay free of plumbing they
+        would only get wrong once.
+        """
+        super().__init_subclass__(**kwargs)
+        for capability, method_name in CAPABILITY_METHODS.items():
+            method = cls.__dict__.get(method_name)
+            if method is None or getattr(method, "_status_gated", False):
+                continue
+            setattr(cls, method_name, _gated(capability, method))
 
     def __init__(self) -> None:
         # Fetched catalogues, with the time each was fetched. Cleared by
@@ -453,6 +516,29 @@ class BaseBank(ABC):
             published = ", ".join(sorted(self.capabilities))
             return f"It publishes: {published}." + (f" {self.notes}" if self.notes else "")
         return self.notes or "It publishes no public calculator."
+
+    def _require_unit(self, term: int, term_unit) -> str:
+        """The term unit, insisted upon rather than guessed.
+
+        These endpoints mostly count days, and the banks do not agree on what a
+        bare number means: the same `12` is twelve days at one bank and twelve
+        months at another, answers that sit about thirty times apart. Both look
+        equally plausible in a reply. So a missing unit is refused here rather
+        than resolved by a default that is right for one bank and wrong for the
+        next.
+
+        Raises:
+            UnsupportedProduct: if no unit was given.
+            ValueError: if the unit is neither days nor months.
+        """
+        unit = parse_term_unit(term_unit)
+        if unit is None:
+            raise UnsupportedProduct(
+                f"Say whether {term} means days or months. {self.display_name} "
+                f"prices participation accounts by the day, so the two readings "
+                f"differ by about thirty times and neither will be assumed."
+            )
+        return unit
 
     def _unsupported(self, what: str) -> UnsupportedProduct:
         return UnsupportedProduct(

@@ -209,7 +209,7 @@ def finance_quote(
     bank: str,
     product: str,
     amount: float,
-    term: int,
+    term_months: int,
     include_schedule: bool = False,
 ) -> str:
     """Get a financing instalment quote from a bank's own calculator.
@@ -217,8 +217,8 @@ def finance_quote(
     Use for questions about finansman, ihtiyac finansmani, konut finansmani,
     arac/tasit finansmani, taksit. Valid banks: {banks}. `product` accepts the
     Turkish product name as it appears in list_products, or the product code;
-    you do not need to know the code. `amount` is in Turkish lira and `term` is
-    in months.
+    you do not need to know the code. `amount` is in Turkish lira, and
+    `term_months` is in months because financing always is — "1 yil" is 12.
 
     Returns the monthly instalment, total payable, monthly profit rate, annual
     cost rate and fees, as the bank calculates them.
@@ -231,7 +231,8 @@ def finance_quote(
     """
     return _answer(
         lambda: _finance(
-            get_bank(bank).finance_quote(product, amount, term), include_schedule
+            get_bank(bank).finance_quote(product, amount, term_months),
+            include_schedule,
         )
     )
 
@@ -241,9 +242,9 @@ def profit_share_quote(
     bank: str,
     product: str,
     amount: float,
-    term: int,
+    term_months: int = 0,
+    term_days: int = 0,
     currency: str = "TRY",
-    term_unit: str = "",
 ) -> str:
     """Get a participation-account profit-share quote from a bank.
 
@@ -252,23 +253,34 @@ def profit_share_quote(
     list_products or its code. `currency` is TRY, USD, EUR, XAU or GBP,
     depending on the account.
 
-    Always set `term_unit`: "month" when the user says ay, "day" when the user
-    says gun. It matters — some banks price these accounts in days only, so an
-    unqualified 12 is read as 12 days and returns a much smaller profit than 12
-    months would. The answer reports the term and unit actually used; check them
-    against what was asked.
+    Give the term in exactly one of `term_months` or `term_days`, never both and
+    never neither. Use `term_months` when the user says ay or yil ("1 yil" is
+    12), and `term_days` when the user says gun. The unit is in the field name
+    because these banks disagree about a bare number: the same 12 means twelve
+    days at one bank and twelve months at another, answers roughly thirty times
+    apart, and neither will be guessed.
 
     Returns the participation ratio where the bank publishes one, the gross and
-    net profit, and the gross and net annual rates. A bank that does not offer
-    the requested combination answers with a sentence saying so.
+    net profit, and the gross and net annual rates, along with the term and unit
+    the bank actually priced — banks round a month to 30 or 31 days and only
+    price certain terms, so check that against what was asked. A bank that does
+    not offer the requested combination answers with a sentence saying so.
     """
-    return _answer(
-        lambda: _profit_share(
-            get_bank(bank).profit_share_quote(
-                product, amount, term, currency, term_unit or None
+    def build():
+        if bool(term_months) == bool(term_days):
+            raise ValueError(
+                "Give the term in exactly one of term_months or term_days. "
+                f"Got term_months={term_months}, term_days={term_days}. "
+                "These banks price by the day and disagree about what a bare "
+                "number means, so the unit has to be stated."
             )
+        term = term_months or term_days
+        unit = "month" if term_months else "day"
+        return _profit_share(
+            get_bank(bank).profit_share_quote(product, amount, term, currency, unit)
         )
-    )
+
+    return _answer(build)
 
 
 @tool
@@ -329,6 +341,32 @@ def convert_currency(bank: str, source: str, target: str, amount: float) -> str:
     )
 
 
+@tool
+def check_bank_health(bank: str = "") -> str:
+    """Check that a bank's calculators are answering right now.
+
+    Use this when a quote failed with a technical problem, or when the user says
+    a figure looks wrong or that something is broken — it tells you whether the
+    bank is reachable rather than leaving you to guess. Valid banks: {banks};
+    leave `bank` empty to check every one, which takes longer.
+
+    This calls the bank's live endpoints, so use it to diagnose a problem, not
+    before every ordinary question.
+
+    Returns each capability with ok, down, or known. "known" means the bank
+    answered and said it does not offer that combination — that is not a fault.
+    A capability found down is remembered, so later quotes refuse quickly and
+    honestly instead of failing again.
+    """
+    def build():
+        from .health import run
+
+        report = run(banks=[bank] if bank else None)
+        return report.as_dict()
+
+    return _answer(build)
+
+
 _TOOLS: list[BaseTool] = [
     list_banks,
     list_products,
@@ -337,6 +375,7 @@ _TOOLS: list[BaseTool] = [
     exchange_rates,
     card_installment_quote,
     convert_currency,
+    check_bank_health,
 ]
 
 # Fill the bank list into the descriptions once, so adding a bank stays one new

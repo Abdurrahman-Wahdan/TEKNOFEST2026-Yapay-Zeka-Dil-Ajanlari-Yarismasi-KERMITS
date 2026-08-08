@@ -431,7 +431,9 @@ def test_albaraka_all_zero_profit_share_raises(monkeypatch):
     serve(monkeypatch, [load("albaraka", "profit_share_zeros.json")],
           text=load("albaraka", "profit_share_page_select.html"))
     with pytest.raises(UnsupportedProduct, match="no profit-share rate"):
-        bank.profit_share_quote("Kur Korumalı Katılma Hesabı (Bireysel)", 100000, 6)
+        bank.profit_share_quote(
+            "Kur Korumalı Katılma Hesabı (Bireysel)", 100000, 6, "TRY", "month"
+        )
 
 
 def test_albaraka_profit_share_quote_maps_onto_the_dataclass(monkeypatch):
@@ -482,6 +484,7 @@ def test_the_tool_set_is_fixed_and_names_a_bank_as_an_argument():
         "exchange_rates",
         "card_installment_quote",
         "convert_currency",
+        "check_bank_health",
     ]
     for tool in tools:
         if tool.name != "list_banks":
@@ -1309,7 +1312,7 @@ def test_the_payment_schedule_is_available_on_request(monkeypatch):
         "InstallmentPayBack": load("vakif", "payment_plan.json"),
     }
     tool = next(t for t in build_tools() if t.name == "finance_quote")
-    call = {"bank": "vakif", "product": "IF", "amount": 100000, "term": 24}
+    call = {"bank": "vakif", "product": "IF", "amount": 100000, "term_months": 24}
 
     serve(monkeypatch, [], text=load("vakif", "finance_page_select.html"), routes=routes)
     lean = json.loads(tool.invoke(call))
