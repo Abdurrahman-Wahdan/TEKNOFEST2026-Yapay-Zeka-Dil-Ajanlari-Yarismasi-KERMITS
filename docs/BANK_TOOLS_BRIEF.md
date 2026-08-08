@@ -125,14 +125,17 @@ class BaseBank(ABC):
     def rates(self) -> list[Rate]: ...
 ```
 
-A bank that cannot do something raises `UnsupportedProduct`, and the tool turns
-that into a plain sentence for the agent. Do **not** add empty methods that
-return `None` — silent nothing is indistinguishable from a broken endpoint, and
-that mistake has already cost this project days.
+A bank that cannot do something raises `UnsupportedProduct`, carrying a reason,
+and the tool turns that into a plain sentence for the agent. Do **not** add
+empty methods that return `None` — silent nothing is indistinguishable from a
+broken endpoint, and that mistake has already cost this project days.
 
-Declare `capabilities` honestly. Adil Katılım has no calculator at all, and
-"this bank does not publish this" is a legitimate answer the agent must be able
-to give.
+`UnsupportedProduct` is the normal path for four different situations, and all
+four must be reachable without a network call: the bank has no calculator at all
+(Adil), its API needs a credential we do not have (T.O.M.), the product exists
+but is browser-only (Ziraat's kâr payı), or the bank publishes no figure of that
+kind (Türkiye Finans instalments). Declare `capabilities` honestly so the check
+happens before the request, not after a failure.
 
 ## The tools (`tools.py`)
 
@@ -252,10 +255,35 @@ in `docs/discovery/captured/` with a `verify_<bank>.py` beside it —
 | T.O.M. | 1 | — | **401, credentials required** | — |
 | Adil | **none** | — | — | — |
 
-`capabilities` has to carry real weight: Adil has no calculator at all, T.O.M.'s
-API needs a credential we do not have, Ziraat's kâr payı and leasing are
-browser-only, and Türkiye Finans publishes no instalment figure (below). The
-agent must be able to say "this bank does not publish that."
+### Banks with no endpoints are still providers
+
+**Adil and T.O.M. must be registered like any other bank, with an empty
+`capabilities` set.** They are not missing banks and not error cases — "this
+bank does not publish a calculator" is a correct, useful answer for a user, and
+the agent can only give it if the tool says so.
+
+So:
+
+- `list_banks` includes all ten, each with its capabilities.
+- Any quote tool called for Adil or T.O.M. returns a plain, final sentence —
+  *"Adil Katılım does not publish a public calculator, so there is no live
+  figure to quote"* — and **not** an unknown-bank error, a timeout, an empty
+  result, or a retry.
+- No network call is attempted for either. T.O.M.'s API is live but answers
+  `401` to everything without a partner credential; calling it per question buys
+  latency and an error. Adil has nothing to call at all.
+- Neither appears in the daily health check. There is no endpoint to watch, and
+  a `401` polled every morning is noise that trains people to ignore alerts.
+
+Make the refusal reason available, not just the refusal: Adil has nothing to
+integrate, while T.O.M. becomes available the day someone supplies a credential.
+Same user-facing answer today, different remedies. Details in
+`captured/adil.md` and `captured/tom.md`.
+
+The same mechanism covers partial banks, and `capabilities` has to carry that
+weight too: Ziraat's kâr payı and leasing are browser-only, and Türkiye Finans
+publishes no instalment figure (below). Both need the same honest refusal for
+the parts they cannot serve, while still answering everything they can.
 
 ### What the interface has to absorb
 
@@ -343,4 +371,8 @@ Match the existing split; `pytest.ini` already separates them.
   which must read as "not published" and never as a zero price.
 - The same `finance_quote` call works against both banks with only the `bank`
   argument changed. If it does not, the interface is wrong, not the caller.
+- `list_banks` returns all ten. `finance_quote(bank="adil", …)` and
+  `finance_quote(bank="tom", …)` each return a plain sentence saying the bank
+  publishes no calculator, make **no** network call, and are absent from the
+  health check.
 - `pytest tests/unit` passes offline; `pytest -m integration` passes online.

@@ -127,6 +127,21 @@ def test_kuveytturk_months_are_not_read_as_days(kuveytturk):
     assert year.net_profit > days.net_profit * 20
 
 
+@pytest.mark.parametrize("account", ["Katılma Hesabı", "Ara Dönem Kar Payı Ödemeli Katılma Hesabı"])
+@pytest.mark.parametrize("months", [1, 3, 6, 12])
+def test_kuveytturk_prices_whole_months(kuveytturk, account, months):
+    """A month is 30 days for one account and 31 for another.
+
+    Ara Dönem takes exact 30-day multiples and answers 31, 91 and 181 with
+    zeros; plain Katılma answers exactly 30 with zeros and wants 31. Neither is
+    derivable from the catalogue, so both are offered and the bank picks.
+    """
+    quote = kuveytturk.profit_share_quote(account, 100_000, months, "TRY", "month")
+
+    assert quote.net_profit > 0 and quote.ratio and quote.ratio > 0
+    assert quote.term in (months * 30, months * 30 + 1)
+
+
 def test_kuveytturk_surfaces_the_banks_own_refusal(kuveytturk):
     """An out-of-range term is a 400 carrying a usable Turkish sentence."""
     with pytest.raises(ValueError) as exc:

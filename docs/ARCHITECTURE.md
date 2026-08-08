@@ -9,14 +9,15 @@ config/settings.py      every configurable value, one flat file
 llm/                    chat models
 embeddings/             embedding models
 vector_stores/          Qdrant collections
+banks/                  live pricing from the banks' own calculators
 docs/FINDINGS.md        measured behaviour of the models and bank endpoints
 tests/unit/             no network
-tests/integration/      real vLLM and Qdrant
+tests/integration/      real vLLM, Qdrant and bank endpoints
 ```
 
-## The three factory packages are the same shape
+## The four factory packages are the same shape
 
-`llm/`, `embeddings/` and `vector_stores/` are deliberately identical:
+`llm/`, `embeddings/`, `vector_stores/` and `banks/` are deliberately identical:
 
 ```
 <package>/
@@ -28,9 +29,16 @@ tests/integration/      real vLLM and Qdrant
     └── <name>_provider.py
 ```
 
-Learn one and you know all three. Each factory returns a **plain LangChain object**
+Learn one and you know all four. The first three return a **plain LangChain object**
 (`BaseChatModel`, `Embeddings`, `VectorStore`) — never a project wrapper — so anything in the
 LangChain or LangGraph ecosystem works unchanged.
+
+`banks/` returns dataclasses instead, because there is no LangChain type for a
+finance quote, and adds three modules the others do not need: `models.py` (the
+shape every bank maps onto), `http.py` (the shared clients) and `tools.py` (the
+tools the agent binds). **Adding a bank must not add a tool** — there is one tool
+per product category and `bank` is a parameter, so ten banks stay seven tools
+rather than becoming forty.
 
 ## Adding a provider
 
@@ -44,6 +52,11 @@ One new file, one new list entry. Nothing else changes.
 Ordering in `PROVIDERS` matters: the first provider whose `matches()` returns `True` wins.
 `LocalProvider` in `embeddings/` matches everything as a fallback, so any API provider must be
 listed **before** it.
+
+`banks/` is the same three steps against `providers/<bank>.py` and `BANKS`, plus one
+rule: declare `capabilities` honestly. A bank that publishes no card calculator
+leaves `"card"` out and inherits a refusal, because answering with nothing is
+indistinguishable from a broken endpoint.
 
 ## Configuration
 
@@ -71,6 +84,11 @@ get_llm("gemma", temperature=0.7)                 # by model key
 emb = get_embedding()
 ensure_collection("campaigns")
 store = get_vector_store("campaigns", emb)
+
+from banks import build_tools, get_bank
+
+get_bank("kuveytturk").finance_quote("ihtiyaç finansmanı", 100000, 24)
+get_llm().bind_tools(build_tools())               # the seven bank tools
 ```
 
 ## Behaviour worth knowing before you change it
@@ -85,13 +103,33 @@ These are measured, not assumed. Full detail in [FINDINGS.md](FINDINGS.md).
   raises instead of letting that through.
 - **Collections are checked against `EMBEDDING_DIMENSIONS`.** Opening one with a mismatched size
   raises rather than writing vectors that fail later.
+- **A zero is not a price.** Both banks answer an unsupported product/currency
+  combination with `200` and every field `0.0`. The providers raise instead of
+  reporting a real product as paying nothing.
+- **Kuveyt Türk's profit share counts days, not months**, whatever its `p10`
+  flag claims — see the correction in `docs/discovery/captured/kuveytturk.md`.
+  Months are sent as 30-day multiples; reading the field as months understates a
+  year by about thirty times.
+- **Albaraka needs `curl_cffi`.** Its WAF fingerprints the TLS handshake, so
+  httpx is rejected whatever the headers. `banks/http.py` keeps one client per
+  transport.
+- **We never compute a price.** The one agreed exception is Kuveyt Türk's
+  currency and gold conversion, which has no endpoint; it is done in `Decimal`
+  and flagged `derived=True` so a caller can tell it from a bank's own figure.
 
 ## Tests
 
 ```bash
 pytest tests/unit -q          # nothing needs to be running
-pytest tests/integration -q   # needs vLLM, and Qdrant on :6333
+pytest tests/integration -q   # needs vLLM, Qdrant on :6333, and the internet
 ```
+
+Bank unit tests run against payloads recorded from the live endpoints into
+`tests/fixtures/banks/`. The probe captures in `docs/discovery/captured/` are not
+usable for this: they truncate every response at 6000 characters, so the larger
+ones are not valid JSON. Bank integration tests assert the contract — field
+present, type right, value in a sane range — never an exact number, because
+rates change daily and that change is not a failure.
 
 Embedding tests skip unless the model is already in the HuggingFace cache — no test downloads
 gigabytes. Warm it with `python -c "from embeddings import get_embedding; get_embedding()"`.

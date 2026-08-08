@@ -17,8 +17,8 @@ browser. Per-bank contracts are in the sibling files; raw captures are the
 | [Ziraat](ziraat.md) | Drupal | 3 | **36/36** | httpx (finansman only) |
 | [Türkiye Finans](turkiyefinans.md) | SharePoint | 3 | **23/23** | httpx |
 | [Hayat Finans](hayat.md) | Next.js | 3 | **10/10** | httpx |
-| **T.O.M.** | — | 1, authenticated | — | credentials required |
-| **Adil** | — | **none** | — | — |
+| [T.O.M.](tom.md) | — | 1, authenticated | — | credentials required |
+| [Adil](adil.md) | — | **none** | — | — |
 
 **265 checks, all passing.** Each check asserts the contract — field present,
 type right, value in a sane range — never an exact number, because rates change

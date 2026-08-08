@@ -107,8 +107,17 @@ POST …1E32FE5C30C44BF2B51A08D1756ADEEB
 
 `p1` amount · `p2` **ProductGroup** (2 = katılma, 3 = ara dönem) · `p3` term ·
 `p4` **FEC** currency (`0` TL, `1` USD, `19` EUR, `24` altın) · `p5` ProductCode
-(blank for plain Katılma Hesabı) · `p9` title · `p10` true = `p3` is **days**,
-false = months.
+(blank for plain Katılma Hesabı) · `p9` title · `p10` documented as true = `p3`
+is **days**, false = months.
+
+**Correction, measured 2026-08-08: `p10` is inert and `p3` is always days.**
+`p3=12` returns the same 12-day profit with the flag either way — 831,06 TL on
+100 000 TL, which is 25,28 % annual over 12/365 of a year, not over a year. So a
+term given in months has to be sent as a 30-day multiple, the same multiple the
+bank's own table uses for Ara Dönem. The accepted range is 2–999 days; `365`
+alone is a hole and answers zeros while 364 and 366 both work. Reading `p3` as
+months understates a year's profit by a factor of about thirty, which is why
+this is worth stating twice.
 
 Response: `ProfitShareRatio`, `GrossProfitShare`, `NetProfitShare`,
 `GrossProfitShareYearly`, `NetProfitShareYearly`, `ProductCode`, `SegmentCode`,
@@ -141,9 +150,15 @@ Which term to send, per account type:
 the bank's own page, so this is theirs, not ours. Treat it as unavailable rather
 than retrying it as a bug.
 
-Verified: 100 000 TL 12 ay → ratio 86.00, net 831.06. Hoş Geldin 31 gün
-(`p10=true`) → ratio 98.00, net 2 525.77. Sepet 32 gün → ratio 90.00. Ara Dönem
-20 000 TL 30 gün → ratio 92.00, net 506.43.
+Verified, all terms in **days**: 100 000 TL 12 gün → ratio 86.00, net 831.06;
+364 gün → ratio 95.00, net 34 299.83 (34,30 % of principal, against a stated
+34,39 % annual — which is the check that proves `p3` is days). Hoş Geldin 31 gün
+→ ratio 98.00, net 2 525.77. Sepet 32 gün → ratio 90.00. Ara Dönem 20 000 TL
+30 gün → ratio 92.00, net 506.43.
+
+Valid day counts are product-specific and have holes. Plain Katılma answers at
+31, 90, 180, 360, 364 and 366 but returns zeros at **30** and **365**; Ara Dönem
+answers at 30, 90 and 180 but not 31. Probe rather than assume a range.
 
 ### 5. FX and precious metals
 

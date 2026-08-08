@@ -452,19 +452,24 @@ def _day_attempts(term: int, term_unit: str | None) -> list[int]:
     This endpoint counts days and nothing else. The p10 flag is documented as
     choosing days or months, but it is inert: p3=12 returns the same 12-day
     profit either way, and 100 000 TL at 12 "months" would be a hundred times
-    larger than what comes back. Months are therefore sent as 30-day multiples,
-    which is what the contract already observed for Ara Dönem (30, 90 and 180
-    answer; 365 is a hole in the bank's own table and returns zeros).
+    larger than what comes back. Months are therefore sent as day counts.
 
-    With no unit given the number is taken as days, then retried as months.
-    That second attempt is what answers for products with a day floor —
-    Dijital Katılma refuses anything under 31 days and Altına Altın under 92.
+    A month is 30 days for one product and 31 for another, and the bank says so
+    only by answering. Ara Dönem takes exact 30-day multiples and returns zeros
+    at 31, 91 and 181; plain Katılma returns zeros at exactly 30 and wants 31,
+    while accepting 60, 90 and 180. So both are offered and the bank picks. This
+    finds a day count, not a price.
+
+    With no unit given the number is taken as days first, then as months. That
+    second reading is what answers for products with a day floor — Dijital
+    Katılma refuses anything under 31 days and Altına Altın under 92.
     """
+    months = [term * DAYS_PER_MONTH, term * DAYS_PER_MONTH + 1]
     if term_unit:
         unit = term_unit.lower().rstrip("s")
         if unit == "day":
             return [term]
         if unit == "month":
-            return [term * DAYS_PER_MONTH]
+            return months
         raise ValueError(f"term_unit must be 'day' or 'month', got {term_unit!r}")
-    return [term, term * DAYS_PER_MONTH]
+    return [term, *months]

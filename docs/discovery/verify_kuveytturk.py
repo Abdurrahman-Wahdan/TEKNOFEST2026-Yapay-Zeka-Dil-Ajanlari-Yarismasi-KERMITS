@@ -153,28 +153,26 @@ def verify_profit_share():
             day_floor = p.get(f"MaturityDayMinAmount{unit}")
             month_floor = p.get(f"MaturityMonthMinAmount{unit}")
 
-            # Day mode and month mode take the same p3 field with p10 choosing
-            # the unit, and the catalogue's MaturityType is not dependable --
-            # Ara Donem is declared Month yet only answers in days. So try both
-            # and let the bank decide which one this product supports.
+            # p3 is ALWAYS a number of days and p10 is inert -- both values
+            # return byte-identical responses, measured. Sending a month count
+            # therefore prices that many *days*: p3=12 pays 12 days of profit,
+            # about a thirtieth of what a caller reading it as months expects.
+            # Catalogue months are converted at 30 days each.
             attempts = []
-            if p["MaturityTermMinDay"] or p["DefaultDayValue"]:
+            if p["DefaultDayValue"] or p["MaturityTermMinDay"]:
                 days = int((p["DefaultDayValue"] or p["MaturityTermMinDay"])[0])
-                attempts.append((int((day_floor or ["20000"])[0]) * 2, days, True, "gun"))
-            if months:
+                attempts.append((int((day_floor or ["20000"])[0]) * 2, days))
+            for month in reversed(months):
                 amt = int((month_floor or day_floor or ["20000"])[0]) * 2
-                attempts.append((amt, int(months[-1]), False, "ay"))
-                # Ara Donem takes its months as exact 30-day multiples: 30, 90
-                # and 180 all answer, while 31 and 365 come back zero.
-                attempts.append((amt, int(months[0]) * 30, True, "gun"))
+                attempts.append((amt, int(month) * 30))
             if not attempts:
-                attempts.append((20000, 30, True, "gun"))
+                attempts.append((20000, 30))
 
             outcome, label = None, ""
-            for amount, term, day_mode, suffix in attempts:
+            for amount, term in attempts:
                 body = {"i": False, "p1": str(amount), "p2": group, "p3": str(term),
-                        "p4": fec, "p5": code, "p9": entry["Title"], "p10": day_mode}
-                label = f"{entry['Title'][:30]:32s} {unit:8s} {amount}/{term}{suffix}"
+                        "p4": fec, "p5": code, "p9": entry["Title"], "p10": False}
+                label = f"{entry['Title'][:30]:32s} {unit:8s} {amount}/{term}gün"
                 try:
                     d = client.post(BASE + PROFIT_SHARE, json=body,
                                     headers={"referer": page}).json()
