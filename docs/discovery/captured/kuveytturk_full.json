@@ -1,0 +1,1163 @@
+{
+  "bank": "kuveytturk",
+  "brand": "kuveytturk",
+  "pages": [
+    {
+      "page": "https://www.kuveytturk.com.tr/hesaplama-araclari/finansman-hesaplama",
+      "inventory": {
+        "inputs": [
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "header-search-input",
+            "name": "",
+            "ph": "Arama Yapın",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "radio",
+            "id": "rdFinans",
+            "name": "rdLoan",
+            "ph": "",
+            "val": "1"
+          },
+          {
+            "tag": "INPUT",
+            "type": "radio",
+            "id": "rdInstallment",
+            "name": "rdLoan",
+            "ph": "",
+            "val": "2"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "",
+            "name": "p1",
+            "ph": "",
+            "val": "1.000"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "maturity",
+            "name": "maturity1",
+            "ph": "",
+            "val": "36"
+          },
+          {
+            "tag": "INPUT",
+            "type": "checkbox",
+            "id": "txtProfilRate",
+            "name": "txtProfilRate",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "",
+            "name": "",
+            "ph": "0.00",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "",
+            "name": "p7",
+            "ph": "Giriniz",
+            "val": "14/10/2026"
+          }
+        ],
+        "selects": [
+          {
+            "id": "",
+            "name": "p4",
+            "options": [
+              {
+                "v": "",
+                "t": ""
+              },
+              {
+                "v": "ECOMMERCE",
+                "t": "Alışveriş Finansmanı"
+              },
+              {
+                "v": "SAGLIKFINANSMANI",
+                "t": "İhtiyaç Finansmanı"
+              },
+              {
+                "v": "IHTIYACKART",
+                "t": "İhtiyaç Kart"
+              },
+              {
+                "v": "DIJITALARACBINEK",
+                "t": "Binek Dijital Araç Finansmanı"
+              },
+              {
+                "v": "DIJITALARACTICARI",
+                "t": "Ticari Dijital Araç Finansmanı"
+              },
+              {
+                "v": "ARACBINEKYENI",
+                "t": "Yeni Binek Araç Finansmanı"
+              },
+              {
+                "v": "ARACTICARIYENI",
+                "t": "Yeni Ticari Araç Finansmanı"
+              },
+              {
+                "v": "ARACBINEK2EL",
+                "t": "2. El Binek Araç Finansmanı"
+              },
+              {
+                "v": "ARACTICARI2EL",
+                "t": "2. El Ticari Araç Finansmanı"
+              },
+              {
+                "v": "GMENKULKONUTYENI",
+                "t": "Konut Finansmanı"
+              },
+              {
+                "v": "GMENKULARSA",
+                "t": "Arsa Finansmanı"
+              },
+              {
+                "v": "GMENKULISYERIYENI",
+                "t": "İş Yeri Finansmanı"
+              },
+              {
+                "v": "ELKTRARACSARJUNITE",
+                "t": "Bisiklet Finansmanı"
+              },
+              {
+                "v": "ELKTRARACSARJUNITE",
+                "t": "Elektrikli Araç Şarj Ünitesi Finansmanı"
+              },
+              {
+                "v": "EGITIMFINANSMANI",
+                "t": "Eğitim Finansmanı"
+              },
+              {
+                "v": "HACFINANSMANI",
+                "t": "Hac-Umre Finansmanı"
+              },
+              {
+                "v": "KIRAFINANSMANI",
+                "t": "Kira Finansmanı"
+              },
+              {
+                "v": "SEYAHATFINANSMANI",
+                "t": "Seyahat Finansmanı"
+              },
+              {
+                "v": "TEKNEFINANSMANI",
+                "t": "Tekne Tüketici Finansmanı"
+              }
+            ]
+          }
+        ],
+        "buttons": [
+          "BUTTON",
+          "İnternet Şubesi",
+          "Ödeme Planı",
+          "SPAN",
+          "SPAN",
+          "SPAN",
+          "SPAN",
+          "SPAN"
+        ]
+      },
+      "clicked": [
+        "Arama Yapın",
+        "Kapat",
+        "BUTTON",
+        "İnternet Şubesi",
+        "Tekrar Dene",
+        "Faydalı Linkler",
+        "Ürün ve Hizmetler",
+        "İlginizi Çekebilir",
+        "Bize Yazın",
+        "SPAN",
+        "SPAN",
+        "SPAN",
+        "SPAN",
+        "SPAN",
+        "Erişilebilirlik"
+      ]
+    },
+    {
+      "page": "https://www.kuveytturk.com.tr/hesaplama-araclari/kar-payi-hesaplama",
+      "inventory": {
+        "inputs": [
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "header-search-input",
+            "name": "",
+            "ph": "Arama Yapın",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "",
+            "name": "p1",
+            "ph": "",
+            "val": "1.000"
+          },
+          {
+            "tag": "INPUT",
+            "type": "checkbox",
+            "id": "dayMounth",
+            "name": "dayMounth",
+            "ph": "",
+            "val": "on"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "maturity",
+            "name": "",
+            "ph": "",
+            "val": "31"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "p6",
+            "name": "p6",
+            "ph": "",
+            "val": "0"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "p7",
+            "name": "p7",
+            "ph": "",
+            "val": "0"
+          }
+        ],
+        "selects": [
+          {
+            "id": "",
+            "name": "p2",
+            "options": [
+              {
+                "v": "",
+                "t": ""
+              },
+              {
+                "v": "1",
+                "t": "Katılma Hesabı"
+              },
+              {
+                "v": "2",
+                "t": "Dijital Katılma Hesabı"
+              },
+              {
+                "v": "3",
+                "t": "Hoş Geldin Katılma Hesabı"
+              },
+              {
+                "v": "4",
+                "t": "Altına Altın Katılma Hesabı"
+              },
+              {
+                "v": "5",
+                "t": "Ara Dönem Kar Payı Ödemeli Katılma Hesabı"
+              },
+              {
+                "v": "6",
+                "t": "Sepet Hesap"
+              },
+              {
+                "v": "7",
+                "t": "Yuvam TL Katılma Hesabı"
+              }
+            ]
+          },
+          {
+            "id": "",
+            "name": "p4",
+            "options": [
+              {
+                "v": "",
+                "t": ""
+              },
+              {
+                "v": "0",
+                "t": "TL"
+              },
+              {
+                "v": "1",
+                "t": "USD"
+              },
+              {
+                "v": "19",
+                "t": "EUR"
+              }
+            ]
+          },
+          {
+            "id": "maturityMonth",
+            "name": "",
+            "options": [
+              {
+                "v": "",
+                "t": ""
+              }
+            ]
+          },
+          {
+            "id": "p8",
+            "name": "p8",
+            "options": []
+          }
+        ],
+        "buttons": [
+          "BUTTON",
+          "İnternet Şubesi",
+          "SPAN",
+          "SPAN",
+          "SPAN",
+          "SPAN",
+          "SPAN"
+        ]
+      },
+      "clicked": [
+        "Arama Yapın",
+        "Kapat",
+        "BUTTON",
+        "İnternet Şubesi",
+        "Faydalı Linkler",
+        "Ürün ve Hizmetler",
+        "İlginizi Çekebilir",
+        "Bize Yazın",
+        "SPAN",
+        "SPAN",
+        "SPAN",
+        "SPAN",
+        "SPAN",
+        "Erişilebilirlik"
+      ]
+    },
+    {
+      "page": "https://www.kuveytturk.com.tr/hesaplama-araclari/doviz-cevirici",
+      "inventory": {
+        "inputs": [
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "header-search-input",
+            "name": "",
+            "ph": "Arama Yapın",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "radio",
+            "id": "CurrencyBuy",
+            "name": "currency-rate-radio",
+            "ph": "",
+            "val": "1"
+          },
+          {
+            "tag": "INPUT",
+            "type": "radio",
+            "id": "CurrencySale",
+            "name": "currency-rate-radio",
+            "ph": "",
+            "val": "2"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "",
+            "name": "",
+            "ph": "",
+            "val": "1.000"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "",
+            "name": "",
+            "ph": "",
+            "val": "22,65"
+          }
+        ],
+        "selects": [
+          {
+            "id": "",
+            "name": "",
+            "options": [
+              {
+                "v": "TL",
+                "t": "TL (Türk Lirası)"
+              },
+              {
+                "v": "USD",
+                "t": "USD (Amerikan Doları)"
+              },
+              {
+                "v": "EUR",
+                "t": "EUR (Euro)"
+              },
+              {
+                "v": "ALT (gr)",
+                "t": "ALT (gr) (Altın)"
+              },
+              {
+                "v": "GMS (gr)",
+                "t": "GMS (gr) (Gümüş)"
+              },
+              {
+                "v": "PLT (gr)",
+                "t": "PLT (gr) (Platin)"
+              },
+              {
+                "v": "PLD (gr)",
+                "t": "PLD (gr) (Paladyum)"
+              },
+              {
+                "v": "CAG (gr)",
+                "t": "CAG (gr) (Cumhuriyet Altını Grubu (22 ayar))"
+              },
+              {
+                "v": "BHD",
+                "t": "BHD (Bahreyn Dinarı)"
+              },
+              {
+                "v": "AED",
+                "t": "AED (Birleşik Arap Emirlikleri Dirhemi)"
+              },
+              {
+                "v": "RUB",
+                "t": "RUB (Rus Rublesi)"
+              },
+              {
+                "v": "CNY",
+                "t": "CNY (CNY (Onshore Yuan))"
+              },
+              {
+                "v": "QAR",
+                "t": "QAR (Katar Riyali)"
+              },
+              {
+                "v": "AUD",
+                "t": "AUD (Avustralya Doları)"
+              },
+              {
+                "v": "DKK",
+                "t": "DKK (Danimarka Kronu)"
+              },
+              {
+                "v": "SEK",
+                "t": "SEK (İsveç Kronu)"
+              },
+              {
+                "v": "CHF",
+                "t": "CHF (İsviçre Frangı)"
+              },
+              {
+                "v": "CAD",
+                "t": "CAD (Kanada Doları)"
+              },
+              {
+                "v": "KWD",
+                "t": "KWD (Kuveyt Dinarı)"
+              },
+              {
+                "v": "NOK",
+                "t": "NOK (Norveç Kronu)"
+              },
+              {
+                "v": "GBP",
+                "t": "GBP (İngiliz Sterlini)"
+              },
+              {
+                "v": "SAR",
+                "t": "SAR (Suudi Arabistan Riyali)"
+              },
+              {
+                "v": "JPY",
+                "t": "JPY (Japon Yeni)"
+              },
+              {
+                "v": "MYR",
+                "t": "MYR (Malezya Ringiti)"
+              },
+              {
+                "v": "CNH",
+                "t": "CNH (CNH (Offshore Yuan))"
+              },
+              {
+                "v": "ZCeyrek",
+                "t": "Çeyrek (Çeyrek Altın (22 ayar))"
+              },
+              {
+                "v": "EUR/USD",
+                "t": "EUR/USD (EUR/USD)"
+              }
+            ]
+          },
+          {
+            "id": "",
+            "name": "",
+            "options": [
+              {
+                "v": "TL",
+                "t": "TL (Türk Lirası)"
+              },
+              {
+                "v": "USD",
+                "t": "USD (Amerikan Doları)"
+              },
+              {
+                "v": "EUR",
+                "t": "EUR (Euro)"
+              },
+              {
+                "v": "ALT (gr)",
+                "t": "ALT (gr) (Altın)"
+              },
+              {
+                "v": "GMS (gr)",
+                "t": "GMS (gr) (Gümüş)"
+              },
+              {
+                "v": "PLT (gr)",
+                "t": "PLT (gr) (Platin)"
+              },
+              {
+                "v": "PLD (gr)",
+                "t": "PLD (gr) (Paladyum)"
+              },
+              {
+                "v": "CAG (gr)",
+                "t": "CAG (gr) (Cumhuriyet Altını Grubu (22 ayar))"
+              },
+              {
+                "v": "BHD",
+                "t": "BHD (Bahreyn Dinarı)"
+              },
+              {
+                "v": "AED",
+                "t": "AED (Birleşik Arap Emirlikleri Dirhemi)"
+              },
+              {
+                "v": "RUB",
+                "t": "RUB (Rus Rublesi)"
+              },
+              {
+                "v": "CNY",
+                "t": "CNY (CNY (Onshore Yuan))"
+              },
+              {
+                "v": "QAR",
+                "t": "QAR (Katar Riyali)"
+              },
+              {
+                "v": "AUD",
+                "t": "AUD (Avustralya Doları)"
+              },
+              {
+                "v": "DKK",
+                "t": "DKK (Danimarka Kronu)"
+              },
+              {
+                "v": "SEK",
+                "t": "SEK (İsveç Kronu)"
+              },
+              {
+                "v": "CHF",
+                "t": "CHF (İsviçre Frangı)"
+              },
+              {
+                "v": "CAD",
+                "t": "CAD (Kanada Doları)"
+              },
+              {
+                "v": "KWD",
+                "t": "KWD (Kuveyt Dinarı)"
+              },
+              {
+                "v": "NOK",
+                "t": "NOK (Norveç Kronu)"
+              },
+              {
+                "v": "GBP",
+                "t": "GBP (İngiliz Sterlini)"
+              },
+              {
+                "v": "SAR",
+                "t": "SAR (Suudi Arabistan Riyali)"
+              },
+              {
+                "v": "JPY",
+                "t": "JPY (Japon Yeni)"
+              },
+              {
+                "v": "MYR",
+                "t": "MYR (Malezya Ringiti)"
+              },
+              {
+                "v": "CNH",
+                "t": "CNH (CNH (Offshore Yuan))"
+              },
+              {
+                "v": "ZCeyrek",
+                "t": "Çeyrek (Çeyrek Altın (22 ayar))"
+              },
+              {
+                "v": "EUR/USD",
+                "t": "EUR/USD (EUR/USD)"
+              }
+            ]
+          }
+        ],
+        "buttons": [
+          "BUTTON",
+          "İnternet Şubesi",
+          "SPAN",
+          "SPAN",
+          "SPAN",
+          "SPAN",
+          "SPAN"
+        ]
+      },
+      "clicked": [
+        "Arama Yapın",
+        "Kapat",
+        "BUTTON",
+        "İnternet Şubesi",
+        "Faydalı Linkler",
+        "Ürün ve Hizmetler",
+        "İlginizi Çekebilir",
+        "Bize Yazın",
+        "SPAN",
+        "SPAN",
+        "SPAN",
+        "SPAN",
+        "SPAN",
+        "Erişilebilirlik"
+      ]
+    },
+    {
+      "page": "https://www.kuveytturk.com.tr/hesaplama-araclari/altin-yatirma-hesaplama",
+      "inventory": {
+        "inputs": [
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "header-search-input",
+            "name": "",
+            "ph": "Arama Yapın",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "calcKey",
+            "name": "",
+            "ph": "",
+            "val": "GoldInvestmentCalculator"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "",
+            "name": "p2",
+            "ph": "",
+            "val": "10"
+          }
+        ],
+        "selects": [
+          {
+            "id": "",
+            "name": "p1",
+            "options": [
+              {
+                "v": "CEYREK_ALTIN",
+                "t": "Çeyrek Altın"
+              },
+              {
+                "v": "YARIM_ALTIN",
+                "t": "Yarım Altın"
+              },
+              {
+                "v": "TAM_ALTIN",
+                "t": "Tam Altın"
+              },
+              {
+                "v": "ATA_ALTIN",
+                "t": "Ata Lira"
+              },
+              {
+                "v": "RESAT_ALTIN",
+                "t": "Reşat Lira"
+              },
+              {
+                "v": "BIAS_HARICI_22_AYAR",
+                "t": "Külçe Altın (22 Ayar) BİAŞ Harici"
+              },
+              {
+                "v": "BIAS_22AYAR",
+                "t": "Külçe Altın (24 Ayar) BİAŞ"
+              },
+              {
+                "v": "22_AYAR_ALTIN",
+                "t": "22 Ayar Altın"
+              },
+              {
+                "v": "14_AYAR_ALTIN",
+                "t": "14 Ayar Altın"
+              },
+              {
+                "v": "18_AYAR_ALTIN",
+                "t": "18 Ayar Altın"
+              }
+            ]
+          }
+        ],
+        "buttons": [
+          "BUTTON",
+          "İnternet Şubesi",
+          "SPAN",
+          "SPAN",
+          "SPAN",
+          "SPAN",
+          "SPAN"
+        ]
+      },
+      "clicked": [
+        "Arama Yapın",
+        "Kapat",
+        "BUTTON",
+        "İnternet Şubesi",
+        "Faydalı Linkler",
+        "Ürün ve Hizmetler",
+        "İlginizi Çekebilir",
+        "Bize Yazın",
+        "SPAN",
+        "SPAN",
+        "SPAN",
+        "SPAN",
+        "SPAN",
+        "Erişilebilirlik"
+      ]
+    },
+    {
+      "page": "https://www.kuveytturk.com.tr/hesaplama-araclari/kart-taksit-hesaplama",
+      "inventory": {
+        "inputs": [
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "header-search-input",
+            "name": "",
+            "ph": "Arama Yapın",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "cardAmount",
+            "name": "cardAmount",
+            "ph": "",
+            "val": "100"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "cardInstallmentCount",
+            "name": "cardInstallmentCount",
+            "ph": "",
+            "val": "1"
+          },
+          {
+            "tag": "INPUT",
+            "type": "range",
+            "id": "",
+            "name": "",
+            "ph": "",
+            "val": "0"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "slider-maturity-input",
+            "name": "",
+            "ph": "",
+            "val": "0"
+          }
+        ],
+        "selects": [
+          {
+            "id": "cardType",
+            "name": "",
+            "options": [
+              {
+                "v": "8",
+                "t": "Sağlam Kart Troy"
+              },
+              {
+                "v": "3",
+                "t": "Sağlam Business Kart"
+              },
+              {
+                "v": "5",
+                "t": "Sağlam Tohum Kart"
+              },
+              {
+                "v": "3",
+                "t": "Miles&Smiles Business Kredi Kartı"
+              },
+              {
+                "v": "7",
+                "t": "Sağlam Business Finansman Kart"
+              }
+            ]
+          },
+          {
+            "id": "tkInstallment",
+            "name": "",
+            "options": [
+              {
+                "v": "1",
+                "t": "Ağustos 2026"
+              },
+              {
+                "v": "2",
+                "t": "Eylül 2026"
+              },
+              {
+                "v": "3",
+                "t": "Ekim 2026"
+              },
+              {
+                "v": "4",
+                "t": "Kasım 2026"
+              },
+              {
+                "v": "5",
+                "t": "Aralık 2026"
+              },
+              {
+                "v": "6",
+                "t": "Ocak 2027"
+              },
+              {
+                "v": "7",
+                "t": "Şubat 2027"
+              },
+              {
+                "v": "8",
+                "t": "Mart 2027"
+              },
+              {
+                "v": "9",
+                "t": "Nisan 2027"
+              },
+              {
+                "v": "10",
+                "t": "Mayıs 2027"
+              },
+              {
+                "v": "11",
+                "t": "Haziran 2027"
+              },
+              {
+                "v": "12",
+                "t": "Temmuz 2027"
+              }
+            ]
+          }
+        ],
+        "buttons": [
+          "BUTTON",
+          "İnternet Şubesi",
+          "SPAN",
+          "SPAN",
+          "SPAN",
+          "SPAN",
+          "SPAN"
+        ]
+      },
+      "clicked": [
+        "Arama Yapın",
+        "Kapat",
+        "BUTTON",
+        "İnternet Şubesi",
+        "Faydalı Linkler",
+        "Ürün ve Hizmetler",
+        "İlginizi Çekebilir",
+        "Bize Yazın",
+        "SPAN",
+        "SPAN",
+        "SPAN",
+        "SPAN",
+        "SPAN",
+        "Erişilebilirlik"
+      ]
+    },
+    {
+      "page": "https://www.kuveytturk.com.tr/hesaplama-araclari/leasing-hesaplama",
+      "inventory": {
+        "inputs": [
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "header-search-input",
+            "name": "",
+            "ph": "Arama Yapın",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "commodityPrice",
+            "name": "p1",
+            "ph": "",
+            "val": "1.000"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "textAmount",
+            "name": "p4",
+            "ph": "",
+            "val": "100"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "maturity",
+            "name": "p5",
+            "ph": "",
+            "val": "12"
+          },
+          {
+            "tag": "INPUT",
+            "type": "checkbox",
+            "id": "p6",
+            "name": "p6",
+            "ph": "",
+            "val": "on"
+          },
+          {
+            "tag": "INPUT",
+            "type": "checkbox",
+            "id": "customProfilRate",
+            "name": "customProfilRate",
+            "ph": "",
+            "val": "on"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "",
+            "name": "",
+            "ph": "0.00",
+            "val": ""
+          }
+        ],
+        "selects": [
+          {
+            "id": "currency",
+            "name": "p2",
+            "options": [
+              {
+                "v": "",
+                "t": ""
+              },
+              {
+                "v": "0",
+                "t": "TL"
+              },
+              {
+                "v": "1",
+                "t": "USD"
+              },
+              {
+                "v": "19",
+                "t": "EUR"
+              }
+            ]
+          },
+          {
+            "id": "kdv",
+            "name": "kdv",
+            "options": [
+              {
+                "v": "",
+                "t": ""
+              },
+              {
+                "v": "1",
+                "t": "%1"
+              },
+              {
+                "v": "0",
+                "t": "%0"
+              },
+              {
+                "v": "10",
+                "t": "%10"
+              },
+              {
+                "v": "20",
+                "t": "%20"
+              }
+            ]
+          }
+        ],
+        "buttons": [
+          "BUTTON",
+          "İnternet Şubesi",
+          "Kira Planı",
+          "SPAN",
+          "SPAN",
+          "SPAN",
+          "SPAN",
+          "SPAN"
+        ]
+      },
+      "clicked": [
+        "Arama Yapın",
+        "Kapat",
+        "BUTTON",
+        "İnternet Şubesi",
+        "Faydalı Linkler",
+        "Ürün ve Hizmetler",
+        "İlginizi Çekebilir",
+        "Bize Yazın",
+        "SPAN",
+        "SPAN",
+        "SPAN",
+        "SPAN",
+        "SPAN",
+        "Erişilebilirlik"
+      ]
+    }
+  ],
+  "endpoints": [
+    {
+      "page": "https://www.kuveytturk.com.tr/hesaplama-araclari/finansman-hesaplama",
+      "method": "POST",
+      "endpoint": "https://www.kuveytturk.com.tr/ck0d84?30134915811C6D92B8F34A01FCF910EE",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.kuveytturk.com.tr/hesaplama-araclari/finansman-hesaplama\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nx-bone-language: TR\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: application/json\ncontent-type: application/json",
+      "request_body": "{\"i\":false,\"p1\":\"1\",\"p2\":\"100000\",\"p3\":\"24\",\"p4\":\"IHTIYACKART\",\"p5\":\"IHTIYACKART\",\"p6\":\"0.00\",\"p7\":\"2026-10-14\",\"p8\":\"İhtiyaç Kart\"}",
+      "response": ""
+    },
+    {
+      "page": "https://www.kuveytturk.com.tr/hesaplama-araclari/finansman-hesaplama",
+      "method": "POST",
+      "endpoint": "https://www.kuveytturk.com.tr/ck0d84?30134915811C6D92B8F34A01FCF910EE",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.kuveytturk.com.tr/hesaplama-araclari/finansman-hesaplama\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nx-bone-language: TR\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: application/json\ncontent-type: application/json",
+      "request_body": "{\"i\":false,\"p1\":\"1\",\"p2\":\"100000\",\"p3\":\"24\",\"p4\":\"IHTIYACKART\",\"p5\":\"IHTIYACKART\",\"p6\":\"0.00\",\"p7\":\"Invalid Date\",\"p8\":\"İhtiyaç Kart\"}",
+      "response": ""
+    },
+    {
+      "page": "https://www.kuveytturk.com.tr/hesaplama-araclari/finansman-hesaplama",
+      "method": "POST",
+      "endpoint": "https://www.kuveytturk.com.tr/ck0d84?30134915811C6D92B8F34A01FCF910EE",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.kuveytturk.com.tr/hesaplama-araclari/finansman-hesaplama\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nx-bone-language: TR\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: application/json\ncontent-type: application/json",
+      "request_body": "{\"i\":false,\"p1\":\"1\",\"p2\":\"1000\",\"p3\":\"24\",\"p4\":\"IHTIYACKART\",\"p5\":\"IHTIYACKART\",\"p6\":\"0.00\",\"p7\":\"2026-08-08\",\"p8\":\"İhtiyaç Kart\"}",
+      "response": ""
+    },
+    {
+      "page": "https://www.kuveytturk.com.tr/hesaplama-araclari/finansman-hesaplama",
+      "method": "POST",
+      "endpoint": "https://www.kuveytturk.com.tr/ck0d84?30134915811C6D92B8F34A01FCF910EE",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.kuveytturk.com.tr/hesaplama-araclari/finansman-hesaplama\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nx-bone-language: TR\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: application/json\ncontent-type: application/json",
+      "request_body": "{\"i\":false,\"p1\":\"1\",\"p2\":\"1000\",\"p3\":\"24\",\"p4\":\"IHTIYACKART\",\"p5\":\"IHTIYACKART\",\"p6\":\"0.00\",\"p7\":\"2026-08-08\",\"p8\":\"İhtiyaç Kart\"}",
+      "response": ""
+    },
+    {
+      "page": "https://www.kuveytturk.com.tr/hesaplama-araclari/finansman-hesaplama",
+      "method": "POST",
+      "endpoint": "https://www.kuveytturk.com.tr/ck0d84?30134915811C6D92B8F34A01FCF910EE",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.kuveytturk.com.tr/hesaplama-araclari/finansman-hesaplama\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nx-bone-language: TR\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: application/json\ncontent-type: application/json",
+      "request_body": "{\"i\":false,\"p1\":\"1\",\"p2\":\"1000\",\"p3\":\"24\",\"p4\":\"IHTIYACKART\",\"p5\":\"IHTIYACKART\",\"p6\":\"0.00\",\"p7\":\"2026-08-08\",\"p8\":\"İhtiyaç Kart\"}",
+      "response": ""
+    },
+    {
+      "page": "https://www.kuveytturk.com.tr/hesaplama-araclari/finansman-hesaplama",
+      "method": "POST",
+      "endpoint": "https://chatbot.kuveytturk.com.tr/api/Common/IsOpen",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: \nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8\nsec-ch-ua-mobile: ?0",
+      "request_body": "channel=1",
+      "response": "{\"$id\":\"1\",\"value\":true,\"results\":[],\"success\":true}"
+    },
+    {
+      "page": "https://www.kuveytturk.com.tr/hesaplama-araclari/finansman-hesaplama",
+      "method": "GET",
+      "endpoint": "https://www.kuveytturk.com.tr/ck0d84?9592031673D7885E535AEF67BC5D9213&p1=LoanCalculator",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.kuveytturk.com.tr/hesaplama-araclari/finansman-hesaplama\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nx-bone-language: TR\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: application/json\ncontent-type: application/json",
+      "request_body": "",
+      "response": "[{\"Title\":\"Alışveriş Finansmanı\",\"Note\":\"<ul>\\n\\t<li>Tahsis ücreti müşteriden peşin olarak tahsil edilecektir. Ödenecek toplam tutar finansman tahsis ücretini içermemektedir. Bu tablo bilgi amaçlıdır. Kuveyt Türk Katılım Bankası A.Ş.'ni hiçbir şekilde taahhüt altına sokmaz.</li>\\n\\t<li>125.000 TL&nbsp;üzerindeki Alışveriş Finansmanı için en fazla 24 ay, 250.000 TL üzerindeki Alışveriş Finansmanı için en fazla 12 ay taksit yapılabilmektedir.</li>\\n</ul>\\n\",\"FooterNote\":\"<ul>\\n\\t<li>Tahsis ücreti müşteriden peşin olarak tahsil edilecektir. Ödenecek toplam tutar finansman tahsis ücretini içermemektedir. Bu tablo bilgi amaçlıdır. Kuveyt Türk Katılım Bankası A.Ş.'ni hiçbir şekilde taahhüt altına sokmaz.</li>\\n\\t<li>125.000 TL ve üzerindeki Alışveriş Finansmanı için en fazla 24 ay, 250.000 TL üzerindeki Alışveriş Finansmanı için en fazla 12 ay taksit yapılabilmektedir.</li>\\n</ul>\\n\",\"Parameters\":[{\"Key\":\"ProductCode\",\"Value\":\"ECOMMERCE\"},{\"Key\":\"MaturityTerm\",\"Value\":\"36\"},{\"Key\":\"MaturityTermMin\",\"Value\":\"1\",\"Description\":\"1000\"},{\"Key\":\"MaturityTermMax\",\"Value\":\"36\",\"Description\":\"1000\"},{\"Key\":\"DefaultAmountMin\",\"Value\":\"1000\"},{\"Key\":\"DefaultAmountMax\",\"Value\":\"5000000\"},{\"Key\":\"MaturityTermMin2\",\"Value\":\"1\",\"Description\":\"125000\"},{\"Key\":\"MaturityTermMax2\",\"Value\":\"24\",\"Description\":\"125000\"},{\"Key\":\"MaturityTermMin3\",\"Value\":\"1\",\"Description\":\"250000\"},{\"Key\":\"MaturityTermMax3\",\"Value\":\"12\",\"Description\":\"250000\"}],\"ContentBaseId\":\"26319\"},{\"Title\":\"İhtiyaç Finansmanı\",\"Note\":\"<ul>\\n\\t<li>Tahsis ücreti müşteriden peşin olarak tahsil edilecektir. Ödenecek toplam tutar finansman tahsis ücretini içermemektedir. Bu tablo bilgi amaçlıdır. Kuveyt Türk Katılım Bankası A.Ş.'ni hiçbir şekilde taahhüt altına sokmaz.</li>\\n\\t<li>125.000 TL&nbsp;üzerindeki İhtiyaç Finansmanı için en fazla 24 ay, 250.000 TL üzerindeki İhtiyaç Finansmanı için en fazla 12 ay taksit yapılabilmektedir.</li>\\n</ul>\\n\",\"FooterNote\":\"<ul>\\n\\t<li>125.000 TL ve üzerindeki İhtiyaç Finansmanı için en fazla 24 ay, 250.000 TL üzerindeki İhtiyaç Finansmanı için en fazla 12 ay taksit yapılabilmektedir.</li>\\n</ul>\\n\",\"Parameters\":[{\"Key\":\"ProductCode\",\"Value\":\"SAGLIKFINANSMANI\"},{\"Key\":\"MaturityTerm\",\"Value\":\"36\"},{\"Key\":\"MaturityTermMin\",\"Value\":\"1\",\"Description\":\"1000\"},{\"Key\":\"MaturityTermMax\",\"Value\":\"36\",\"Description\":\"1000\"},{\"Key\":\"DefaultAmountMin\",\"Value\":\"1000\"},{\"Key\":\"DefaultAmountMax\",\"Value\":\"5000000\"},{\"Key\":\"MaturityTermMin2\",\"Value\":\"1\",\"Description\":\"125000\"},{\"Key\":\"MaturityTermMax2\",\"Value\":\"24\",\"Description\":\"125000\"},{\"Key\":\"MaturityTermMin3\",\"Value\":\"1\",\"Description\":\"250000\"},{\"Key\":\"MaturityTermMax3\",\"Value\":\"12\",\"Description\":\"250000\"}],\"ContentBaseId\":\"26327\"},{\"Title\":\"İhtiyaç Kart\",\"Note\":\"<ul>\\n\\t<li>Tahsis ücreti müşteriden peşin olarak tahsil edilecektir. Ödenecek toplam tutar finansman tahsis ücretini içermemektedir. Bu tablo bilgi amaçlıdır. Kuveyt Türk Katılım Bankası A.Ş.'ni hiçbir şekilde taahhüt altına sokmaz.</li>\\n\\t<li>125.000 TL üzerindeki İhtiyaç Kartlar için en fazla 22 ay, 250.000 TL üzerindeki İhtiyaç Kartlar için en fazla 10 ay taksit yapılabilmektedir.</li>\\n</ul>\\n\",\"FooterNote\":\"<ul>\\n\\t<li>Tahsis ücreti müşteriden peşin olarak tahsil edilecektir. Ödenecek toplam tutar finansman tahsis ücretini içermemektedir. Bu tablo bilgi amaçlıdır. Kuveyt Türk Katılım Bankası A.Ş.'ni hiçbir şekilde taahhüt altına sokmaz.</li>\\n\\t<li>125.000 TL üzerindeki İhtiyaç Kartlar için en fazla 22 ay, 250.000 TL üzerindeki İhtiyaç Kartlar için en fazla 10 ay taksit yapılabilmektedir.</li>\\n</ul>\\n\",\"Parameters\":[{\"Key\":\"ProductCode\",\"Value\":\"IHTIYACKART\"},{\"Key\":\"MaturityTerm\",\"Value\":\"34\"},{\"Key\":\"MaturityTermMin\",\"Value\":\"6\",\"Description\":\"1000\"},{\"Key\":\"MaturityTermMax\",\"Value\":\"34\",\"Description\":\"1000\"},{\"Key\":\"MaturityTermMin2\",\"Value\":\"6\",\"Description\":\"125000\"},{\"Key\":\"MaturityTermMax2\",\"Value\":\"22\",\"Description\":\"125000\"},{\"Key\":\"DefaultAmountValue\",\"Value\":\"10000\"},{\"Key\":\"DefaultAmountMin\",\"Value\":\"50\"},{\"Key\":\"DefaultAmountMax\",\"Value\":\"5000000\"},{\"Key\":\"MaturityTermMin3\",\"Value\":\"6\",\"Description\":\"250000\"},{\"Key\":\"MaturityTermMax3\",\"Value\":\"10\",\"Description\":\"250000\"}],\"ContentBaseId\":\"26321\"},{\"Title\":\"Binek Dijital Araç Finansmanı\",\"Note\":\"<ul>\\n\\t<li>Sıfır araçlarda fatura değeri, ikinci el araçlarda kasko değeri 400.000 ₺ ve altındaki araçlarda %70 oranında ve maksimum 48 ay, 400.001 ₺ - 800.000 ₺ aralığında %50 oranında ve maksimum 36 ay, 800.001 ₺ - 1.200.000 ₺ aralığında %30 oranında ve maksimum 24 ay, 1.200.001 ₺-2.000.000 ₺ aralığında %20 oranında ve maksimum 12 ay olarak finansman kullandırılmaktadır. İkinci el araçlarda; 0-5 yaş araçlar için maksimum 48 ay, 6-10 yaş araçlar için maksimum 36 ay olarak finansman kullandırılmaktadır.</li>\\n\\t<li>Bankanın belirlemiş olduğu fırsat ürünlerini satın alıp aktif kullanmanız halinde taksit ödemelerinize indirim uygulanacaktır.</li>\\n</ul>\\n\",\"FooterNote\":\"<ul>\\n\\t<li>Sıfır araçlarda fatura değeri, ikinci el araçlarda kasko değeri 400.000 ₺ ve altındaki araçlarda %70 oranında ve maksimum 48 ay, 400.001 ₺ - 800.000 ₺ aralığında %50 oranında ve maksimum 36 ay, 800.001 ₺ - 1.200.000 ₺ aralığında %30 oranında ve maksimum 24 ay, 1.200.001 ₺-2.000.000 ₺ aralığında %20 oranında ve maksimum 12 ay olarak finansman kullandırılmaktadır. İkinci el araçlarda; 0-5 yaş araçlar için maksimum 48 ay, 6-10 yaş araçlar için maksimum 36 ay olarak finansman kullandırılmaktadır.</li>\\n\\t<li>Bankanın belirlemiş olduğu fırsat ürünlerini satın alıp aktif kullanmanız halinde taksit ödemelerinize indirim uygulanacaktır.</li>\\n</ul>\\n\",\"Parameters\":[{\"Key\":\"ProductCode\",\"Value\":\"DIJITALARACBINEK\"},{\"Key\":\"MaturityTerm\",\"Value\":\"48\"},{\"Key\":\"MaturityTermMin\",\"Value\":\"1\"},{\"Key\":\"MaturityTermMax\",\"Value\":\"48\"},{\"Key\":\"DefaultAmountMin\",\"Value\":\"1000\"},{\"Key\":\"DefaultAmountMax\",\"Value\":\"5000000\"}],\"ContentBaseId\":\"30971\"},{\"Title\":\"Ticari Dijital Araç Finansmanı\",\"Note\":\"<ul>\\n\\t<li>Sıfır araçlarda fatura değeri, ikinci el araçlarda kasko değeri 400.000 ₺ ve altındaki araçla"
+    },
+    {
+      "page": "https://www.kuveytturk.com.tr/hesaplama-araclari/finansman-hesaplama",
+      "method": "GET",
+      "endpoint": "https://www.kuveytturk.com.tr/ck0d84?7818136187BFD2CBB7EA0C5E2036888A&p1=IHTIYACKART",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.kuveytturk.com.tr/hesaplama-araclari/finansman-hesaplama\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nx-bone-language: TR\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: application/json\ncontent-type: application/json",
+      "request_body": "",
+      "response": "{\"MaxFirstInstallmentDate\":\"2026-11-06T00:00:00+03:00\",\"MinFirstInstallmentDate\":\"2026-10-14T00:00:00+03:00\"}"
+    },
+    {
+      "page": "https://www.kuveytturk.com.tr/hesaplama-araclari/finansman-hesaplama",
+      "method": "GET",
+      "endpoint": "https://chatbot.kuveytturk.com.tr/messaging/MessagingVersions.json?v=2026.7.8.17.53",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://chatbot.kuveytturk.com.tr/\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: application/json, text/javascript, */*; q=0.01\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\ncontent-type: application/json; charset=utf-8\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": "[{\"Id\":1,\"Name\":\"Accounting\",\"ClassName\":\"Accounting\",\"Version\":1917,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":2,\"Name\":\"ADC\",\"ClassName\":\"ADC\",\"Version\":113,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":3,\"Name\":\"Agreement\",\"ClassName\":\"Agreement\",\"Version\":114,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":761,\"Name\":\"ALT\",\"ClassName\":\"ALT\",\"Version\":170,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":642,\"Name\":\"Android\",\"ClassName\":\"Android\",\"Version\":2501,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":658,\"Name\":\"AndroidFramework\",\"ClassName\":\"AndroidFramework\",\"Version\":625,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":668,\"Name\":\"APIBanking\",\"ClassName\":\"APIBanking\",\"Version\":812,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":4,\"Name\":\"Atm\",\"ClassName\":\"Atm\",\"Version\":1433,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":5,\"Name\":\"AUD\",\"ClassName\":\"AUD\",\"Version\":729,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":667,\"Name\":\"Audit\",\"ClassName\":\"Audit\",\"Version\":202,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":6,\"Name\":\"Authorization\",\"ClassName\":\"Authorization\",\"Version\":839,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":630,\"Name\":\"BCP\",\"ClassName\":\"BCP\",\"Version\":201,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":7,\"Name\":\"Benchmark\",\"ClassName\":\"Benchmark\",\"Version\":103,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":8,\"Name\":\"BES\",\"ClassName\":\"BES\",\"Version\":491,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":9,\"Name\":\"BOA\",\"ClassName\":\"BOA\",\"Version\":934,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":681,\"Name\":\"BOAAI\",\"ClassName\":\"BOAAI\",\"Version\":227,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":706,\"Name\":\"BOAMessages\",\"ClassName\":\"BOAMessages\",\"Version\":113,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":639,\"Name\":\"BOAOne\",\"ClassName\":\"BOAOne\",\"Version\":262,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":691,\"Name\":\"BPM\",\"ClassName\":\"BPM\",\"Version\":201,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":10,\"Name\":\"Branch\",\"ClassName\":\"Branch\",\"Version\":138,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":628,\"Name\":\"BrightIdea\",\"ClassName\":\"BrightIdea\",\"Version\":272,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":11,\"Name\":\"Budget\",\"ClassName\":\"Budget\",\"Version\":1283,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":12,\"Name\":\"BusinessComponents\",\"ClassName\":\"BusinessComponents\",\"Version\":639,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":13,\"Name\":\"Calendar\",\"ClassName\":\"Calendar\",\"Version\":102,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":14,\"Name\":\"CallCenter\",\"ClassName\":\"CallCenter\",\"Version\":2654,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":645,\"Name\":\"Campaign\",\"ClassName\":\"Campaign\",\"Version\":566,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":15,\"Name\":\"CardGeneral\",\"ClassName\":\"CardGeneral\",\"Version\":2674,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":696,\"Name\":\"CardParameter\",\"ClassName\":\"CardParameter\",\"Version\":1323,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":727,\"Name\":\"CardServices\",\"ClassName\":\"CardServices\",\"Version\":121,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":699,\"Name\":\"CebimPOSAndroid\",\"ClassName\":\"CebimPOSAndroid\",\"Version\":111,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":698,\"Name\":\"CebimPOSIOS\",\"ClassName\":\"CebimPOSIOS\",\"Version\":112,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":724,\"Name\":\"CentralFXOrder\",\"ClassName\":\"CentralFXOrder\",\"Version\":132,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":710,\"Name\":\"Chatbot\",\"ClassName\":\"Chatbot\",\"Version\":123,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":16,\"Name\":\"Cloud\",\"ClassName\":\"Cloud\",\"Version\":112,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":620,\"Name\":\"CodeBuild\",\"ClassName\":\"CodeBuild\",\"Version\":102,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":622,\"Name\":\"CollectionModeling\",\"ClassName\":\"CollectionModeling\",\"Version\":357,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":17,\"Name\":\"Commission\",\"ClassName\":\"Commission\",\"Version\":170,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":18,\"Name\":\"CommissionDefinition\",\"ClassName\":\"CommissionDefinition\",\"Version\":220,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":19,\"Name\":\"CoreBanking\",\"ClassName\":\"CoreBanking\",\"Version\":7834,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":20,\"Name\":\"Corporate\",\"ClassName\":\"Corporate\",\"Version\":423,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":21,\"Name\":\"Correspondence\",\"ClassName\":\"Correspondence\",\"Version\":497,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":22,\"Name\":\"CRM\",\"ClassName\":\"CRM\",\"Version\":786,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":23,\"Name\":\"Customer360\",\"ClassName\":\"Customer360\",\"Version\":315,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":753,\"Name\":\"DAR\",\"ClassName\":\"DAR\",\"Version\":706,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":617,\"Name\":\"DataCatalog\",\"ClassName\":\"DataCatalog\",\"Version\":135,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":734,\"Name\":\"DataGovernance\",\"ClassName\":\"DataGovernance\",\"Version\":467,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":24,\"Name\":\"DataTransfer\",\"ClassName\":\"DataTransfer\",\"Version\":102,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":25,\"Name\":\"DependencyWatcher\",\"ClassName\":\"DependencyWatcher\",\"Version\":104,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":26,\"Name\":\"Deployment\",\"ClassName\":\"Deployment\",\"Version\":103,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":748,\"Name\":\"DES\",\"ClassName\":\"DES\",\"Version\":198,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":692,\"Name\":\"DevOps\",\"ClassName\":\"DevOps\",\"Version\":2450,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":769,\"Name\":\"DigitalDispatch\",\"ClassName\":\"DigitalDispatch\",\"Version\":199,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":693,\"Name\":\"DigitalLoans\",\"ClassName\":\"DigitalLoans\",\"Version\":1913,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":704,\"Name\":\"DigitalPayment\",\"ClassName\":\"DigitalPayment\",\"Version\":1654,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":739,\"Name\":\"Dispute\",\"ClassName\":\"Dispute\",\"Version\":383,\"IsSelected\":false,\"IsSelectable\":true},{\"Id\":27,\"Name\":\"DocumentManagement\",\"ClassName\":\"DocumentManagement\",\"Version\":626,\"IsSelected\":false,\"IsSelect"
+    },
+    {
+      "page": "https://www.kuveytturk.com.tr/hesaplama-araclari/finansman-hesaplama",
+      "method": "GET",
+      "endpoint": "https://chatbot.kuveytturk.com.tr/messaging/tr/BOA.Messaging.Chatbot.json?v=123",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://chatbot.kuveytturk.com.tr/\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: application/json, text/javascript, */*; q=0.01\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\ncontent-type: application/json; charset=utf-8\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": "[{\"Code\":317780,\"Description\":\"Ben dijital asistanınız Selim, bankacılık işlemlerinize yardımcı olmak için buradayım.\",\"GroupName\":\"Chatbot\",\"LanguageId\":1,\"PropertyName\":\"ChatbotInfoMessage1\",\"Severity\":0},{\"Code\":317781,\"Description\":\"Şube yeri öğrenme, finansman, kâr payı veya taksit hesaplama, kur bilgisi öğrenme, ürün ve hizmetler hakkında bilgi alma gibi pek çok işleminizi benimle gerçekleştirebilir ve sohbet edebilirsiniz. \",\"GroupName\":\"Chatbot\",\"LanguageId\":1,\"PropertyName\":\"ChatbotInfoMessage2\",\"Severity\":0},{\"Code\":317782,\"Description\":\"Sohbet içerisinde “Başa dön”, “vazgeçtim”, “sohbeti bitir” veya “baştan” gibi ifadelerle yeni bir sohbet başlatabilirsiniz.\",\"GroupName\":\"Chatbot\",\"LanguageId\":1,\"PropertyName\":\"ChatbotInfoMessage3\",\"Severity\":0},{\"Code\":317783,\"Description\":\"Son olarak, benimle bile yazışırken şifrenizi ve kişisel bilgilerinizi paylaşmamanız gerektiğini hatırlatmak isterim.\",\"GroupName\":\"Chatbot\",\"LanguageId\":1,\"PropertyName\":\"ChatbotInfoMessage4\",\"Severity\":0},{\"Code\":317784,\"Description\":\"Yazıyor...\",\"GroupName\":\"Chatbot\",\"LanguageId\":1,\"PropertyName\":\"ChatbotWritingStatus\",\"Severity\":0},{\"Code\":317785,\"Description\":\"Şu anda sorularınıza yanıt veremiyorum. Daha sonra tekrar deneyiniz.\",\"GroupName\":\"Chatbot\",\"LanguageId\":1,\"PropertyName\":\"ChatbotGeneralErrorMessage\",\"Severity\":0},{\"Code\":317786,\"Description\":\"Selim'e Sor\",\"GroupName\":\"Chatbot\",\"LanguageId\":1,\"PropertyName\":\"ChatbotTitle\",\"Severity\":0},{\"Code\":317787,\"Description\":\"İşlem Önerileri\",\"GroupName\":\"Chatbot\",\"LanguageId\":1,\"PropertyName\":\"ChatbotTransactionSuggestionsTitle\",\"Severity\":0},{\"Code\":317788,\"Description\":\"Mesajınızı giriniz\",\"GroupName\":\"Chatbot\",\"LanguageId\":1,\"PropertyName\":\"ChatbotEnterMessageText\",\"Severity\":0},{\"Code\":317789,\"Description\":\"İşleminizi gerçekleştiremiyoruz. Lütfen daha sonra tekrar deneyiniz.\",\"GroupName\":\"Chatbot\",\"LanguageId\":1,\"PropertyName\":\"InvalidTransactionError\",\"Severity\":0},{\"Code\":317790,\"Description\":\"Daha Fazla\",\"GroupName\":\"Chatbot\",\"LanguageId\":1,\"PropertyName\":\"ExtensionsMoreRecord\",\"Severity\":0},{\"Code\":317791,\"Description\":\"Türk Lirası\",\"GroupName\":\"Chatbot\",\"LanguageId\":1,\"PropertyName\":\"TurkishLira\",\"Severity\":0},{\"Code\":317792,\"Description\":\"TL\",\"GroupName\":\"Chatbot\",\"LanguageId\":1,\"PropertyName\":\"TL\",\"Severity\":0},{\"Code\":325075,\"Description\":\"KT Selim\",\"GroupName\":\"Chatbot\",\"LanguageId\":1,\"PropertyName\":\"RecipientChannelAccountId\",\"Severity\":0},{\"Code\":359852,\"Description\":\"Sound recognition metodunda hata alındı.\",\"GroupName\":\"Chatbot\",\"LanguageId\":1,\"PropertyName\":\"ChatbotSrServiceErrorMessage\",\"Severity\":0},{\"Code\":359853,\"Description\":\"Text to speech metodunda hata alındı.\",\"GroupName\":\"Chatbot\",\"LanguageId\":1,\"PropertyName\":\"ChatbotTtsServiceErrorMessage\",\"Severity\":0},{\"Code\":361795,\"Description\":\"Sizi duyamadım:( Yapmak istediğiniz işlemi kısaca söyler misiniz? \",\"GroupName\":\"Chatbot\",\"LanguageId\":1,\"PropertyName\":\"ChatbotEmptyAudioMessage\",\"Severity\":0},{\"Code\":361847,\"Description\":\"Arama başarılı şekilde yönlendirildi.\",\"GroupName\":\"Chatbot\",\"LanguageId\":1,\"PropertyName\":\"ChatbotSuccessCallMessage\",\"Severity\":0}]"
+    },
+    {
+      "page": "https://www.kuveytturk.com.tr/hesaplama-araclari/finansman-hesaplama",
+      "method": "POST",
+      "endpoint": "https://chatbot.kuveytturk.com.tr//api/Common/GetGuid",
+      "request_headers": "hmac: [object Object]\nsec-ch-ua-platform: \"macOS\"\nreferer: https://chatbot.kuveytturk.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: application/json, text/javascript, */*; q=0.01\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "",
+      "response": "552e82bb-ff3e-4589-a13c-4867eb3262eb"
+    },
+    {
+      "page": "https://www.kuveytturk.com.tr/hesaplama-araclari/finansman-hesaplama",
+      "method": "POST",
+      "endpoint": "https://www.kuveytturk.com.tr/ck0d84?30134915811C6D92B8F34A01FCF910EE",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.kuveytturk.com.tr/hesaplama-araclari/finansman-hesaplama\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nx-bone-language: TR\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: application/json\ncontent-type: application/json",
+      "request_body": "{\"i\":true,\"p1\":\"1\",\"p2\":\"1000\",\"p3\":\"36\",\"p4\":\"ECOMMERCE\",\"p5\":\"ECOMMERCE\",\"p6\":\"0.00\",\"p7\":\"\",\"p8\":\"Alışveriş Finansmanı\"}",
+      "response": "{\"Meta\":{\"AllocationAmount\":5.75,\"TotalAmount\":2272.21,\"LoanAmount\":1000.0,\"InstallmentCount\":\"36\",\"InstallmentPayment\":63.12,\"SurveyFee\":0.0,\"HypothecFee\":0.0,\"MonthlyCost\":5.3888842398009728640317916900,\"YearlyCost\":87.7317288,\"TotalCost\":5.75,\"ProfitRate\":4.11000,\"AnnualSimpleProfitRate\":49.3200},\"Installments\":[{\"OrderNumber\":1,\"Date\":0.0,\"Amount\":63.12,\"PrincipalAmount\":9.70,\"ProfitAmount\":41.100000000000000000000000000,\"BSMV\":6.16,\"KKDF\":6.16,\"RemainingPrincipalAmount\":990.30,\"GovermentalSupport\":0.0,\"MaturityDate\":\"2026-09-08T00:00:00+03:00\"},{\"OrderNumber\":2,\"Date\":0.0,\"Amount\":63.12,\"PrincipalAmount\":10.22,\"ProfitAmount\":40.70,\"BSMV\":6.10,\"KKDF\":6.10,\"RemainingPrincipalAmount\":980.08,\"GovermentalSupport\":0.0,\"MaturityDate\":\"2026-10-08T00:00:00+03:00\"},{\"OrderNumber\":3,\"Date\":0.0,\"Amount\":63.12,\"PrincipalAmount\":10.76,\"ProfitAmount\":40.28,\"BSMV\":6.04,\"KKDF\":6.04,\"RemainingPrincipalAmount\":969.32,\"GovermentalSupport\":0.0,\"MaturityDate\":\"2026-11-09T00:00:00+03:00\"},{\"OrderNumber\":4,\"Date\":0.0,\"Amount\":63.12,\"PrincipalAmount\":11.32,\"ProfitAmount\":39.84,\"BSMV\":5.98,\"KKDF\":5.98,\"RemainingPrincipalAmount\":958.00,\"GovermentalSupport\":0.0,\"MaturityDate\":\"2026-12-08T00:00:00+03:00\"},{\"OrderNumber\":5,\"Date\":0.0,\"Amount\":63.12,\"PrincipalAmount\":11.93,\"ProfitAmount\":39.37,\"BSMV\":5.91,\"KKDF\":5.91,\"RemainingPrincipalAmount\":946.07,\"GovermentalSupport\":0.0,\"MaturityDate\":\"2027-01-08T00:00:00+03:00\"},{\"OrderNumber\":6,\"Date\":0.0,\"Amount\":63.12,\"PrincipalAmount\":12.58,\"ProfitAmount\":38.88,\"BSMV\":5.83,\"KKDF\":5.83,\"RemainingPrincipalAmount\":933.49,\"GovermentalSupport\":0.0,\"MaturityDate\":\"2027-02-08T00:00:00+03:00\"},{\"OrderNumber\":7,\"Date\":0.0,\"Amount\":63.12,\"PrincipalAmount\":13.23,\"ProfitAmount\":38.37,\"BSMV\":5.76,\"KKDF\":5.76,\"RemainingPrincipalAmount\":920.26,\"GovermentalSupport\":0.0,\"MaturityDate\":\"2027-03-08T00:00:00+03:00\"},{\"OrderNumber\":8,\"Date\":0.0,\"Amount\":63.12,\"PrincipalAmount\":13.96,\"ProfitAmount\":37.82,\"BSMV\":5.67,\"KKDF\":5.67,\"RemainingPrincipalAmount\":906.30,\"GovermentalSupport\":0.0,\"MaturityDate\":\"2027-04-08T00:00:00+03:00\"},{\"OrderNumber\":9,\"Date\":0.0,\"Amount\":63.12,\"PrincipalAmount\":14.69,\"ProfitAmount\":37.25,\"BSMV\":5.59,\"KKDF\":5.59,\"RemainingPrincipalAmount\":891.61,\"GovermentalSupport\":0.0,\"MaturityDate\":\"2027-05-10T00:00:00+03:00\"},{\"OrderNumber\":10,\"Date\":0.0,\"Amount\":63.12,\"PrincipalAmount\":15.47,\"ProfitAmount\":36.65,\"BSMV\":5.50,\"KKDF\":5.50,\"RemainingPrincipalAmount\":876.14,\"GovermentalSupport\":0.0,\"MaturityDate\":\"2027-06-08T00:00:00+03:00\"},{\"OrderNumber\":11,\"Date\":0.0,\"Amount\":63.12,\"PrincipalAmount\":16.31,\"ProfitAmount\":36.01,\"BSMV\":5.40,\"KKDF\":5.40,\"RemainingPrincipalAmount\":859.83,\"GovermentalSupport\":0.0,\"MaturityDate\":\"2027-07-08T00:00:00+03:00\"},{\"OrderNumber\":12,\"Date\":0.0,\"Amount\":63.12,\"PrincipalAmount\":17.18,\"ProfitAmount\":35.34,\"BSMV\":5.30,\"KKDF\":5.30,\"RemainingPrincipalAmount\":842.65,\"GovermentalSupport\":0.0,\"MaturityDate\":\"2027-08-09T00:00:00+03:00\"},{\"OrderNumber\":13,\"Date\":0.0,\"Amount\":63.12,\"PrincipalAmount\":18.11,\"ProfitAmount\":34.63,\"BSMV\":5.19,\"KKDF\":5.19,\"RemainingPrincipalAmount\":824.54,\"GovermentalSupport\":0.0,\"MaturityDate\":\"2027-09-08T00:00:00+03:00\"},{\"OrderNumber\":14,\"Date\":0.0,\"Amount\":63.12,\"PrincipalAmount\":19.07,\"ProfitAmount\":33.89,\"BSMV\":5.08,\"KKDF\":5.08,\"RemainingPrincipalAmount\":805.47,\"GovermentalSupport\":0.0,\"MaturityDate\":\"2027-10-08T00:00:00+03:00\"},{\"OrderNumber\":15,\"Date\":0.0,\"Amount\":63.12,\"PrincipalAmount\":20.10,\"ProfitAmount\":33.10,\"BSMV\":4.96,\"KKDF\":4.96,\"RemainingPrincipalAmount\":785.37,\"GovermentalSupport\":0.0,\"MaturityDate\":\"2027-11-08T00:00:00+03:00\"},{\"OrderNumber\":16,\"Date\":0.0,\"Amount\":63.12,\"PrincipalAmount\":21.16,\"ProfitAmount\":32.28,\"BSMV\":4.84,\"KKDF\":4.84,\"RemainingPrincipalAmount\":764.21,\"GovermentalSupport\":0.0,\"MaturityDate\":\"2027-12-08T00:00:00+03:00\"},{\"OrderNumber\":17,\"Date\":0.0,\"Amount\":63.12,\"PrincipalAmount\":22.29,\"ProfitAmount\":31.41,\"BSMV\":4.71,\"KKDF\":4.71,\"RemainingPrincipalAmount\":741.92,\"GovermentalSupport\":0.0,\"MaturityDate\":\"2028-01-10T00:00:00+03:00\"},{\"OrderNumber\":18,\"Date\":0.0,\"Amount\":63.12,\"PrincipalAmount\":23.49,\"ProfitAmount\":30.49,\"BSMV\":4.57,\"KKDF\":4.57,\"RemainingPrincipalAmount\":718.43,\"GovermentalSupport\":0.0,\"MaturityDate\":\"2028-02-08T00:00:00+03:00\"},{\"OrderNumber\":19,\"Date\":0.0,\"Amount\":63.12,\"PrincipalAmount\":24.73,\"ProfitAmount\":29.53,\"BSMV\":4.43,\"KKDF\":4.43,\"RemainingPrincipalAmount\":693.70,\"GovermentalSupport\":0.0,\"MaturityDate\":\"2028-03-08T00:00:00+03:00\"},{\"OrderNumber\":20,\"Date\":0.0,\"Amount\":63.12,\"PrincipalAmount\":26.05,\"ProfitAmount\":28.51,\"BSMV\":4.28,\"KKDF\":4.28,\"RemainingPrincipalAmount\":667.65,\"GovermentalSupport\":0.0,\"MaturityDate\":\"2028-04-10T00:00:00+03:00\"},{\"OrderNumber\":21,\"Date\":0.0,\"Amount\":63.12,\"PrincipalAmount\":27.44,\"ProfitAmount\":27.44,\"BSMV\":4.12,\"KKDF\":4.12,\"RemainingPrincipalAmount\":640.21,\"GovermentalSupport\":0.0,\"MaturityDate\":\"2028-05-09T00:00:00+03:00\"},{\"OrderNumber\":22,\"Date\":0.0,\"Amount\":63.12,\"PrincipalAmount\":28.91,\"ProfitAmount\":26.31,\"BSMV\":3.95,\"KKDF\":3.95,\"RemainingPrincipalAmount\":611.30,\"GovermentalSupport\":0.0,\"MaturityDate\":\"2028-06-08T00:00:00+03:00\"},{\"OrderNumber\":23,\"Date\":0.0,\"Amount\":63.12,\"PrincipalAmount\":30.46,\"ProfitAmount\":25.12,\"BSMV\":3.77,\"KKDF\":3.77,\"RemainingPrincipalAmount\":580.84,\"GovermentalSupport\":0.0,\"MaturityDate\":\"2028-07-10T00:00:00+03:00\"},{\"OrderNumber\":24,\"Date\":0.0,\"Amount\":63.12,\"PrincipalAmount\":32.09,\"ProfitAmount\":23.87,\"BSMV\":3.58,\"KKDF\":3.58,\"RemainingPrincipalAmount\":548.75,\"GovermentalSupport\":0.0,\"MaturityDate\":\"2028-08-08T00:00:00+03:00\"},{\"OrderNumber\":25,\"Date\":0.0,\"Amount\":63.12,\"PrincipalAmount\":33.81,\"ProfitAmount\":22.55,\"BSMV\":3.38,\"KKDF\":3.38,\"RemainingPrincipalAmount\":514.94,\"GovermentalSupport\":0.0,\"MaturityDate\":\"2028-09-08T00:00:00+03:00\"},{\"OrderNumber\":26,\"Date\":0.0,\"Amount\":63.12,\"PrincipalAmount\":35.62,\"ProfitAmount\":21.16,\"BSMV\":3.17,\"KKDF\":3.17,\"RemainingPrincipalAmount\":479.32,\"GovermentalSupport\":0.0,\"MaturityDate\":\"2028-10-09T00:00:00+03:00\"},{\"OrderNumber\":27,\"Date\":0.0,\"Amount\":63.12,\"Princip"
+    },
+    {
+      "page": "https://www.kuveytturk.com.tr/hesaplama-araclari/kar-payi-hesaplama",
+      "method": "POST",
+      "endpoint": "https://www.kuveytturk.com.tr/ck0d84?1E32FE5C30C44BF2B51A08D1756ADEEB",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.kuveytturk.com.tr/hesaplama-araclari/kar-payi-hesaplama\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nx-bone-language: TR\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: application/json\ncontent-type: application/json",
+      "request_body": "{\"i\":false,\"p1\":\"100000\",\"p2\":\"2\",\"p3\":\"24\",\"p4\":\"19\",\"p5\":\"HOSGELDIN\",\"p9\":\"Hoş Geldin Katılma Hesabı\",\"p10\":false}",
+      "response": "{\"ProfitShareRatio\":0.0,\"GrossProfitShare\":0.0,\"NetProfitShare\":0.0,\"GrossProfitShareYearly\":0.0,\"NetProfitShareYearly\":0.0,\"ExtraPaymentConversionAcc\":0.0,\"ExtraAmountForYuvam\":0.0,\"ExtraMilyemForFatsi\":0.0,\"ExtraAmountForFatsi\":0.0}"
+    },
+    {
+      "page": "https://www.kuveytturk.com.tr/hesaplama-araclari/kar-payi-hesaplama",
+      "method": "POST",
+      "endpoint": "https://www.kuveytturk.com.tr/ck0d84?1E32FE5C30C44BF2B51A08D1756ADEEB",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.kuveytturk.com.tr/hesaplama-araclari/kar-payi-hesaplama\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nx-bone-language: TR\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: application/json\ncontent-type: application/json",
+      "request_body": "{\"i\":false,\"p1\":\"100000\",\"p2\":\"2\",\"p3\":\"24\",\"p4\":\"19\",\"p5\":\"HOSGELDIN\",\"p9\":\"Hoş Geldin Katılma Hesabı\",\"p10\":false}",
+      "response": "{\"ProfitShareRatio\":0.0,\"GrossProfitShare\":0.0,\"NetProfitShare\":0.0,\"GrossProfitShareYearly\":0.0,\"NetProfitShareYearly\":0.0,\"ExtraPaymentConversionAcc\":0.0,\"ExtraAmountForYuvam\":0.0,\"ExtraMilyemForFatsi\":0.0,\"ExtraAmountForFatsi\":0.0}"
+    }
+  ],
+  "third_party": []
+}
