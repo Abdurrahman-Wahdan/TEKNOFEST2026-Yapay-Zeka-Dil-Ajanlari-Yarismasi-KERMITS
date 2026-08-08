@@ -1,6 +1,92 @@
+# ===== Secrets =====
+# .env holds real endpoints and any future API keys. .env.example is tracked.
 .env
+.env.*
+!.env.example
+
+# ===== Python =====
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# ===== Virtual environments =====
+# Never commit these: gigabytes, and platform-specific. A macOS venv is
+# useless on Windows and vice versa.
+.venv/
+venv/
+env/
+ENV/
+.virtualenv/
+pyvenv.cfg
+# .python-version IS tracked: it names the pyenv env everyone should use.
+
+# ===== Test and tooling caches =====
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# ===== macOS =====
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+.AppleDouble
+.LSOverride
+.fseventsd
+.TemporaryItems
+
+# ===== Windows =====
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# ===== Linux =====
+*~
+.directory
+.Trash-*
+
+# ===== Editors and IDEs =====
+.vscode/
+.idea/
+*.iml
+*.swp
+*.swo
+*.sublime-workspace
+.spyderproject
+.ropeproject
+
+# ===== Project data =====
+# Qdrant's Docker volume, if bind-mounted into the repo.
 qdrant_storage/
+# Model weights / HuggingFace cache, if HF_HOME points here.
+models/
+.cache/
+# Runtime output.
+logs/
+*.log
+# Playwright MCP artifacts and stray screenshots. Images under docs/ are kept.
+.playwright-mcp/
+*.png
+*.jpg
+*.jpeg
+!docs/**/*.png
+!docs/**/*.jpg
+
+# ===== Notebooks =====
+.ipynb_checkpoints/
