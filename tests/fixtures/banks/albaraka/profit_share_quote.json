@@ -1,0 +1,17 @@
+{
+  "Result": true,
+  "Error": null,
+  "Data": {
+    "JsonData": null,
+    "ButtonModel": null,
+    "GrossProfit": "18.114,26 TRY",
+    "GrossRate": "% 36.731684",
+    "NetProfit": "14.944,26 TRY",
+    "InvestedAmountPlusNetProfit": "114.944,26 TRY",
+    "NetRate": "% 30.303639",
+    "IncomeTax": "% 0,175",
+    "AccountApplicationLink": "/tr/bireysel/banka-hesabi-acma",
+    "AccountApplicationAlert": null,
+    "CurrencyCode": "TRY"
+  }
+}

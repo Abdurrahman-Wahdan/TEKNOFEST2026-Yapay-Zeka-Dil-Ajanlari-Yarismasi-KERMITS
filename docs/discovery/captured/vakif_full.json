@@ -1,0 +1,1127 @@
+{
+  "bank": "vakif",
+  "brand": "vakifkatilim",
+  "pages": [
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/finansman-hesaplama",
+      "inventory": {
+        "inputs": [
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "posturl",
+            "name": "posturl",
+            "ph": "",
+            "val": "Unigate_Plugins_Search.Search.SearchFilt"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "",
+            "name": "__RequestVerificationToken",
+            "ph": "",
+            "val": "Ep_MdkeBndD6Rrzc-sz_rUOZCXak51O91ybMF0ZB"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "menu-search-input",
+            "name": "text",
+            "ph": "Nasıl Yardımcı Olabiliriz?",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "posturl",
+            "name": "posturl",
+            "ph": "",
+            "val": "Unigate_Plugins_Search.Search.SearchFilt"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "",
+            "name": "__RequestVerificationToken",
+            "ph": "",
+            "val": "wjxRunBS4bNnswLBYZhuO-7_mxMQgX2WYeGx9KW2"
+          },
+          {
+            "tag": "INPUT",
+            "type": "search",
+            "id": "",
+            "name": "text",
+            "ph": "Nasıl Yardımcı Olabiliriz?",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "",
+            "name": "__RequestVerificationToken",
+            "ph": "",
+            "val": "19cre2p_4d4dd6EGvLVNnejLMRSK9bjeWUwh9CSP"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "financing-amount",
+            "name": "",
+            "ph": "",
+            "val": "100.000"
+          },
+          {
+            "tag": "INPUT",
+            "type": "checkbox",
+            "id": "profit-rate-checkbox",
+            "name": "",
+            "ph": "",
+            "val": "on"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "profit-rate",
+            "name": "",
+            "ph": "",
+            "val": "3.75"
+          },
+          {
+            "tag": "INPUT",
+            "type": "radio",
+            "id": "",
+            "name": "finansman-type",
+            "ph": "",
+            "val": "1"
+          },
+          {
+            "tag": "INPUT",
+            "type": "radio",
+            "id": "",
+            "name": "finansman-type",
+            "ph": "",
+            "val": "2"
+          }
+        ],
+        "selects": [
+          {
+            "id": "financing-type-select",
+            "name": "LoanType",
+            "options": [
+              {
+                "v": "IF",
+                "t": "İhtiyaç Finansmanı"
+              },
+              {
+                "v": "K",
+                "t": "Sıfır Konut Finansmanı"
+              },
+              {
+                "v": "K2",
+                "t": "2. El Konut Finansmanı"
+              },
+              {
+                "v": "BO",
+                "t": "Taşıt Finansmanı 0 km"
+              },
+              {
+                "v": "BO2",
+                "t": "Taşıt Finansmanı 2.El"
+              },
+              {
+                "v": "I",
+                "t": "İşyeri Finansmanı"
+              },
+              {
+                "v": "A",
+                "t": "Arsa Finansmanı"
+              }
+            ]
+          },
+          {
+            "id": "number-of-installments-select",
+            "name": "",
+            "options": [
+              {
+                "v": "1",
+                "t": "1 Ay"
+              },
+              {
+                "v": "2",
+                "t": "2 Ay"
+              },
+              {
+                "v": "3",
+                "t": "3 Ay"
+              },
+              {
+                "v": "4",
+                "t": "4 Ay"
+              },
+              {
+                "v": "5",
+                "t": "5 Ay"
+              },
+              {
+                "v": "6",
+                "t": "6 Ay"
+              },
+              {
+                "v": "7",
+                "t": "7 Ay"
+              },
+              {
+                "v": "8",
+                "t": "8 Ay"
+              },
+              {
+                "v": "9",
+                "t": "9 Ay"
+              },
+              {
+                "v": "10",
+                "t": "10 Ay"
+              },
+              {
+                "v": "11",
+                "t": "11 Ay"
+              },
+              {
+                "v": "12",
+                "t": "12 Ay"
+              },
+              {
+                "v": "13",
+                "t": "13 Ay"
+              },
+              {
+                "v": "14",
+                "t": "14 Ay"
+              },
+              {
+                "v": "15",
+                "t": "15 Ay"
+              },
+              {
+                "v": "16",
+                "t": "16 Ay"
+              },
+              {
+                "v": "17",
+                "t": "17 Ay"
+              },
+              {
+                "v": "18",
+                "t": "18 Ay"
+              },
+              {
+                "v": "19",
+                "t": "19 Ay"
+              },
+              {
+                "v": "20",
+                "t": "20 Ay"
+              },
+              {
+                "v": "21",
+                "t": "21 Ay"
+              },
+              {
+                "v": "22",
+                "t": "22 Ay"
+              },
+              {
+                "v": "23",
+                "t": "23 Ay"
+              },
+              {
+                "v": "24",
+                "t": "24 Ay"
+              },
+              {
+                "v": "25",
+                "t": "25 Ay"
+              },
+              {
+                "v": "26",
+                "t": "26 Ay"
+              },
+              {
+                "v": "27",
+                "t": "27 Ay"
+              },
+              {
+                "v": "28",
+                "t": "28 Ay"
+              },
+              {
+                "v": "29",
+                "t": "29 Ay"
+              },
+              {
+                "v": "30",
+                "t": "30 Ay"
+              },
+              {
+                "v": "31",
+                "t": "31 Ay"
+              },
+              {
+                "v": "32",
+                "t": "32 Ay"
+              },
+              {
+                "v": "33",
+                "t": "33 Ay"
+              },
+              {
+                "v": "34",
+                "t": "34 Ay"
+              },
+              {
+                "v": "35",
+                "t": "35 Ay"
+              },
+              {
+                "v": "36",
+                "t": "36 Ay"
+              }
+            ]
+          }
+        ],
+        "buttons": [
+          "3 Bildirimler",
+          "Kendim İçin",
+          "İşim İçin",
+          "BUTTON",
+          "İnternet Şube",
+          "Ödeme Planı",
+          "YARDIMCI SAYFALAR",
+          "Reddet",
+          "Kabul Ediyorum"
+        ]
+      },
+      "clicked": [
+        "3 Bildirimler",
+        "Kendim İçin",
+        "İşim İçin",
+        "BUTTON",
+        "İnternet Şube",
+        "Ara",
+        "YARDIMCI SAYFALAR"
+      ]
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/kar-payi-hesaplama",
+      "inventory": {
+        "inputs": [
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "posturl",
+            "name": "posturl",
+            "ph": "",
+            "val": "Unigate_Plugins_Search.Search.SearchFilt"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "",
+            "name": "__RequestVerificationToken",
+            "ph": "",
+            "val": "LLsFm3Bnq3VftjMNmlrTUHQ7i7mriHCJvYJBpl0J"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "menu-search-input",
+            "name": "text",
+            "ph": "Nasıl Yardımcı Olabiliriz?",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "posturl",
+            "name": "posturl",
+            "ph": "",
+            "val": "Unigate_Plugins_Search.Search.SearchFilt"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "",
+            "name": "__RequestVerificationToken",
+            "ph": "",
+            "val": "_W76dQgCQkN9oy4dDo_vtHUvAQ10N_edhUJC3hgj"
+          },
+          {
+            "tag": "INPUT",
+            "type": "search",
+            "id": "",
+            "name": "text",
+            "ph": "Nasıl Yardımcı Olabiliriz?",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "",
+            "name": "__RequestVerificationToken",
+            "ph": "",
+            "val": "n2f2wED8Alwcii948kqPPLcqOyw_yffj47GQizDo"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "",
+            "name": "",
+            "ph": "",
+            "val": "Katılma Hesabı"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "dividend-amount",
+            "name": "",
+            "ph": "",
+            "val": "100.000"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "number-of-dividend-range-input",
+            "name": "",
+            "ph": "",
+            "val": "250"
+          },
+          {
+            "tag": "INPUT",
+            "type": "range",
+            "id": "number-of-dividend-range",
+            "name": "",
+            "ph": "",
+            "val": "250"
+          }
+        ],
+        "selects": [
+          {
+            "id": "dividend-currency-select",
+            "name": "",
+            "options": [
+              {
+                "v": "0",
+                "t": "TL"
+              },
+              {
+                "v": "1",
+                "t": "USD"
+              },
+              {
+                "v": "19",
+                "t": "EURO"
+              },
+              {
+                "v": "24",
+                "t": "ALTIN"
+              }
+            ]
+          },
+          {
+            "id": "dividend-expiry-select",
+            "name": "",
+            "options": [
+              {
+                "v": "31",
+                "t": "Aylık"
+              },
+              {
+                "v": "91",
+                "t": "3 Aylık"
+              },
+              {
+                "v": "180",
+                "t": "6 Aylık"
+              },
+              {
+                "v": "364",
+                "t": "Yıllık"
+              },
+              {
+                "v": "366",
+                "t": "1 Yıl Üzeri"
+              },
+              {
+                "v": "1",
+                "t": "Kırık Vade"
+              }
+            ]
+          }
+        ],
+        "buttons": [
+          "3 Bildirimler",
+          "Kendim İçin",
+          "İşim İçin",
+          "BUTTON",
+          "İnternet Şube",
+          "YARDIMCI SAYFALAR",
+          "Reddet",
+          "Kabul Ediyorum"
+        ]
+      },
+      "clicked": [
+        "3 Bildirimler",
+        "Kendim İçin",
+        "İşim İçin",
+        "BUTTON",
+        "İnternet Şube",
+        "Ara",
+        "YARDIMCI SAYFALAR"
+      ]
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/kart-taksit-hesaplama",
+      "inventory": {
+        "inputs": [
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "posturl",
+            "name": "posturl",
+            "ph": "",
+            "val": "Unigate_Plugins_Search.Search.SearchFilt"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "",
+            "name": "__RequestVerificationToken",
+            "ph": "",
+            "val": "r6C8gyhwutcXrJAKhIBjJXPjyrX_3jDHy8dwniVN"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "menu-search-input",
+            "name": "text",
+            "ph": "Nasıl Yardımcı Olabiliriz?",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "posturl",
+            "name": "posturl",
+            "ph": "",
+            "val": "Unigate_Plugins_Search.Search.SearchFilt"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "",
+            "name": "__RequestVerificationToken",
+            "ph": "",
+            "val": "YuQ26TbEdBPo8fB9QBWXRd2G3bofFVZQLM7lwpmo"
+          },
+          {
+            "tag": "INPUT",
+            "type": "search",
+            "id": "",
+            "name": "text",
+            "ph": "Nasıl Yardımcı Olabiliriz?",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "",
+            "name": "__RequestVerificationToken",
+            "ph": "",
+            "val": "5PGqv6AslptKt-PcFUEm7sXqMcgz6z1B6KxmTCOF"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "card-amount",
+            "name": "",
+            "ph": "",
+            "val": "137.000"
+          },
+          {
+            "tag": "INPUT",
+            "type": "checkbox",
+            "id": "profit-rate-checkbox",
+            "name": "",
+            "ph": "",
+            "val": "on"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "profit-rate",
+            "name": "",
+            "ph": "",
+            "val": "4.30"
+          }
+        ],
+        "selects": [
+          {
+            "id": "card-type-select",
+            "name": "LoanType",
+            "options": [
+              {
+                "v": "FK",
+                "t": "Ferah Kart"
+              }
+            ]
+          },
+          {
+            "id": "number-of-installments-select",
+            "name": "",
+            "options": [
+              {
+                "v": "1",
+                "t": "1"
+              },
+              {
+                "v": "2",
+                "t": "2"
+              },
+              {
+                "v": "3",
+                "t": "3"
+              },
+              {
+                "v": "4",
+                "t": "4"
+              },
+              {
+                "v": "5",
+                "t": "5"
+              },
+              {
+                "v": "6",
+                "t": "6"
+              },
+              {
+                "v": "7",
+                "t": "7"
+              },
+              {
+                "v": "8",
+                "t": "8"
+              },
+              {
+                "v": "9",
+                "t": "9"
+              },
+              {
+                "v": "10",
+                "t": "10"
+              },
+              {
+                "v": "11",
+                "t": "11"
+              },
+              {
+                "v": "12",
+                "t": "12"
+              }
+            ]
+          }
+        ],
+        "buttons": [
+          "3 Bildirimler",
+          "Kendim İçin",
+          "İşim İçin",
+          "BUTTON",
+          "İnternet Şube",
+          "Ödeme Planı",
+          "YARDIMCI SAYFALAR",
+          "Reddet",
+          "Kabul Ediyorum"
+        ]
+      },
+      "clicked": [
+        "3 Bildirimler",
+        "Kendim İçin",
+        "İşim İçin",
+        "BUTTON",
+        "İnternet Şube",
+        "Ara",
+        "YARDIMCI SAYFALAR"
+      ]
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/doviz-cevirici-ve-kurlar",
+      "inventory": {
+        "inputs": [
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "posturl",
+            "name": "posturl",
+            "ph": "",
+            "val": "Unigate_Plugins_Search.Search.SearchFilt"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "",
+            "name": "__RequestVerificationToken",
+            "ph": "",
+            "val": "A07r5SloQ6u7S-7NVf-eiyGcIc7DCGFcQvXGSREu"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "menu-search-input",
+            "name": "text",
+            "ph": "Nasıl Yardımcı Olabiliriz?",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "posturl",
+            "name": "posturl",
+            "ph": "",
+            "val": "Unigate_Plugins_Search.Search.SearchFilt"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "",
+            "name": "__RequestVerificationToken",
+            "ph": "",
+            "val": "zlWkCs6g3cxO99yrGEBI6IfkzVzGRUuyvr-_ZC3X"
+          },
+          {
+            "tag": "INPUT",
+            "type": "search",
+            "id": "",
+            "name": "text",
+            "ph": "Nasıl Yardımcı Olabiliriz?",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "converter-input-amount",
+            "name": "",
+            "ph": "",
+            "val": "0"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "converter-input-result",
+            "name": "",
+            "ph": "",
+            "val": "0"
+          }
+        ],
+        "selects": [
+          {
+            "id": "converter-select-amount",
+            "name": "",
+            "options": [
+              {
+                "v": "0",
+                "t": "TL"
+              },
+              {
+                "v": "1",
+                "t": "USD"
+              },
+              {
+                "v": "2",
+                "t": "AUD"
+              },
+              {
+                "v": "6",
+                "t": "DKK"
+              },
+              {
+                "v": "9",
+                "t": "SEK"
+              },
+              {
+                "v": "10",
+                "t": "CHF"
+              },
+              {
+                "v": "12",
+                "t": "CAD"
+              },
+              {
+                "v": "14",
+                "t": "NOK"
+              },
+              {
+                "v": "15",
+                "t": "GBP"
+              },
+              {
+                "v": "16",
+                "t": "SAR"
+              },
+              {
+                "v": "17",
+                "t": "JPY"
+              },
+              {
+                "v": "19",
+                "t": "EUR"
+              },
+              {
+                "v": "29",
+                "t": "AED"
+              },
+              {
+                "v": "37",
+                "t": "QAR"
+              },
+              {
+                "v": "24",
+                "t": "ALT (gr)"
+              },
+              {
+                "v": "26",
+                "t": "GMS (gr)"
+              },
+              {
+                "v": "27",
+                "t": "PLT (gr)"
+              }
+            ]
+          },
+          {
+            "id": "converter-select-result",
+            "name": "",
+            "options": [
+              {
+                "v": "1",
+                "t": "USD"
+              },
+              {
+                "v": "2",
+                "t": "AUD"
+              },
+              {
+                "v": "6",
+                "t": "DKK"
+              },
+              {
+                "v": "9",
+                "t": "SEK"
+              },
+              {
+                "v": "10",
+                "t": "CHF"
+              },
+              {
+                "v": "12",
+                "t": "CAD"
+              },
+              {
+                "v": "14",
+                "t": "NOK"
+              },
+              {
+                "v": "15",
+                "t": "GBP"
+              },
+              {
+                "v": "16",
+                "t": "SAR"
+              },
+              {
+                "v": "17",
+                "t": "JPY"
+              },
+              {
+                "v": "19",
+                "t": "EUR"
+              },
+              {
+                "v": "29",
+                "t": "AED"
+              },
+              {
+                "v": "37",
+                "t": "QAR"
+              },
+              {
+                "v": "24",
+                "t": "ALT (gr)"
+              },
+              {
+                "v": "26",
+                "t": "GMS (gr)"
+              },
+              {
+                "v": "27",
+                "t": "PLT (gr)"
+              }
+            ]
+          }
+        ],
+        "buttons": [
+          "3 Bildirimler",
+          "Kendim İçin",
+          "İşim İçin",
+          "BUTTON",
+          "İnternet Şube",
+          "YARDIMCI SAYFALAR",
+          "Reddet",
+          "Kabul Ediyorum"
+        ]
+      },
+      "clicked": [
+        "3 Bildirimler",
+        "Kendim İçin",
+        "İşim İçin",
+        "BUTTON",
+        "İnternet Şube",
+        "Ara",
+        "YARDIMCI SAYFALAR"
+      ]
+    }
+  ],
+  "endpoints": [
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/finansman-hesaplama",
+      "method": "POST",
+      "endpoint": "https://www.vakifkatilim.com.tr/plugins/FinancingInstallment?langId=bf2689d9-071e-4a20-9450-b1dbdd39778f&language=tr&financingType=K2",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/finansman-hesaplama\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "__RequestVerificationToken=19cre2p_4d4dd6EGvLVNnejLMRSK9bjeWUwh9CSPPPQ3sVw_f1WQIR-s3Ghp86l6dB9JGr6tPlc7DeFI5UNM8gMVe3VV3-WIpmErMUA-HVo1",
+      "response": ""
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/finansman-hesaplama",
+      "method": "POST",
+      "endpoint": "https://www.vakifkatilim.com.tr/plugins/FinancingComputationExecute?langId=bf2689d9-071e-4a20-9450-b1dbdd39778f&language=tr&financingType=K2&amount=100000&numberOfInstallments=3&profitRate=null&calculateType=1",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/finansman-hesaplama\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "__RequestVerificationToken=19cre2p_4d4dd6EGvLVNnejLMRSK9bjeWUwh9CSPPPQ3sVw_f1WQIR-s3Ghp86l6dB9JGr6tPlc7DeFI5UNM8gMVe3VV3-WIpmErMUA-HVo1",
+      "response": ""
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/finansman-hesaplama",
+      "method": "POST",
+      "endpoint": "https://www.vakifkatilim.com.tr/plugins/FinancingComputationExecute?langId=bf2689d9-071e-4a20-9450-b1dbdd39778f&language=tr&financingType=K2&amount=100000&numberOfInstallments=60&profitRate=null&calculateType=1",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/finansman-hesaplama\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "__RequestVerificationToken=19cre2p_4d4dd6EGvLVNnejLMRSK9bjeWUwh9CSPPPQ3sVw_f1WQIR-s3Ghp86l6dB9JGr6tPlc7DeFI5UNM8gMVe3VV3-WIpmErMUA-HVo1",
+      "response": ""
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/finansman-hesaplama",
+      "method": "POST",
+      "endpoint": "https://www.vakifkatilim.com.tr/plugins/FinancingComputationExecute?langId=bf2689d9-071e-4a20-9450-b1dbdd39778f&language=tr&financingType=K2&amount=100000&numberOfInstallments=60&profitRate=2,99&calculateType=1",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/finansman-hesaplama\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "__RequestVerificationToken=19cre2p_4d4dd6EGvLVNnejLMRSK9bjeWUwh9CSPPPQ3sVw_f1WQIR-s3Ghp86l6dB9JGr6tPlc7DeFI5UNM8gMVe3VV3-WIpmErMUA-HVo1",
+      "response": ""
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/finansman-hesaplama",
+      "method": "GET",
+      "endpoint": "https://chatbot.vakifkatilim.com.tr/public-api/configuration/1/VAKIF_KATILIM_PUBLIC_WEB",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.vakifkatilim.com.tr/\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: application/json, text/plain, */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": "{\"projectId\":1,\"chatbotGatewayUrls\":[\"https://chatbot.vakifkatilim.com.tr\",\"https://www.vakifkatilim.com.tr\",\"*\"],\"widgetConfiguration\":{\"socketPath\":\"/websocket/chatbot\",\"title\":\"Dijital Asistan\",\"subtitle\":null,\"inputTextFieldHint\":\"Mesajınızı yazıp enter tuşuna basınız...\",\"connectingText\":\"Bağlanıyor...\",\"initPayload\":\"Merhaba, Ben Vakıf Katılım Dijital Asistan. Size yardımcı olmak için buradayım. Hangi konuda yardımcı olmamı istersiniz?\",\"redirectBotMessage\":\"Merhaba, Ben Vakıf Katılım Dijital Asistan. Isterseniz görüşmeye buradan devam edebiliriz. Yardımcı olmamı istediğiniz başka bir konu var mı?\",\"redirectLiveChatMessage\":\"Sizi müşteri temsilcimize yönlendiriyorum. Lütfen bekleyiniz.\",\"redirectCallMessage\":\"{\\\"custom\\\": { \\\"type\\\": \\\"dxwayCallRequest\\\", \\\"text\\\":\\\"Agent wants to initiate a call.\\\", \\\"menu\\\": [ { \\\"buttonType\\\": \\\"payload\\\", \\\"title\\\": { \\\"call\\\": \\\"Call\\\", \\\"connecting\\\": \\\"Connecting\\\", \\\"finish\\\": \\\"Finish\\\" }, \\\"payload\\\": \\\"dxwayCallRequest\\\" } ]}}\",\"errorMessage\":\"Söylediğinizi anlayamadım. Daha farklı bir şekilde ifade edebilir misiniz?\",\"informationTooltip\":\"Bilgilendirme Ekranı\",\"returnBotTooltip\":\"Canlı Desteği Sonlandır\",\"profileAvatar\":\"/content/img/logo.png\",\"agentAvatar\":\"/content/img/agent.png\",\"botAvatar\":\"/content/img/bot.png\",\"adminAvatar\":\"/content/img/admin.png\",\"systemAvatar\":\"/content/img/bot.png\",\"clientAvatar\":\"/content/img/client.png\",\"minimizeImage\":\"/content/img/minimize.png\",\"informationImage\":\"/content/img/information.png\",\"senderImage\":\"/content/img/sender.svg\",\"senderActiveImage\":\"/content/img/sender-active.svg\",\"openLauncherImage\":\"/content/img/open-launcher.svg\",\"closeImage\":\"/content/img/close-launcher.svg\",\"readonly\":false,\"embedded\":false,\"showCloseButton\":true,\"showFullScreenButton\":false,\"hideWhenNotConnected\":false,\"fullScreenMode\":true,\"docViewer\":false,\"interval\":2000,\"conversationHistoryTimeInMinutes\":720,\"inputCharacterLength\":300,\"params\":{\"images\":{\"dims\":{\"height\":200,\"width\":300}},\"storage\":\"local\"},\"socketDirectlyConnect\":false,\"widgetColor\":\"#E51A92\",\"headerColor\":\"#062E54\",\"headerTitleColor\":\"#fff\",\"headerTitleFontSize\":\"18px\",\"headerTitleFontFamily\":\"Hind,sans-serif\",\"scrollbarColor\":\"#194E91\",\"tooltipBackgroundColor\":\"#E51A92\",\"responseColor\":\"#062E54\",\"responseBackgroundColor\":\"#F0F4F9\",\"responseFontSize\":\"14px\",\"responseFontFamily\":\"Hind,sans-serif\",\"clientColor\":\"#062E54\",\"clientBackgroundColor\":\"#F0F4F9\",\"clientFontSize\":\"14px\",\"clientFontFamily\":\"Hind,sans-serif\",\"buttonColor\":\"#194E91\",\"buttonHoverColor\":\"#062E54\",\"buttonTitleColor\":\"#fff\",\"buttonTitleFontSize\":\"13px\",\"buttonTitleFontFamily\":\"Hind,sans-serif\",\"buttonType\":\"square\",\"disableTooltips\":false,\"newMessageAlert\":false,\"showAdminUserNameNotification\":false},\"rainbowConfiguration\":{\"rainbowPlatform\":null},\"information\":{\"formBackgroundColor\":\"#194E91\",\"formItemColor\":\"#DAE5F2\",\"images\":[\"item1.png\",\"item2.png\",\"item3.png\",\"item4.png\",\"item5.png\",\"item6.png\"],\"texts\":[\"Bankacılık ürün ve hizmetleri hakkında bilgi verebilirim.\",\"Finansman hesaplaması yapabilirim.\",\"Kar payı hesaplaması yapabilirim.\",\"Size en yakın VMatik ve şubelerimizi gösterebilirim.\",\"Döviz kurları hakkında bilgi verebilirim.\",\"Ürün ve hizmet ücretleri hakkında bilgi verebilirim.\"],\"menuQuickReplies\":[\"Bankacılık\",\"Finansman hesaplama\",\"Kar payı hesaplama\",\"En yakın şube\",\"Döviz kurları\",\"Hizmet Ücretleri\"],\"titleInfo\":\"Merhaba ben Vakıf Katılım Dijital Asistan. Aşağıdaki konularda size yardımcı olabilirim.\",\"info\":\"Vakıf Katılım Dijital Asistan sizden, Müşteri Numaranız ve Şifreniz, Hesap Numaranız, TC Kimlik Numaranız, Banka ve Kredi Kartı bilgileriniz, Kart şifresi ve SMS şifresi gibi kişisel bilgiler istemez. Güvenliğiniz açısından Vakıf Katılım Dijital Asistanınız ile görüşmeniz sırasında size ait bilgileri paylaşmayınız.\",\"fontSize\":\"14px\",\"fontFamily\":\"Hind,sans-serif\"}}"
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/finansman-hesaplama",
+      "method": "GET",
+      "endpoint": "https://www.vakifkatilim.com.tr/assets/mock-data/countryCodes.json",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.vakifkatilim.com.tr/tr/arama\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": "[\r\n    {\r\n        \"name\": \"ABD Virgin Adaları\",\r\n        \"dial_code\": \"+1 340\",\r\n        \"code\": \"VI\"\r\n    },\r\n    {\r\n        \"name\": \"Aland Adaları\",\r\n        \"dial_code\": \"+358\",\r\n        \"code\": \"AX\"\r\n    },\r\n    {\r\n        \"name\": \"Almanya\",\r\n        \"dial_code\": \"+49\",\r\n        \"code\": \"DE\"\r\n    },\r\n    {\r\n        \"name\": \"Amerika Birleşik Devletleri\",\r\n        \"dial_code\": \"+1\",\r\n        \"code\": \"US\"\r\n    },\r\n    {\r\n        \"name\": \"Andora\",\r\n        \"dial_code\": \"+376\",\r\n        \"code\": \"AD\"\r\n    },\r\n    {\r\n        \"name\": \"Angola\",\r\n        \"dial_code\": \"+244\",\r\n        \"code\": \"AO\"\r\n    },\r\n    {\r\n        \"name\": \"Anguilla\",\r\n        \"dial_code\": \"+1 264\",\r\n        \"code\": \"AI\"\r\n    },\r\n    {\r\n        \"name\": \"Antarktika\",\r\n        \"dial_code\": \"+672\",\r\n        \"code\": \"AQ\"\r\n    },\r\n    {\r\n        \"name\": \"Antigua ve Barbuda\",\r\n        \"dial_code\": \"+1268\",\r\n        \"code\": \"AG\"\r\n    },\r\n    {\r\n        \"name\": \"Arjantin\",\r\n        \"dial_code\": \"+54\",\r\n        \"code\": \"AR\"\r\n    },\r\n    {\r\n        \"name\": \"Arnavutluk\",\r\n        \"dial_code\": \"+355\",\r\n        \"code\": \"AL\"\r\n    },\r\n    {\r\n        \"name\": \"Aruba\",\r\n        \"dial_code\": \"+297\",\r\n        \"code\": \"AW\"\r\n    },\r\n    {\r\n        \"name\": \"Avustralya\",\r\n        \"dial_code\": \"+61\",\r\n        \"code\": \"AU\"\r\n    },\r\n    {\r\n        \"name\": \"Avusturya\",\r\n        \"dial_code\": \"+43\",\r\n        \"code\": \"AT\"\r\n    },\r\n    {\r\n        \"name\": \"Azerbaycan\",\r\n        \"dial_code\": \"+994\",\r\n        \"code\": \"AZ\"\r\n    },\r\n    {\r\n        \"name\": \"Bahamalar\",\r\n        \"dial_code\": \"+1 242\",\r\n        \"code\": \"BS\"\r\n    },\r\n    {\r\n        \"name\": \"Bahreyn\",\r\n        \"dial_code\": \"+973\",\r\n        \"code\": \"BH\"\r\n    },\r\n    {\r\n        \"name\": \"Bangladeş\",\r\n        \"dial_code\": \"+880\",\r\n        \"code\": \"BD\"\r\n    },\r\n    {\r\n        \"name\": \"Barbados\",\r\n        \"dial_code\": \"+1 246\",\r\n        \"code\": \"BB\"\r\n    },\r\n    {\r\n        \"name\": \"Belize\",\r\n        \"dial_code\": \"+501\",\r\n        \"code\": \"BZ\"\r\n    },\r\n    {\r\n        \"name\": \"Belçika\",\r\n        \"dial_code\": \"+32\",\r\n        \"code\": \"BE\"\r\n    },\r\n    {\r\n        \"name\": \"Benin\",\r\n        \"dial_code\": \"+229\",\r\n        \"code\": \"BJ\"\r\n    },\r\n    {\r\n        \"name\": \"Bermuda\",\r\n        \"dial_code\": \"+1 441\",\r\n        \"code\": \"BM\"\r\n    },\r\n    {\r\n        \"name\": \"Beyaz Rusya\",\r\n        \"dial_code\": \"+375\",\r\n        \"code\": \"BY\"\r\n    },\r\n    {\r\n        \"name\": \"Bhutan\",\r\n        \"dial_code\": \"+975\",\r\n        \"code\": \"BT\"\r\n    },\r\n    {\r\n        \"name\": \"Birleşik Arap Emirlikleri\",\r\n        \"dial_code\": \"+971\",\r\n        \"code\": \"AE\"\r\n    },\r\n    {\r\n        \"name\": \"Birleşik Krallık\",\r\n        \"dial_code\": \"+44\",\r\n        \"code\": \"GB\"\r\n    },\r\n    {\r\n        \"name\": \"Bolivya\",\r\n        \"dial_code\": \"+591\",\r\n        \"code\": \"BO\"\r\n    },\r\n    {\r\n        \"name\": \"Bosna Hersek\",\r\n        \"dial_code\": \"+387\",\r\n        \"code\": \"BA\"\r\n    },\r\n    {\r\n        \"name\": \"Botsvana\",\r\n        \"dial_code\": \"+267\",\r\n        \"code\": \"BW\"\r\n    },\r\n    {\r\n        \"name\": \"Brezilya\",\r\n        \"dial_code\": \"+55\",\r\n        \"code\": \"BR\"\r\n    },\r\n    {\r\n        \"name\": \"Brunei\",\r\n        \"dial_code\": \"+673\",\r\n        \"code\": \"BN\"\r\n    },\r\n    {\r\n        \"name\": \"Bulgaristan\",\r\n        \"dial_code\": \"+359\",\r\n        \"code\": \"BG\"\r\n    },\r\n    {\r\n        \"name\": \"Burkina Faso\",\r\n        \"dial_code\": \"+226\",\r\n        \"code\": \"BF\"\r\n    },\r\n    {\r\n        \"name\": \"Burundi\",\r\n        \"dial_code\": \"+257\",\r\n        \"code\": \"BI\"\r\n    },\r\n    {\r\n        \"name\": \"Cape Verde\",\r\n        \"dial_code\": \"+238\",\r\n        \"code\": \"CV\"\r\n    },\r\n    {\r\n        \"name\": \"Cebelitarık\",\r\n        \"dial_code\": \"+350\",\r\n        \"code\": \"GI\"\r\n    },\r\n    {\r\n        \"name\": \"Cezayir\",\r\n        \"dial_code\": \"+213\",\r\n        \"code\": \"DZ\"\r\n    },\r\n    {\r\n        \"name\": \"Christmas Adası\",\r\n        \"dial_code\": \"+61\",\r\n        \"code\": \"CX\"\r\n    },\r\n    {\r\n        \"name\": \"Cibuti\",\r\n        \"dial_code\": \"+253\",\r\n        \"code\": \"DJ\"\r\n    },\r\n    {\r\n        \"name\": \"Cocos Adaları\",\r\n        \"dial_code\": \"+61\",\r\n        \"code\": \"CC\"\r\n    },\r\n    {\r\n        \"name\": \"Cook Adaları\",\r\n        \"dial_code\": \"+682\",\r\n        \"code\": \"CK\"\r\n    },\r\n    {\r\n        \"name\": \"Çad\",\r\n        \"dial_code\": \"+235\",\r\n        \"code\": \"TD\"\r\n    },\r\n    {\r\n        \"name\": \"Çek Cumhuriyeti\",\r\n        \"dial_code\": \"+420\",\r\n        \"code\": \"CZ\"\r\n    },\r\n    {\r\n        \"name\": \"Çin\",\r\n        \"dial_code\": \"+86\",\r\n        \"code\": \"CN\"\r\n    },\r\n    {\r\n        \"name\": \"Danimarka\",\r\n        \"dial_code\": \"+45\",\r\n        \"code\": \"DK\"\r\n    },\r\n    {\r\n        \"name\": \"Dominik\",\r\n        \"dial_code\": \"+1 767\",\r\n        \"code\": \"DM\"\r\n    },\r\n    {\r\n        \"name\": \"Dominik Cumhuriyeti\",\r\n        \"dial_code\": \"+1 849\",\r\n        \"code\": \"DO\"\r\n    },\r\n    {\r\n        \"name\": \"Doğu Timor\",\r\n        \"dial_code\": \"+670\",\r\n        \"code\": \"TL\"\r\n    },\r\n    {\r\n        \"name\": \"Ekvator\",\r\n        \"dial_code\": \"+593\",\r\n        \"code\": \"EC\"\r\n    },\r\n    {\r\n        \"name\": \"Ekvator Ginesi\",\r\n        \"dial_code\": \"+240\",\r\n        \"code\": \"GQ\"\r\n    },\r\n    {\r\n        \"name\": \"El Salvador\",\r\n        \"dial_code\": \"+503\",\r\n        \"code\": \"SV\"\r\n    },\r\n    {\r\n        \"name\": \"Endonezya\",\r\n        \"dial_code\": \"+62\",\r\n        \"code\": \"ID\"\r\n    },\r\n    {\r\n        \"name\": \"Eritre\",\r\n        \"dial_code\": \"+291\",\r\n        \"code\": \"ER\"\r\n    },\r\n    {\r\n        \"name\": \"Ermenistan\",\r\n        \"dial_code\": \"+374\",\r\n        \"code\": \"AM\"\r\n    },\r\n    {\r\n        \"name\": \"Estonya\",\r\n        \"dial_code\": \"+372\",\r\n        \"code\": \"EE\"\r\n    },\r\n    {\r\n        \"name\": \"Etiyopya\",\r\n        \"dial_code\": \"+251\",\r\n        \"code\": \"ET\"\r\n    },\r\n    {\r\n        \"name\": \"Falkland Adaları (Malvinalar)\",\r\n        \"dial_code\": \"+500\",\r\n        \"code\": \"FK\"\r\n    },\r\n    {\r\n        \"name\": \"Faroe Adaları\",\r\n        \"dial_code\": \"+298\",\r\n        \"code\": \"FO\"\r\n    },\r\n    {\r\n        \"name\": \"Fas\",\r\n        \"dial_code\": \"+212\",\r\n        \"code\": \"MA\"\r\n    },\r\n    {\r\n        \"name\": \"Fiji\",\r\n        \"dial_code\": \"+679\",\r\n        \"code\": \"FJ\"\r\n    },\r\n    {\r\n        "
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/finansman-hesaplama",
+      "method": "GET",
+      "endpoint": "https://www.vakifkatilim.com.tr/assets/mock-data/countryCodes.json",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.vakifkatilim.com.tr/tr/arama\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": "[\r\n    {\r\n        \"name\": \"ABD Virgin Adaları\",\r\n        \"dial_code\": \"+1 340\",\r\n        \"code\": \"VI\"\r\n    },\r\n    {\r\n        \"name\": \"Aland Adaları\",\r\n        \"dial_code\": \"+358\",\r\n        \"code\": \"AX\"\r\n    },\r\n    {\r\n        \"name\": \"Almanya\",\r\n        \"dial_code\": \"+49\",\r\n        \"code\": \"DE\"\r\n    },\r\n    {\r\n        \"name\": \"Amerika Birleşik Devletleri\",\r\n        \"dial_code\": \"+1\",\r\n        \"code\": \"US\"\r\n    },\r\n    {\r\n        \"name\": \"Andora\",\r\n        \"dial_code\": \"+376\",\r\n        \"code\": \"AD\"\r\n    },\r\n    {\r\n        \"name\": \"Angola\",\r\n        \"dial_code\": \"+244\",\r\n        \"code\": \"AO\"\r\n    },\r\n    {\r\n        \"name\": \"Anguilla\",\r\n        \"dial_code\": \"+1 264\",\r\n        \"code\": \"AI\"\r\n    },\r\n    {\r\n        \"name\": \"Antarktika\",\r\n        \"dial_code\": \"+672\",\r\n        \"code\": \"AQ\"\r\n    },\r\n    {\r\n        \"name\": \"Antigua ve Barbuda\",\r\n        \"dial_code\": \"+1268\",\r\n        \"code\": \"AG\"\r\n    },\r\n    {\r\n        \"name\": \"Arjantin\",\r\n        \"dial_code\": \"+54\",\r\n        \"code\": \"AR\"\r\n    },\r\n    {\r\n        \"name\": \"Arnavutluk\",\r\n        \"dial_code\": \"+355\",\r\n        \"code\": \"AL\"\r\n    },\r\n    {\r\n        \"name\": \"Aruba\",\r\n        \"dial_code\": \"+297\",\r\n        \"code\": \"AW\"\r\n    },\r\n    {\r\n        \"name\": \"Avustralya\",\r\n        \"dial_code\": \"+61\",\r\n        \"code\": \"AU\"\r\n    },\r\n    {\r\n        \"name\": \"Avusturya\",\r\n        \"dial_code\": \"+43\",\r\n        \"code\": \"AT\"\r\n    },\r\n    {\r\n        \"name\": \"Azerbaycan\",\r\n        \"dial_code\": \"+994\",\r\n        \"code\": \"AZ\"\r\n    },\r\n    {\r\n        \"name\": \"Bahamalar\",\r\n        \"dial_code\": \"+1 242\",\r\n        \"code\": \"BS\"\r\n    },\r\n    {\r\n        \"name\": \"Bahreyn\",\r\n        \"dial_code\": \"+973\",\r\n        \"code\": \"BH\"\r\n    },\r\n    {\r\n        \"name\": \"Bangladeş\",\r\n        \"dial_code\": \"+880\",\r\n        \"code\": \"BD\"\r\n    },\r\n    {\r\n        \"name\": \"Barbados\",\r\n        \"dial_code\": \"+1 246\",\r\n        \"code\": \"BB\"\r\n    },\r\n    {\r\n        \"name\": \"Belize\",\r\n        \"dial_code\": \"+501\",\r\n        \"code\": \"BZ\"\r\n    },\r\n    {\r\n        \"name\": \"Belçika\",\r\n        \"dial_code\": \"+32\",\r\n        \"code\": \"BE\"\r\n    },\r\n    {\r\n        \"name\": \"Benin\",\r\n        \"dial_code\": \"+229\",\r\n        \"code\": \"BJ\"\r\n    },\r\n    {\r\n        \"name\": \"Bermuda\",\r\n        \"dial_code\": \"+1 441\",\r\n        \"code\": \"BM\"\r\n    },\r\n    {\r\n        \"name\": \"Beyaz Rusya\",\r\n        \"dial_code\": \"+375\",\r\n        \"code\": \"BY\"\r\n    },\r\n    {\r\n        \"name\": \"Bhutan\",\r\n        \"dial_code\": \"+975\",\r\n        \"code\": \"BT\"\r\n    },\r\n    {\r\n        \"name\": \"Birleşik Arap Emirlikleri\",\r\n        \"dial_code\": \"+971\",\r\n        \"code\": \"AE\"\r\n    },\r\n    {\r\n        \"name\": \"Birleşik Krallık\",\r\n        \"dial_code\": \"+44\",\r\n        \"code\": \"GB\"\r\n    },\r\n    {\r\n        \"name\": \"Bolivya\",\r\n        \"dial_code\": \"+591\",\r\n        \"code\": \"BO\"\r\n    },\r\n    {\r\n        \"name\": \"Bosna Hersek\",\r\n        \"dial_code\": \"+387\",\r\n        \"code\": \"BA\"\r\n    },\r\n    {\r\n        \"name\": \"Botsvana\",\r\n        \"dial_code\": \"+267\",\r\n        \"code\": \"BW\"\r\n    },\r\n    {\r\n        \"name\": \"Brezilya\",\r\n        \"dial_code\": \"+55\",\r\n        \"code\": \"BR\"\r\n    },\r\n    {\r\n        \"name\": \"Brunei\",\r\n        \"dial_code\": \"+673\",\r\n        \"code\": \"BN\"\r\n    },\r\n    {\r\n        \"name\": \"Bulgaristan\",\r\n        \"dial_code\": \"+359\",\r\n        \"code\": \"BG\"\r\n    },\r\n    {\r\n        \"name\": \"Burkina Faso\",\r\n        \"dial_code\": \"+226\",\r\n        \"code\": \"BF\"\r\n    },\r\n    {\r\n        \"name\": \"Burundi\",\r\n        \"dial_code\": \"+257\",\r\n        \"code\": \"BI\"\r\n    },\r\n    {\r\n        \"name\": \"Cape Verde\",\r\n        \"dial_code\": \"+238\",\r\n        \"code\": \"CV\"\r\n    },\r\n    {\r\n        \"name\": \"Cebelitarık\",\r\n        \"dial_code\": \"+350\",\r\n        \"code\": \"GI\"\r\n    },\r\n    {\r\n        \"name\": \"Cezayir\",\r\n        \"dial_code\": \"+213\",\r\n        \"code\": \"DZ\"\r\n    },\r\n    {\r\n        \"name\": \"Christmas Adası\",\r\n        \"dial_code\": \"+61\",\r\n        \"code\": \"CX\"\r\n    },\r\n    {\r\n        \"name\": \"Cibuti\",\r\n        \"dial_code\": \"+253\",\r\n        \"code\": \"DJ\"\r\n    },\r\n    {\r\n        \"name\": \"Cocos Adaları\",\r\n        \"dial_code\": \"+61\",\r\n        \"code\": \"CC\"\r\n    },\r\n    {\r\n        \"name\": \"Cook Adaları\",\r\n        \"dial_code\": \"+682\",\r\n        \"code\": \"CK\"\r\n    },\r\n    {\r\n        \"name\": \"Çad\",\r\n        \"dial_code\": \"+235\",\r\n        \"code\": \"TD\"\r\n    },\r\n    {\r\n        \"name\": \"Çek Cumhuriyeti\",\r\n        \"dial_code\": \"+420\",\r\n        \"code\": \"CZ\"\r\n    },\r\n    {\r\n        \"name\": \"Çin\",\r\n        \"dial_code\": \"+86\",\r\n        \"code\": \"CN\"\r\n    },\r\n    {\r\n        \"name\": \"Danimarka\",\r\n        \"dial_code\": \"+45\",\r\n        \"code\": \"DK\"\r\n    },\r\n    {\r\n        \"name\": \"Dominik\",\r\n        \"dial_code\": \"+1 767\",\r\n        \"code\": \"DM\"\r\n    },\r\n    {\r\n        \"name\": \"Dominik Cumhuriyeti\",\r\n        \"dial_code\": \"+1 849\",\r\n        \"code\": \"DO\"\r\n    },\r\n    {\r\n        \"name\": \"Doğu Timor\",\r\n        \"dial_code\": \"+670\",\r\n        \"code\": \"TL\"\r\n    },\r\n    {\r\n        \"name\": \"Ekvator\",\r\n        \"dial_code\": \"+593\",\r\n        \"code\": \"EC\"\r\n    },\r\n    {\r\n        \"name\": \"Ekvator Ginesi\",\r\n        \"dial_code\": \"+240\",\r\n        \"code\": \"GQ\"\r\n    },\r\n    {\r\n        \"name\": \"El Salvador\",\r\n        \"dial_code\": \"+503\",\r\n        \"code\": \"SV\"\r\n    },\r\n    {\r\n        \"name\": \"Endonezya\",\r\n        \"dial_code\": \"+62\",\r\n        \"code\": \"ID\"\r\n    },\r\n    {\r\n        \"name\": \"Eritre\",\r\n        \"dial_code\": \"+291\",\r\n        \"code\": \"ER\"\r\n    },\r\n    {\r\n        \"name\": \"Ermenistan\",\r\n        \"dial_code\": \"+374\",\r\n        \"code\": \"AM\"\r\n    },\r\n    {\r\n        \"name\": \"Estonya\",\r\n        \"dial_code\": \"+372\",\r\n        \"code\": \"EE\"\r\n    },\r\n    {\r\n        \"name\": \"Etiyopya\",\r\n        \"dial_code\": \"+251\",\r\n        \"code\": \"ET\"\r\n    },\r\n    {\r\n        \"name\": \"Falkland Adaları (Malvinalar)\",\r\n        \"dial_code\": \"+500\",\r\n        \"code\": \"FK\"\r\n    },\r\n    {\r\n        \"name\": \"Faroe Adaları\",\r\n        \"dial_code\": \"+298\",\r\n        \"code\": \"FO\"\r\n    },\r\n    {\r\n        \"name\": \"Fas\",\r\n        \"dial_code\": \"+212\",\r\n        \"code\": \"MA\"\r\n    },\r\n    {\r\n        \"name\": \"Fiji\",\r\n        \"dial_code\": \"+679\",\r\n        \"code\": \"FJ\"\r\n    },\r\n    {\r\n        "
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/kar-payi-hesaplama",
+      "method": "POST",
+      "endpoint": "https://www.vakifkatilim.com.tr/plugins/MoneyExpiry?langId=bf2689d9-071e-4a20-9450-b1dbdd39778f&language=tr&currencyTypeVal=19",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/kar-payi-hesaplama\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "__RequestVerificationToken=n2f2wED8Alwcii948kqPPLcqOyw_yffj47GQizDo6v3mxYVJ4Cw8Yup7_D0mHX_Ca8hFghIPby423ZarSmNwjs35tPfFTqpV5iRKkErhvrg1",
+      "response": ""
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/kar-payi-hesaplama",
+      "method": "POST",
+      "endpoint": "https://www.vakifkatilim.com.tr/plugins/GrossAmountCalculationJson?langId=bf2689d9-071e-4a20-9450-b1dbdd39778f&language=tr&accountType=KAH&currencyUnit=19&principal=100000&expiry=31",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/kar-payi-hesaplama\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "__RequestVerificationToken=n2f2wED8Alwcii948kqPPLcqOyw_yffj47GQizDo6v3mxYVJ4Cw8Yup7_D0mHX_Ca8hFghIPby423ZarSmNwjs35tPfFTqpV5iRKkErhvrg1",
+      "response": ""
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/kar-payi-hesaplama",
+      "method": "POST",
+      "endpoint": "https://www.vakifkatilim.com.tr/plugins/GrossAmountCalculationJson?langId=bf2689d9-071e-4a20-9450-b1dbdd39778f&language=tr&accountType=KAH&currencyUnit=19&principal=100000&expiry=180",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/kar-payi-hesaplama\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "__RequestVerificationToken=n2f2wED8Alwcii948kqPPLcqOyw_yffj47GQizDo6v3mxYVJ4Cw8Yup7_D0mHX_Ca8hFghIPby423ZarSmNwjs35tPfFTqpV5iRKkErhvrg1",
+      "response": ""
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/kar-payi-hesaplama",
+      "method": "POST",
+      "endpoint": "https://www.vakifkatilim.com.tr/plugins/GrossAmountCalculationJson?langId=bf2689d9-071e-4a20-9450-b1dbdd39778f&language=tr&accountType=KAH&currencyUnit=19&principal=100000&expiry=364",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/kar-payi-hesaplama\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "__RequestVerificationToken=n2f2wED8Alwcii948kqPPLcqOyw_yffj47GQizDo6v3mxYVJ4Cw8Yup7_D0mHX_Ca8hFghIPby423ZarSmNwjs35tPfFTqpV5iRKkErhvrg1",
+      "response": ""
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/kar-payi-hesaplama",
+      "method": "POST",
+      "endpoint": "https://www.vakifkatilim.com.tr/plugins/GrossAmountCalculationJson?langId=bf2689d9-071e-4a20-9450-b1dbdd39778f&language=tr&accountType=KAH&currencyUnit=19&principal=100000&expiry=364",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/kar-payi-hesaplama\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "__RequestVerificationToken=n2f2wED8Alwcii948kqPPLcqOyw_yffj47GQizDo6v3mxYVJ4Cw8Yup7_D0mHX_Ca8hFghIPby423ZarSmNwjs35tPfFTqpV5iRKkErhvrg1",
+      "response": ""
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/kar-payi-hesaplama",
+      "method": "GET",
+      "endpoint": "https://chatbot.vakifkatilim.com.tr/public-api/configuration/1/VAKIF_KATILIM_PUBLIC_WEB",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.vakifkatilim.com.tr/\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: application/json, text/plain, */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": "{\"projectId\":1,\"chatbotGatewayUrls\":[\"https://chatbot.vakifkatilim.com.tr\",\"https://www.vakifkatilim.com.tr\",\"*\"],\"widgetConfiguration\":{\"socketPath\":\"/websocket/chatbot\",\"title\":\"Dijital Asistan\",\"subtitle\":null,\"inputTextFieldHint\":\"Mesajınızı yazıp enter tuşuna basınız...\",\"connectingText\":\"Bağlanıyor...\",\"initPayload\":\"Merhaba, Ben Vakıf Katılım Dijital Asistan. Size yardımcı olmak için buradayım. Hangi konuda yardımcı olmamı istersiniz?\",\"redirectBotMessage\":\"Merhaba, Ben Vakıf Katılım Dijital Asistan. Isterseniz görüşmeye buradan devam edebiliriz. Yardımcı olmamı istediğiniz başka bir konu var mı?\",\"redirectLiveChatMessage\":\"Sizi müşteri temsilcimize yönlendiriyorum. Lütfen bekleyiniz.\",\"redirectCallMessage\":\"{\\\"custom\\\": { \\\"type\\\": \\\"dxwayCallRequest\\\", \\\"text\\\":\\\"Agent wants to initiate a call.\\\", \\\"menu\\\": [ { \\\"buttonType\\\": \\\"payload\\\", \\\"title\\\": { \\\"call\\\": \\\"Call\\\", \\\"connecting\\\": \\\"Connecting\\\", \\\"finish\\\": \\\"Finish\\\" }, \\\"payload\\\": \\\"dxwayCallRequest\\\" } ]}}\",\"errorMessage\":\"Söylediğinizi anlayamadım. Daha farklı bir şekilde ifade edebilir misiniz?\",\"informationTooltip\":\"Bilgilendirme Ekranı\",\"returnBotTooltip\":\"Canlı Desteği Sonlandır\",\"profileAvatar\":\"/content/img/logo.png\",\"agentAvatar\":\"/content/img/agent.png\",\"botAvatar\":\"/content/img/bot.png\",\"adminAvatar\":\"/content/img/admin.png\",\"systemAvatar\":\"/content/img/bot.png\",\"clientAvatar\":\"/content/img/client.png\",\"minimizeImage\":\"/content/img/minimize.png\",\"informationImage\":\"/content/img/information.png\",\"senderImage\":\"/content/img/sender.svg\",\"senderActiveImage\":\"/content/img/sender-active.svg\",\"openLauncherImage\":\"/content/img/open-launcher.svg\",\"closeImage\":\"/content/img/close-launcher.svg\",\"readonly\":false,\"embedded\":false,\"showCloseButton\":true,\"showFullScreenButton\":false,\"hideWhenNotConnected\":false,\"fullScreenMode\":true,\"docViewer\":false,\"interval\":2000,\"conversationHistoryTimeInMinutes\":720,\"inputCharacterLength\":300,\"params\":{\"images\":{\"dims\":{\"height\":200,\"width\":300}},\"storage\":\"local\"},\"socketDirectlyConnect\":false,\"widgetColor\":\"#E51A92\",\"headerColor\":\"#062E54\",\"headerTitleColor\":\"#fff\",\"headerTitleFontSize\":\"18px\",\"headerTitleFontFamily\":\"Hind,sans-serif\",\"scrollbarColor\":\"#194E91\",\"tooltipBackgroundColor\":\"#E51A92\",\"responseColor\":\"#062E54\",\"responseBackgroundColor\":\"#F0F4F9\",\"responseFontSize\":\"14px\",\"responseFontFamily\":\"Hind,sans-serif\",\"clientColor\":\"#062E54\",\"clientBackgroundColor\":\"#F0F4F9\",\"clientFontSize\":\"14px\",\"clientFontFamily\":\"Hind,sans-serif\",\"buttonColor\":\"#194E91\",\"buttonHoverColor\":\"#062E54\",\"buttonTitleColor\":\"#fff\",\"buttonTitleFontSize\":\"13px\",\"buttonTitleFontFamily\":\"Hind,sans-serif\",\"buttonType\":\"square\",\"disableTooltips\":false,\"newMessageAlert\":false,\"showAdminUserNameNotification\":false},\"rainbowConfiguration\":{\"rainbowPlatform\":null},\"information\":{\"formBackgroundColor\":\"#194E91\",\"formItemColor\":\"#DAE5F2\",\"images\":[\"item1.png\",\"item2.png\",\"item3.png\",\"item4.png\",\"item5.png\",\"item6.png\"],\"texts\":[\"Bankacılık ürün ve hizmetleri hakkında bilgi verebilirim.\",\"Finansman hesaplaması yapabilirim.\",\"Kar payı hesaplaması yapabilirim.\",\"Size en yakın VMatik ve şubelerimizi gösterebilirim.\",\"Döviz kurları hakkında bilgi verebilirim.\",\"Ürün ve hizmet ücretleri hakkında bilgi verebilirim.\"],\"menuQuickReplies\":[\"Bankacılık\",\"Finansman hesaplama\",\"Kar payı hesaplama\",\"En yakın şube\",\"Döviz kurları\",\"Hizmet Ücretleri\"],\"titleInfo\":\"Merhaba ben Vakıf Katılım Dijital Asistan. Aşağıdaki konularda size yardımcı olabilirim.\",\"info\":\"Vakıf Katılım Dijital Asistan sizden, Müşteri Numaranız ve Şifreniz, Hesap Numaranız, TC Kimlik Numaranız, Banka ve Kredi Kartı bilgileriniz, Kart şifresi ve SMS şifresi gibi kişisel bilgiler istemez. Güvenliğiniz açısından Vakıf Katılım Dijital Asistanınız ile görüşmeniz sırasında size ait bilgileri paylaşmayınız.\",\"fontSize\":\"14px\",\"fontFamily\":\"Hind,sans-serif\"}}"
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/kar-payi-hesaplama",
+      "method": "GET",
+      "endpoint": "https://www.vakifkatilim.com.tr/assets/mock-data/countryCodes.json",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.vakifkatilim.com.tr/tr/arama\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": "[\r\n    {\r\n        \"name\": \"ABD Virgin Adaları\",\r\n        \"dial_code\": \"+1 340\",\r\n        \"code\": \"VI\"\r\n    },\r\n    {\r\n        \"name\": \"Aland Adaları\",\r\n        \"dial_code\": \"+358\",\r\n        \"code\": \"AX\"\r\n    },\r\n    {\r\n        \"name\": \"Almanya\",\r\n        \"dial_code\": \"+49\",\r\n        \"code\": \"DE\"\r\n    },\r\n    {\r\n        \"name\": \"Amerika Birleşik Devletleri\",\r\n        \"dial_code\": \"+1\",\r\n        \"code\": \"US\"\r\n    },\r\n    {\r\n        \"name\": \"Andora\",\r\n        \"dial_code\": \"+376\",\r\n        \"code\": \"AD\"\r\n    },\r\n    {\r\n        \"name\": \"Angola\",\r\n        \"dial_code\": \"+244\",\r\n        \"code\": \"AO\"\r\n    },\r\n    {\r\n        \"name\": \"Anguilla\",\r\n        \"dial_code\": \"+1 264\",\r\n        \"code\": \"AI\"\r\n    },\r\n    {\r\n        \"name\": \"Antarktika\",\r\n        \"dial_code\": \"+672\",\r\n        \"code\": \"AQ\"\r\n    },\r\n    {\r\n        \"name\": \"Antigua ve Barbuda\",\r\n        \"dial_code\": \"+1268\",\r\n        \"code\": \"AG\"\r\n    },\r\n    {\r\n        \"name\": \"Arjantin\",\r\n        \"dial_code\": \"+54\",\r\n        \"code\": \"AR\"\r\n    },\r\n    {\r\n        \"name\": \"Arnavutluk\",\r\n        \"dial_code\": \"+355\",\r\n        \"code\": \"AL\"\r\n    },\r\n    {\r\n        \"name\": \"Aruba\",\r\n        \"dial_code\": \"+297\",\r\n        \"code\": \"AW\"\r\n    },\r\n    {\r\n        \"name\": \"Avustralya\",\r\n        \"dial_code\": \"+61\",\r\n        \"code\": \"AU\"\r\n    },\r\n    {\r\n        \"name\": \"Avusturya\",\r\n        \"dial_code\": \"+43\",\r\n        \"code\": \"AT\"\r\n    },\r\n    {\r\n        \"name\": \"Azerbaycan\",\r\n        \"dial_code\": \"+994\",\r\n        \"code\": \"AZ\"\r\n    },\r\n    {\r\n        \"name\": \"Bahamalar\",\r\n        \"dial_code\": \"+1 242\",\r\n        \"code\": \"BS\"\r\n    },\r\n    {\r\n        \"name\": \"Bahreyn\",\r\n        \"dial_code\": \"+973\",\r\n        \"code\": \"BH\"\r\n    },\r\n    {\r\n        \"name\": \"Bangladeş\",\r\n        \"dial_code\": \"+880\",\r\n        \"code\": \"BD\"\r\n    },\r\n    {\r\n        \"name\": \"Barbados\",\r\n        \"dial_code\": \"+1 246\",\r\n        \"code\": \"BB\"\r\n    },\r\n    {\r\n        \"name\": \"Belize\",\r\n        \"dial_code\": \"+501\",\r\n        \"code\": \"BZ\"\r\n    },\r\n    {\r\n        \"name\": \"Belçika\",\r\n        \"dial_code\": \"+32\",\r\n        \"code\": \"BE\"\r\n    },\r\n    {\r\n        \"name\": \"Benin\",\r\n        \"dial_code\": \"+229\",\r\n        \"code\": \"BJ\"\r\n    },\r\n    {\r\n        \"name\": \"Bermuda\",\r\n        \"dial_code\": \"+1 441\",\r\n        \"code\": \"BM\"\r\n    },\r\n    {\r\n        \"name\": \"Beyaz Rusya\",\r\n        \"dial_code\": \"+375\",\r\n        \"code\": \"BY\"\r\n    },\r\n    {\r\n        \"name\": \"Bhutan\",\r\n        \"dial_code\": \"+975\",\r\n        \"code\": \"BT\"\r\n    },\r\n    {\r\n        \"name\": \"Birleşik Arap Emirlikleri\",\r\n        \"dial_code\": \"+971\",\r\n        \"code\": \"AE\"\r\n    },\r\n    {\r\n        \"name\": \"Birleşik Krallık\",\r\n        \"dial_code\": \"+44\",\r\n        \"code\": \"GB\"\r\n    },\r\n    {\r\n        \"name\": \"Bolivya\",\r\n        \"dial_code\": \"+591\",\r\n        \"code\": \"BO\"\r\n    },\r\n    {\r\n        \"name\": \"Bosna Hersek\",\r\n        \"dial_code\": \"+387\",\r\n        \"code\": \"BA\"\r\n    },\r\n    {\r\n        \"name\": \"Botsvana\",\r\n        \"dial_code\": \"+267\",\r\n        \"code\": \"BW\"\r\n    },\r\n    {\r\n        \"name\": \"Brezilya\",\r\n        \"dial_code\": \"+55\",\r\n        \"code\": \"BR\"\r\n    },\r\n    {\r\n        \"name\": \"Brunei\",\r\n        \"dial_code\": \"+673\",\r\n        \"code\": \"BN\"\r\n    },\r\n    {\r\n        \"name\": \"Bulgaristan\",\r\n        \"dial_code\": \"+359\",\r\n        \"code\": \"BG\"\r\n    },\r\n    {\r\n        \"name\": \"Burkina Faso\",\r\n        \"dial_code\": \"+226\",\r\n        \"code\": \"BF\"\r\n    },\r\n    {\r\n        \"name\": \"Burundi\",\r\n        \"dial_code\": \"+257\",\r\n        \"code\": \"BI\"\r\n    },\r\n    {\r\n        \"name\": \"Cape Verde\",\r\n        \"dial_code\": \"+238\",\r\n        \"code\": \"CV\"\r\n    },\r\n    {\r\n        \"name\": \"Cebelitarık\",\r\n        \"dial_code\": \"+350\",\r\n        \"code\": \"GI\"\r\n    },\r\n    {\r\n        \"name\": \"Cezayir\",\r\n        \"dial_code\": \"+213\",\r\n        \"code\": \"DZ\"\r\n    },\r\n    {\r\n        \"name\": \"Christmas Adası\",\r\n        \"dial_code\": \"+61\",\r\n        \"code\": \"CX\"\r\n    },\r\n    {\r\n        \"name\": \"Cibuti\",\r\n        \"dial_code\": \"+253\",\r\n        \"code\": \"DJ\"\r\n    },\r\n    {\r\n        \"name\": \"Cocos Adaları\",\r\n        \"dial_code\": \"+61\",\r\n        \"code\": \"CC\"\r\n    },\r\n    {\r\n        \"name\": \"Cook Adaları\",\r\n        \"dial_code\": \"+682\",\r\n        \"code\": \"CK\"\r\n    },\r\n    {\r\n        \"name\": \"Çad\",\r\n        \"dial_code\": \"+235\",\r\n        \"code\": \"TD\"\r\n    },\r\n    {\r\n        \"name\": \"Çek Cumhuriyeti\",\r\n        \"dial_code\": \"+420\",\r\n        \"code\": \"CZ\"\r\n    },\r\n    {\r\n        \"name\": \"Çin\",\r\n        \"dial_code\": \"+86\",\r\n        \"code\": \"CN\"\r\n    },\r\n    {\r\n        \"name\": \"Danimarka\",\r\n        \"dial_code\": \"+45\",\r\n        \"code\": \"DK\"\r\n    },\r\n    {\r\n        \"name\": \"Dominik\",\r\n        \"dial_code\": \"+1 767\",\r\n        \"code\": \"DM\"\r\n    },\r\n    {\r\n        \"name\": \"Dominik Cumhuriyeti\",\r\n        \"dial_code\": \"+1 849\",\r\n        \"code\": \"DO\"\r\n    },\r\n    {\r\n        \"name\": \"Doğu Timor\",\r\n        \"dial_code\": \"+670\",\r\n        \"code\": \"TL\"\r\n    },\r\n    {\r\n        \"name\": \"Ekvator\",\r\n        \"dial_code\": \"+593\",\r\n        \"code\": \"EC\"\r\n    },\r\n    {\r\n        \"name\": \"Ekvator Ginesi\",\r\n        \"dial_code\": \"+240\",\r\n        \"code\": \"GQ\"\r\n    },\r\n    {\r\n        \"name\": \"El Salvador\",\r\n        \"dial_code\": \"+503\",\r\n        \"code\": \"SV\"\r\n    },\r\n    {\r\n        \"name\": \"Endonezya\",\r\n        \"dial_code\": \"+62\",\r\n        \"code\": \"ID\"\r\n    },\r\n    {\r\n        \"name\": \"Eritre\",\r\n        \"dial_code\": \"+291\",\r\n        \"code\": \"ER\"\r\n    },\r\n    {\r\n        \"name\": \"Ermenistan\",\r\n        \"dial_code\": \"+374\",\r\n        \"code\": \"AM\"\r\n    },\r\n    {\r\n        \"name\": \"Estonya\",\r\n        \"dial_code\": \"+372\",\r\n        \"code\": \"EE\"\r\n    },\r\n    {\r\n        \"name\": \"Etiyopya\",\r\n        \"dial_code\": \"+251\",\r\n        \"code\": \"ET\"\r\n    },\r\n    {\r\n        \"name\": \"Falkland Adaları (Malvinalar)\",\r\n        \"dial_code\": \"+500\",\r\n        \"code\": \"FK\"\r\n    },\r\n    {\r\n        \"name\": \"Faroe Adaları\",\r\n        \"dial_code\": \"+298\",\r\n        \"code\": \"FO\"\r\n    },\r\n    {\r\n        \"name\": \"Fas\",\r\n        \"dial_code\": \"+212\",\r\n        \"code\": \"MA\"\r\n    },\r\n    {\r\n        \"name\": \"Fiji\",\r\n        \"dial_code\": \"+679\",\r\n        \"code\": \"FJ\"\r\n    },\r\n    {\r\n        "
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/kar-payi-hesaplama",
+      "method": "GET",
+      "endpoint": "https://www.vakifkatilim.com.tr/assets/mock-data/countryCodes.json",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.vakifkatilim.com.tr/tr/arama\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": "[\r\n    {\r\n        \"name\": \"ABD Virgin Adaları\",\r\n        \"dial_code\": \"+1 340\",\r\n        \"code\": \"VI\"\r\n    },\r\n    {\r\n        \"name\": \"Aland Adaları\",\r\n        \"dial_code\": \"+358\",\r\n        \"code\": \"AX\"\r\n    },\r\n    {\r\n        \"name\": \"Almanya\",\r\n        \"dial_code\": \"+49\",\r\n        \"code\": \"DE\"\r\n    },\r\n    {\r\n        \"name\": \"Amerika Birleşik Devletleri\",\r\n        \"dial_code\": \"+1\",\r\n        \"code\": \"US\"\r\n    },\r\n    {\r\n        \"name\": \"Andora\",\r\n        \"dial_code\": \"+376\",\r\n        \"code\": \"AD\"\r\n    },\r\n    {\r\n        \"name\": \"Angola\",\r\n        \"dial_code\": \"+244\",\r\n        \"code\": \"AO\"\r\n    },\r\n    {\r\n        \"name\": \"Anguilla\",\r\n        \"dial_code\": \"+1 264\",\r\n        \"code\": \"AI\"\r\n    },\r\n    {\r\n        \"name\": \"Antarktika\",\r\n        \"dial_code\": \"+672\",\r\n        \"code\": \"AQ\"\r\n    },\r\n    {\r\n        \"name\": \"Antigua ve Barbuda\",\r\n        \"dial_code\": \"+1268\",\r\n        \"code\": \"AG\"\r\n    },\r\n    {\r\n        \"name\": \"Arjantin\",\r\n        \"dial_code\": \"+54\",\r\n        \"code\": \"AR\"\r\n    },\r\n    {\r\n        \"name\": \"Arnavutluk\",\r\n        \"dial_code\": \"+355\",\r\n        \"code\": \"AL\"\r\n    },\r\n    {\r\n        \"name\": \"Aruba\",\r\n        \"dial_code\": \"+297\",\r\n        \"code\": \"AW\"\r\n    },\r\n    {\r\n        \"name\": \"Avustralya\",\r\n        \"dial_code\": \"+61\",\r\n        \"code\": \"AU\"\r\n    },\r\n    {\r\n        \"name\": \"Avusturya\",\r\n        \"dial_code\": \"+43\",\r\n        \"code\": \"AT\"\r\n    },\r\n    {\r\n        \"name\": \"Azerbaycan\",\r\n        \"dial_code\": \"+994\",\r\n        \"code\": \"AZ\"\r\n    },\r\n    {\r\n        \"name\": \"Bahamalar\",\r\n        \"dial_code\": \"+1 242\",\r\n        \"code\": \"BS\"\r\n    },\r\n    {\r\n        \"name\": \"Bahreyn\",\r\n        \"dial_code\": \"+973\",\r\n        \"code\": \"BH\"\r\n    },\r\n    {\r\n        \"name\": \"Bangladeş\",\r\n        \"dial_code\": \"+880\",\r\n        \"code\": \"BD\"\r\n    },\r\n    {\r\n        \"name\": \"Barbados\",\r\n        \"dial_code\": \"+1 246\",\r\n        \"code\": \"BB\"\r\n    },\r\n    {\r\n        \"name\": \"Belize\",\r\n        \"dial_code\": \"+501\",\r\n        \"code\": \"BZ\"\r\n    },\r\n    {\r\n        \"name\": \"Belçika\",\r\n        \"dial_code\": \"+32\",\r\n        \"code\": \"BE\"\r\n    },\r\n    {\r\n        \"name\": \"Benin\",\r\n        \"dial_code\": \"+229\",\r\n        \"code\": \"BJ\"\r\n    },\r\n    {\r\n        \"name\": \"Bermuda\",\r\n        \"dial_code\": \"+1 441\",\r\n        \"code\": \"BM\"\r\n    },\r\n    {\r\n        \"name\": \"Beyaz Rusya\",\r\n        \"dial_code\": \"+375\",\r\n        \"code\": \"BY\"\r\n    },\r\n    {\r\n        \"name\": \"Bhutan\",\r\n        \"dial_code\": \"+975\",\r\n        \"code\": \"BT\"\r\n    },\r\n    {\r\n        \"name\": \"Birleşik Arap Emirlikleri\",\r\n        \"dial_code\": \"+971\",\r\n        \"code\": \"AE\"\r\n    },\r\n    {\r\n        \"name\": \"Birleşik Krallık\",\r\n        \"dial_code\": \"+44\",\r\n        \"code\": \"GB\"\r\n    },\r\n    {\r\n        \"name\": \"Bolivya\",\r\n        \"dial_code\": \"+591\",\r\n        \"code\": \"BO\"\r\n    },\r\n    {\r\n        \"name\": \"Bosna Hersek\",\r\n        \"dial_code\": \"+387\",\r\n        \"code\": \"BA\"\r\n    },\r\n    {\r\n        \"name\": \"Botsvana\",\r\n        \"dial_code\": \"+267\",\r\n        \"code\": \"BW\"\r\n    },\r\n    {\r\n        \"name\": \"Brezilya\",\r\n        \"dial_code\": \"+55\",\r\n        \"code\": \"BR\"\r\n    },\r\n    {\r\n        \"name\": \"Brunei\",\r\n        \"dial_code\": \"+673\",\r\n        \"code\": \"BN\"\r\n    },\r\n    {\r\n        \"name\": \"Bulgaristan\",\r\n        \"dial_code\": \"+359\",\r\n        \"code\": \"BG\"\r\n    },\r\n    {\r\n        \"name\": \"Burkina Faso\",\r\n        \"dial_code\": \"+226\",\r\n        \"code\": \"BF\"\r\n    },\r\n    {\r\n        \"name\": \"Burundi\",\r\n        \"dial_code\": \"+257\",\r\n        \"code\": \"BI\"\r\n    },\r\n    {\r\n        \"name\": \"Cape Verde\",\r\n        \"dial_code\": \"+238\",\r\n        \"code\": \"CV\"\r\n    },\r\n    {\r\n        \"name\": \"Cebelitarık\",\r\n        \"dial_code\": \"+350\",\r\n        \"code\": \"GI\"\r\n    },\r\n    {\r\n        \"name\": \"Cezayir\",\r\n        \"dial_code\": \"+213\",\r\n        \"code\": \"DZ\"\r\n    },\r\n    {\r\n        \"name\": \"Christmas Adası\",\r\n        \"dial_code\": \"+61\",\r\n        \"code\": \"CX\"\r\n    },\r\n    {\r\n        \"name\": \"Cibuti\",\r\n        \"dial_code\": \"+253\",\r\n        \"code\": \"DJ\"\r\n    },\r\n    {\r\n        \"name\": \"Cocos Adaları\",\r\n        \"dial_code\": \"+61\",\r\n        \"code\": \"CC\"\r\n    },\r\n    {\r\n        \"name\": \"Cook Adaları\",\r\n        \"dial_code\": \"+682\",\r\n        \"code\": \"CK\"\r\n    },\r\n    {\r\n        \"name\": \"Çad\",\r\n        \"dial_code\": \"+235\",\r\n        \"code\": \"TD\"\r\n    },\r\n    {\r\n        \"name\": \"Çek Cumhuriyeti\",\r\n        \"dial_code\": \"+420\",\r\n        \"code\": \"CZ\"\r\n    },\r\n    {\r\n        \"name\": \"Çin\",\r\n        \"dial_code\": \"+86\",\r\n        \"code\": \"CN\"\r\n    },\r\n    {\r\n        \"name\": \"Danimarka\",\r\n        \"dial_code\": \"+45\",\r\n        \"code\": \"DK\"\r\n    },\r\n    {\r\n        \"name\": \"Dominik\",\r\n        \"dial_code\": \"+1 767\",\r\n        \"code\": \"DM\"\r\n    },\r\n    {\r\n        \"name\": \"Dominik Cumhuriyeti\",\r\n        \"dial_code\": \"+1 849\",\r\n        \"code\": \"DO\"\r\n    },\r\n    {\r\n        \"name\": \"Doğu Timor\",\r\n        \"dial_code\": \"+670\",\r\n        \"code\": \"TL\"\r\n    },\r\n    {\r\n        \"name\": \"Ekvator\",\r\n        \"dial_code\": \"+593\",\r\n        \"code\": \"EC\"\r\n    },\r\n    {\r\n        \"name\": \"Ekvator Ginesi\",\r\n        \"dial_code\": \"+240\",\r\n        \"code\": \"GQ\"\r\n    },\r\n    {\r\n        \"name\": \"El Salvador\",\r\n        \"dial_code\": \"+503\",\r\n        \"code\": \"SV\"\r\n    },\r\n    {\r\n        \"name\": \"Endonezya\",\r\n        \"dial_code\": \"+62\",\r\n        \"code\": \"ID\"\r\n    },\r\n    {\r\n        \"name\": \"Eritre\",\r\n        \"dial_code\": \"+291\",\r\n        \"code\": \"ER\"\r\n    },\r\n    {\r\n        \"name\": \"Ermenistan\",\r\n        \"dial_code\": \"+374\",\r\n        \"code\": \"AM\"\r\n    },\r\n    {\r\n        \"name\": \"Estonya\",\r\n        \"dial_code\": \"+372\",\r\n        \"code\": \"EE\"\r\n    },\r\n    {\r\n        \"name\": \"Etiyopya\",\r\n        \"dial_code\": \"+251\",\r\n        \"code\": \"ET\"\r\n    },\r\n    {\r\n        \"name\": \"Falkland Adaları (Malvinalar)\",\r\n        \"dial_code\": \"+500\",\r\n        \"code\": \"FK\"\r\n    },\r\n    {\r\n        \"name\": \"Faroe Adaları\",\r\n        \"dial_code\": \"+298\",\r\n        \"code\": \"FO\"\r\n    },\r\n    {\r\n        \"name\": \"Fas\",\r\n        \"dial_code\": \"+212\",\r\n        \"code\": \"MA\"\r\n    },\r\n    {\r\n        \"name\": \"Fiji\",\r\n        \"dial_code\": \"+679\",\r\n        \"code\": \"FJ\"\r\n    },\r\n    {\r\n        "
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/kart-taksit-hesaplama",
+      "method": "POST",
+      "endpoint": "https://www.vakifkatilim.com.tr/plugins/CardCalculationInstallment?langId=bf2689d9-071e-4a20-9450-b1dbdd39778f&language=tr&cardType=FK",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/kart-taksit-hesaplama\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "__RequestVerificationToken=5PGqv6AslptKt-PcFUEm7sXqMcgz6z1B6KxmTCOFwlnEScXm2sjrpAKmNvf3Zs7xdhRnTkeLCGBf5mNClSHebdwuzRrQCh5KLS9dFqz0kF41",
+      "response": ""
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/kart-taksit-hesaplama",
+      "method": "POST",
+      "endpoint": "https://www.vakifkatilim.com.tr/plugins/CardComputationExecute?langId=bf2689d9-071e-4a20-9450-b1dbdd39778f&language=tr&cardType=FK&amount=137000&numberOfInstallments=3&profitRate=null",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/kart-taksit-hesaplama\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "__RequestVerificationToken=5PGqv6AslptKt-PcFUEm7sXqMcgz6z1B6KxmTCOFwlnEScXm2sjrpAKmNvf3Zs7xdhRnTkeLCGBf5mNClSHebdwuzRrQCh5KLS9dFqz0kF41",
+      "response": ""
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/kart-taksit-hesaplama",
+      "method": "POST",
+      "endpoint": "https://www.vakifkatilim.com.tr/plugins/CardComputationExecute?langId=bf2689d9-071e-4a20-9450-b1dbdd39778f&language=tr&cardType=FK&amount=137000&numberOfInstallments=7&profitRate=null",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/kart-taksit-hesaplama\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "__RequestVerificationToken=5PGqv6AslptKt-PcFUEm7sXqMcgz6z1B6KxmTCOFwlnEScXm2sjrpAKmNvf3Zs7xdhRnTkeLCGBf5mNClSHebdwuzRrQCh5KLS9dFqz0kF41",
+      "response": ""
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/kart-taksit-hesaplama",
+      "method": "POST",
+      "endpoint": "https://www.vakifkatilim.com.tr/plugins/CardComputationExecute?langId=bf2689d9-071e-4a20-9450-b1dbdd39778f&language=tr&cardType=FK&amount=137000&numberOfInstallments=7&profitRate=4,30",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/kart-taksit-hesaplama\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "__RequestVerificationToken=5PGqv6AslptKt-PcFUEm7sXqMcgz6z1B6KxmTCOFwlnEScXm2sjrpAKmNvf3Zs7xdhRnTkeLCGBf5mNClSHebdwuzRrQCh5KLS9dFqz0kF41",
+      "response": ""
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/kart-taksit-hesaplama",
+      "method": "GET",
+      "endpoint": "https://chatbot.vakifkatilim.com.tr/public-api/configuration/1/VAKIF_KATILIM_PUBLIC_WEB",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.vakifkatilim.com.tr/\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: application/json, text/plain, */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": "{\"projectId\":1,\"chatbotGatewayUrls\":[\"https://chatbot.vakifkatilim.com.tr\",\"https://www.vakifkatilim.com.tr\",\"*\"],\"widgetConfiguration\":{\"socketPath\":\"/websocket/chatbot\",\"title\":\"Dijital Asistan\",\"subtitle\":null,\"inputTextFieldHint\":\"Mesajınızı yazıp enter tuşuna basınız...\",\"connectingText\":\"Bağlanıyor...\",\"initPayload\":\"Merhaba, Ben Vakıf Katılım Dijital Asistan. Size yardımcı olmak için buradayım. Hangi konuda yardımcı olmamı istersiniz?\",\"redirectBotMessage\":\"Merhaba, Ben Vakıf Katılım Dijital Asistan. Isterseniz görüşmeye buradan devam edebiliriz. Yardımcı olmamı istediğiniz başka bir konu var mı?\",\"redirectLiveChatMessage\":\"Sizi müşteri temsilcimize yönlendiriyorum. Lütfen bekleyiniz.\",\"redirectCallMessage\":\"{\\\"custom\\\": { \\\"type\\\": \\\"dxwayCallRequest\\\", \\\"text\\\":\\\"Agent wants to initiate a call.\\\", \\\"menu\\\": [ { \\\"buttonType\\\": \\\"payload\\\", \\\"title\\\": { \\\"call\\\": \\\"Call\\\", \\\"connecting\\\": \\\"Connecting\\\", \\\"finish\\\": \\\"Finish\\\" }, \\\"payload\\\": \\\"dxwayCallRequest\\\" } ]}}\",\"errorMessage\":\"Söylediğinizi anlayamadım. Daha farklı bir şekilde ifade edebilir misiniz?\",\"informationTooltip\":\"Bilgilendirme Ekranı\",\"returnBotTooltip\":\"Canlı Desteği Sonlandır\",\"profileAvatar\":\"/content/img/logo.png\",\"agentAvatar\":\"/content/img/agent.png\",\"botAvatar\":\"/content/img/bot.png\",\"adminAvatar\":\"/content/img/admin.png\",\"systemAvatar\":\"/content/img/bot.png\",\"clientAvatar\":\"/content/img/client.png\",\"minimizeImage\":\"/content/img/minimize.png\",\"informationImage\":\"/content/img/information.png\",\"senderImage\":\"/content/img/sender.svg\",\"senderActiveImage\":\"/content/img/sender-active.svg\",\"openLauncherImage\":\"/content/img/open-launcher.svg\",\"closeImage\":\"/content/img/close-launcher.svg\",\"readonly\":false,\"embedded\":false,\"showCloseButton\":true,\"showFullScreenButton\":false,\"hideWhenNotConnected\":false,\"fullScreenMode\":true,\"docViewer\":false,\"interval\":2000,\"conversationHistoryTimeInMinutes\":720,\"inputCharacterLength\":300,\"params\":{\"images\":{\"dims\":{\"height\":200,\"width\":300}},\"storage\":\"local\"},\"socketDirectlyConnect\":false,\"widgetColor\":\"#E51A92\",\"headerColor\":\"#062E54\",\"headerTitleColor\":\"#fff\",\"headerTitleFontSize\":\"18px\",\"headerTitleFontFamily\":\"Hind,sans-serif\",\"scrollbarColor\":\"#194E91\",\"tooltipBackgroundColor\":\"#E51A92\",\"responseColor\":\"#062E54\",\"responseBackgroundColor\":\"#F0F4F9\",\"responseFontSize\":\"14px\",\"responseFontFamily\":\"Hind,sans-serif\",\"clientColor\":\"#062E54\",\"clientBackgroundColor\":\"#F0F4F9\",\"clientFontSize\":\"14px\",\"clientFontFamily\":\"Hind,sans-serif\",\"buttonColor\":\"#194E91\",\"buttonHoverColor\":\"#062E54\",\"buttonTitleColor\":\"#fff\",\"buttonTitleFontSize\":\"13px\",\"buttonTitleFontFamily\":\"Hind,sans-serif\",\"buttonType\":\"square\",\"disableTooltips\":false,\"newMessageAlert\":false,\"showAdminUserNameNotification\":false},\"rainbowConfiguration\":{\"rainbowPlatform\":null},\"information\":{\"formBackgroundColor\":\"#194E91\",\"formItemColor\":\"#DAE5F2\",\"images\":[\"item1.png\",\"item2.png\",\"item3.png\",\"item4.png\",\"item5.png\",\"item6.png\"],\"texts\":[\"Bankacılık ürün ve hizmetleri hakkında bilgi verebilirim.\",\"Finansman hesaplaması yapabilirim.\",\"Kar payı hesaplaması yapabilirim.\",\"Size en yakın VMatik ve şubelerimizi gösterebilirim.\",\"Döviz kurları hakkında bilgi verebilirim.\",\"Ürün ve hizmet ücretleri hakkında bilgi verebilirim.\"],\"menuQuickReplies\":[\"Bankacılık\",\"Finansman hesaplama\",\"Kar payı hesaplama\",\"En yakın şube\",\"Döviz kurları\",\"Hizmet Ücretleri\"],\"titleInfo\":\"Merhaba ben Vakıf Katılım Dijital Asistan. Aşağıdaki konularda size yardımcı olabilirim.\",\"info\":\"Vakıf Katılım Dijital Asistan sizden, Müşteri Numaranız ve Şifreniz, Hesap Numaranız, TC Kimlik Numaranız, Banka ve Kredi Kartı bilgileriniz, Kart şifresi ve SMS şifresi gibi kişisel bilgiler istemez. Güvenliğiniz açısından Vakıf Katılım Dijital Asistanınız ile görüşmeniz sırasında size ait bilgileri paylaşmayınız.\",\"fontSize\":\"14px\",\"fontFamily\":\"Hind,sans-serif\"}}"
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/kart-taksit-hesaplama",
+      "method": "GET",
+      "endpoint": "https://www.vakifkatilim.com.tr/assets/mock-data/countryCodes.json",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.vakifkatilim.com.tr/tr/arama\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": "[\r\n    {\r\n        \"name\": \"ABD Virgin Adaları\",\r\n        \"dial_code\": \"+1 340\",\r\n        \"code\": \"VI\"\r\n    },\r\n    {\r\n        \"name\": \"Aland Adaları\",\r\n        \"dial_code\": \"+358\",\r\n        \"code\": \"AX\"\r\n    },\r\n    {\r\n        \"name\": \"Almanya\",\r\n        \"dial_code\": \"+49\",\r\n        \"code\": \"DE\"\r\n    },\r\n    {\r\n        \"name\": \"Amerika Birleşik Devletleri\",\r\n        \"dial_code\": \"+1\",\r\n        \"code\": \"US\"\r\n    },\r\n    {\r\n        \"name\": \"Andora\",\r\n        \"dial_code\": \"+376\",\r\n        \"code\": \"AD\"\r\n    },\r\n    {\r\n        \"name\": \"Angola\",\r\n        \"dial_code\": \"+244\",\r\n        \"code\": \"AO\"\r\n    },\r\n    {\r\n        \"name\": \"Anguilla\",\r\n        \"dial_code\": \"+1 264\",\r\n        \"code\": \"AI\"\r\n    },\r\n    {\r\n        \"name\": \"Antarktika\",\r\n        \"dial_code\": \"+672\",\r\n        \"code\": \"AQ\"\r\n    },\r\n    {\r\n        \"name\": \"Antigua ve Barbuda\",\r\n        \"dial_code\": \"+1268\",\r\n        \"code\": \"AG\"\r\n    },\r\n    {\r\n        \"name\": \"Arjantin\",\r\n        \"dial_code\": \"+54\",\r\n        \"code\": \"AR\"\r\n    },\r\n    {\r\n        \"name\": \"Arnavutluk\",\r\n        \"dial_code\": \"+355\",\r\n        \"code\": \"AL\"\r\n    },\r\n    {\r\n        \"name\": \"Aruba\",\r\n        \"dial_code\": \"+297\",\r\n        \"code\": \"AW\"\r\n    },\r\n    {\r\n        \"name\": \"Avustralya\",\r\n        \"dial_code\": \"+61\",\r\n        \"code\": \"AU\"\r\n    },\r\n    {\r\n        \"name\": \"Avusturya\",\r\n        \"dial_code\": \"+43\",\r\n        \"code\": \"AT\"\r\n    },\r\n    {\r\n        \"name\": \"Azerbaycan\",\r\n        \"dial_code\": \"+994\",\r\n        \"code\": \"AZ\"\r\n    },\r\n    {\r\n        \"name\": \"Bahamalar\",\r\n        \"dial_code\": \"+1 242\",\r\n        \"code\": \"BS\"\r\n    },\r\n    {\r\n        \"name\": \"Bahreyn\",\r\n        \"dial_code\": \"+973\",\r\n        \"code\": \"BH\"\r\n    },\r\n    {\r\n        \"name\": \"Bangladeş\",\r\n        \"dial_code\": \"+880\",\r\n        \"code\": \"BD\"\r\n    },\r\n    {\r\n        \"name\": \"Barbados\",\r\n        \"dial_code\": \"+1 246\",\r\n        \"code\": \"BB\"\r\n    },\r\n    {\r\n        \"name\": \"Belize\",\r\n        \"dial_code\": \"+501\",\r\n        \"code\": \"BZ\"\r\n    },\r\n    {\r\n        \"name\": \"Belçika\",\r\n        \"dial_code\": \"+32\",\r\n        \"code\": \"BE\"\r\n    },\r\n    {\r\n        \"name\": \"Benin\",\r\n        \"dial_code\": \"+229\",\r\n        \"code\": \"BJ\"\r\n    },\r\n    {\r\n        \"name\": \"Bermuda\",\r\n        \"dial_code\": \"+1 441\",\r\n        \"code\": \"BM\"\r\n    },\r\n    {\r\n        \"name\": \"Beyaz Rusya\",\r\n        \"dial_code\": \"+375\",\r\n        \"code\": \"BY\"\r\n    },\r\n    {\r\n        \"name\": \"Bhutan\",\r\n        \"dial_code\": \"+975\",\r\n        \"code\": \"BT\"\r\n    },\r\n    {\r\n        \"name\": \"Birleşik Arap Emirlikleri\",\r\n        \"dial_code\": \"+971\",\r\n        \"code\": \"AE\"\r\n    },\r\n    {\r\n        \"name\": \"Birleşik Krallık\",\r\n        \"dial_code\": \"+44\",\r\n        \"code\": \"GB\"\r\n    },\r\n    {\r\n        \"name\": \"Bolivya\",\r\n        \"dial_code\": \"+591\",\r\n        \"code\": \"BO\"\r\n    },\r\n    {\r\n        \"name\": \"Bosna Hersek\",\r\n        \"dial_code\": \"+387\",\r\n        \"code\": \"BA\"\r\n    },\r\n    {\r\n        \"name\": \"Botsvana\",\r\n        \"dial_code\": \"+267\",\r\n        \"code\": \"BW\"\r\n    },\r\n    {\r\n        \"name\": \"Brezilya\",\r\n        \"dial_code\": \"+55\",\r\n        \"code\": \"BR\"\r\n    },\r\n    {\r\n        \"name\": \"Brunei\",\r\n        \"dial_code\": \"+673\",\r\n        \"code\": \"BN\"\r\n    },\r\n    {\r\n        \"name\": \"Bulgaristan\",\r\n        \"dial_code\": \"+359\",\r\n        \"code\": \"BG\"\r\n    },\r\n    {\r\n        \"name\": \"Burkina Faso\",\r\n        \"dial_code\": \"+226\",\r\n        \"code\": \"BF\"\r\n    },\r\n    {\r\n        \"name\": \"Burundi\",\r\n        \"dial_code\": \"+257\",\r\n        \"code\": \"BI\"\r\n    },\r\n    {\r\n        \"name\": \"Cape Verde\",\r\n        \"dial_code\": \"+238\",\r\n        \"code\": \"CV\"\r\n    },\r\n    {\r\n        \"name\": \"Cebelitarık\",\r\n        \"dial_code\": \"+350\",\r\n        \"code\": \"GI\"\r\n    },\r\n    {\r\n        \"name\": \"Cezayir\",\r\n        \"dial_code\": \"+213\",\r\n        \"code\": \"DZ\"\r\n    },\r\n    {\r\n        \"name\": \"Christmas Adası\",\r\n        \"dial_code\": \"+61\",\r\n        \"code\": \"CX\"\r\n    },\r\n    {\r\n        \"name\": \"Cibuti\",\r\n        \"dial_code\": \"+253\",\r\n        \"code\": \"DJ\"\r\n    },\r\n    {\r\n        \"name\": \"Cocos Adaları\",\r\n        \"dial_code\": \"+61\",\r\n        \"code\": \"CC\"\r\n    },\r\n    {\r\n        \"name\": \"Cook Adaları\",\r\n        \"dial_code\": \"+682\",\r\n        \"code\": \"CK\"\r\n    },\r\n    {\r\n        \"name\": \"Çad\",\r\n        \"dial_code\": \"+235\",\r\n        \"code\": \"TD\"\r\n    },\r\n    {\r\n        \"name\": \"Çek Cumhuriyeti\",\r\n        \"dial_code\": \"+420\",\r\n        \"code\": \"CZ\"\r\n    },\r\n    {\r\n        \"name\": \"Çin\",\r\n        \"dial_code\": \"+86\",\r\n        \"code\": \"CN\"\r\n    },\r\n    {\r\n        \"name\": \"Danimarka\",\r\n        \"dial_code\": \"+45\",\r\n        \"code\": \"DK\"\r\n    },\r\n    {\r\n        \"name\": \"Dominik\",\r\n        \"dial_code\": \"+1 767\",\r\n        \"code\": \"DM\"\r\n    },\r\n    {\r\n        \"name\": \"Dominik Cumhuriyeti\",\r\n        \"dial_code\": \"+1 849\",\r\n        \"code\": \"DO\"\r\n    },\r\n    {\r\n        \"name\": \"Doğu Timor\",\r\n        \"dial_code\": \"+670\",\r\n        \"code\": \"TL\"\r\n    },\r\n    {\r\n        \"name\": \"Ekvator\",\r\n        \"dial_code\": \"+593\",\r\n        \"code\": \"EC\"\r\n    },\r\n    {\r\n        \"name\": \"Ekvator Ginesi\",\r\n        \"dial_code\": \"+240\",\r\n        \"code\": \"GQ\"\r\n    },\r\n    {\r\n        \"name\": \"El Salvador\",\r\n        \"dial_code\": \"+503\",\r\n        \"code\": \"SV\"\r\n    },\r\n    {\r\n        \"name\": \"Endonezya\",\r\n        \"dial_code\": \"+62\",\r\n        \"code\": \"ID\"\r\n    },\r\n    {\r\n        \"name\": \"Eritre\",\r\n        \"dial_code\": \"+291\",\r\n        \"code\": \"ER\"\r\n    },\r\n    {\r\n        \"name\": \"Ermenistan\",\r\n        \"dial_code\": \"+374\",\r\n        \"code\": \"AM\"\r\n    },\r\n    {\r\n        \"name\": \"Estonya\",\r\n        \"dial_code\": \"+372\",\r\n        \"code\": \"EE\"\r\n    },\r\n    {\r\n        \"name\": \"Etiyopya\",\r\n        \"dial_code\": \"+251\",\r\n        \"code\": \"ET\"\r\n    },\r\n    {\r\n        \"name\": \"Falkland Adaları (Malvinalar)\",\r\n        \"dial_code\": \"+500\",\r\n        \"code\": \"FK\"\r\n    },\r\n    {\r\n        \"name\": \"Faroe Adaları\",\r\n        \"dial_code\": \"+298\",\r\n        \"code\": \"FO\"\r\n    },\r\n    {\r\n        \"name\": \"Fas\",\r\n        \"dial_code\": \"+212\",\r\n        \"code\": \"MA\"\r\n    },\r\n    {\r\n        \"name\": \"Fiji\",\r\n        \"dial_code\": \"+679\",\r\n        \"code\": \"FJ\"\r\n    },\r\n    {\r\n        "
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/kart-taksit-hesaplama",
+      "method": "GET",
+      "endpoint": "https://www.vakifkatilim.com.tr/assets/mock-data/countryCodes.json",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.vakifkatilim.com.tr/tr/arama\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": "[\r\n    {\r\n        \"name\": \"ABD Virgin Adaları\",\r\n        \"dial_code\": \"+1 340\",\r\n        \"code\": \"VI\"\r\n    },\r\n    {\r\n        \"name\": \"Aland Adaları\",\r\n        \"dial_code\": \"+358\",\r\n        \"code\": \"AX\"\r\n    },\r\n    {\r\n        \"name\": \"Almanya\",\r\n        \"dial_code\": \"+49\",\r\n        \"code\": \"DE\"\r\n    },\r\n    {\r\n        \"name\": \"Amerika Birleşik Devletleri\",\r\n        \"dial_code\": \"+1\",\r\n        \"code\": \"US\"\r\n    },\r\n    {\r\n        \"name\": \"Andora\",\r\n        \"dial_code\": \"+376\",\r\n        \"code\": \"AD\"\r\n    },\r\n    {\r\n        \"name\": \"Angola\",\r\n        \"dial_code\": \"+244\",\r\n        \"code\": \"AO\"\r\n    },\r\n    {\r\n        \"name\": \"Anguilla\",\r\n        \"dial_code\": \"+1 264\",\r\n        \"code\": \"AI\"\r\n    },\r\n    {\r\n        \"name\": \"Antarktika\",\r\n        \"dial_code\": \"+672\",\r\n        \"code\": \"AQ\"\r\n    },\r\n    {\r\n        \"name\": \"Antigua ve Barbuda\",\r\n        \"dial_code\": \"+1268\",\r\n        \"code\": \"AG\"\r\n    },\r\n    {\r\n        \"name\": \"Arjantin\",\r\n        \"dial_code\": \"+54\",\r\n        \"code\": \"AR\"\r\n    },\r\n    {\r\n        \"name\": \"Arnavutluk\",\r\n        \"dial_code\": \"+355\",\r\n        \"code\": \"AL\"\r\n    },\r\n    {\r\n        \"name\": \"Aruba\",\r\n        \"dial_code\": \"+297\",\r\n        \"code\": \"AW\"\r\n    },\r\n    {\r\n        \"name\": \"Avustralya\",\r\n        \"dial_code\": \"+61\",\r\n        \"code\": \"AU\"\r\n    },\r\n    {\r\n        \"name\": \"Avusturya\",\r\n        \"dial_code\": \"+43\",\r\n        \"code\": \"AT\"\r\n    },\r\n    {\r\n        \"name\": \"Azerbaycan\",\r\n        \"dial_code\": \"+994\",\r\n        \"code\": \"AZ\"\r\n    },\r\n    {\r\n        \"name\": \"Bahamalar\",\r\n        \"dial_code\": \"+1 242\",\r\n        \"code\": \"BS\"\r\n    },\r\n    {\r\n        \"name\": \"Bahreyn\",\r\n        \"dial_code\": \"+973\",\r\n        \"code\": \"BH\"\r\n    },\r\n    {\r\n        \"name\": \"Bangladeş\",\r\n        \"dial_code\": \"+880\",\r\n        \"code\": \"BD\"\r\n    },\r\n    {\r\n        \"name\": \"Barbados\",\r\n        \"dial_code\": \"+1 246\",\r\n        \"code\": \"BB\"\r\n    },\r\n    {\r\n        \"name\": \"Belize\",\r\n        \"dial_code\": \"+501\",\r\n        \"code\": \"BZ\"\r\n    },\r\n    {\r\n        \"name\": \"Belçika\",\r\n        \"dial_code\": \"+32\",\r\n        \"code\": \"BE\"\r\n    },\r\n    {\r\n        \"name\": \"Benin\",\r\n        \"dial_code\": \"+229\",\r\n        \"code\": \"BJ\"\r\n    },\r\n    {\r\n        \"name\": \"Bermuda\",\r\n        \"dial_code\": \"+1 441\",\r\n        \"code\": \"BM\"\r\n    },\r\n    {\r\n        \"name\": \"Beyaz Rusya\",\r\n        \"dial_code\": \"+375\",\r\n        \"code\": \"BY\"\r\n    },\r\n    {\r\n        \"name\": \"Bhutan\",\r\n        \"dial_code\": \"+975\",\r\n        \"code\": \"BT\"\r\n    },\r\n    {\r\n        \"name\": \"Birleşik Arap Emirlikleri\",\r\n        \"dial_code\": \"+971\",\r\n        \"code\": \"AE\"\r\n    },\r\n    {\r\n        \"name\": \"Birleşik Krallık\",\r\n        \"dial_code\": \"+44\",\r\n        \"code\": \"GB\"\r\n    },\r\n    {\r\n        \"name\": \"Bolivya\",\r\n        \"dial_code\": \"+591\",\r\n        \"code\": \"BO\"\r\n    },\r\n    {\r\n        \"name\": \"Bosna Hersek\",\r\n        \"dial_code\": \"+387\",\r\n        \"code\": \"BA\"\r\n    },\r\n    {\r\n        \"name\": \"Botsvana\",\r\n        \"dial_code\": \"+267\",\r\n        \"code\": \"BW\"\r\n    },\r\n    {\r\n        \"name\": \"Brezilya\",\r\n        \"dial_code\": \"+55\",\r\n        \"code\": \"BR\"\r\n    },\r\n    {\r\n        \"name\": \"Brunei\",\r\n        \"dial_code\": \"+673\",\r\n        \"code\": \"BN\"\r\n    },\r\n    {\r\n        \"name\": \"Bulgaristan\",\r\n        \"dial_code\": \"+359\",\r\n        \"code\": \"BG\"\r\n    },\r\n    {\r\n        \"name\": \"Burkina Faso\",\r\n        \"dial_code\": \"+226\",\r\n        \"code\": \"BF\"\r\n    },\r\n    {\r\n        \"name\": \"Burundi\",\r\n        \"dial_code\": \"+257\",\r\n        \"code\": \"BI\"\r\n    },\r\n    {\r\n        \"name\": \"Cape Verde\",\r\n        \"dial_code\": \"+238\",\r\n        \"code\": \"CV\"\r\n    },\r\n    {\r\n        \"name\": \"Cebelitarık\",\r\n        \"dial_code\": \"+350\",\r\n        \"code\": \"GI\"\r\n    },\r\n    {\r\n        \"name\": \"Cezayir\",\r\n        \"dial_code\": \"+213\",\r\n        \"code\": \"DZ\"\r\n    },\r\n    {\r\n        \"name\": \"Christmas Adası\",\r\n        \"dial_code\": \"+61\",\r\n        \"code\": \"CX\"\r\n    },\r\n    {\r\n        \"name\": \"Cibuti\",\r\n        \"dial_code\": \"+253\",\r\n        \"code\": \"DJ\"\r\n    },\r\n    {\r\n        \"name\": \"Cocos Adaları\",\r\n        \"dial_code\": \"+61\",\r\n        \"code\": \"CC\"\r\n    },\r\n    {\r\n        \"name\": \"Cook Adaları\",\r\n        \"dial_code\": \"+682\",\r\n        \"code\": \"CK\"\r\n    },\r\n    {\r\n        \"name\": \"Çad\",\r\n        \"dial_code\": \"+235\",\r\n        \"code\": \"TD\"\r\n    },\r\n    {\r\n        \"name\": \"Çek Cumhuriyeti\",\r\n        \"dial_code\": \"+420\",\r\n        \"code\": \"CZ\"\r\n    },\r\n    {\r\n        \"name\": \"Çin\",\r\n        \"dial_code\": \"+86\",\r\n        \"code\": \"CN\"\r\n    },\r\n    {\r\n        \"name\": \"Danimarka\",\r\n        \"dial_code\": \"+45\",\r\n        \"code\": \"DK\"\r\n    },\r\n    {\r\n        \"name\": \"Dominik\",\r\n        \"dial_code\": \"+1 767\",\r\n        \"code\": \"DM\"\r\n    },\r\n    {\r\n        \"name\": \"Dominik Cumhuriyeti\",\r\n        \"dial_code\": \"+1 849\",\r\n        \"code\": \"DO\"\r\n    },\r\n    {\r\n        \"name\": \"Doğu Timor\",\r\n        \"dial_code\": \"+670\",\r\n        \"code\": \"TL\"\r\n    },\r\n    {\r\n        \"name\": \"Ekvator\",\r\n        \"dial_code\": \"+593\",\r\n        \"code\": \"EC\"\r\n    },\r\n    {\r\n        \"name\": \"Ekvator Ginesi\",\r\n        \"dial_code\": \"+240\",\r\n        \"code\": \"GQ\"\r\n    },\r\n    {\r\n        \"name\": \"El Salvador\",\r\n        \"dial_code\": \"+503\",\r\n        \"code\": \"SV\"\r\n    },\r\n    {\r\n        \"name\": \"Endonezya\",\r\n        \"dial_code\": \"+62\",\r\n        \"code\": \"ID\"\r\n    },\r\n    {\r\n        \"name\": \"Eritre\",\r\n        \"dial_code\": \"+291\",\r\n        \"code\": \"ER\"\r\n    },\r\n    {\r\n        \"name\": \"Ermenistan\",\r\n        \"dial_code\": \"+374\",\r\n        \"code\": \"AM\"\r\n    },\r\n    {\r\n        \"name\": \"Estonya\",\r\n        \"dial_code\": \"+372\",\r\n        \"code\": \"EE\"\r\n    },\r\n    {\r\n        \"name\": \"Etiyopya\",\r\n        \"dial_code\": \"+251\",\r\n        \"code\": \"ET\"\r\n    },\r\n    {\r\n        \"name\": \"Falkland Adaları (Malvinalar)\",\r\n        \"dial_code\": \"+500\",\r\n        \"code\": \"FK\"\r\n    },\r\n    {\r\n        \"name\": \"Faroe Adaları\",\r\n        \"dial_code\": \"+298\",\r\n        \"code\": \"FO\"\r\n    },\r\n    {\r\n        \"name\": \"Fas\",\r\n        \"dial_code\": \"+212\",\r\n        \"code\": \"MA\"\r\n    },\r\n    {\r\n        \"name\": \"Fiji\",\r\n        \"dial_code\": \"+679\",\r\n        \"code\": \"FJ\"\r\n    },\r\n    {\r\n        "
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/doviz-cevirici-ve-kurlar",
+      "method": "GET",
+      "endpoint": "https://www.vakifkatilim.com.tr/plugins/CurrencyConverter?langId=bf2689d9-071e-4a20-9450-b1dbdd39778f&language=tr&amount=100000&InputCurrencyType=0&convertCurrencyType=1",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/doviz-cevirici-ve-kurlar\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/doviz-cevirici-ve-kurlar",
+      "method": "GET",
+      "endpoint": "https://www.vakifkatilim.com.tr/plugins/DetailCurrencyListData?langId=bf2689d9-071e-4a20-9450-b1dbdd39778f&language=tr&currencyTypeId=2",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/doviz-cevirici-ve-kurlar\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/doviz-cevirici-ve-kurlar",
+      "method": "GET",
+      "endpoint": "https://www.vakifkatilim.com.tr/plugins/CurrencyConverter?langId=bf2689d9-071e-4a20-9450-b1dbdd39778f&language=tr&amount=100000&InputCurrencyType=2&convertCurrencyType=6",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/doviz-cevirici-ve-kurlar\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/doviz-cevirici-ve-kurlar",
+      "method": "GET",
+      "endpoint": "https://www.vakifkatilim.com.tr/plugins/CurrencyConverter?langId=bf2689d9-071e-4a20-9450-b1dbdd39778f&language=tr&amount=100000&InputCurrencyType=2&convertCurrencyType=0",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/doviz-cevirici-ve-kurlar\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/doviz-cevirici-ve-kurlar",
+      "method": "GET",
+      "endpoint": "https://chatbot.vakifkatilim.com.tr/public-api/configuration/1/VAKIF_KATILIM_PUBLIC_WEB",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.vakifkatilim.com.tr/\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: application/json, text/plain, */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": "{\"projectId\":1,\"chatbotGatewayUrls\":[\"https://chatbot.vakifkatilim.com.tr\",\"https://www.vakifkatilim.com.tr\",\"*\"],\"widgetConfiguration\":{\"socketPath\":\"/websocket/chatbot\",\"title\":\"Dijital Asistan\",\"subtitle\":null,\"inputTextFieldHint\":\"Mesajınızı yazıp enter tuşuna basınız...\",\"connectingText\":\"Bağlanıyor...\",\"initPayload\":\"Merhaba, Ben Vakıf Katılım Dijital Asistan. Size yardımcı olmak için buradayım. Hangi konuda yardımcı olmamı istersiniz?\",\"redirectBotMessage\":\"Merhaba, Ben Vakıf Katılım Dijital Asistan. Isterseniz görüşmeye buradan devam edebiliriz. Yardımcı olmamı istediğiniz başka bir konu var mı?\",\"redirectLiveChatMessage\":\"Sizi müşteri temsilcimize yönlendiriyorum. Lütfen bekleyiniz.\",\"redirectCallMessage\":\"{\\\"custom\\\": { \\\"type\\\": \\\"dxwayCallRequest\\\", \\\"text\\\":\\\"Agent wants to initiate a call.\\\", \\\"menu\\\": [ { \\\"buttonType\\\": \\\"payload\\\", \\\"title\\\": { \\\"call\\\": \\\"Call\\\", \\\"connecting\\\": \\\"Connecting\\\", \\\"finish\\\": \\\"Finish\\\" }, \\\"payload\\\": \\\"dxwayCallRequest\\\" } ]}}\",\"errorMessage\":\"Söylediğinizi anlayamadım. Daha farklı bir şekilde ifade edebilir misiniz?\",\"informationTooltip\":\"Bilgilendirme Ekranı\",\"returnBotTooltip\":\"Canlı Desteği Sonlandır\",\"profileAvatar\":\"/content/img/logo.png\",\"agentAvatar\":\"/content/img/agent.png\",\"botAvatar\":\"/content/img/bot.png\",\"adminAvatar\":\"/content/img/admin.png\",\"systemAvatar\":\"/content/img/bot.png\",\"clientAvatar\":\"/content/img/client.png\",\"minimizeImage\":\"/content/img/minimize.png\",\"informationImage\":\"/content/img/information.png\",\"senderImage\":\"/content/img/sender.svg\",\"senderActiveImage\":\"/content/img/sender-active.svg\",\"openLauncherImage\":\"/content/img/open-launcher.svg\",\"closeImage\":\"/content/img/close-launcher.svg\",\"readonly\":false,\"embedded\":false,\"showCloseButton\":true,\"showFullScreenButton\":false,\"hideWhenNotConnected\":false,\"fullScreenMode\":true,\"docViewer\":false,\"interval\":2000,\"conversationHistoryTimeInMinutes\":720,\"inputCharacterLength\":300,\"params\":{\"images\":{\"dims\":{\"height\":200,\"width\":300}},\"storage\":\"local\"},\"socketDirectlyConnect\":false,\"widgetColor\":\"#E51A92\",\"headerColor\":\"#062E54\",\"headerTitleColor\":\"#fff\",\"headerTitleFontSize\":\"18px\",\"headerTitleFontFamily\":\"Hind,sans-serif\",\"scrollbarColor\":\"#194E91\",\"tooltipBackgroundColor\":\"#E51A92\",\"responseColor\":\"#062E54\",\"responseBackgroundColor\":\"#F0F4F9\",\"responseFontSize\":\"14px\",\"responseFontFamily\":\"Hind,sans-serif\",\"clientColor\":\"#062E54\",\"clientBackgroundColor\":\"#F0F4F9\",\"clientFontSize\":\"14px\",\"clientFontFamily\":\"Hind,sans-serif\",\"buttonColor\":\"#194E91\",\"buttonHoverColor\":\"#062E54\",\"buttonTitleColor\":\"#fff\",\"buttonTitleFontSize\":\"13px\",\"buttonTitleFontFamily\":\"Hind,sans-serif\",\"buttonType\":\"square\",\"disableTooltips\":false,\"newMessageAlert\":false,\"showAdminUserNameNotification\":false},\"rainbowConfiguration\":{\"rainbowPlatform\":null},\"information\":{\"formBackgroundColor\":\"#194E91\",\"formItemColor\":\"#DAE5F2\",\"images\":[\"item1.png\",\"item2.png\",\"item3.png\",\"item4.png\",\"item5.png\",\"item6.png\"],\"texts\":[\"Bankacılık ürün ve hizmetleri hakkında bilgi verebilirim.\",\"Finansman hesaplaması yapabilirim.\",\"Kar payı hesaplaması yapabilirim.\",\"Size en yakın VMatik ve şubelerimizi gösterebilirim.\",\"Döviz kurları hakkında bilgi verebilirim.\",\"Ürün ve hizmet ücretleri hakkında bilgi verebilirim.\"],\"menuQuickReplies\":[\"Bankacılık\",\"Finansman hesaplama\",\"Kar payı hesaplama\",\"En yakın şube\",\"Döviz kurları\",\"Hizmet Ücretleri\"],\"titleInfo\":\"Merhaba ben Vakıf Katılım Dijital Asistan. Aşağıdaki konularda size yardımcı olabilirim.\",\"info\":\"Vakıf Katılım Dijital Asistan sizden, Müşteri Numaranız ve Şifreniz, Hesap Numaranız, TC Kimlik Numaranız, Banka ve Kredi Kartı bilgileriniz, Kart şifresi ve SMS şifresi gibi kişisel bilgiler istemez. Güvenliğiniz açısından Vakıf Katılım Dijital Asistanınız ile görüşmeniz sırasında size ait bilgileri paylaşmayınız.\",\"fontSize\":\"14px\",\"fontFamily\":\"Hind,sans-serif\"}}"
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/doviz-cevirici-ve-kurlar",
+      "method": "GET",
+      "endpoint": "https://www.vakifkatilim.com.tr/assets/mock-data/countryCodes.json",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.vakifkatilim.com.tr/tr/arama\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": "[\r\n    {\r\n        \"name\": \"ABD Virgin Adaları\",\r\n        \"dial_code\": \"+1 340\",\r\n        \"code\": \"VI\"\r\n    },\r\n    {\r\n        \"name\": \"Aland Adaları\",\r\n        \"dial_code\": \"+358\",\r\n        \"code\": \"AX\"\r\n    },\r\n    {\r\n        \"name\": \"Almanya\",\r\n        \"dial_code\": \"+49\",\r\n        \"code\": \"DE\"\r\n    },\r\n    {\r\n        \"name\": \"Amerika Birleşik Devletleri\",\r\n        \"dial_code\": \"+1\",\r\n        \"code\": \"US\"\r\n    },\r\n    {\r\n        \"name\": \"Andora\",\r\n        \"dial_code\": \"+376\",\r\n        \"code\": \"AD\"\r\n    },\r\n    {\r\n        \"name\": \"Angola\",\r\n        \"dial_code\": \"+244\",\r\n        \"code\": \"AO\"\r\n    },\r\n    {\r\n        \"name\": \"Anguilla\",\r\n        \"dial_code\": \"+1 264\",\r\n        \"code\": \"AI\"\r\n    },\r\n    {\r\n        \"name\": \"Antarktika\",\r\n        \"dial_code\": \"+672\",\r\n        \"code\": \"AQ\"\r\n    },\r\n    {\r\n        \"name\": \"Antigua ve Barbuda\",\r\n        \"dial_code\": \"+1268\",\r\n        \"code\": \"AG\"\r\n    },\r\n    {\r\n        \"name\": \"Arjantin\",\r\n        \"dial_code\": \"+54\",\r\n        \"code\": \"AR\"\r\n    },\r\n    {\r\n        \"name\": \"Arnavutluk\",\r\n        \"dial_code\": \"+355\",\r\n        \"code\": \"AL\"\r\n    },\r\n    {\r\n        \"name\": \"Aruba\",\r\n        \"dial_code\": \"+297\",\r\n        \"code\": \"AW\"\r\n    },\r\n    {\r\n        \"name\": \"Avustralya\",\r\n        \"dial_code\": \"+61\",\r\n        \"code\": \"AU\"\r\n    },\r\n    {\r\n        \"name\": \"Avusturya\",\r\n        \"dial_code\": \"+43\",\r\n        \"code\": \"AT\"\r\n    },\r\n    {\r\n        \"name\": \"Azerbaycan\",\r\n        \"dial_code\": \"+994\",\r\n        \"code\": \"AZ\"\r\n    },\r\n    {\r\n        \"name\": \"Bahamalar\",\r\n        \"dial_code\": \"+1 242\",\r\n        \"code\": \"BS\"\r\n    },\r\n    {\r\n        \"name\": \"Bahreyn\",\r\n        \"dial_code\": \"+973\",\r\n        \"code\": \"BH\"\r\n    },\r\n    {\r\n        \"name\": \"Bangladeş\",\r\n        \"dial_code\": \"+880\",\r\n        \"code\": \"BD\"\r\n    },\r\n    {\r\n        \"name\": \"Barbados\",\r\n        \"dial_code\": \"+1 246\",\r\n        \"code\": \"BB\"\r\n    },\r\n    {\r\n        \"name\": \"Belize\",\r\n        \"dial_code\": \"+501\",\r\n        \"code\": \"BZ\"\r\n    },\r\n    {\r\n        \"name\": \"Belçika\",\r\n        \"dial_code\": \"+32\",\r\n        \"code\": \"BE\"\r\n    },\r\n    {\r\n        \"name\": \"Benin\",\r\n        \"dial_code\": \"+229\",\r\n        \"code\": \"BJ\"\r\n    },\r\n    {\r\n        \"name\": \"Bermuda\",\r\n        \"dial_code\": \"+1 441\",\r\n        \"code\": \"BM\"\r\n    },\r\n    {\r\n        \"name\": \"Beyaz Rusya\",\r\n        \"dial_code\": \"+375\",\r\n        \"code\": \"BY\"\r\n    },\r\n    {\r\n        \"name\": \"Bhutan\",\r\n        \"dial_code\": \"+975\",\r\n        \"code\": \"BT\"\r\n    },\r\n    {\r\n        \"name\": \"Birleşik Arap Emirlikleri\",\r\n        \"dial_code\": \"+971\",\r\n        \"code\": \"AE\"\r\n    },\r\n    {\r\n        \"name\": \"Birleşik Krallık\",\r\n        \"dial_code\": \"+44\",\r\n        \"code\": \"GB\"\r\n    },\r\n    {\r\n        \"name\": \"Bolivya\",\r\n        \"dial_code\": \"+591\",\r\n        \"code\": \"BO\"\r\n    },\r\n    {\r\n        \"name\": \"Bosna Hersek\",\r\n        \"dial_code\": \"+387\",\r\n        \"code\": \"BA\"\r\n    },\r\n    {\r\n        \"name\": \"Botsvana\",\r\n        \"dial_code\": \"+267\",\r\n        \"code\": \"BW\"\r\n    },\r\n    {\r\n        \"name\": \"Brezilya\",\r\n        \"dial_code\": \"+55\",\r\n        \"code\": \"BR\"\r\n    },\r\n    {\r\n        \"name\": \"Brunei\",\r\n        \"dial_code\": \"+673\",\r\n        \"code\": \"BN\"\r\n    },\r\n    {\r\n        \"name\": \"Bulgaristan\",\r\n        \"dial_code\": \"+359\",\r\n        \"code\": \"BG\"\r\n    },\r\n    {\r\n        \"name\": \"Burkina Faso\",\r\n        \"dial_code\": \"+226\",\r\n        \"code\": \"BF\"\r\n    },\r\n    {\r\n        \"name\": \"Burundi\",\r\n        \"dial_code\": \"+257\",\r\n        \"code\": \"BI\"\r\n    },\r\n    {\r\n        \"name\": \"Cape Verde\",\r\n        \"dial_code\": \"+238\",\r\n        \"code\": \"CV\"\r\n    },\r\n    {\r\n        \"name\": \"Cebelitarık\",\r\n        \"dial_code\": \"+350\",\r\n        \"code\": \"GI\"\r\n    },\r\n    {\r\n        \"name\": \"Cezayir\",\r\n        \"dial_code\": \"+213\",\r\n        \"code\": \"DZ\"\r\n    },\r\n    {\r\n        \"name\": \"Christmas Adası\",\r\n        \"dial_code\": \"+61\",\r\n        \"code\": \"CX\"\r\n    },\r\n    {\r\n        \"name\": \"Cibuti\",\r\n        \"dial_code\": \"+253\",\r\n        \"code\": \"DJ\"\r\n    },\r\n    {\r\n        \"name\": \"Cocos Adaları\",\r\n        \"dial_code\": \"+61\",\r\n        \"code\": \"CC\"\r\n    },\r\n    {\r\n        \"name\": \"Cook Adaları\",\r\n        \"dial_code\": \"+682\",\r\n        \"code\": \"CK\"\r\n    },\r\n    {\r\n        \"name\": \"Çad\",\r\n        \"dial_code\": \"+235\",\r\n        \"code\": \"TD\"\r\n    },\r\n    {\r\n        \"name\": \"Çek Cumhuriyeti\",\r\n        \"dial_code\": \"+420\",\r\n        \"code\": \"CZ\"\r\n    },\r\n    {\r\n        \"name\": \"Çin\",\r\n        \"dial_code\": \"+86\",\r\n        \"code\": \"CN\"\r\n    },\r\n    {\r\n        \"name\": \"Danimarka\",\r\n        \"dial_code\": \"+45\",\r\n        \"code\": \"DK\"\r\n    },\r\n    {\r\n        \"name\": \"Dominik\",\r\n        \"dial_code\": \"+1 767\",\r\n        \"code\": \"DM\"\r\n    },\r\n    {\r\n        \"name\": \"Dominik Cumhuriyeti\",\r\n        \"dial_code\": \"+1 849\",\r\n        \"code\": \"DO\"\r\n    },\r\n    {\r\n        \"name\": \"Doğu Timor\",\r\n        \"dial_code\": \"+670\",\r\n        \"code\": \"TL\"\r\n    },\r\n    {\r\n        \"name\": \"Ekvator\",\r\n        \"dial_code\": \"+593\",\r\n        \"code\": \"EC\"\r\n    },\r\n    {\r\n        \"name\": \"Ekvator Ginesi\",\r\n        \"dial_code\": \"+240\",\r\n        \"code\": \"GQ\"\r\n    },\r\n    {\r\n        \"name\": \"El Salvador\",\r\n        \"dial_code\": \"+503\",\r\n        \"code\": \"SV\"\r\n    },\r\n    {\r\n        \"name\": \"Endonezya\",\r\n        \"dial_code\": \"+62\",\r\n        \"code\": \"ID\"\r\n    },\r\n    {\r\n        \"name\": \"Eritre\",\r\n        \"dial_code\": \"+291\",\r\n        \"code\": \"ER\"\r\n    },\r\n    {\r\n        \"name\": \"Ermenistan\",\r\n        \"dial_code\": \"+374\",\r\n        \"code\": \"AM\"\r\n    },\r\n    {\r\n        \"name\": \"Estonya\",\r\n        \"dial_code\": \"+372\",\r\n        \"code\": \"EE\"\r\n    },\r\n    {\r\n        \"name\": \"Etiyopya\",\r\n        \"dial_code\": \"+251\",\r\n        \"code\": \"ET\"\r\n    },\r\n    {\r\n        \"name\": \"Falkland Adaları (Malvinalar)\",\r\n        \"dial_code\": \"+500\",\r\n        \"code\": \"FK\"\r\n    },\r\n    {\r\n        \"name\": \"Faroe Adaları\",\r\n        \"dial_code\": \"+298\",\r\n        \"code\": \"FO\"\r\n    },\r\n    {\r\n        \"name\": \"Fas\",\r\n        \"dial_code\": \"+212\",\r\n        \"code\": \"MA\"\r\n    },\r\n    {\r\n        \"name\": \"Fiji\",\r\n        \"dial_code\": \"+679\",\r\n        \"code\": \"FJ\"\r\n    },\r\n    {\r\n        "
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/doviz-cevirici-ve-kurlar",
+      "method": "GET",
+      "endpoint": "https://www.vakifkatilim.com.tr/assets/mock-data/countryCodes.json",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.vakifkatilim.com.tr/tr/arama\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": "[\r\n    {\r\n        \"name\": \"ABD Virgin Adaları\",\r\n        \"dial_code\": \"+1 340\",\r\n        \"code\": \"VI\"\r\n    },\r\n    {\r\n        \"name\": \"Aland Adaları\",\r\n        \"dial_code\": \"+358\",\r\n        \"code\": \"AX\"\r\n    },\r\n    {\r\n        \"name\": \"Almanya\",\r\n        \"dial_code\": \"+49\",\r\n        \"code\": \"DE\"\r\n    },\r\n    {\r\n        \"name\": \"Amerika Birleşik Devletleri\",\r\n        \"dial_code\": \"+1\",\r\n        \"code\": \"US\"\r\n    },\r\n    {\r\n        \"name\": \"Andora\",\r\n        \"dial_code\": \"+376\",\r\n        \"code\": \"AD\"\r\n    },\r\n    {\r\n        \"name\": \"Angola\",\r\n        \"dial_code\": \"+244\",\r\n        \"code\": \"AO\"\r\n    },\r\n    {\r\n        \"name\": \"Anguilla\",\r\n        \"dial_code\": \"+1 264\",\r\n        \"code\": \"AI\"\r\n    },\r\n    {\r\n        \"name\": \"Antarktika\",\r\n        \"dial_code\": \"+672\",\r\n        \"code\": \"AQ\"\r\n    },\r\n    {\r\n        \"name\": \"Antigua ve Barbuda\",\r\n        \"dial_code\": \"+1268\",\r\n        \"code\": \"AG\"\r\n    },\r\n    {\r\n        \"name\": \"Arjantin\",\r\n        \"dial_code\": \"+54\",\r\n        \"code\": \"AR\"\r\n    },\r\n    {\r\n        \"name\": \"Arnavutluk\",\r\n        \"dial_code\": \"+355\",\r\n        \"code\": \"AL\"\r\n    },\r\n    {\r\n        \"name\": \"Aruba\",\r\n        \"dial_code\": \"+297\",\r\n        \"code\": \"AW\"\r\n    },\r\n    {\r\n        \"name\": \"Avustralya\",\r\n        \"dial_code\": \"+61\",\r\n        \"code\": \"AU\"\r\n    },\r\n    {\r\n        \"name\": \"Avusturya\",\r\n        \"dial_code\": \"+43\",\r\n        \"code\": \"AT\"\r\n    },\r\n    {\r\n        \"name\": \"Azerbaycan\",\r\n        \"dial_code\": \"+994\",\r\n        \"code\": \"AZ\"\r\n    },\r\n    {\r\n        \"name\": \"Bahamalar\",\r\n        \"dial_code\": \"+1 242\",\r\n        \"code\": \"BS\"\r\n    },\r\n    {\r\n        \"name\": \"Bahreyn\",\r\n        \"dial_code\": \"+973\",\r\n        \"code\": \"BH\"\r\n    },\r\n    {\r\n        \"name\": \"Bangladeş\",\r\n        \"dial_code\": \"+880\",\r\n        \"code\": \"BD\"\r\n    },\r\n    {\r\n        \"name\": \"Barbados\",\r\n        \"dial_code\": \"+1 246\",\r\n        \"code\": \"BB\"\r\n    },\r\n    {\r\n        \"name\": \"Belize\",\r\n        \"dial_code\": \"+501\",\r\n        \"code\": \"BZ\"\r\n    },\r\n    {\r\n        \"name\": \"Belçika\",\r\n        \"dial_code\": \"+32\",\r\n        \"code\": \"BE\"\r\n    },\r\n    {\r\n        \"name\": \"Benin\",\r\n        \"dial_code\": \"+229\",\r\n        \"code\": \"BJ\"\r\n    },\r\n    {\r\n        \"name\": \"Bermuda\",\r\n        \"dial_code\": \"+1 441\",\r\n        \"code\": \"BM\"\r\n    },\r\n    {\r\n        \"name\": \"Beyaz Rusya\",\r\n        \"dial_code\": \"+375\",\r\n        \"code\": \"BY\"\r\n    },\r\n    {\r\n        \"name\": \"Bhutan\",\r\n        \"dial_code\": \"+975\",\r\n        \"code\": \"BT\"\r\n    },\r\n    {\r\n        \"name\": \"Birleşik Arap Emirlikleri\",\r\n        \"dial_code\": \"+971\",\r\n        \"code\": \"AE\"\r\n    },\r\n    {\r\n        \"name\": \"Birleşik Krallık\",\r\n        \"dial_code\": \"+44\",\r\n        \"code\": \"GB\"\r\n    },\r\n    {\r\n        \"name\": \"Bolivya\",\r\n        \"dial_code\": \"+591\",\r\n        \"code\": \"BO\"\r\n    },\r\n    {\r\n        \"name\": \"Bosna Hersek\",\r\n        \"dial_code\": \"+387\",\r\n        \"code\": \"BA\"\r\n    },\r\n    {\r\n        \"name\": \"Botsvana\",\r\n        \"dial_code\": \"+267\",\r\n        \"code\": \"BW\"\r\n    },\r\n    {\r\n        \"name\": \"Brezilya\",\r\n        \"dial_code\": \"+55\",\r\n        \"code\": \"BR\"\r\n    },\r\n    {\r\n        \"name\": \"Brunei\",\r\n        \"dial_code\": \"+673\",\r\n        \"code\": \"BN\"\r\n    },\r\n    {\r\n        \"name\": \"Bulgaristan\",\r\n        \"dial_code\": \"+359\",\r\n        \"code\": \"BG\"\r\n    },\r\n    {\r\n        \"name\": \"Burkina Faso\",\r\n        \"dial_code\": \"+226\",\r\n        \"code\": \"BF\"\r\n    },\r\n    {\r\n        \"name\": \"Burundi\",\r\n        \"dial_code\": \"+257\",\r\n        \"code\": \"BI\"\r\n    },\r\n    {\r\n        \"name\": \"Cape Verde\",\r\n        \"dial_code\": \"+238\",\r\n        \"code\": \"CV\"\r\n    },\r\n    {\r\n        \"name\": \"Cebelitarık\",\r\n        \"dial_code\": \"+350\",\r\n        \"code\": \"GI\"\r\n    },\r\n    {\r\n        \"name\": \"Cezayir\",\r\n        \"dial_code\": \"+213\",\r\n        \"code\": \"DZ\"\r\n    },\r\n    {\r\n        \"name\": \"Christmas Adası\",\r\n        \"dial_code\": \"+61\",\r\n        \"code\": \"CX\"\r\n    },\r\n    {\r\n        \"name\": \"Cibuti\",\r\n        \"dial_code\": \"+253\",\r\n        \"code\": \"DJ\"\r\n    },\r\n    {\r\n        \"name\": \"Cocos Adaları\",\r\n        \"dial_code\": \"+61\",\r\n        \"code\": \"CC\"\r\n    },\r\n    {\r\n        \"name\": \"Cook Adaları\",\r\n        \"dial_code\": \"+682\",\r\n        \"code\": \"CK\"\r\n    },\r\n    {\r\n        \"name\": \"Çad\",\r\n        \"dial_code\": \"+235\",\r\n        \"code\": \"TD\"\r\n    },\r\n    {\r\n        \"name\": \"Çek Cumhuriyeti\",\r\n        \"dial_code\": \"+420\",\r\n        \"code\": \"CZ\"\r\n    },\r\n    {\r\n        \"name\": \"Çin\",\r\n        \"dial_code\": \"+86\",\r\n        \"code\": \"CN\"\r\n    },\r\n    {\r\n        \"name\": \"Danimarka\",\r\n        \"dial_code\": \"+45\",\r\n        \"code\": \"DK\"\r\n    },\r\n    {\r\n        \"name\": \"Dominik\",\r\n        \"dial_code\": \"+1 767\",\r\n        \"code\": \"DM\"\r\n    },\r\n    {\r\n        \"name\": \"Dominik Cumhuriyeti\",\r\n        \"dial_code\": \"+1 849\",\r\n        \"code\": \"DO\"\r\n    },\r\n    {\r\n        \"name\": \"Doğu Timor\",\r\n        \"dial_code\": \"+670\",\r\n        \"code\": \"TL\"\r\n    },\r\n    {\r\n        \"name\": \"Ekvator\",\r\n        \"dial_code\": \"+593\",\r\n        \"code\": \"EC\"\r\n    },\r\n    {\r\n        \"name\": \"Ekvator Ginesi\",\r\n        \"dial_code\": \"+240\",\r\n        \"code\": \"GQ\"\r\n    },\r\n    {\r\n        \"name\": \"El Salvador\",\r\n        \"dial_code\": \"+503\",\r\n        \"code\": \"SV\"\r\n    },\r\n    {\r\n        \"name\": \"Endonezya\",\r\n        \"dial_code\": \"+62\",\r\n        \"code\": \"ID\"\r\n    },\r\n    {\r\n        \"name\": \"Eritre\",\r\n        \"dial_code\": \"+291\",\r\n        \"code\": \"ER\"\r\n    },\r\n    {\r\n        \"name\": \"Ermenistan\",\r\n        \"dial_code\": \"+374\",\r\n        \"code\": \"AM\"\r\n    },\r\n    {\r\n        \"name\": \"Estonya\",\r\n        \"dial_code\": \"+372\",\r\n        \"code\": \"EE\"\r\n    },\r\n    {\r\n        \"name\": \"Etiyopya\",\r\n        \"dial_code\": \"+251\",\r\n        \"code\": \"ET\"\r\n    },\r\n    {\r\n        \"name\": \"Falkland Adaları (Malvinalar)\",\r\n        \"dial_code\": \"+500\",\r\n        \"code\": \"FK\"\r\n    },\r\n    {\r\n        \"name\": \"Faroe Adaları\",\r\n        \"dial_code\": \"+298\",\r\n        \"code\": \"FO\"\r\n    },\r\n    {\r\n        \"name\": \"Fas\",\r\n        \"dial_code\": \"+212\",\r\n        \"code\": \"MA\"\r\n    },\r\n    {\r\n        \"name\": \"Fiji\",\r\n        \"dial_code\": \"+679\",\r\n        \"code\": \"FJ\"\r\n    },\r\n    {\r\n        "
+    }
+  ],
+  "third_party": []
+}

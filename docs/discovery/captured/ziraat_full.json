@@ -1,0 +1,845 @@
+{
+  "bank": "ziraat",
+  "brand": "ziraatkatilim",
+  "pages": [
+    {
+      "page": "https://www.ziraatkatilim.com.tr",
+      "inventory": {
+        "inputs": [
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "",
+            "name": "q",
+            "ph": "Aranacak Kelimeyi Yazınız",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "",
+            "name": "form_build_id",
+            "ph": "",
+            "val": "form-XDl-Vyz05375kuxLLESGmzO8azu9z27Mp9T"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "",
+            "name": "form_id",
+            "ph": "",
+            "val": "finansman_hesapla_form"
+          },
+          {
+            "tag": "INPUT",
+            "type": "checkbox",
+            "id": "edit-finansman-self-ratio",
+            "name": "finansman_self_ratio",
+            "ph": "",
+            "val": "1"
+          },
+          {
+            "tag": "INPUT",
+            "type": "tel",
+            "id": "edit-finansman-kendi-kar-oranim",
+            "name": "finansman_kendi_kar_oranim",
+            "ph": "%0,99",
+            "val": "2,89"
+          },
+          {
+            "tag": "INPUT",
+            "type": "tel",
+            "id": "edit-finansman-tutari",
+            "name": "finansman_tutari",
+            "ph": "1.000",
+            "val": "0,00"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "",
+            "name": "form_build_id",
+            "ph": "",
+            "val": "form-pjg3QT9kgb6brPnWakTwozzo3riRxi4o5MR"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "",
+            "name": "form_id",
+            "ph": "",
+            "val": "kari_payi_hesapla_form"
+          },
+          {
+            "tag": "INPUT",
+            "type": "tel",
+            "id": "edit-kar-payi-ana-para",
+            "name": "kar_payi_ana_para",
+            "ph": "250.000",
+            "val": "100.000,00"
+          },
+          {
+            "tag": "INPUT",
+            "type": "number",
+            "id": "edit-kar-payi-vade",
+            "name": "kar_payi_vade",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "",
+            "name": "form_build_id",
+            "ph": "",
+            "val": "form--eOg9YcVTioRFzYxUrQh2OxyvkHa3epMizW"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "",
+            "name": "form_id",
+            "ph": "",
+            "val": "leasing_hesapla_form"
+          },
+          {
+            "tag": "INPUT",
+            "type": "tel",
+            "id": "edit-leasing-mal-bedeli",
+            "name": "leasing_mal_bedeli",
+            "ph": "1.000",
+            "val": ""
+          }
+        ],
+        "selects": [
+          {
+            "id": "edit-finansman-type",
+            "name": "finansman_type",
+            "options": [
+              {
+                "v": "48671069",
+                "t": "KONUT FINANSMANI KAMPANYA PAKETI"
+              },
+              {
+                "v": "25961206",
+                "t": "KONUT FINANSMANI (0-10.000.000 TL/1-120 AY))"
+              },
+              {
+                "v": "64445632",
+                "t": "İHTIYAÇ FINANSMANI HAC / UMRE (1-36 AY)"
+              },
+              {
+                "v": "64445635",
+                "t": "İHTIYAÇ FINANSMANI HAC / UMRE (1-24 AY)"
+              },
+              {
+                "v": "62744752",
+                "t": "İHTIYAÇ FINANSMANI HAC / UMRE (1-12 AY)"
+              },
+              {
+                "v": "64356289",
+                "t": "İHTIYAÇ FINANSMANI(1-12 AY)"
+              },
+              {
+                "v": "64356288",
+                "t": "İHTIYAÇ FINANSMANI (1-24 AY)"
+              },
+              {
+                "v": "64356287",
+                "t": "İHTIYAÇ FINANSMANI (1-36 AY)"
+              },
+              {
+                "v": "63871915",
+                "t": "KOLAY FON FINANSMANI KAMPANYA PAKETI(1-12 AY)"
+              },
+              {
+                "v": "63871914",
+                "t": "KOLAY FON FINANSMANI KAMPANYA PAKETI (13-24 AY)"
+              },
+              {
+                "v": "63871913",
+                "t": "KOLAY FON FINANSMANI KAMPANYA PAKETI(25-36 AY)"
+              },
+              {
+                "v": "59244341",
+                "t": "TAŞIT FINANSMANI(1-12 AY)"
+              },
+              {
+                "v": "65492134",
+                "t": "TAŞIT FINANSMANI(1-24 AY)"
+              },
+              {
+                "v": "64445628",
+                "t": "TAŞIT FINANSMANI (1-36 AY)"
+              },
+              {
+                "v": "64445629",
+                "t": "TAŞIT FINANSMANI(1-48 AY)"
+              },
+              {
+                "v": "20539018",
+                "t": "ARSA FINANSMANI"
+              },
+              {
+                "v": "20539017",
+                "t": "BIREYSEL İŞYERI FINANSMANI"
+              }
+            ]
+          },
+          {
+            "id": "edit-finansman-vade",
+            "name": "finansman_vade",
+            "options": [
+              {
+                "v": "1",
+                "t": "1"
+              },
+              {
+                "v": "2",
+                "t": "2"
+              },
+              {
+                "v": "3",
+                "t": "3"
+              },
+              {
+                "v": "4",
+                "t": "4"
+              },
+              {
+                "v": "5",
+                "t": "5"
+              },
+              {
+                "v": "6",
+                "t": "6"
+              },
+              {
+                "v": "7",
+                "t": "7"
+              },
+              {
+                "v": "8",
+                "t": "8"
+              },
+              {
+                "v": "9",
+                "t": "9"
+              },
+              {
+                "v": "10",
+                "t": "10"
+              },
+              {
+                "v": "11",
+                "t": "11"
+              },
+              {
+                "v": "12",
+                "t": "12"
+              },
+              {
+                "v": "13",
+                "t": "13"
+              },
+              {
+                "v": "14",
+                "t": "14"
+              },
+              {
+                "v": "15",
+                "t": "15"
+              },
+              {
+                "v": "16",
+                "t": "16"
+              },
+              {
+                "v": "17",
+                "t": "17"
+              },
+              {
+                "v": "18",
+                "t": "18"
+              },
+              {
+                "v": "19",
+                "t": "19"
+              },
+              {
+                "v": "20",
+                "t": "20"
+              },
+              {
+                "v": "21",
+                "t": "21"
+              },
+              {
+                "v": "22",
+                "t": "22"
+              },
+              {
+                "v": "23",
+                "t": "23"
+              },
+              {
+                "v": "24",
+                "t": "24"
+              },
+              {
+                "v": "25",
+                "t": "25"
+              },
+              {
+                "v": "26",
+                "t": "26"
+              },
+              {
+                "v": "27",
+                "t": "27"
+              },
+              {
+                "v": "28",
+                "t": "28"
+              },
+              {
+                "v": "29",
+                "t": "29"
+              },
+              {
+                "v": "30",
+                "t": "30"
+              },
+              {
+                "v": "31",
+                "t": "31"
+              },
+              {
+                "v": "32",
+                "t": "32"
+              },
+              {
+                "v": "33",
+                "t": "33"
+              },
+              {
+                "v": "34",
+                "t": "34"
+              },
+              {
+                "v": "35",
+                "t": "35"
+              },
+              {
+                "v": "36",
+                "t": "36"
+              },
+              {
+                "v": "37",
+                "t": "37"
+              },
+              {
+                "v": "38",
+                "t": "38"
+              },
+              {
+                "v": "39",
+                "t": "39"
+              },
+              {
+                "v": "40",
+                "t": "40"
+              },
+              {
+                "v": "41",
+                "t": "41"
+              },
+              {
+                "v": "42",
+                "t": "42"
+              },
+              {
+                "v": "43",
+                "t": "43"
+              },
+              {
+                "v": "44",
+                "t": "44"
+              },
+              {
+                "v": "45",
+                "t": "45"
+              },
+              {
+                "v": "46",
+                "t": "46"
+              },
+              {
+                "v": "47",
+                "t": "47"
+              },
+              {
+                "v": "48",
+                "t": "48"
+              },
+              {
+                "v": "49",
+                "t": "49"
+              },
+              {
+                "v": "50",
+                "t": "50"
+              },
+              {
+                "v": "51",
+                "t": "51"
+              },
+              {
+                "v": "52",
+                "t": "52"
+              },
+              {
+                "v": "53",
+                "t": "53"
+              },
+              {
+                "v": "54",
+                "t": "54"
+              },
+              {
+                "v": "55",
+                "t": "55"
+              },
+              {
+                "v": "56",
+                "t": "56"
+              },
+              {
+                "v": "57",
+                "t": "57"
+              },
+              {
+                "v": "58",
+                "t": "58"
+              },
+              {
+                "v": "59",
+                "t": "59"
+              },
+              {
+                "v": "60",
+                "t": "60"
+              },
+              {
+                "v": "61",
+                "t": "61"
+              },
+              {
+                "v": "62",
+                "t": "62"
+              },
+              {
+                "v": "63",
+                "t": "63"
+              },
+              {
+                "v": "64",
+                "t": "64"
+              },
+              {
+                "v": "65",
+                "t": "65"
+              },
+              {
+                "v": "66",
+                "t": "66"
+              },
+              {
+                "v": "67",
+                "t": "67"
+              },
+              {
+                "v": "68",
+                "t": "68"
+              },
+              {
+                "v": "69",
+                "t": "69"
+              },
+              {
+                "v": "70",
+                "t": "70"
+              },
+              {
+                "v": "71",
+                "t": "71"
+              },
+              {
+                "v": "72",
+                "t": "72"
+              },
+              {
+                "v": "73",
+                "t": "73"
+              },
+              {
+                "v": "74",
+                "t": "74"
+              },
+              {
+                "v": "75",
+                "t": "75"
+              },
+              {
+                "v": "76",
+                "t": "76"
+              },
+              {
+                "v": "77",
+                "t": "77"
+              },
+              {
+                "v": "78",
+                "t": "78"
+              },
+              {
+                "v": "79",
+                "t": "79"
+              },
+              {
+                "v": "80",
+                "t": "80"
+              }
+            ]
+          },
+          {
+            "id": "edit-kar-payi-hesap-type",
+            "name": "kar_payi_hesap_type",
+            "options": [
+              {
+                "v": "5",
+                "t": "KATILMA HESABI"
+              },
+              {
+                "v": "2",
+                "t": "ARA DÖNEM ÖDEMELİ KATILMA HESABI"
+              }
+            ]
+          },
+          {
+            "id": "edit-kar-payi-currency",
+            "name": "kar_payi_currency",
+            "options": [
+              {
+                "v": "TRY",
+                "t": "TRY"
+              },
+              {
+                "v": "EUR",
+                "t": "EUR"
+              },
+              {
+                "v": "USD",
+                "t": "USD"
+              },
+              {
+                "v": "XAU",
+                "t": "Altın (gr)"
+              }
+            ]
+          },
+          {
+            "id": "edit-kar-payi-maturity-type",
+            "name": "kar_payi_maturity_type",
+            "options": [
+              {
+                "v": "2",
+                "t": "1 Ay Vadeli"
+              },
+              {
+                "v": "8",
+                "t": "3 Ay Vadeli"
+              },
+              {
+                "v": "11",
+                "t": "6 Ay Vadeli"
+              },
+              {
+                "v": "5",
+                "t": "1 Yıl Vadeli"
+              },
+              {
+                "v": "14",
+                "t": "Esnek Vadeli"
+              }
+            ]
+          },
+          {
+            "id": "edit-leasing-urun-grubu",
+            "name": "leasing_urun_grubu",
+            "options": [
+              {
+                "v": "33517",
+                "t": "KARAYOLU TAŞITLARI"
+              },
+              {
+                "v": "33518",
+                "t": "HAVAYOLU ULAŞIM ARAÇLARI"
+              },
+              {
+                "v": "33519",
+                "t": "GEMİLER VE SUDA YÜZEN TAŞIT VE ARAÇLAR"
+              },
+              {
+                "v": "33520",
+                "t": "DEMİRYOLU ULAŞIM ARAÇLARI"
+              },
+              {
+                "v": "33521",
+                "t": "İŞ VE İNŞAAT MAKİNELERİ"
+              },
+              {
+                "v": "33522",
+                "t": "SAĞLIK SEKTÖRÜ VE ESTETİK EKİPMANLARI"
+              },
+              {
+                "v": "33523",
+                "t": "METAL İŞLEME MAKİNELERİ"
+              },
+              {
+                "v": "33524",
+                "t": "TEKSTİL MAKİNELERİ"
+              },
+              {
+                "v": "33525",
+                "t": "ELEKTRONİK VE OPTİK CİHAZLAR"
+              },
+              {
+                "v": "33526",
+                "t": "BİLGİ İŞLEM VE BÜRO SİSTEMLERİ"
+              },
+              {
+                "v": "33527",
+                "t": "GAYRİMENKUL"
+              },
+              {
+                "v": "33528",
+                "t": "PLASTİK İŞLEME MAKİNELERİ"
+              },
+              {
+                "v": "33529",
+                "t": "TURİZM EKİPMANLARI"
+              },
+              {
+                "v": "33530",
+                "t": "MATBAACILIK VE KAĞIT İŞLEME MAKİNELERİ"
+              },
+              {
+                "v": "33531",
+                "t": "TARIM VE HAYVANCILIK MAKİNELERİ"
+              },
+              {
+                "v": "33532",
+                "t": "DİĞER MAKİNE VE EKİPMANLAR"
+              }
+            ]
+          },
+          {
+            "id": "edit-leasing-para-birimi",
+            "name": "leasing_para_birimi",
+            "options": [
+              {
+                "v": "TRY",
+                "t": "TRY"
+              },
+              {
+                "v": "USD",
+                "t": "USD"
+              },
+              {
+                "v": "EUR",
+                "t": "EUR"
+              }
+            ]
+          },
+          {
+            "id": "edit-leasing-kdv-orani",
+            "name": "leasing_kdv_orani",
+            "options": [
+              {
+                "v": "0",
+                "t": "%0"
+              },
+              {
+                "v": "1",
+                "t": "%1"
+              },
+              {
+                "v": "10",
+                "t": "%10"
+              },
+              {
+                "v": "20",
+                "t": "%20"
+              }
+            ]
+          },
+          {
+            "id": "edit-leasing-vade",
+            "name": "leasing_vade",
+            "options": [
+              {
+                "v": "12",
+                "t": "12"
+              },
+              {
+                "v": "24",
+                "t": "24"
+              },
+              {
+                "v": "36",
+                "t": "36"
+              },
+              {
+                "v": "48",
+                "t": "48"
+              },
+              {
+                "v": "60",
+                "t": "60"
+              }
+            ]
+          },
+          {
+            "id": "edit-leasing-odeme-para-birimi",
+            "name": "leasing_odeme_para_birimi",
+            "options": [
+              {
+                "v": "TRY",
+                "t": "TRY"
+              },
+              {
+                "v": "USD",
+                "t": "USD"
+              },
+              {
+                "v": "EUR",
+                "t": "EUR"
+              }
+            ]
+          }
+        ],
+        "buttons": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "HESAPLA",
+          "ÖDEME PLANI",
+          "1",
+          "2",
+          "3",
+          "4",
+          "1",
+          "2",
+          "3",
+          "1",
+          "2",
+          "3",
+          "Ziraat Finans Grubu",
+          "Yatırımcı İlişkileri",
+          "BUTTON",
+          "BUTTON",
+          "ONAYLIYORUM",
+          "X"
+        ]
+      },
+      "clicked": [
+        "TR",
+        "BİREYSEL",
+        "TİCARİ",
+        "TARIM",
+        "A",
+        "A",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "HESAPLA",
+        "ÖDEME PLANI",
+        "6",
+        "HESAPLA",
+        "1",
+        "2",
+        "3",
+        "4",
+        "1",
+        "2",
+        "3",
+        "1",
+        "2"
+      ]
+    }
+  ],
+  "endpoints": [
+    {
+      "page": "https://www.ziraatkatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://www.ziraatkatilim.com.tr/ajax/get-vade",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.ziraatkatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "eid=64445632",
+      "response": "{\"status\":true,\"data\":{\"action\":\"remove\",\"msg\":\"\",\"range\":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36],\"ratio\":\"4.89\",\"maximum_amount\":124999,\"minimum_amount\":\"0\"}}"
+    },
+    {
+      "page": "https://www.ziraatkatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://www.ziraatkatilim.com.tr/ajax/get-maturity-types?_wrapper_format=drupal_ajax",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.ziraatkatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: application/json, text/javascript, */*; q=0.01\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "eid=2&lang_id=tr&_drupal_ajax=1&ajax_page_state%5Btheme%5D=zk&ajax_page_state%5Btheme_token%5D=&ajax_page_state%5Blibraries%5D=eJyNUYtuwyAM_CGUfBIyxEm8mMcMNEu_fs6j6ipt6iQEd-ezZWMHfrE16cm9e2JLPkXj_gh-FOOTYE-xokTg7uOzoWzdmCSckagImO5osFmf0kKoT8hMED32v4l2wBEaV4NflSku_SAta-2LGob71u-XySAwCeS5PDxPpWsxN8dUZhxMXsEWlBtp9TXJgtJf9GSmbKVi0NkKmhvhWvrj7kIaGqO5Lz3EmJp2FzDWsgtOFRQ7NuaTlsPnOE3764F9Y6j4QmwFd2SPFI9Zc5IKR4ExJf3EHc0Iw4mi9mAL00Wv6Ua7Up3tvohJtKnhiEkKqVKKP_xCzun2FBUE8fOOrgY0Oy5gbyjE-hsvzOoMumMmJyDbbp6xQGYIYLUDzyB0DlACxDe-p_SfqgtIho3euBihUJwerm9bwRMV",
+      "response": "{\"types\":[{\"id\":\"17\",\"name\":\"1 Ayl\\u0131k Kar Pay\\u0131 \\u00d6demeli\"},{\"id\":\"23\",\"name\":\"3 Ayl\\u0131k Kar Pay\\u0131 \\u00d6demeli\"},{\"id\":\"26\",\"name\":\"6 Ayl\\u0131k Kar Pay\\u0131 \\u00d6demeli\"},{\"id\":\"20\",\"name\":\"Y\\u0131ll\\u0131k Kar Pay\\u0131 \\u00d6demeli\"}],\"currencies\":[{\"code\":\"TRY\",\"name\":\"TRY\"},{\"code\":\"EUR\",\"name\":\"EUR\"},{\"code\":\"USD\",\"name\":\"USD\"}]}"
+    },
+    {
+      "page": "https://www.ziraatkatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://www.ziraatkatilim.com.tr/anasayfa?ajax_form=1&_wrapper_format=drupal_ajax",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.ziraatkatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: application/json, text/javascript, */*; q=0.01\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "form_build_id=form-pjg3QT9kgb6brPnWakTwozzo3riRxi4o5MRnqvv_o5U&form_id=kari_payi_hesapla_form&kar_payi_hesap_type=2&kar_payi_currency=USD&kar_payi_ana_para=100.000%2C00&kar_payi_maturity_type=2&kar_payi_vade=&_triggering_element_name=kar_payi_currency&_drupal_ajax=1&ajax_page_state%5Btheme%5D=zk&ajax_page_state%5Btheme_token%5D=&ajax_page_state%5Blibraries%5D=eJyNUYtuwyAM_CGUfBIyxEm8mMcMNEu_fs6j6ipt6iQEd-ezZWMHfrE16cm9e2JLPkXj_gh-FOOTYE-xokTg7uOzoWzdmCSckagImO5osFmf0kKoT8hMED32v4l2wBEaV4NflSku_SAta-2LGob71u-XySAwCeS5PDxPpWsxN8dUZhxMXsEWlBtp9TXJgtJf9GSmbKVi0NkKmhvhWvrj7kIaGqO5Lz3EmJp2FzDWsgtOFRQ7NuaTlsPnOE3764F9Y6j4QmwFd2SPFI9Zc5IKR4ExJf3EHc0Iw4mi9mAL00Wv6Ua7Up3tvohJtKnhiEkKqVKKP_xCzun2FBUE8fOOrgY0Oy5gbyjE-hsvzOoMumMmJyDbbp6xQGYIYLUDzyB0DlACxDe-p_SfqgtIho3euBihUJwerm9bwRMV",
+      "response": "[{\"command\":\"update_build_id\",\"old\":\"form-pjg3QT9kgb6brPnWakTwozzo3riRxi4o5MRnqvv_o5U\",\"new\":\"form-PhLELCHGReIHpVRutbXxTMLciStJA1rpbWcP06bwOfc\"},{\"command\":\"invoke\",\"selector\":\".karpayi-maturity-type\",\"method\":\"empty\",\"args\":[]},{\"command\":\"insert\",\"method\":\"append\",\"selector\":\".karpayi-maturity-type\",\"data\":\"\\u003Coption value=\\u00222\\u0022\\u003E1 Ay Vadeli\\u003C\\/option\\u003E\\u003Coption value=\\u00228\\u0022\\u003E3 Ay Vadeli\\u003C\\/option\\u003E\\u003Coption value=\\u002211\\u0022\\u003E6 Ay Vadeli\\u003C\\/option\\u003E\\u003Coption value=\\u00225\\u0022\\u003E1 Y\\u0131l Vadeli\\u003C\\/option\\u003E\\u003Coption value=\\u002214\\u0022\\u003EEsnek Vadeli\\u003C\\/option\\u003E\",\"settings\":null}]"
+    },
+    {
+      "page": "https://www.ziraatkatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://www.ziraatkatilim.com.tr/anasayfa?ajax_form=1&_wrapper_format=drupal_ajax",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.ziraatkatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: application/json, text/javascript, */*; q=0.01\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "form_build_id=form-pjg3QT9kgb6brPnWakTwozzo3riRxi4o5MRnqvv_o5U&form_id=kari_payi_hesapla_form&kar_payi_hesap_type=2&kar_payi_ana_para=100.000%2C00&kar_payi_maturity_type=11&kar_payi_vade=&_triggering_element_name=kar_payi_maturity_type&_drupal_ajax=1&ajax_page_state%5Btheme%5D=zk&ajax_page_state%5Btheme_token%5D=&ajax_page_state%5Blibraries%5D=eJyNUYtuwyAM_CGUfBIyxEm8mMcMNEu_fs6j6ipt6iQEd-ezZWMHfrE16cm9e2JLPkXj_gh-FOOTYE-xokTg7uOzoWzdmCSckagImO5osFmf0kKoT8hMED32v4l2wBEaV4NflSku_SAta-2LGob71u-XySAwCeS5PDxPpWsxN8dUZhxMXsEWlBtp9TXJgtJf9GSmbKVi0NkKmhvhWvrj7kIaGqO5Lz3EmJp2FzDWsgtOFRQ7NuaTlsPnOE3764F9Y6j4QmwFd2SPFI9Zc5IKR4ExJf3EHc0Iw4mi9mAL00Wv6Ua7Up3tvohJtKnhiEkKqVKKP_xCzun2FBUE8fOOrgY0Oy5gbyjE-hsvzOoMumMmJyDbbp6xQGYIYLUDzyB0DlACxDe-p_SfqgtIho3euBihUJwerm9bwRMV",
+      "response": "[{\"command\":\"update_build_id\",\"old\":\"form-pjg3QT9kgb6brPnWakTwozzo3riRxi4o5MRnqvv_o5U\",\"new\":\"form-pmO6_5JUr8CbetsSOWhVgV8SPgemvFCeu62ZWLkJyJc\"},{\"command\":\"invoke\",\"selector\":\".karpayi-hesap-vade\",\"method\":\"toggleVadeGun\",\"args\":[false]}]"
+    },
+    {
+      "page": "https://www.ziraatkatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://www.ziraatkatilim.com.tr/ajax/finansmanhesapla?_wrapper_format=drupal_ajax",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.ziraatkatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: application/json, text/javascript, */*; q=0.01\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "lang=tr&finansman_is_bank_ratio=true&finans_type=64445632&finans_kar_orani=4.89&finans_vade=1&finans_tutari=0&_drupal_ajax=1&ajax_page_state%5Btheme%5D=zk&ajax_page_state%5Btheme_token%5D=&ajax_page_state%5Blibraries%5D=eJyNUYtuwyAM_CGUfBIyxEm8mMcMNEu_fs6j6ipt6iQEd-ezZWMHfrE16cm9e2JLPkXj_gh-FOOTYE-xokTg7uOzoWzdmCSckagImO5osFmf0kKoT8hMED32v4l2wBEaV4NflSku_SAta-2LGob71u-XySAwCeS5PDxPpWsxN8dUZhxMXsEWlBtp9TXJgtJf9GSmbKVi0NkKmhvhWvrj7kIaGqO5Lz3EmJp2FzDWsgtOFRQ7NuaTlsPnOE3764F9Y6j4QmwFd2SPFI9Zc5IKR4ExJf3EHc0Iw4mi9mAL00Wv6Ua7Up3tvohJtKnhiEkKqVKKP_xCzun2FBUE8fOOrgY0Oy5gbyjE-hsvzOoMumMmJyDbbp6xQGYIYLUDzyB0DlACxDe-p_SfqgtIho3euBihUJwerm9bwRMV",
+      "response": "[{\"command\":\"settings\",\"settings\":{\"ajaxPageState\":{\"theme\":\"zk\",\"libraries\":\"eJyNUY3O2zAIfCGreSQLO6ThCwEP2-3Spx_5mbpP2tRJln13HAhMgrzEpn7KkN44UlYJ6R_BrxqyGg4kDU2Ab18_Otp2m9TWMyKOgOmFAXvMqguhP2thAsk4_E2MI07QuQX82ZhkGUbrxWtfNDC8tmG_QgGDu0GZ62_PW7l1KT0x1RnHUJ4QK9qDvPpTbUEbLnqyULfacPXZKoYH4bMOx31bdeyM4bUMIKLdu1tRWt2F5ApanDrzSevhS6z3_c3AuTM0_EZig3RkTyTHrEWtwVFgUvVP3NGMMJ5IvIdYmS56TTfFJ7U57ou4mzc1HjHTVRup_OE3Ssm356giWJ53dDXg2bJAfKAR-298Y9Fn8B0zJQPbdvOMFQrDCtE7yAxG5wB1Bfnge0v_U3UBK7DRBxcjVJL7B5eOvqzootAvzRUgew\"},\"pluralDelimiter\":\"\\u0003\",\"user\":{\"uid\":0,\"permissionsHash\":\"05c7e048e2182fa17f50a611bdc5899c5c4cf1c3ef44a8a63beb5fab6b275e73\"}},\"merge\":true},{\"command\":\"add_js\",\"selector\":\"body\",\"data\":[{\"src\":\"https:\\/\\/cdn.jsdelivr.net\\/npm\\/es6-promise@4\\/dist\\/es6-promise.min.js\"},{\"src\":\"https:\\/\\/cdn.jsdelivr.net\\/npm\\/es6-promise@4\\/dist\\/es6-promise.auto.min.js\"},{\"src\":\"\\/sites\\/default\\/files\\/js\\/js_DEg_dDG6fw4YMmdqbB3DZNsSkNFNrer4kpyQn9_qk_o.js?scope=footer\\u0026delta=2\\u0026language=tr\\u0026theme=zk\\u0026include=eJyryo7PSC1OLMhJzE2MTyxKTM5JLMrUz09JzU2NBwrmZQIA4qYNOw\\u0026exclude=eJyNUYtuwyAM_CGUfBIyxEm8mMcMNEu_fs6j6ipt6iQEd-ezZWMHfrE16cm9e2JLPkXj_gh-FOOTYE-xokTg7uOzoWzdmCSckagImO5osFmf0kKoT8hMED32v4l2wBEaV4NflSku_SAta-2LGob71u-XySAwCeS5PDxPpWsxN8dUZhxMXsEWlBtp9TXJgtJf9GSmbKVi0NkKmhvhWvrj7kIaGqO5Lz3EmJp2FzDWsgtOFRQ7NuaTlsPnOE3764F9Y6j4QmwFd2SPFI9Zc5IKR4ExJf3EHc0Iw4mi9mAL00Wv6Ua7Up3tvohJtKnhiEkKqVKKP_xCzun2FBUE8fOOrgY0Oy5gbyjE-hsvzOoMumMmJyDbbp6xQGYIYLUDzyB0DlACxDe-p_SfqgtIho3euBihUJwerm9bwRMV\"}]},{\"command\":\"insert\",\"method\":\"html\",\"selector\":\"#odeme-plani\",\"data\":\"\\n\\n\\u003Cdiv class=\\u0022payment-schedule\\u0022\\u003E\\n\\t\\u003Cdiv class=\\u0022row align-items-center mb-25\\u0022\\u003E\\n\\t\\t\\u003Cdiv class=\\u0022col-lg-4 mb-15 mb-lg-0\\u0022\\u003E\\n\\t\\t\\t\\u003Cdiv class=\\u0022font-size-24 font-family-medium text-center text-lg-left\\u0022\\u003E\\n        \\u00d6deme Plan\\u0131      \\u003C\\/div\\u003E\\n\\t\\t\\u003C\\/div\\u003E\\n\\t\\t\\u003Cdiv class=\\u0022col-lg-8\\u0022\\u003E\\n\\t\\t\\t\\u003Cdiv class=\\u0022payment-schedule__cta d-flex align-items-center justify-content-center justify-content-lg-end\\u0022\\u003E\\n\\t\\t\\t\\t\\u003Cdiv class=\\u0022payment-schedule__cta__item odeme-plani-print\\u0022\\u003E\\n\\t\\t\\t\\t\\t\\u003Ca href=\\u0022javascript:void(0);\\u0022\\u003E\\n\\t\\t\\t\\t\\t\\t\\u003Ci class=\\u0022zk-print\\u0022\\u003E\\u003C\\/i\\u003E\\n\\t\\t\\t\\t\\t\\t\\u003Cspan\\u003E\\n\\t\\t\\t\\t\\t\\t\\tYazd\\u0131r\\t\\t\\t\\t\\t\\t\\u003C\\/span\\u003E\\n\\t\\t\\t\\t\\t\\u003C\\/a\\u003E\\n\\t\\t\\t\\t\\u003C\\/div\\u003E\\n\\t\\t\\t\\t\\u003Cdiv class=\\u0022payment-schedule__cta__item odeme-plani-download\\u0022\\u003E\\n\\t\\t\\t\\t\\t\\u003Ca href=\\u0022javascript:void(0);\\u0022\\u003E\\n\\t\\t\\t\\t\\t\\t\\u003Ci class=\\u0022zk-download\\u0022\\u003E\\u003C\\/i\\u003E\\n\\t\\t\\t\\t\\t\\t\\u003Cspan\\u003E\\n\\t\\t\\t\\t\\t\\t\\t\\u0130ndir\\t\\t\\t\\t\\t\\t\\u003C\\/span\\u003E\\n\\t\\t\\t\\t\\t\\u003C\\/a\\u003E\\n\\t\\t\\t\\t\\u003C\\/div\\u003E\\n\\t\\t\\t\\u003C\\/div\\u003E\\n\\t\\t\\u003C\\/div\\u003E\\n\\t\\u003C\\/div\\u003E\\n\\t\\u003Cdiv class=\\u0022print-area\\u0022\\u003E\\n\\t\\t\\u003Cdiv class=\\u0022payment-schedule__wrapper\\u0022\\u003E\\n\\t\\t\\t\\u003Cdiv class=\\u0022payment-schedule__title pl-20 pr-20 pl-lg-0 pr-lg-30 bg-main\\u0022\\u003E\\n\\t\\t\\t\\t\\u003Cdiv class=\\u0022payment-schedule__row payment-schedule__five font-family-bold\\u0022\\u003E\\n\\t\\t\\t\\t\\t\\u003Cp\\u003E\\n\\t\\t\\t\\t\\t\\tFinansman Tutar\\u0131\\t\\t\\t\\t\\t\\u003C\\/p\\u003E\\n\\t\\t\\t\\t\\t\\u003Cp\\u003E\\n\\t\\t\\t\\t\\t\\tTaksit Tutar\\u0131\\t\\t\\t\\t\\t\\u003C\\/p\\u003E\\n\\t\\t\\t\\t\\t\\u003Cp\\u003E\\n\\t\\t\\t\\t\\t\\tVade\\t\\t\\t\\t\\t\\u003C\\/p\\u003E\\n\\t\\t\\t\\t\\t\\u003Cp\\u003E\\n\\t\\t\\t\\t\\t\\tK\\u00e2r Oran\\u0131\\t\\t\\t\\t\\t\\u003C\\/p\\u003E\\n\\t\\t\\t\\t\\t\\u003Cp\\u003E\\n\\t\\t\\t\\t\\t\\tToplam Geri \\u00d6denen Tutar\\t\\t\\t\\t\\t\\u003C\\/p\\u003E\\n\\t\\t\\t\\t\\u003C\\/div\\u003E\\n\\t\\t\\t\\u003C\\/div\\u003E\\n\\t\\t\\t\\u003Cdiv class=\\u0022payment-schedule__content pl-20 pr-20 pl-lg-0 pr-lg-30\\u0022\\u003E\\n\\t\\t\\t\\t\\u003Cdiv class=\\u0022payment-schedule__row payment-schedule__five\\u0022\\u003E\\n\\t\\t\\t\\t\\t\\t\\t\\t\\u003C\\/div\\u003E\\n\\t\\t\\u003C\\/div\\u003E\\n\\t\\u003C\\/div\\u003E\\n\\t\\u003Cdiv class=\\u0022payment-schedule__wrapper mb-0\\u0022\\u003E\\n\\t\\t\\u003Ctable class=\\u0022table table-responsive text-center\\u0022\\u003E\\n\\t\\t\\t\\u003Cthead\\u003E\\n\\t\\t\\t\\t\\u003Ctr\\u003E\\n\\t\\t\\t\\t\\t\\u003Cth\\u003E\\n\\t\\t\\t\\t\\t\\tTaksit Say\\u0131s\\u0131\\t\\t\\t\\t\\t\\u003C\\/th\\u003E\\n\\t\\t\\t\\t\\t\\u003Cth\\u003E\\n\\t\\t\\t\\t\\t\\tTaksit Tutar\\u0131\\t\\t\\t\\t\\t\\u003C\\/th\\u003E\\n\\t\\t\\t\\t\\t\\u003Cth\\u003E\\n\\t\\t\\t\\t\\t\\tAna Para\\t\\t\\t\\t\\t\\u003C\\/th\\u003E\\n\\t\\t\\t\\t\\t\\u003Cth\\u003E\\n\\t\\t\\t\\t\\t\\tK\\u00e2r Tutar\\u0131\\t\\t\\t\\t\\t\\u003C\\/th\\u003E\\n\\t\\t\\t\\t\\t\\u003Cth\\u003E\\n\\t\\t\\t\\t\\t\\tKDV Tutar\\u0131\\t\\t\\t\\t\\t\\u003C\\/th\\u003E\\n\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\u003Cth\\u003E\\n\\t\\t\\t\\t\\t\\tKalan Ana Para Tutar\\u0131\\t\\t\\t\\t\\t\\u003C\\/th\\u003E\\n\\t\\t\\t\\t\\u003C\\/tr\\u003E\\n\\t\\t\\t\\u003C\\/thead\\u003E\\n\\t\\t\\t\\u003Ctbody\\u003E\\n\\t\\t\\t\\t\\t\\t\\t\\u003C\\/tbody\\u003E\\n\\t\\t\\u003C\\/table\\u003E\\n\\t\\u003C\\/div\\u003E\\n\\u003C\\/div\\u003E\\u003C\\/div\\u003E\\n\",\"settings\":null},{\"command\":\"insert\",\"method\":\"html\",\"selector\":\".finansman-taksit-tutar\",\"data\":\"0,00\",\"settings\":null},{\"command\":\"insert\",\"method\":\"html\",\"selector\":\".finansman-toplam-tutar\",\"data\":\"0,00\",\"settings\":null}]"
+    },
+    {
+      "page": "https://www.ziraatkatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://www.ziraatkatilim.com.tr/ajax/finansmanhesapla?_wrapper_format=drupal_ajax",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.ziraatkatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: application/json, text/javascript, */*; q=0.01\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "lang=tr&finansman_is_bank_ratio=true&finans_type=64445632&finans_kar_orani=4.89&finans_vade=1&finans_tutari=0&_drupal_ajax=1&ajax_page_state%5Btheme%5D=zk&ajax_page_state%5Btheme_token%5D=&ajax_page_state%5Blibraries%5D=eJyNUY3O2zAIfCGreSQLO6ThCwEP2-3Spx_5mbpP2tRJln13HAhMgrzEpn7KkN44UlYJ6R_BrxqyGg4kDU2Ab18_Otp2m9TWMyKOgOmFAXvMqguhP2thAsk4_E2MI07QuQX82ZhkGUbrxWtfNDC8tmG_QgGDu0GZ62_PW7l1KT0x1RnHUJ4QK9qDvPpTbUEbLnqyULfacPXZKoYH4bMOx31bdeyM4bUMIKLdu1tRWt2F5ApanDrzSevhS6z3_c3AuTM0_EZig3RkTyTHrEWtwVFgUvVP3NGMMJ5IvIdYmS56TTfFJ7U57ou4mzc1HjHTVRup_OE3Ssm356giWJ53dDXg2bJAfKAR-298Y9Fn8B0zJQPbdvOMFQrDCtE7yAxG5wB1Bfnge0v_U3UBK7DRBxcjVJL7B5eOvqzootAvzRUgew",
+      "response": "[{\"command\":\"insert\",\"method\":\"html\",\"selector\":\"#odeme-plani\",\"data\":\"\\n\\n\\u003Cdiv class=\\u0022payment-schedule\\u0022\\u003E\\n\\t\\u003Cdiv class=\\u0022row align-items-center mb-25\\u0022\\u003E\\n\\t\\t\\u003Cdiv class=\\u0022col-lg-4 mb-15 mb-lg-0\\u0022\\u003E\\n\\t\\t\\t\\u003Cdiv class=\\u0022font-size-24 font-family-medium text-center text-lg-left\\u0022\\u003E\\n        \\u00d6deme Plan\\u0131      \\u003C\\/div\\u003E\\n\\t\\t\\u003C\\/div\\u003E\\n\\t\\t\\u003Cdiv class=\\u0022col-lg-8\\u0022\\u003E\\n\\t\\t\\t\\u003Cdiv class=\\u0022payment-schedule__cta d-flex align-items-center justify-content-center justify-content-lg-end\\u0022\\u003E\\n\\t\\t\\t\\t\\u003Cdiv class=\\u0022payment-schedule__cta__item odeme-plani-print\\u0022\\u003E\\n\\t\\t\\t\\t\\t\\u003Ca href=\\u0022javascript:void(0);\\u0022\\u003E\\n\\t\\t\\t\\t\\t\\t\\u003Ci class=\\u0022zk-print\\u0022\\u003E\\u003C\\/i\\u003E\\n\\t\\t\\t\\t\\t\\t\\u003Cspan\\u003E\\n\\t\\t\\t\\t\\t\\t\\tYazd\\u0131r\\t\\t\\t\\t\\t\\t\\u003C\\/span\\u003E\\n\\t\\t\\t\\t\\t\\u003C\\/a\\u003E\\n\\t\\t\\t\\t\\u003C\\/div\\u003E\\n\\t\\t\\t\\t\\u003Cdiv class=\\u0022payment-schedule__cta__item odeme-plani-download\\u0022\\u003E\\n\\t\\t\\t\\t\\t\\u003Ca href=\\u0022javascript:void(0);\\u0022\\u003E\\n\\t\\t\\t\\t\\t\\t\\u003Ci class=\\u0022zk-download\\u0022\\u003E\\u003C\\/i\\u003E\\n\\t\\t\\t\\t\\t\\t\\u003Cspan\\u003E\\n\\t\\t\\t\\t\\t\\t\\t\\u0130ndir\\t\\t\\t\\t\\t\\t\\u003C\\/span\\u003E\\n\\t\\t\\t\\t\\t\\u003C\\/a\\u003E\\n\\t\\t\\t\\t\\u003C\\/div\\u003E\\n\\t\\t\\t\\u003C\\/div\\u003E\\n\\t\\t\\u003C\\/div\\u003E\\n\\t\\u003C\\/div\\u003E\\n\\t\\u003Cdiv class=\\u0022print-area\\u0022\\u003E\\n\\t\\t\\u003Cdiv class=\\u0022payment-schedule__wrapper\\u0022\\u003E\\n\\t\\t\\t\\u003Cdiv class=\\u0022payment-schedule__title pl-20 pr-20 pl-lg-0 pr-lg-30 bg-main\\u0022\\u003E\\n\\t\\t\\t\\t\\u003Cdiv class=\\u0022payment-schedule__row payment-schedule__five font-family-bold\\u0022\\u003E\\n\\t\\t\\t\\t\\t\\u003Cp\\u003E\\n\\t\\t\\t\\t\\t\\tFinansman Tutar\\u0131\\t\\t\\t\\t\\t\\u003C\\/p\\u003E\\n\\t\\t\\t\\t\\t\\u003Cp\\u003E\\n\\t\\t\\t\\t\\t\\tTaksit Tutar\\u0131\\t\\t\\t\\t\\t\\u003C\\/p\\u003E\\n\\t\\t\\t\\t\\t\\u003Cp\\u003E\\n\\t\\t\\t\\t\\t\\tVade\\t\\t\\t\\t\\t\\u003C\\/p\\u003E\\n\\t\\t\\t\\t\\t\\u003Cp\\u003E\\n\\t\\t\\t\\t\\t\\tK\\u00e2r Oran\\u0131\\t\\t\\t\\t\\t\\u003C\\/p\\u003E\\n\\t\\t\\t\\t\\t\\u003Cp\\u003E\\n\\t\\t\\t\\t\\t\\tToplam Geri \\u00d6denen Tutar\\t\\t\\t\\t\\t\\u003C\\/p\\u003E\\n\\t\\t\\t\\t\\u003C\\/div\\u003E\\n\\t\\t\\t\\u003C\\/div\\u003E\\n\\t\\t\\t\\u003Cdiv class=\\u0022payment-schedule__content pl-20 pr-20 pl-lg-0 pr-lg-30\\u0022\\u003E\\n\\t\\t\\t\\t\\u003Cdiv class=\\u0022payment-schedule__row payment-schedule__five\\u0022\\u003E\\n\\t\\t\\t\\t\\t\\t\\t\\t\\u003C\\/div\\u003E\\n\\t\\t\\u003C\\/div\\u003E\\n\\t\\u003C\\/div\\u003E\\n\\t\\u003Cdiv class=\\u0022payment-schedule__wrapper mb-0\\u0022\\u003E\\n\\t\\t\\u003Ctable class=\\u0022table table-responsive text-center\\u0022\\u003E\\n\\t\\t\\t\\u003Cthead\\u003E\\n\\t\\t\\t\\t\\u003Ctr\\u003E\\n\\t\\t\\t\\t\\t\\u003Cth\\u003E\\n\\t\\t\\t\\t\\t\\tTaksit Say\\u0131s\\u0131\\t\\t\\t\\t\\t\\u003C\\/th\\u003E\\n\\t\\t\\t\\t\\t\\u003Cth\\u003E\\n\\t\\t\\t\\t\\t\\tTaksit Tutar\\u0131\\t\\t\\t\\t\\t\\u003C\\/th\\u003E\\n\\t\\t\\t\\t\\t\\u003Cth\\u003E\\n\\t\\t\\t\\t\\t\\tAna Para\\t\\t\\t\\t\\t\\u003C\\/th\\u003E\\n\\t\\t\\t\\t\\t\\u003Cth\\u003E\\n\\t\\t\\t\\t\\t\\tK\\u00e2r Tutar\\u0131\\t\\t\\t\\t\\t\\u003C\\/th\\u003E\\n\\t\\t\\t\\t\\t\\u003Cth\\u003E\\n\\t\\t\\t\\t\\t\\tKDV Tutar\\u0131\\t\\t\\t\\t\\t\\u003C\\/th\\u003E\\n\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\u003Cth\\u003E\\n\\t\\t\\t\\t\\t\\tKalan Ana Para Tutar\\u0131\\t\\t\\t\\t\\t\\u003C\\/th\\u003E\\n\\t\\t\\t\\t\\u003C\\/tr\\u003E\\n\\t\\t\\t\\u003C\\/thead\\u003E\\n\\t\\t\\t\\u003Ctbody\\u003E\\n\\t\\t\\t\\t\\t\\t\\t\\u003C\\/tbody\\u003E\\n\\t\\t\\u003C\\/table\\u003E\\n\\t\\u003C\\/div\\u003E\\n\\u003C\\/div\\u003E\\u003C\\/div\\u003E\\n\",\"settings\":null},{\"command\":\"insert\",\"method\":\"html\",\"selector\":\".finansman-taksit-tutar\",\"data\":\"0,00\",\"settings\":null},{\"command\":\"insert\",\"method\":\"html\",\"selector\":\".finansman-toplam-tutar\",\"data\":\"0,00\",\"settings\":null}]"
+    }
+  ],
+  "third_party": [
+    {
+      "page": "https://www.ziraatkatilim.com.tr",
+      "method": "GET",
+      "endpoint": "https://api.swiftype.com/api/v1/public/engines/suggest.json?callback=jQuery37102700266512554107_1786203481868&q=100000&engine_key=QhwQxcEgCQVH7JUcAVFo&fetch_fields%5Bpage%5D%5B%5D=url&fetch_fields%5Bpage%5D%5B%5D=title&per_page=10000&highlight_fields%5Bpage%5D%5Btitle%5D%5Bsize%5D=100&highlight_fields%5Bpage%5D%5Btitle%5D%5Bfallback%5D=true&_=1786203481869"
+    }
+  ]
+}

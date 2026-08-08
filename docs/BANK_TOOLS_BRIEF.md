@@ -233,33 +233,77 @@ it and the health checker has to know which banks are cheap to poll.
 Expect more of this. The handoff notes Dünya times out under `httpx` while
 loading fine in a browser, which is likely the same thing.
 
-## Two banks are mapped, not one
+## All ten banks are mapped
 
-Albaraka is verified too — `docs/discovery/captured/albaraka.md` and
-`verify_albaraka.py`, 35/35 passing. Build against **both**, because they
-disagree in exactly the ways the interface has to absorb:
+Eight have working public endpoints; two have nothing to call. Every contract is
+in `docs/discovery/captured/` with a `verify_<bank>.py` beside it —
+**265 checks, all passing**. Start from `captured/README.md`.
 
-| | Kuveyt Türk | Albaraka |
-|---|---|---|
-| transport | `httpx` | `curl_cffi` (WAF) |
-| catalogue | an endpoint, 5 `p1` values | **embedded in page HTML** as `<option value='…'>` JSON |
-| product identity | `ProductCode` | `(ProductCode, ProjectCode, CampaingCode)` — six products share one `ProductCode` |
-| numbers | JSON floats (`6684.28`) | **formatted Turkish strings** (`"6.684,28 TL"`, `"% 64,46"`) |
-| currency conversion | rates only, we multiply | **server-side**, returns the converted number |
-| profit-share term | days or months via a flag | `Period=MONTH\|DAY` |
+| bank | endpoints | verified | transport | catalogue lives in |
+|---|---|---|---|---|
+| Kuveyt Türk | 7 | 53/53 | httpx | an endpoint (5 `p1` values) |
+| Albaraka | 4 | 35/35 | curl_cffi (WAF) | page HTML, echoed back verbatim |
+| Vakıf | 9 | 35/35 | httpx + CSRF | page `<option>` values |
+| Emlak | 3 | 31/31 | curl_cffi (WAF) | page `<option>` values |
+| Dünya | 6 | 42/42 | httpx + CSRF | page HTML, JSON blobs |
+| Ziraat | 3 | 36/36 | httpx (finansman only) | an endpoint, per product |
+| Türkiye Finans | 3 | 23/23 | httpx | a table service |
+| Hayat Finans | 3 | 10/10 | httpx | none — one product |
+| T.O.M. | 1 | — | **401, credentials required** | — |
+| Adil | **none** | — | — | — |
 
-Two consequences for `models.py`: parsing Turkish-formatted money belongs in one
-shared helper, not in each provider; and `Product.code` cannot be assumed
-unique, so key products by a bank-supplied opaque id and keep the raw catalogue
-entry on the object — Albaraka needs the entire blob echoed back as a request
-parameter.
+`capabilities` has to carry real weight: Adil has no calculator at all, T.O.M.'s
+API needs a credential we do not have, Ziraat's kâr payı and leasing are
+browser-only, and Türkiye Finans publishes no instalment figure (below). The
+agent must be able to say "this bank does not publish that."
 
-Both banks return **`200` with all-zero values** where another API would return
-an error, and in both cases some of those zeros are genuine "we do not offer
-this" (Kuveyt Türk's Yuvam, Albaraka's Kur Korumalı and gold). Both verify
-scripts already separate real failures from known bank-side gaps; carry that
-distinction into the provider so the agent can say "this bank does not publish
-that" instead of showing a zero.
+### What the interface has to absorb
+
+- **Transport**: `httpx`, `httpx` + a per-page CSRF token, or `curl_cffi`. Three
+  modes, declared per provider. When impersonating, **do not override the
+  `user-agent`** — it must match the TLS fingerprint or the WAF rejects the call
+  and you get a confusing JSON decode error.
+- **Numbers**: JSON floats (Kuveyt Türk, Emlak, Dünya, Hayat) or Turkish
+  formatted strings (Albaraka, Vakıf, Ziraat) — `"6.684,28 TL"`, `"%31,80"`.
+  One shared parser, not one per provider. `checks.amount()` already does it.
+- **Product identity is never just a code.** Albaraka needs
+  `(ProductCode, ProjectCode, CampaingCode)`; Türkiye Finans needs `CreditID`
+  because `Code` repeats with different fees; Ziraat needs the opaque `eid`
+  because the same product name appears at several term bands with **different
+  amount ceilings**. Key on a bank-supplied opaque id and keep the raw catalogue
+  entry on the `Product` — Albaraka and Dünya must have it echoed back as a
+  request parameter.
+- **Terms are days on most banks, months on some, and both on Kuveyt Türk**
+  behind a flag. Ziraat wants the rate from its own catalogue call passed back
+  into the calculation.
+- **Currency conversion**: Albaraka, Vakıf and Dünya convert server-side and
+  return the number. Kuveyt Türk and Hayat return rates only, so converting
+  means multiplying — the gold exception the owner already approved.
+
+### "No data" has four shapes, none of them an HTTP error
+
+A health check that only reads the status code will call all four healthy:
+
+1. `200` with all-zero fields — Kuveyt Türk, Albaraka, Emlak, Hayat
+2. `200` with an empty body — Vakıf, gold beyond one year
+3. `200` with an `errorMessage` inside the JSON — Vakıf, Dünya
+4. `404` with an empty body — Kuveyt Türk's date service and card endpoint
+
+Only Dünya returns a useful message. **Zero is never a price** — Hayat returns
+zeros below a 50 000 TL minimum, and quoting "0 TL profit" instead of "this
+account needs 50 000 TL" is the exact failure to avoid.
+
+Every gap in those files was confirmed against the bank's own page before being
+recorded as theirs rather than ours. Keep that distinction in the provider.
+
+### One open scope question — Türkiye Finans
+
+Türkiye Finans publishes **tables, not answers**: its calculator fetches a
+rate-and-fee table and does the instalment arithmetic in the browser. Pressing
+Hesapla fires no request, so there is no figure to read back. It can answer
+"what is the rate" but not "what is my payment" unless we run the annuity
+ourselves — which the rules forbid. Nothing computes it today. Treat Türkiye
+Finans as rates-only until the owner decides otherwise.
 
 ## Configuration
 

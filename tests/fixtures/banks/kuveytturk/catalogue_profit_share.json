@@ -1,0 +1,619 @@
+[
+  {
+    "Title": "Katılma Hesabı",
+    "Note": "<p>*Aylık katılma hesabı ortalama 31 gün vade baz alınarak hesaplanmıştır.</p>\n\n<p>*Vadesi bugün dolan katılma hesaplarına dağıtılan kâr payı oranı ile hesaplanmıştır.</p>\n\n<p>*Güncel kâr paylaşım oranları için<a href=\"https://www.kuveytturk.com.tr/medium/katilma-hesabi-kar-paylasim-oranlari-4000.pdf\" target=\"_blank\"> <u><strong>tıklayınız.&nbsp;</strong></u></a></p>\n",
+    "FooterNote": "",
+    "Parameters": [
+      {
+        "Key": "ProductGroup",
+        "Value": "2"
+      },
+      {
+        "Key": "FEC",
+        "Value": "0",
+        "Description": "TL"
+      },
+      {
+        "Key": "FEC",
+        "Value": "1",
+        "Description": "USD"
+      },
+      {
+        "Key": "FEC",
+        "Value": "19",
+        "Description": "EUR"
+      },
+      {
+        "Key": "MaturityTerm",
+        "Value": "1",
+        "Description": "31"
+      },
+      {
+        "Key": "MaturityTerm",
+        "Value": "3",
+        "Description": "91"
+      },
+      {
+        "Key": "MaturityTerm",
+        "Value": "6",
+        "Description": "180"
+      },
+      {
+        "Key": "MaturityTerm",
+        "Value": "12",
+        "Description": "364"
+      },
+      {
+        "Key": "MaturityTerm",
+        "Value": "12+",
+        "Description": "366"
+      },
+      {
+        "Key": "MaturityTermMinDay",
+        "Value": "2"
+      },
+      {
+        "Key": "MaturityTermMaksDay",
+        "Value": "999"
+      },
+      {
+        "Key": "MaturityType",
+        "Value": "Month/Day"
+      },
+      {
+        "Key": "MaturityDayMinAmountTl",
+        "Value": "1000"
+      },
+      {
+        "Key": "MaturityDayMinAmountUsd",
+        "Value": "1000"
+      },
+      {
+        "Key": "MaturityDayMinAmountEuro",
+        "Value": "1000"
+      },
+      {
+        "Key": "MaturityDayMaksAmountTl",
+        "Value": "5000000"
+      },
+      {
+        "Key": "MaturityDayMaksAmountUsd",
+        "Value": "3000000"
+      },
+      {
+        "Key": "MaturityDayMaksAmountEuro",
+        "Value": "3000000"
+      },
+      {
+        "Key": "MaturityMonthMinAmountTl",
+        "Value": "250"
+      },
+      {
+        "Key": "MaturityMonthMinAmountEuro",
+        "Value": "250"
+      },
+      {
+        "Key": "MaturityMonthMinAmountUsd",
+        "Value": "250"
+      },
+      {
+        "Key": "MaturityMonthMaksAmountTl",
+        "Value": "5000000"
+      },
+      {
+        "Key": "MaturityMonthMaksAmountUsd",
+        "Value": "3000000"
+      },
+      {
+        "Key": "MaturityMonthMaksAmountEuro",
+        "Value": "3000000"
+      },
+      {
+        "Key": "DefaultDayValue",
+        "Value": "31"
+      },
+      {
+        "Key": "DefaultAmountValueDay",
+        "Value": "1000"
+      },
+      {
+        "Key": "DefaultAmountValueMonth",
+        "Value": "1250"
+      }
+    ],
+    "ContentBaseId": "26275"
+  },
+  {
+    "Title": "Dijital Katılma Hesabı",
+    "Note": "<p>*Aylık katılma hesabı ortalama 31 gün vade baz alınarak hesaplanmıştır.</p>\n\n<p>*Vadesi bugün dolan katılma hesaplarına dağıtılan kâr payı oranı ile hesaplanmıştır.&nbsp;</p>\n\n<p>*Güncel kâr paylaşım oranları için <u><strong><a href=\"/medium/kar-paylasim-oranlari16022026-3727.pdf\" target=\"_blank\">tıklayınız.</a></strong></u></p>\n",
+    "FooterNote": "<p>Vadesi bugün dolan katılma hesaplarına dağıtılan kâr payı oranı ile hesaplanmıştır.&nbsp; Güncel kâr paylaşım oranları için <a href=\"/medium/kar-paylasim-oranlari-7-ocak-2025-2579.pdf\">tıklayınız</a>.</p>\n",
+    "Parameters": [
+      {
+        "Key": "ProductGroup",
+        "Value": "2"
+      },
+      {
+        "Key": "ProductCode",
+        "Value": "KTDIJITALHESAP"
+      },
+      {
+        "Key": "FEC",
+        "Value": "0",
+        "Description": "TL"
+      },
+      {
+        "Key": "FEC",
+        "Value": "1",
+        "Description": "USD"
+      },
+      {
+        "Key": "FEC",
+        "Value": "19",
+        "Description": "EUR"
+      },
+      {
+        "Key": "MaturityTerm",
+        "Value": "1",
+        "Description": "31"
+      },
+      {
+        "Key": "MaturityTerm",
+        "Value": "3",
+        "Description": "91"
+      },
+      {
+        "Key": "MaturityTerm",
+        "Value": "6",
+        "Description": "180"
+      },
+      {
+        "Key": "MaturityTerm",
+        "Value": "12",
+        "Description": "364"
+      },
+      {
+        "Key": "MaturityTerm",
+        "Value": "12+",
+        "Description": "366"
+      },
+      {
+        "Key": "MaturityTermMinDay",
+        "Value": "31"
+      },
+      {
+        "Key": "MaturityTermMaksDay",
+        "Value": "999"
+      },
+      {
+        "Key": "MaturityDayMinAmountTl",
+        "Value": "250"
+      },
+      {
+        "Key": "MaturityDayMinAmountUsd",
+        "Value": "250"
+      },
+      {
+        "Key": "MaturityDayMinAmountEuro",
+        "Value": "250"
+      },
+      {
+        "Key": "MaturityDayMaksAmountUsd",
+        "Value": "3000000"
+      },
+      {
+        "Key": "MaturityDayMaksAmountTl",
+        "Value": "5000000"
+      },
+      {
+        "Key": "MaturityDayMaksAmountEuro",
+        "Value": "3000000"
+      },
+      {
+        "Key": "MaturityMonthMinAmountTl",
+        "Value": "250"
+      },
+      {
+        "Key": "MaturityMonthMinAmountUsd",
+        "Value": "250"
+      },
+      {
+        "Key": "MaturityMonthMinAmountEuro",
+        "Value": "250"
+      },
+      {
+        "Key": "MaturityMonthMaksAmountTl",
+        "Value": "5000000"
+      },
+      {
+        "Key": "MaturityMonthMaksAmountUsd",
+        "Value": "3000000"
+      },
+      {
+        "Key": "MaturityMonthMaksAmountEuro",
+        "Value": "3000000"
+      },
+      {
+        "Key": "DefaultDayValue",
+        "Value": "31"
+      },
+      {
+        "Key": "DefaultAmountValue",
+        "Value": "250"
+      }
+    ],
+    "ContentBaseId": "26291"
+  },
+  {
+    "Title": "Hoş Geldin Katılma Hesabı",
+    "Note": "<p>*Aylık katılma hesabı ortalama 31 gün vade baz alınarak hesaplanmıştır.</p>\n\n<p>*Vadesi bugün dolan katılma hesaplarına dağıtılan kâr payı oranı ile hesaplanmıştır.&nbsp;</p>\n\n<p>*Güncel kâr paylaşım oranları için <a href=\"/medium/kar-paylasim-oranlari16022026-3727.pdf\" target=\"_blank\">tıklayınız</a>.</p>\n",
+    "Parameters": [
+      {
+        "Key": "ProductGroup",
+        "Value": "2"
+      },
+      {
+        "Key": "ProductCode",
+        "Value": "HOSGELDIN"
+      },
+      {
+        "Key": "FEC",
+        "Value": "0",
+        "Description": "TL"
+      },
+      {
+        "Key": "MaturityTerm",
+        "Value": "1",
+        "Description": "31"
+      },
+      {
+        "Key": "MaturityTerm",
+        "Value": "3",
+        "Description": "91"
+      },
+      {
+        "Key": "MaturityTermMinDay",
+        "Value": "2"
+      },
+      {
+        "Key": "MaturityTermMaksDay",
+        "Value": "91"
+      },
+      {
+        "Key": "DefaultDayValue",
+        "Value": "31"
+      },
+      {
+        "Key": "MaturityDayMinAmountTl",
+        "Value": "10000"
+      },
+      {
+        "Key": "MaturityDayMaksAmountTl",
+        "Value": "5000000"
+      },
+      {
+        "Key": "DefaultAmountValueMonth",
+        "Value": "100000"
+      },
+      {
+        "Key": "DefaultAmountValueDay",
+        "Value": "100000"
+      },
+      {
+        "Key": "MaturityMonthMinAmountTl",
+        "Value": "10000"
+      },
+      {
+        "Key": "MaturityMonthMaksAmountTl",
+        "Value": "5000000"
+      }
+    ],
+    "ContentBaseId": "41078"
+  },
+  {
+    "Title": "Altına Altın Katılma Hesabı",
+    "Note": "<p>*Aylık katılma hesabı ortalama 31 gün vade baz alınarak hesaplanmıştır.</p>\n\n<p>*Vadesi bugün dolan katılma hesaplarına dağıtılan kâr payı oranı ile hesaplanmıştır.</p>\n\n<p>*Güncel kâr paylaşım oranları için<a href=\"/medium/kar-paylasim-oranlari16022026-3727.pdf\" target=\"_blank\"> <u><strong>tıklayınız.&nbsp;</strong></u></a></p>\n",
+    "FooterNote": "<p>Vadesi bugün dolan katılma hesaplarına dağıtılan kâr payı oranı ile hesaplanmıştır. Güncel kâr paylaşım oranları için <u><strong><a href=\"/medium/kar-paylasim-oranlari-3120.pdf\">tıklayınız</a>.&nbsp;</strong></u></p>\n",
+    "Parameters": [
+      {
+        "Key": "ProductGroup",
+        "Value": "2"
+      },
+      {
+        "Key": "FEC",
+        "Value": "24",
+        "Description": "Altın"
+      },
+      {
+        "Key": "MaturityTerm",
+        "Value": "1",
+        "Description": "31"
+      },
+      {
+        "Key": "MaturityTerm",
+        "Value": "3",
+        "Description": "90"
+      },
+      {
+        "Key": "MaturityTerm",
+        "Value": "6",
+        "Description": "180"
+      },
+      {
+        "Key": "MaturityTerm",
+        "Value": "12",
+        "Description": "364"
+      },
+      {
+        "Key": "MaturityTermMinDay",
+        "Value": "92"
+      },
+      {
+        "Key": "MaturityTermMaksDay",
+        "Value": "363"
+      },
+      {
+        "Key": "MaturityDayMinAmountGr",
+        "Value": "50"
+      },
+      {
+        "Key": "MaturityDayMaksAmountGr",
+        "Value": "3000"
+      },
+      {
+        "Key": "MaturityMonthMinAmountGr",
+        "Value": "50"
+      },
+      {
+        "Key": "MaturityMonthMaksAmountGr",
+        "Value": "3000"
+      },
+      {
+        "Key": "MaturityMonthMinAmountGr2",
+        "Value": "100",
+        "Description": "3"
+      },
+      {
+        "Key": "DefaultAmountValueMonth",
+        "Value": "100"
+      },
+      {
+        "Key": "MaturityType",
+        "Value": "Month/Day"
+      },
+      {
+        "Key": "DefaultDayValue",
+        "Value": "92"
+      },
+      {
+        "Key": "DefaultAmountValueDay",
+        "Value": "100"
+      }
+    ],
+    "ContentBaseId": "29205"
+  },
+  {
+    "Title": "Ara Dönem Kar Payı Ödemeli Katılma Hesabı",
+    "Note": "<p>*Aylık katılma hesabı ortalama 31 gün vade baz alınarak hesaplanmıştır.&nbsp;</p>\n\n<p>*Vadesi bugün dolan katılma hesaplarına dağıtılan kâr payı oranı ile hesaplanmıştır.</p>\n\n<p>*Güncel kâr paylaşım oranları için <u><strong><a href=\"/medium/kar-paylasim-oranlari16022026-3727.pdf\" target=\"_blank\">tıklayınız.</a></strong></u></p>\n",
+    "FooterNote": "<p>*Vadesi bugün dolan katılma hesaplarına dağıtılan kâr payı oranı ile hesaplanmıştır. Güncel kâr paylaşım oranları için <a href=\"/medium/kar-paylasim-oranlari-3120.pdf\">tıklayınız</a>.</p>\n",
+    "Parameters": [
+      {
+        "Key": "ProductGroup",
+        "Value": "3"
+      },
+      {
+        "Key": "FEC",
+        "Value": "0",
+        "Description": "TL"
+      },
+      {
+        "Key": "FEC",
+        "Value": "1",
+        "Description": "USD"
+      },
+      {
+        "Key": "FEC",
+        "Value": "19",
+        "Description": "EUR"
+      },
+      {
+        "Key": "MaturityTerm",
+        "Value": "1",
+        "Description": "30"
+      },
+      {
+        "Key": "MaturityTerm",
+        "Value": "3",
+        "Description": "90"
+      },
+      {
+        "Key": "MaturityTerm",
+        "Value": "6",
+        "Description": "180"
+      },
+      {
+        "Key": "MaturityTerm",
+        "Value": "12",
+        "Description": "360"
+      },
+      {
+        "Key": "MaturityType",
+        "Value": "Month"
+      },
+      {
+        "Key": "MaturityMonthMinAmountTl",
+        "Value": "20000"
+      },
+      {
+        "Key": "MaturityMonthMinAmountUsd",
+        "Value": "20000"
+      },
+      {
+        "Key": "MaturityMonthMinAmountEuro",
+        "Value": "20000"
+      },
+      {
+        "Key": "MaturityMonthMaksAmountTl",
+        "Value": "5000000"
+      },
+      {
+        "Key": "MaturityMonthMaksAmountUsd",
+        "Value": "3000000"
+      },
+      {
+        "Key": "MaturityMonthMaksAmountEuro",
+        "Value": "3000000"
+      },
+      {
+        "Key": "DefaultAmountValueDay",
+        "Value": "20000"
+      },
+      {
+        "Key": "DefaultAmountValueMonth",
+        "Value": "20000"
+      }
+    ],
+    "ContentBaseId": "26289"
+  },
+  {
+    "Title": "Sepet Hesap",
+    "Note": "<p>*Aylık katılma hesabı ortalama 31 gün vade baz alınarak hesaplanmıştır.</p>\n\n<p>*Vadesi bugün dolan katılma hesaplarına dağıtılan kâr payı oranı ile hesaplanmıştır.</p>\n\n<p>*Güncel kâr paylaşım oranları için <u><strong><a href=\"/medium/kar-paylasim-orani-3910.pdf\" target=\"_blank\">tıklayınız.</a></strong></u></p>\n\n<p>*Yatırılan tutarın %75’i katılma hesabında, %25’i yatırım fonunda değerlendirilecektir.</p>\n",
+    "FooterNote": "<p>Vadesi bugün dolan katılma hesaplarına dağıtılan kâr payı oranı ile hesaplanmıştır.&nbsp; Güncel kâr paylaşım oranları için <a href=\"/medium/kar-paylasim-oranlari-3120.pdf\">tıklayınız.</a> Yatırılan tutarın %85’i katılma hesabında, %15’i yatırım fonunda değerlendirilecektir.</p>\n",
+    "Parameters": [
+      {
+        "Key": "ProductGroup",
+        "Value": "2"
+      },
+      {
+        "Key": "ProductCode",
+        "Value": "SEPET"
+      },
+      {
+        "Key": "FEC",
+        "Value": "0",
+        "Description": "TL"
+      },
+      {
+        "Key": "DefaultDayValue",
+        "Value": "32"
+      },
+      {
+        "Key": "MaturityTermMinDay",
+        "Value": "2"
+      },
+      {
+        "Key": "MaturityTermMaksDay",
+        "Value": "180"
+      },
+      {
+        "Key": "MaturityDayMinAmountTl",
+        "Value": "10000"
+      },
+      {
+        "Key": "MaturityDayMaksAmountTl",
+        "Value": "5000000"
+      },
+      {
+        "Key": "MaturityType",
+        "Value": "Day"
+      },
+      {
+        "Key": "DefaultAmountValueDay",
+        "Value": "10000"
+      }
+    ],
+    "ContentBaseId": "26293"
+  },
+  {
+    "Title": "Yuvam TL Katılma Hesabı",
+    "Note": "<p>*Aylık katılma hesabı ortalama 31 gün vade baz alınarak hesaplanmıştır.&nbsp;</p>\n\n<p>*Vadesi bugün dolan katılma hesaplarına dağıtılan kar payı oranı ile hesaplanmıştır. Güncel kar paylaşım oranları için <a href=\"/medium/kar-paylasim-oranlari16022026-3727.pdf\" target=\"_blank\"><u><strong>tıklayınız.</strong></u></a></p>\n\n<p>*Yuvam TL Katılma Hesabı'nda kurdaki artış oranı kar paylaşım oranından düşükse, kur farkı ödemesi yapılmayacaktır.</p>\n\n<p>*TCMB saat başı belirlenen kurlar için <u><strong><a href=\"https://www.tcmb.gov.tr/wps/wcm/connect/TR/TCMB+TR/Main+Menu/Istatistikler/Doviz+Kurlari/Saat+Basi+Belirlenen+Doviz+Kurlari+ve+Altin+Fiyatlari/\" target=\"_blank\">tıklayınız.</a></strong></u></p>\n",
+    "FooterNote": "<p>Vadesi bugün dolan katılma hesaplarına dağıtılan kâr payı oranı ile hesaplanmıştır. Güncel kâr paylaşım oranları için <a href=\"/medium/kar-paylasim-oranlari-3120.pdf\">tıklayınız</a>. TCMB saat başı belirlenen döviz kurları için <a href=\"http://www.tcmb.gov.tr/wps/wcm/connect/TR/TCMB+TR/Main+Menu/Istatistikler/Doviz+Kurlari/Saat+Basi+Belirlenen+Doviz+Kurlari+ve+Altin+Fiyatlari/\">tıklayınız</a>.</p>\n",
+    "Parameters": [
+      {
+        "Key": "ProductGroup",
+        "Value": "2"
+      },
+      {
+        "Key": "ProductCode",
+        "Value": "YUVAMKATILMA"
+      },
+      {
+        "Key": "FEC",
+        "Value": "1",
+        "Description": "USD"
+      },
+      {
+        "Key": "FEC",
+        "Value": "19",
+        "Description": "EUR"
+      },
+      {
+        "Key": "FEC",
+        "Value": "15",
+        "Description": "Sterlin"
+      },
+      {
+        "Key": "IndexFec",
+        "Value": "1",
+        "Description": "USD"
+      },
+      {
+        "Key": "IndexFec",
+        "Value": "19",
+        "Description": "EUR"
+      },
+      {
+        "Key": "IndexFec",
+        "Value": "15",
+        "Description": "Sterlin"
+      },
+      {
+        "Key": "MaturityTerm",
+        "Value": "3",
+        "Description": "91"
+      },
+      {
+        "Key": "MaturityTerm",
+        "Value": "6",
+        "Description": "180"
+      },
+      {
+        "Key": "MaturityTerm",
+        "Value": "12",
+        "Description": "364"
+      },
+      {
+        "Key": "MaturityMonthMinAmountUsd",
+        "Value": "500"
+      },
+      {
+        "Key": "MaturityMonthMinAmountEuro",
+        "Value": "500"
+      },
+      {
+        "Key": "MaturityMonthMinAmountSterlin",
+        "Value": "500"
+      },
+      {
+        "Key": "MaturityMonthMaksAmountUsd",
+        "Value": "3000000"
+      },
+      {
+        "Key": "MaturityMonthMaksAmountEuro",
+        "Value": "3000000"
+      },
+      {
+        "Key": "MaturityMonthMaksAmountSterlin",
+        "Value": "3000000"
+      },
+      {
+        "Key": "MaturityType",
+        "Value": "Month"
+      },
+      {
+        "Key": "DefaultAmountValueMonth",
+        "Value": "25000"
+      }
+    ],
+    "ContentBaseId": "26299"
+  }
+]

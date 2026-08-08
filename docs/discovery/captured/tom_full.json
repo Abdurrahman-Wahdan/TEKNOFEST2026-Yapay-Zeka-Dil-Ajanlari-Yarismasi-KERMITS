@@ -1,0 +1,26 @@
+{
+  "bank": "tom",
+  "brand": "tombank",
+  "pages": [
+    {
+      "page": "https://tombank.com.tr/taksitle.html",
+      "inventory": {
+        "inputs": [],
+        "selects": [],
+        "buttons": []
+      },
+      "clicked": []
+    },
+    {
+      "page": "https://www.tombank.com.tr/altin-biriktiren-hesap.html",
+      "inventory": {
+        "inputs": [],
+        "selects": [],
+        "buttons": []
+      },
+      "clicked": []
+    }
+  ],
+  "endpoints": [],
+  "third_party": []
+}
