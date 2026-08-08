@@ -13,7 +13,6 @@ import collections
 import logging
 from decimal import Decimal
 
-from ..http import request_json
 from ..models import (
     CardInstallmentQuote,
     Conversion,
@@ -23,7 +22,9 @@ from ..models import (
     Product,
     Rate,
 )
-from .base import BaseBank, UnsupportedProduct, fold
+from ..parse import fold
+from ..parse import term_unit as unit
+from .base import RATE_ALIASES, BaseBank, UnsupportedProduct
 
 logger = logging.getLogger(__name__)
 
@@ -71,17 +72,6 @@ NO_PUBLISHED_RATE = {
     "YUVAMKATILMA": "the bank returns zeros for Yuvam on its own page too",
 }
 
-# The rates feed names metals its own way.
-RATE_ALIASES = {
-    "TRY": "TL",
-    "XAU": "ALT (gr)",
-    "GOLD": "ALT (gr)",
-    "ALTIN": "ALT (gr)",
-    "XAG": "GMS (gr)",
-    "SILVER": "GMS (gr)",
-    "GUMUS": "GMS (gr)",
-}
-
 
 def _params(entry: dict) -> dict[str, list[str]]:
     """Catalogue Parameters is a flat key/value list with repeated keys."""
@@ -98,7 +88,11 @@ def _first(values: list[str], cast=int):
 class KuveytTurk(BaseBank):
     name = "kuveytturk"
     display_name = "Kuveyt Türk Katılım Bankası"
-    capabilities = frozenset({"finance", "profit_share", "card", "rates", "convert"})
+    capabilities = frozenset(
+        {"products", "finance", "profit_share", "card", "rates", "convert"}
+    )
+    # This feed calls gold "ALT (gr)" and the lira "TL".
+    rate_aliases = RATE_ALIASES
 
     # ----- catalogue -----
 
@@ -108,18 +102,18 @@ class KuveytTurk(BaseBank):
                 f"{self.display_name} has no {category!r} catalogue. "
                 f"Available: {', '.join(sorted(CALCULATORS))}."
             )
-        cached = self._catalogue.get(category)
+        cached = self._cached(category)
         if cached is not None:
             return cached
 
         calculator, page = CALCULATORS[category]
-        entries = request_json(
+        entries = self._json(
             "GET",
             f"{BASE}{CATALOGUE}&p1={calculator}",
             headers={**HEADERS, "referer": PAGE + page},
         )
         built = [self._to_product(e, category) for e in entries]
-        self._catalogue[category] = built
+        self._store(category, built)
         logger.debug("Loaded %d %s product(s) from %s", len(built), category, self.name)
         return built
 
@@ -140,7 +134,11 @@ class KuveytTurk(BaseBank):
                 # full set stays in raw and the endpoint has the final word,
                 # answering 400 with a usable sentence when a term is refused.
                 min_term=_first(p["MaturityTermMin"]),
-                max_term=_first(p["MaturityTermMax"]),
+                # The entry's own MaturityTerm, not MaturityTermMax. Two
+                # entries share ELKTRARACSARJUNITE and both declare Max 36,
+                # but Elektrikli Araç Şarj Ünitesi really stops at 1 and the
+                # endpoint 400s above it — MaturityTerm is what it stops at.
+                max_term=_first(p["MaturityTerm"]) or _first(p["MaturityTermMax"]),
                 raw=entry,
             )
 
@@ -148,7 +146,19 @@ class KuveytTurk(BaseBank):
             currencies = tuple(
                 CURRENCY_BY_FEC[f] for f in p["FEC"] if f in CURRENCY_BY_FEC
             )
-            suffix = FEC_SUFFIX.get(p["FEC"][0], "Tl") if p["FEC"] else "Tl"
+            # Every currency has its own floor and ceiling, so a single pair
+            # would show the lira figures against a USD or gold request. They
+            # go in raw per currency and profit_share_quote checks the one that
+            # applies; the flat fields stay None unless there is only one.
+            limits = {
+                CURRENCY_BY_FEC[f]: (
+                    _first(p[f"MaturityDayMinAmount{FEC_SUFFIX.get(f, 'Tl')}"], float),
+                    _first(p[f"MaturityDayMaksAmount{FEC_SUFFIX.get(f, 'Tl')}"], float),
+                )
+                for f in p["FEC"]
+                if f in CURRENCY_BY_FEC
+            }
+            only = limits[currencies[0]] if len(currencies) == 1 else (None, None)
             return Product(
                 # Three of the seven accounts carry no ProductCode of their own
                 # and are selected by group alone. The request still sends the
@@ -156,12 +166,12 @@ class KuveytTurk(BaseBank):
                 code=code or _slug(title),
                 name=title,
                 category=category,
-                min_amount=_first(p[f"MaturityDayMinAmount{suffix}"], float),
-                max_amount=_first(p[f"MaturityDayMaksAmount{suffix}"], float),
+                min_amount=only[0],
+                max_amount=only[1],
                 min_term=_first(p["MaturityTermMinDay"]),
                 max_term=_first(p["MaturityTermMaksDay"]),
                 currencies=currencies or ("TRY",),
-                raw=entry,
+                raw={**entry, "_limits": limits},
             )
 
         return Product(
@@ -181,6 +191,7 @@ class KuveytTurk(BaseBank):
 
     def finance_quote(self, product: str, amount: float, term: int) -> FinanceQuote:
         chosen = self.find_product("finance", product)
+        self._check_limits(chosen, amount=amount, term=term)
         body = {
             "i": False,
             "p1": "1",
@@ -195,7 +206,7 @@ class KuveytTurk(BaseBank):
             # named here, so the title must be the one this product came from.
             "p8": chosen.name,
         }
-        payload = request_json(
+        payload = self._json(
             "POST",
             BASE + FINANSMAN,
             headers={**HEADERS, "referer": PAGE + "finansman-hesaplama"},
@@ -212,7 +223,7 @@ class KuveytTurk(BaseBank):
                 f"{chosen.name} at {amount:,.0f} TL over {term} months."
             )
 
-        return FinanceQuote(
+        return self._check_quote(FinanceQuote(
             bank=self.name,
             product=chosen,
             amount=float(meta.get("LoanAmount") or amount),
@@ -240,7 +251,7 @@ class KuveytTurk(BaseBank):
                 for row in payload.get("Installments") or []
             ],
             raw=payload,
-        )
+        ))
 
     # ----- profit share -----
 
@@ -269,7 +280,12 @@ class KuveytTurk(BaseBank):
         group = (_params(chosen.raw)["ProductGroup"] or ["2"])[0]
 
         refusal = ""
-        for days in _day_attempts(term, term_unit):
+        low, high = chosen.raw.get("_limits", {}).get(currency, (None, None))
+        self._check_limits(
+            chosen.__class__(**{**chosen.__dict__, "min_amount": low, "max_amount": high}),
+            amount=amount,
+        )
+        for days in _day_attempts(term, unit(term_unit)):
             body = {
                 "i": False,
                 "p1": str(int(amount)),
@@ -282,7 +298,7 @@ class KuveytTurk(BaseBank):
                 "p10": True,
             }
             try:
-                payload = request_json(
+                payload = self._json(
                     "POST",
                     BASE + PROFIT_SHARE,
                     headers={**HEADERS, "referer": PAGE + "kar-payi-hesaplama"},
@@ -300,7 +316,7 @@ class KuveytTurk(BaseBank):
             # An unsupported combination answers 200 with every field zero
             # rather than an error, so a zero has to count as a failure.
             if net > 0 and ratio > 0:
-                return ProfitShareQuote(
+                return self._check_profit_share(ProfitShareQuote(
                     bank=self.name,
                     product=chosen,
                     amount=float(amount),
@@ -315,7 +331,7 @@ class KuveytTurk(BaseBank):
                     gross_annual_rate=_optional_float(payload.get("GrossProfitShareYearly")),
                     net_annual_rate=_optional_float(payload.get("NetProfitShareYearly")),
                     raw=payload,
-                )
+                ))
 
         raise UnsupportedProduct(
             f"{self.display_name} published no profit-share rate for "
@@ -328,7 +344,7 @@ class KuveytTurk(BaseBank):
     # ----- rates and conversion -----
 
     def rates(self) -> list[Rate]:
-        rows = request_json(
+        rows = self._json(
             "GET",
             BASE + RATES,
             headers={**HEADERS, "referer": PAGE + "doviz-cevirici"},
@@ -352,18 +368,34 @@ class KuveytTurk(BaseBank):
         Decimal, and the result is flagged as derived. This is the single agreed
         exception to never computing a number ourselves.
         """
+        source, target = source.upper(), target.upper()
+        if RATE_ALIASES.get(source, source) == RATE_ALIASES.get(target, target):
+            # Otherwise the buy/sell spread is applied to the currency against
+            # itself and 10 USD becomes 9,09 USD. Answered without a request:
+            # there is no rate to look up.
+            value = Decimal(str(amount))
+            return Conversion(
+                bank=self.name, source=source, target=target,
+                amount=value, result=value, rate=Decimal(1), derived=True,
+            )
         by_code = {r.code: r for r in self.rates()}
         src = _resolve_rate_code(source, by_code)
         dst = _resolve_rate_code(target, by_code)
 
+        if not by_code[dst].sell:
+            raise UnsupportedProduct(
+                f"{self.display_name} quotes no sell rate for {target}, so the "
+                f"conversion cannot be worked out from its published rates."
+            )
         value = Decimal(str(amount))
         # Selling the source to the bank uses its buy rate; buying the target
         # from the bank uses its sell rate. Both are 1.0 for TL.
         rate = Decimal(str(by_code[src].buy)) / Decimal(str(by_code[dst].sell))
         return Conversion(
             bank=self.name,
-            source=src,
-            target=dst,
+            # The codes the caller asked about, not this bank's names for them.
+            source=source.upper(),
+            target=target.upper(),
             amount=value,
             result=value * rate,
             rate=rate,
@@ -376,6 +408,8 @@ class KuveytTurk(BaseBank):
         self, card: str, amount: float, installments: int
     ) -> CardInstallmentQuote:
         chosen = self.find_product("card", card)
+        self._check_limits(chosen, amount=amount, term=installments,
+                           term_label="instalments")
         product_type = (_params(chosen.raw)["ProductType"] or ["0"])[0]
         body = {
             "p1": int(amount),
@@ -386,7 +420,7 @@ class KuveytTurk(BaseBank):
             "p6": chosen.name,
         }
         try:
-            payload = request_json(
+            payload = self._json(
                 "POST",
                 BASE + CARD,
                 headers={**HEADERS, "referer": PAGE + "kart-taksit-hesaplama"},
@@ -437,9 +471,16 @@ def _rate_unit(code: str) -> str:
 
 
 def _resolve_rate_code(code: str, by_code: dict[str, Rate]) -> str:
-    resolved = RATE_ALIASES.get(code.upper(), code)
+    """The feed's own name for a currency, however the caller spelled it."""
+    wanted = code.upper()
+    resolved = RATE_ALIASES.get(wanted, wanted)
     if resolved in by_code:
         return resolved
+    # The feed mixes cases of its own ("ALT (gr)", "ZCeyrek"), so match on the
+    # uppercased form rather than refusing "usd" with a list containing USD.
+    for known in by_code:
+        if known.upper() == resolved:
+            return known
     raise UnsupportedProduct(
         f"Kuveyt Türk does not quote {code!r}. "
         f"Quoted: {', '.join(sorted(by_code))}."

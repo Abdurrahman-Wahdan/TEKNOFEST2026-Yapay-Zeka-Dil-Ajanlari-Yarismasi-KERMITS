@@ -1,0 +1,184 @@
+{
+  "installments": [
+    {
+      "code": 1,
+      "text": "1 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 2,
+      "text": "2 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 3,
+      "text": "3 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 4,
+      "text": "4 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 5,
+      "text": "5 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 6,
+      "text": "6 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 7,
+      "text": "7 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 8,
+      "text": "8 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 9,
+      "text": "9 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 10,
+      "text": "10 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 11,
+      "text": "11 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 12,
+      "text": "12 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 13,
+      "text": "13 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 14,
+      "text": "14 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 15,
+      "text": "15 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 16,
+      "text": "16 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 17,
+      "text": "17 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 18,
+      "text": "18 Ay",
+      "isSelected": true
+    },
+    {
+      "code": 19,
+      "text": "19 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 20,
+      "text": "20 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 21,
+      "text": "21 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 22,
+      "text": "22 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 23,
+      "text": "23 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 24,
+      "text": "24 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 25,
+      "text": "25 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 26,
+      "text": "26 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 27,
+      "text": "27 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 28,
+      "text": "28 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 29,
+      "text": "29 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 30,
+      "text": "30 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 31,
+      "text": "31 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 32,
+      "text": "32 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 33,
+      "text": "33 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 34,
+      "text": "34 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 35,
+      "text": "35 Ay",
+      "isSelected": false
+    },
+    {
+      "code": 36,
+      "text": "36 Ay",
+      "isSelected": false
+    }
+  ]
+}

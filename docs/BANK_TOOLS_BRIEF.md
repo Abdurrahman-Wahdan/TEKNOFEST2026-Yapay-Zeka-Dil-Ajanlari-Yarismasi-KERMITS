@@ -198,43 +198,66 @@ All of these are verified, and all of them broke something first.
   `products()` should call it; do not hardcode 19 product codes. Cache it in
   memory for the process, since it changes about as often as the product range.
 - Its metadata is **not** fully trustworthy: Sağlam Kart Troy declares 12
-  instalments and 404s above 9; Ara Dönem declares month terms and only answers
-  in days. Validate against limits, but let the endpoint have the final word.
-- Profit share takes days or months in the same field with `p10` choosing which.
-  Day mode is the common case. Per-product terms are tabulated in the contract.
+  instalments and 404s above 9; several products declare month terms the
+  endpoint will not take as months. Validate against limits, but let the
+  endpoint have the final word.
+- **Profit share terms are always days.** `p3` is a day count and `p10` is
+  inert — both values return byte-identical responses. Send a month count and
+  you price that many *days*: `p3=12` pays 12 days of profit, about a thirtieth
+  of what the caller meant, with no error to warn you. Convert months at 30 days.
+  Valid counts have product-specific holes — plain Katılma answers at 31, 90,
+  180, 360, 364 and 366 but returns zeros at **30** and **365**, while Ara Dönem
+  answers at 30 and not 31. Per-product terms are tabulated in the contract.
 - Yuvam returns zeros for every input, on their site too. Mark it unavailable
   rather than retrying it.
 - The finance endpoint intermittently returns `200` with an empty `Meta`. One
   retry is enough; `http.py` should own that policy.
 
-## `http.py` must handle two transports, not one
+## `http.py` must handle three transports, not one
 
 This is the second-biggest design constraint after the tool shape, and it is not
-optional.
+optional. Across the eight working banks the transport splits three ways:
 
-Kuveyt Türk works with plain `httpx`. **Albaraka does not.** It runs an F5 WAF
-that answers `200` with an HTML "Request Rejected" page for any `/plugins/`
-call that does not come from a real browser — and it is not header-based.
-Full Chrome headers, `adrum: isAjax:true`, a warmed cookie jar and HTTP/2 are
-all still rejected, because it fingerprints the TLS handshake.
-`curl_cffi` impersonating Chrome passes unchanged and returns byte-identical
-numbers. It is already in `requirements.txt`.
+| transport | banks | what it needs |
+|---|---|---|
+| `httpx` | Kuveyt Türk, Ziraat, Türkiye Finans, Hayat | nothing |
+| `httpx` + CSRF | Vakıf, Dünya | fetch the page, scrape `__RequestVerificationToken`, send it in the POST body |
+| `curl_cffi` | Albaraka, Emlak | Chrome TLS impersonation |
 
-So `http.py` exposes one `get`/`post` and each provider declares which transport
-it needs:
+**Albaraka and Emlak run an F5 WAF** that answers `200` with an HTML
+"Request Rejected" page for any plugin call that does not come from a real
+browser — and it is not header-based. Full Chrome headers, `adrum: isAjax:true`,
+a warmed cookie jar and HTTP/2 are all still rejected, because it fingerprints
+the TLS handshake. `curl_cffi` impersonating Chrome passes unchanged and returns
+byte-identical numbers. It is already in `requirements.txt`.
+
+When impersonating, **do not override the `user-agent`**. `curl_cffi` sets one
+matching the fingerprint it presents, and a mismatched pair is rejected again —
+surfacing as a JSON decode error, not as an obvious block. That cost a full
+false-negative run on Emlak.
+
+For the CSRF pair, the token is **per page**: fetch the calculator page you are
+about to call, not the homepage. Vakıf puts the parameters in the query string
+and only the token in the body.
+
+So `http.py` exposes one `get`/`post` and each provider declares what it needs:
 
 ```python
 class BaseBank(ABC):
-    transport: str = "httpx"     # or "impersonate" for WAF-guarded hosts
+    transport: str = "httpx"      # "httpx" | "csrf" | "impersonate"
 ```
 
 Do not make `curl_cffi` the default for everything "just in case" — it is
 slower, and `httpx` is the project's HTTP client everywhere else. Do not
-hardcode the choice inside the Albaraka provider either; a third bank will need
-it and the health checker has to know which banks are cheap to poll.
+hardcode the choice inside a provider either; the health checker has to know
+which banks are cheap to poll.
 
-Expect more of this. The handoff notes Dünya times out under `httpx` while
-loading fine in a browser, which is likely the same thing.
+Two corrections to the older handoff, both since measured: Dünya does **not**
+need special handling — it timed out because `dunyakatilim.com` does not
+resolve, and `dunyakatilim.com.tr` answers plain `httpx` fine. And Ziraat is
+split rather than uniform: its `/ajax/*` routes answer `httpx`, while the Drupal
+form endpoint behind kâr payı and leasing answers `493` to every non-browser
+client, impersonation included.
 
 ## All ten banks are mapped
 

@@ -9,7 +9,7 @@ config/settings.py      every configurable value, one flat file
 llm/                    chat models
 embeddings/             embedding models
 vector_stores/          Qdrant collections
-banks/                  live pricing from the banks' own calculators
+banks/                  live pricing from ten banks' own calculators
 docs/FINDINGS.md        measured behaviour of the models and bank endpoints
 tests/unit/             no network
 tests/integration/      real vLLM, Qdrant and bank endpoints
@@ -34,11 +34,50 @@ Learn one and you know all four. The first three return a **plain LangChain obje
 LangChain or LangGraph ecosystem works unchanged.
 
 `banks/` returns dataclasses instead, because there is no LangChain type for a
-finance quote, and adds three modules the others do not need: `models.py` (the
-shape every bank maps onto), `http.py` (the shared clients) and `tools.py` (the
-tools the agent binds). **Adding a bank must not add a tool** — there is one tool
-per product category and `bank` is a parameter, so ten banks stay seven tools
-rather than becoming forty.
+finance quote, and adds four modules the others do not need: `models.py` (the
+shape every bank maps onto), `parse.py` (one number parser for all of them),
+`http.py` (the shared clients) and `tools.py` (the tools the agent binds).
+**Adding a bank must not add a tool** — there is one tool per product category
+and `bank` is a parameter, so ten banks are seven tools rather than forty.
+
+Nothing on `BaseBank` is abstract. Every method refuses by default, naming what
+the bank does publish, and a provider overrides only what its bank really
+answers. That is what lets Adil and T.O.M. be registered banks with no endpoints
+rather than absent ones, and it means a gap is always a sentence rather than a
+crash or an empty result.
+
+**[BANK_TOOLS.md](BANK_TOOLS.md) is the design document for this package** — the
+tool contract, how to add a bank, how to add a tool, and the traps each one has
+already cost. Read it before changing `banks/`.
+
+### The ten banks
+
+| bank | publishes | transport | catalogue |
+|---|---|---|---|
+| Kuveyt Türk | finance, profit share, card, rates, convert | httpx | an endpoint, five `p1` values |
+| Albaraka | finance, profit share, rates, convert | curl_cffi (WAF) | page HTML, echoed back verbatim |
+| Vakıf | finance, profit share, card, convert | httpx + CSRF | page `<option>` values |
+| Emlak | finance, profit share | curl_cffi (WAF) | page `<option>` values |
+| Dünya | finance, profit share, convert | httpx + CSRF | homepage HTML, JSON blobs |
+| Ziraat | finance | httpx | an endpoint, per product |
+| Türkiye Finans | products only | httpx | a table service |
+| Hayat | profit share, rates, convert | httpx | none — three account types |
+| T.O.M. | nothing | none | — |
+| Adil | nothing | none | — |
+
+Two rules hold this together and both are enforced by unit tests:
+
+- **`capabilities` is a promise.** Declaring one without implementing its method,
+  or implementing without declaring, fails the capability test. An override that
+  only explains a refusal in better words — as Türkiye Finans does, naming the
+  rate it publishes even though it states no instalment — is marked `@refusal`
+  and does not count as a capability.
+- **`transport` is declared, never hardcoded in a provider.** `httpx` is plain,
+  `csrf` adds a per-page anti-forgery token, `impersonate` is curl_cffi for the
+  two hosts whose WAF fingerprints the TLS handshake, and `none` is a bank with
+  nothing to call. The health checker reads it to know which banks are cheap to
+  poll, and `curl_cffi` is never the default — it is slower, and httpx is the
+  project's client everywhere else.
 
 ## Adding a provider
 
@@ -53,10 +92,12 @@ Ordering in `PROVIDERS` matters: the first provider whose `matches()` returns `T
 `LocalProvider` in `embeddings/` matches everything as a fallback, so any API provider must be
 listed **before** it.
 
-`banks/` is the same three steps against `providers/<bank>.py` and `BANKS`, plus one
-rule: declare `capabilities` honestly. A bank that publishes no card calculator
-leaves `"card"` out and inherits a refusal, because answering with nothing is
-indistinguishable from a broken endpoint.
+`banks/` is the same three steps against `providers/<bank>.py` and `BANKS`, plus
+two rules: declare `capabilities` honestly, and declare `transport`. A bank that
+publishes no card calculator leaves `"card"` out and inherits a refusal, because
+answering with nothing is indistinguishable from a broken endpoint. A bank with
+no endpoints at all is still registered — `list_banks` has to be able to say
+"this bank publishes no calculator", and `notes` carries why.
 
 ## Configuration
 
@@ -103,19 +144,36 @@ These are measured, not assumed. Full detail in [FINDINGS.md](FINDINGS.md).
   raises instead of letting that through.
 - **Collections are checked against `EMBEDDING_DIMENSIONS`.** Opening one with a mismatched size
   raises rather than writing vectors that fail later.
-- **A zero is not a price.** Both banks answer an unsupported product/currency
-  combination with `200` and every field `0.0`. The providers raise instead of
-  reporting a real product as paying nothing.
+- **"No data" has four shapes and none is an HTTP error**: `200` with all-zero
+  fields, `200` with an empty body, `200` with an `errorMessage` inside the JSON,
+  and `404` with an empty body. A check that reads only the status code calls all
+  four healthy. Every one of them raises instead of reporting a real product as
+  paying nothing — and Hayat's floor is checked before the call, so someone below
+  50 000 TL is told the minimum rather than quoted "0 TL".
+- **Product identity is rarely just a code.** Albaraka repeats `ProductCode`
+  across nine products, Türkiye Finans repeats `Code` across `CreditID`s with
+  different fees, and Ziraat lists the same product once per term band with a
+  ceiling that falls as the term rises. Each provider keys on a bank-supplied
+  identity and keeps the raw catalogue entry on the `Product`, because Albaraka
+  and Dünya need it echoed back as a request parameter.
+- **Amounts go out as bare integers.** Dünya strips dots as thousands
+  separators, so `"100000.00"` is read as ten million and answers with a
+  plausible instalment a hundred times too large, with no error.
 - **Kuveyt Türk's profit share counts days, not months**, whatever its `p10`
   flag claims — see the correction in `docs/discovery/captured/kuveytturk.md`.
   Months are sent as 30-day multiples; reading the field as months understates a
   year by about thirty times.
-- **Albaraka needs `curl_cffi`.** Its WAF fingerprints the TLS handshake, so
-  httpx is rejected whatever the headers. `banks/http.py` keeps one client per
-  transport.
-- **We never compute a price.** The one agreed exception is Kuveyt Türk's
-  currency and gold conversion, which has no endpoint; it is done in `Decimal`
-  and flagged `derived=True` so a caller can tell it from a bank's own figure.
+- **Albaraka and Emlak need `curl_cffi`.** Their WAF fingerprints the TLS
+  handshake, so httpx is rejected whatever the headers. `banks/http.py` keeps one
+  client per transport and deliberately does not set a user-agent when
+  impersonating: curl_cffi sends one matching the fingerprint, and a mismatched
+  pair is rejected again — as a JSON decode error, not an obvious block.
+- **We never compute a price.** The one agreed exception is currency and gold
+  conversion at the banks that publish rates but no converter (Kuveyt Türk and
+  Hayat); it is done in `Decimal` and flagged `derived=True` so a caller can tell
+  it from a bank's own figure. It is also why Türkiye Finans quotes nothing: it
+  publishes a rate table and does the annuity in the browser, so an instalment
+  would have to be ours rather than the bank's.
 
 ## Tests
 

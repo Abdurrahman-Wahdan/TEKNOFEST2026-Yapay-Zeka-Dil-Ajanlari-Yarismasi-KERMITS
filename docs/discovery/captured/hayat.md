@@ -35,10 +35,27 @@ Much narrower than the parameter names suggest. The homepage calculator has
 **no currency selector and no term selector**, and an API sweep agrees:
 
 - **TL only.** `FEC` 1 (USD) and 19 (EUR) return empty data.
-- **32–33 days only.** Every other `MaturityTerm` returns empty data.
 - `Maturity` is accepted but ignored — 1 through 6 give identical results.
-- `AccountType` is the real dimension: 1, 2 and 3 price differently
-  (net 3 028,11 / 79,95 / 2 748,44 on 100 000 TL).
+- `AccountType` is the real dimension, and the values are **0, 1 and 2**, which
+  is what the homepage's own `accountType` field carries — not the option
+  `value`, which is one higher. 0 Katılma Hesabı · 1 Avantajlı Hesap ·
+  2 Avantajlı Günlük Hesap. Anything above 2 falls back to 0.
+
+**Correction, measured 2026-08-08: the term range is per account type, not a
+flat 32–33 days.** The original sweep tested `AccountType` 1 only and generalised
+from it.
+
+| account | AccountType | terms it prices |
+|---|---|---|
+| Katılma Hesabı | 0 | 32, 60, 90, 365 — a real term curve |
+| Avantajlı Hesap | 1 | 32 only; 60, 90 and 365 answer 400 |
+| Avantajlı Günlük Hesap | 2 | **term-independent** — 32, 60, 90 and 365 all return 79,95 TL on 100 000 |
+
+The third is the trap: 79,95 TL is *one day's* profit at its own stated 29,18%
+annual rate, returned unchanged whatever `MaturityTerm` is sent. Passing it
+through as a term quote would report "365 gün için 79,95 TL". Check the returned
+profit against the returned annual rate over the requested term before believing
+it.
 
 **Minimum balance is exactly 50 000 TL.** At 49 999 the endpoint returns zeros;
 at 50 000 it prices. No error either way — so a caller that skips the minimum

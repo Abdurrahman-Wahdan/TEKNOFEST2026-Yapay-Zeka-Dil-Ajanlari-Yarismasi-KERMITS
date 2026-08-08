@@ -21,7 +21,6 @@ import logging
 import re
 from decimal import Decimal
 
-from ..http import request_json, request_text
 from ..models import (
     Conversion,
     FinanceQuote,
@@ -30,6 +29,7 @@ from ..models import (
     Product,
     Rate,
 )
+from ..parse import money, rate
 from .base import BaseBank, UnsupportedProduct
 
 logger = logging.getLogger(__name__)
@@ -41,9 +41,6 @@ LANG_ID = "bf2689d9-071e-4a20-9450-b1dbdd39778f"
 FINANCE_PAGE = f"{HOST}/tr/hesaplama-araclari/finansman-hesaplama/ihtiyac-finansmani-hesaplama"
 PROFIT_PAGE = f"{HOST}/tr/hesaplama-araclari/kar-payi-hesaplama"
 FX_PAGE = f"{HOST}/tr/hesaplama-araclari/doviz-cevirici"
-
-# The WAF fingerprints the TLS handshake, so every call impersonates Chrome.
-IMPERSONATE = "chrome124"
 
 HEADERS = {
     "accept": "application/json, text/javascript, */*; q=0.01",
@@ -67,46 +64,17 @@ _SELECT_OPTION = re.compile(r"<option[^>]*value=\"([^\"]+)\"[^>]*>([^<]*)<", re.
 _ACCOUNT_SELECT = re.compile(r"<select[^>]*selectTypeKarpayi.*?</select>", re.S)
 
 
-def money(text) -> float:
-    """'18.114,26 TRY' -> 18114.26.
-
-    Turkish formatting: dot groups thousands, comma is the decimal point. The
-    currency suffix varies, so a string test against '0,00 TRY' silently passes
-    '0,00 USD' — a zero check has to parse the number.
-    """
-    if text is None:
-        return 0.0
-    cleaned = re.sub(r"[^\d,.-]", "", str(text)).replace(".", "").replace(",", ".")
-    try:
-        return float(cleaned)
-    except ValueError:
-        return 0.0
-
-
-def rate(text) -> float:
-    """'% 36.731684' -> 36.731684, '% 0,175' -> 0.175.
-
-    Rates are not formatted like amounts and the two appear in the same
-    response: GrossRate uses a dot for its decimals while IncomeTax uses a
-    comma. Parsing a rate with money() gives 36731684.
-    """
-    if text is None:
-        return 0.0
-    cleaned = re.sub(r"[^\d,.-]", "", str(text))
-    if "," in cleaned:
-        cleaned = cleaned.replace(".", "").replace(",", ".")
-    try:
-        return float(cleaned)
-    except ValueError:
-        return 0.0
-
-
 class Albaraka(BaseBank):
     name = "albaraka"
     display_name = "Albaraka Türk Katılım Bankası"
     # No card instalment calculator and no leasing calculator: those raise
     # through the base class rather than answering with nothing.
-    capabilities = frozenset({"finance", "profit_share", "rates", "convert"})
+    capabilities = frozenset(
+        {"products", "finance", "profit_share", "rates", "convert"}
+    )
+    # An F5 WAF fingerprints the TLS handshake and rejects httpx whatever
+    # the headers, so this bank is called through curl_cffi.
+    transport = "impersonate"
 
     def _plugin(self, plugin: str, page: str, **params):
         body = {
@@ -117,12 +85,11 @@ class Albaraka(BaseBank):
             "customFinancingName": "",
             **params,
         }
-        return request_json(
+        return self._json(
             "GET",
             PLUGINS + plugin,
             headers={**HEADERS, "referer": page},
             params=body,
-            impersonate=IMPERSONATE,
         )
 
     # ----- catalogue -----
@@ -133,7 +100,7 @@ class Albaraka(BaseBank):
                 f"{self.display_name} has no {category!r} catalogue. "
                 f"Available: finance, profit_share."
             )
-        cached = self._catalogue.get(category)
+        cached = self._cached(category)
         if cached is not None:
             return cached
 
@@ -142,12 +109,12 @@ class Albaraka(BaseBank):
             if category == "finance"
             else self._profit_share_products()
         )
-        self._catalogue[category] = built
+        self._store(category, built)
         logger.debug("Loaded %d %s product(s) from %s", len(built), category, self.name)
         return built
 
     def _finance_products(self) -> list[Product]:
-        page = request_text(FINANCE_PAGE, impersonate=IMPERSONATE)
+        page = self._text(FINANCE_PAGE)
         built, seen = [], set()
         for match in _OPTION.finditer(page):
             try:
@@ -184,7 +151,7 @@ class Albaraka(BaseBank):
         return built
 
     def _profit_share_products(self) -> list[Product]:
-        page = request_text(PROFIT_PAGE, impersonate=IMPERSONATE)
+        page = self._text(PROFIT_PAGE)
         select = _ACCOUNT_SELECT.search(page)
         if not select:
             raise UnsupportedProduct(
@@ -234,7 +201,7 @@ class Albaraka(BaseBank):
                 f"{chosen.name} at {amount:,.0f} TL over {term} months."
             )
 
-        return FinanceQuote(
+        return self._check_quote(FinanceQuote(
             bank=self.name,
             product=chosen,
             amount=float(amount),
@@ -260,7 +227,7 @@ class Albaraka(BaseBank):
                 for row in ((data.get("PaymentPlan") or {}).get("Rows") or [])
             ],
             raw=payload,
-        )
+        ))
 
     # ----- profit share -----
 
@@ -296,7 +263,7 @@ class Albaraka(BaseBank):
             # Kur Korumalı in every combination answer this way on their own
             # page too.
             if payload.get("Result") is True and net > 0:
-                return ProfitShareQuote(
+                return self._check_profit_share(ProfitShareQuote(
                     bank=self.name,
                     product=chosen,
                     amount=float(amount),
@@ -311,7 +278,7 @@ class Albaraka(BaseBank):
                     gross_annual_rate=rate(data.get("GrossRate")),
                     net_annual_rate=rate(data.get("NetRate")),
                     raw=payload,
-                )
+                ))
 
         raise UnsupportedProduct(
             f"{self.display_name} published no profit-share rate for "
@@ -325,6 +292,7 @@ class Albaraka(BaseBank):
     def rates(self) -> list[Rate]:
         payload = self._plugin("getExchangeRatesService", FX_PAGE)
         data = ((payload or {}).get("ExchangeRate") or {}).get("Data") or {}
+        as_of = data.get("TranDate") or ""
         return [
             Rate(
                 code=row["CurrencyName"],
@@ -332,6 +300,7 @@ class Albaraka(BaseBank):
                 buy=float(row.get("Bid") or 0),
                 sell=float(row.get("Ask") or 0),
                 unit="gram" if row["CurrencyName"] in ("XAU", "XAG") else "1",
+                as_of=as_of,
             )
             for row in data.get("CurrencyPrices") or []
         ]

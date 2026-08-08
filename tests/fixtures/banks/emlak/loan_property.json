@@ -1,0 +1,8 @@
+{
+  "Success": true,
+  "Message": null,
+  "Data": {
+    "MaturityMax": 48,
+    "MaturityMin": 0
+  }
+}

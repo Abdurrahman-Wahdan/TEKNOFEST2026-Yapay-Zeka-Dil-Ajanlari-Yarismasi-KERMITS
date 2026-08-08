@@ -30,11 +30,21 @@ def get_bank(name: str) -> BaseBank:
     return bank
 
 
-def list_banks() -> dict[str, frozenset[str]]:
-    """Every known bank and what it publishes.
+def list_banks() -> dict[str, dict]:
+    """Every known bank, what it publishes, and why it publishes no more.
 
-    Capabilities are declared per bank and are honest: a bank missing from a
-    capability does not publish it, which is a legitimate answer rather than a
-    failure.
+    All ten are here, including the two with nothing to call. Capabilities are
+    declared per bank and are honest: a bank missing a capability does not
+    publish it, which is a legitimate answer rather than a failure. `notes`
+    carries the reason where there is one worth giving — Adil has nothing to
+    integrate, while T.O.M. needs only a credential, and the same user-facing
+    answer today has different remedies.
     """
-    return {bank.name: bank.capabilities for bank in BANKS}
+    return {
+        bank.name: {
+            "display_name": bank.display_name,
+            "publishes": sorted(bank.capabilities),
+            "notes": bank.notes,
+        }
+        for bank in BANKS
+    }

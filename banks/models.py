@@ -25,6 +25,11 @@ class Product:
     max_term: int | None = None
     currencies: tuple[str, ...] = ("TRY",)
 
+    # The rate the catalogue states for this product, where it states one:
+    # a monthly profit rate for financing, an annual gross ratio for a
+    # participation account. None where the bank only quotes per request.
+    rate: float | None = None
+
     # The catalogue entry this came from. Requests cannot be built without it:
     # Kuveyt Türk needs ProductGroup, FEC and the exact Title, and Albaraka
     # echoes the whole blob back as its FinanceType parameter.
@@ -90,6 +95,10 @@ class Rate:
     buy: float
     sell: float
     unit: str = "1"
+
+    # When the bank says it quoted these. FX moves intraday, and without it the
+    # agent cannot say how fresh a rate is. Empty where the feed omits it.
+    as_of: str = ""
 
 
 @dataclass(frozen=True)

@@ -12,6 +12,7 @@ value — rates change daily and that change is not a failure.
 import pytest
 
 from banks import build_tools, get_bank
+from banks.providers import BANKS
 from banks.providers.base import UnsupportedProduct
 from banks.providers.kuveytturk import _params
 
@@ -70,7 +71,9 @@ def test_kuveytturk_prices_every_finance_product(kuveytturk):
         high = product.max_amount or 5_000_000
         amount = min(max(100_000, low), high)
         try:
-            quote = kuveytturk.finance_quote(product.code, amount, term)
+            # By name, not by code: two entries share ELKTRARACSARJUNITE and
+            # the code alone cannot say which, so it is refused as ambiguous.
+            quote = kuveytturk.finance_quote(product.name, amount, term)
         except ValueError as exc:
             failures.append(f"{product.name}: {exc}")
             continue
@@ -308,3 +311,204 @@ def test_the_tools_answer_for_both_banks(live):
         {"bank": "albaraka", "source": "XAU", "target": "TRY", "amount": 10}
     )
     assert '"derived":false' in quoted
+
+
+# ----- the other six banks -----
+
+
+@pytest.fixture
+def bank(request, live):
+    if not live:
+        pytest.skip("the banks are not reachable")
+    return get_bank(request.param)
+
+
+@pytest.mark.parametrize(
+    "bank", ["vakif", "emlak", "dunya", "ziraat", "turkiyefinans"], indirect=True
+)
+def test_finance_catalogues_are_live(bank):
+    products = bank.products("finance")
+    assert products, bank.name
+    assert all(p.code and p.name for p in products)
+    # Identity has to be unique, and for several banks the obvious field is not:
+    # Albaraka repeats ProductCode, Türkiye Finans repeats Code, and Ziraat
+    # repeats the product name across term bands.
+    assert len({p.code for p in products}) == len(products), bank.name
+
+
+@pytest.mark.parametrize("bank", ["vakif", "emlak", "dunya", "ziraat"], indirect=True)
+def test_every_bank_quotes_financing_the_same_way(bank):
+    """The same call against four more banks, changing only which bank.
+
+    If this needed anything else per bank, the interface would be wrong.
+    """
+    product = _quotable(bank)
+    quote = bank.finance_quote(product.code, 100_000, 24)
+
+    assert quote.bank == bank.name
+    assert quote.installment > 0
+    assert quote.total > quote.amount
+    assert quote.profit_rate > 0
+
+
+def _quotable(bank):
+    """A product that takes 100 000 TL over 24 months."""
+    for product in bank.products("finance"):
+        if (product.max_term or 0) >= 24 and (product.max_amount or 1e12) >= 100_000:
+            return product
+    pytest.skip(f"{bank.name} has no product covering 100 000 TL over 24 months")
+
+
+@pytest.mark.parametrize("bank", ["vakif", "emlak", "dunya", "hayat"], indirect=True)
+def test_participation_accounts_are_priced(bank):
+    """Each bank's own shortest published term, not a term we picked.
+
+    Hayat prices 32 days and nothing shorter; Vakıf and Emlak start at 31.
+    Hardcoding one number would test our guess rather than their contract.
+    """
+    account = bank.products("profit_share")[0]
+    term = account.min_term or 31
+    quote = bank.profit_share_quote(account.code, 100_000, term, "TRY", "day")
+    assert quote.term > 0
+
+    assert quote.net_profit > 0
+    assert quote.gross_profit >= quote.net_profit
+    assert quote.term_unit in ("day", "month")
+
+
+@pytest.mark.parametrize("bank", ["vakif"], indirect=True)
+def test_vakif_prices_its_card(bank):
+    quote = bank.card_installment_quote("Ferah Kart", 10_000, 6)
+    assert quote.installment > 0 and quote.total > quote.amount
+
+
+@pytest.mark.parametrize("bank", ["ziraat"], indirect=True)
+def test_ziraat_ceiling_falls_as_the_term_rises(bank):
+    short = bank.finance_quote("ihtiyaç finansmanı", 100_000, 12)
+    long = bank.finance_quote("ihtiyaç finansmanı", 100_000, 36)
+
+    assert short.product.code != long.product.code
+    assert (short.product.max_amount or 0) >= (long.product.max_amount or 0)
+    assert long.installment < short.installment
+
+
+@pytest.mark.parametrize("bank", ["ziraat"], indirect=True)
+def test_ziraat_never_calls_its_browser_only_calculator(bank):
+    with pytest.raises(UnsupportedProduct, match="browser-only"):
+        bank.profit_share_quote("any", 100_000, 31)
+
+
+@pytest.mark.parametrize("bank", ["turkiyefinans"], indirect=True)
+def test_turkiyefinans_gives_rates_but_not_payments(bank):
+    rows = bank.products("profit_share")
+    assert rows and all(r.rate and r.rate > 0 for r in rows)
+
+    with pytest.raises(UnsupportedProduct, match="no instalment figure"):
+        bank.finance_quote(bank.products("finance")[0].code, 100_000, 24)
+
+
+@pytest.mark.parametrize("bank", ["hayat"], indirect=True)
+def test_hayat_states_its_minimum_rather_than_quoting_zero(bank):
+    with pytest.raises(UnsupportedProduct, match="50,000"):
+        bank.profit_share_quote("Katılma Hesabı", 49_999, 32)
+
+    priced = bank.profit_share_quote("Katılma Hesabı", 50_000, 32)
+    assert priced.net_profit > 0
+
+
+@pytest.mark.parametrize("bank", ["vakif", "dunya"], indirect=True)
+def test_server_side_conversion_is_not_derived(bank):
+    result = bank.convert("USD", "TRY", 1000)
+    assert result.derived is False
+    assert result.result > 1000
+
+
+@pytest.mark.parametrize("bank", ["hayat"], indirect=True)
+def test_rate_only_banks_derive_their_conversion(bank):
+    result = bank.convert("USD", "TRY", 1000)
+    assert result.derived is True
+    assert result.result > 1000
+
+
+# ----- every declared capability actually answers -----
+
+
+def test_declared_capabilities_hold_against_the_live_banks(live):
+    """capabilities is what the agent is told; this is the check that it is true.
+
+    Every bank that says it publishes rates must return some, every bank that
+    says it converts must convert, and the two that say nothing must answer
+    without touching the network.
+    """
+    if not live:
+        pytest.skip("the banks are not reachable")
+
+    failures = []
+    for bank in BANKS:
+        if "rates" in bank.capabilities:
+            try:
+                assert bank.rates(), "no rates"
+            except Exception as exc:  # noqa: BLE001 - collected, reported below
+                failures.append(f"{bank.name} rates: {exc}")
+        if "convert" in bank.capabilities:
+            try:
+                assert bank.convert("USD", "TRY", 1000).result > 0
+            except Exception as exc:  # noqa: BLE001
+                failures.append(f"{bank.name} convert: {exc}")
+        if not bank.capabilities:
+            with pytest.raises(UnsupportedProduct):
+                bank.finance_quote("anything", 100_000, 24)
+    assert not failures, failures
+
+
+# ----- term bands, live -----
+
+
+@pytest.mark.parametrize("bank", ["kuveytturk", "vakif", "emlak", "dunya"], indirect=True)
+def test_a_year_is_priced_as_a_year(bank):
+    """The defect this guards: a year answered with the six-month band.
+
+    Three of these banks price a fixed list of month-labelled terms, and a year
+    is 360 days — short of their 364/365 band. Snapping down returned about 44%
+    of the right figure as a confident quote. Asserting against the one-month
+    quote rather than an absolute number keeps this true as rates move.
+    """
+    account = bank.products("profit_share")[0]
+    year = bank.profit_share_quote(account.code, 100_000, 12, "TRY", "month")
+    month = bank.profit_share_quote(account.code, 100_000, 1, "TRY", "month")
+
+    assert year.term >= 360, f"{bank.name} priced {year.term} days for a year"
+    # A year must be worth several months, not a fraction more than one.
+    assert year.net_profit > month.net_profit * 8
+
+
+@pytest.mark.parametrize("bank", ["vakif", "emlak", "dunya"], indirect=True)
+def test_an_unmatched_term_is_refused_not_swapped(bank):
+    """`term_unit` defaults to empty, so a bare 12 must not become 31 days."""
+    account = bank.products("profit_share")[0]
+    with pytest.raises(UnsupportedProduct, match="fixed terms only"):
+        bank.profit_share_quote(account.code, 100_000, 12, "TRY", None)
+
+
+@pytest.mark.parametrize("bank", ["kuveytturk", "hayat"], indirect=True)
+def test_gold_is_findable_by_its_standard_code(bank):
+    """These feeds call gold "ALT (gr)"; a caller should not have to know."""
+    found = bank.find_rates(["XAU"])
+
+    assert len(found) == 1
+    assert found[0].sell > 0
+    assert found[0].unit == "gram"
+
+
+@pytest.mark.parametrize("bank", ["hayat"], indirect=True)
+def test_hayat_daily_account_is_not_passed_off_as_a_term_quote(bank):
+    """It returns one day's profit whatever term is sent."""
+    with pytest.raises(UnsupportedProduct, match="does not follow"):
+        bank.profit_share_quote("Avantajlı Günlük Hesap", 100_000, 365, "TRY", "day")
+
+
+@pytest.mark.parametrize("bank", ["vakif"], indirect=True)
+def test_vakif_finance_carries_its_payment_plan(bank):
+    quote = bank.finance_quote("IF", 100_000, 24)
+    assert len(quote.schedule) == 24
+    assert quote.schedule[-1].remaining == 0.0

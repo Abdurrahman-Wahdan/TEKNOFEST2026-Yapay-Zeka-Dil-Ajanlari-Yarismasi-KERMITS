@@ -1,0 +1,12 @@
+{
+  "Success": true,
+  "Message": "",
+  "Data": {
+    "GrossProfitShare": 2622.23,
+    "GrossProfitShareYearly": 30.87,
+    "NetProfitShare": 2163.34,
+    "NetProfitShareYearly": 25.47,
+    "SegmentName": "Altın",
+    "TotalAmountNetProfitShare": 102163.34
+  }
+}

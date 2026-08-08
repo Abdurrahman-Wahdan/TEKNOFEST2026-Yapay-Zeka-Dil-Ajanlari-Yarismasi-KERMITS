@@ -49,10 +49,25 @@ def _answer(build: Callable[[], object]) -> str:
     except ValueError as exc:
         logger.debug("Tool refused: %s", exc)
         return str(exc)
+    except Exception as exc:  # noqa: BLE001 - the agent must never see a traceback
+        # A refusal is a ValueError and says something useful. Anything else is
+        # our bug — a bank changed its shape under us — and it must still not
+        # end the agent's turn, so it is logged loudly and answered plainly.
+        logger.exception("Tool failed unexpectedly")
+        return (
+            f"That lookup failed unexpectedly ({type(exc).__name__}). The bank's "
+            f"response was not the shape this tool expects, which usually means "
+            f"its page or endpoint has changed."
+        )
 
 
 def _product(product: Product) -> dict:
-    return {
+    """A product as the model sees it, without the fields the bank left blank.
+
+    Several banks publish only some limits, and Türkiye Finans alone returns 55
+    rate rows; carrying nulls for all of them is prompt weight for no meaning.
+    """
+    fields = {
         "code": product.code,
         "name": product.name,
         "min_amount": product.min_amount,
@@ -60,10 +75,25 @@ def _product(product: Product) -> dict:
         "min_term": product.min_term,
         "max_term": product.max_term,
         "currencies": list(product.currencies),
+        "rate": product.rate,
+    }
+    return {k: v for k, v in fields.items() if v is not None}
+
+
+def _payment_row(row) -> dict:
+    return {
+        "no": row.order,
+        "due": row.due_date,
+        "amount": row.amount,
+        "principal": row.principal,
+        "profit": row.profit,
+        "taxes": row.taxes,
+        "remaining": row.remaining,
     }
 
 
-def _finance(quote: FinanceQuote) -> dict:
+def _finance(quote: FinanceQuote, schedule: bool = False) -> dict:
+    rows = {"payment_schedule": [_payment_row(r) for r in quote.schedule]} if schedule else {}
     return {
         "bank": quote.bank,
         "product": quote.product.name,
@@ -76,6 +106,7 @@ def _finance(quote: FinanceQuote) -> dict:
         "annual_cost_rate": quote.annual_cost_rate,
         "fees": quote.fees,
         "schedule_rows": len(quote.schedule),
+        **rows,
     }
 
 
@@ -110,13 +141,15 @@ def _card(quote: CardInstallmentQuote) -> dict:
 
 
 def _rate(row: Rate) -> dict:
-    return {
+    fields = {
         "code": row.code,
         "name": row.name,
         "buy": row.buy,
         "sell": row.sell,
         "unit": row.unit,
+        "as_of": row.as_of,
     }
+    return {k: v for k, v in fields.items() if v not in (None, "")}
 
 
 def _conversion(result: Conversion) -> dict:
@@ -139,14 +172,17 @@ def _conversion(result: Conversion) -> dict:
 
 @tool
 def list_banks() -> str:
-    """List the participation banks that can be queried and what each publishes.
+    """List every participation bank that can be queried and what each publishes.
 
-    Returns a mapping of bank name to its capabilities, drawn from: finance,
-    profit_share, card, rates, convert. A bank missing a capability does not
-    publish it; that is a real answer, not an error. Call this first when you do
-    not know which bank supports something.
+    Returns each bank's name, display name, what it publishes — drawn from
+    products, finance, profit_share, card, rates, convert — and a note
+    explaining any gap. A bank missing a capability does not publish that thing;
+    that is a real answer to give a user, not an error. Two of the banks publish
+    no calculator at all and are listed with nothing under "publishes".
+
+    Call this first when you do not know which bank can answer something.
     """
-    return _answer(lambda: {b: sorted(c) for b, c in _list_banks().items()})
+    return _answer(_list_banks)
 
 
 @tool
@@ -154,10 +190,14 @@ def list_products(bank: str, category: str) -> str:
     """List a bank's products in a category, with its amount and term limits.
 
     Use this to discover the Turkish product names and codes a bank offers
-    before asking for a quote. Valid banks: {banks}. Valid categories: finance
-    (finansman), profit_share (katilma hesabi / kar payi), card (kredi karti
-    taksit). Returns code, Turkish name, amount limits, term limits and
-    currencies for each product.
+    before asking for a quote — product names differ per bank and so do the
+    limits. Valid banks: {banks}. Valid categories: finance (finansman),
+    profit_share (katilma hesabi / kar payi), card (kredi karti taksit); not
+    every bank has every category.
+
+    Returns each product's code, Turkish name, amount limits, term limits,
+    currencies and the rate where the bank states one in its catalogue. Term
+    limits are months for finance and days for participation accounts.
     """
     return _answer(
         lambda: [_product(p) for p in get_bank(bank).products(category)]
@@ -165,7 +205,13 @@ def list_products(bank: str, category: str) -> str:
 
 
 @tool
-def finance_quote(bank: str, product: str, amount: float, term: int) -> str:
+def finance_quote(
+    bank: str,
+    product: str,
+    amount: float,
+    term: int,
+    include_schedule: bool = False,
+) -> str:
     """Get a financing instalment quote from a bank's own calculator.
 
     Use for questions about finansman, ihtiyac finansmani, konut finansmani,
@@ -175,11 +221,18 @@ def finance_quote(bank: str, product: str, amount: float, term: int) -> str:
     in months.
 
     Returns the monthly instalment, total payable, monthly profit rate, annual
-    cost rate and fees, as the bank calculates them. It does not return the full
-    payment schedule, only how many rows it has.
+    cost rate and fees, as the bank calculates them.
+
+    Set `include_schedule` only when the user asks to see the payment plan —
+    "odeme plani", "taksit tablosu". It adds one row per instalment with the
+    due date, principal, profit and taxes, which is a lot of text for a
+    question about the monthly figure alone. Leave it off and the answer states
+    how many rows the plan has.
     """
     return _answer(
-        lambda: _finance(get_bank(bank).finance_quote(product, amount, term))
+        lambda: _finance(
+            get_bank(bank).finance_quote(product, amount, term), include_schedule
+        )
     )
 
 
@@ -223,21 +276,17 @@ def exchange_rates(bank: str, codes: list[str] | None = None) -> str:
     """Get a bank's published foreign-exchange and precious-metal rates.
 
     Use for questions about doviz kuru, dolar, euro, altin, gumus. Valid banks:
-    {banks}. `codes` optionally filters to specific currency codes as the bank
-    names them; leave it out to get everything the bank quotes.
+    {banks}, though several publish a converter without a rate feed and answer
+    with a sentence saying so. `codes` optionally filters to specific currency
+    codes; leave it out to get everything the bank quotes. Standard codes work
+    even where a bank names things its own way — XAU finds gold at a bank that
+    calls it "ALT (gr)".
 
     Returns the buy and sell rate for each, with the unit the rate is quoted in
     ("gram" for metals). To turn a rate into an amount, use convert_currency
     rather than multiplying it yourself.
     """
-    def build():
-        rows = get_bank(bank).rates()
-        if codes:
-            wanted = {c.upper() for c in codes}
-            rows = [r for r in rows if r.code.upper() in wanted]
-        return [_rate(r) for r in rows]
-
-    return _answer(build)
+    return _answer(lambda: [_rate(r) for r in get_bank(bank).find_rates(codes)])
 
 
 @tool
@@ -247,8 +296,8 @@ def card_installment_quote(
     """Get a credit-card instalment quote from a bank's own calculator.
 
     Use for questions about kredi karti taksit, kart taksitlendirme. Valid
-    banks: {banks}, but not every bank publishes a card calculator — the ones
-    that do not answer with a sentence saying so. `card` accepts the Turkish
+    banks: {banks}, but most publish no card calculator — those answer with a
+    sentence saying so. `card` accepts the Turkish
     card name from list_products with category "card", or its code.
 
     Returns the monthly instalment, total payable and profit rate. If the bank
@@ -267,8 +316,8 @@ def convert_currency(bank: str, source: str, target: str, amount: float) -> str:
     """Convert an amount between currencies, or price grams of gold or silver.
 
     Use for questions like "1000 dolar kac TL" or "10 gram altin kac TL". Valid
-    banks: {banks}. `source` and `target` are currency codes such as TRY, USD,
-    EUR, GBP, or XAU for gold, quoted per gram.
+    banks: {banks}, and not all of them convert. `source` and `target` are
+    currency codes such as TRY, USD, EUR, GBP, or XAU for gold, quoted per gram.
 
     Returns the converted amount, the rate used, and a "derived" flag. When
     derived is true the bank publishes no converter and the figure comes from
