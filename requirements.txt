@@ -1,0 +1,24 @@
+# LLM
+langchain==1.3.14
+langchain-core==1.5.3
+langchain-openai==1.4.2
+langgraph==1.2.10
+
+# Embeddings (local, on-premise)
+langchain-huggingface==1.2.2
+sentence-transformers==5.7.0
+
+# Vector store
+langchain-qdrant==1.1.0
+qdrant-client==1.19.0
+
+# Config
+pydantic==2.13.4
+pydantic-settings==2.15.0
+python-dotenv==1.2.2
+
+httpx==0.28.1
+
+# Tests
+pytest==9.0.1
+pytest-asyncio==1.3.0
