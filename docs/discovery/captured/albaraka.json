@@ -1,0 +1,42 @@
+{
+  "bank": "albaraka",
+  "host": "www.albaraka.com.tr",
+  "endpoints": [
+    {
+      "page": "https://www.albaraka.com.tr/tr/hesaplama-araclari/finansman-hesaplama/ihtiyac-finansmani-hesaplama",
+      "method": "GET",
+      "endpoint": "https://www.albaraka.com.tr/plugins/getFinanceCalculate?langId=bf2689d9-071e-4a20-9450-b1dbdd39778f&language=tr&Slug=ihtiyac-finansmani-hesaplama&searchUrl=%2Ftr%2Farama&customFinancingName=&ProfitRateByMe=false&FinanceType=%7B%22ProductCode%22%3A%22IHTKRED%22%2C%22ProductParCode%22%3A%223%22%2C%22ProjectParCode%22%3Anull%2C%22ProjectCode%22%3A%22ENGLF%C4%B0N%22%2C%22CampaingCode%22%3A%22ENGLF%C4%B0N%22%2C%22CampaignName%22%3A%22ENGELS%C4%B0Z%20HAYAT%20F%C4%B0NANSMANI%22%2C%22profitRate%22%3A4.0%2C%22JsonData%22%3Anull%2C%22AmountMinValue%22%3A1.0%2C%22AmountMaxValue%22%3A9999999.0%2C%22AmountDefaultValue%22%3A150000.0%2C%22MaturityMinValue%22%3A1%2C%22MaturityMaxValue%22%3A36%2C%22MaturityDefaultValue%22%3A23%2C%22Selected%22%3Atrue%2C%22ApplicationName%22%3Anull%2C%22ApplicationLink%22%3Anull%2C%22DetailTitle%22%3Anull%2C%22DetailInformation%22%3Anull%2C%22XkampMinAmount%22%3A0.0%2C%22XkampMaxAmount%22%3A0.0%2C%22XkampMinAmountManuel%22%3A0.0%2C%22XkampMaxAmountManuel%22%3A9999999.0%7D&FinanceAmount=150020&Maturity=24&ProfitRate=250000&Type=B&CreditType=B&_=1786199116080",
+      "request_body": "",
+      "response": "{\"Result\":true,\"Data\":{\"AnnualCostRate\":\"% 0\",\"MonthlyInstallmentAmount\":\"0,00 TL\",\"TotalAmountTobeRefunded\":\"0,00 TL\",\"TotalFees\":\"0,00\",\"PaymentPlan\":{\"Rows\":[],\"TotalRow\":{\"InstallmentNo\":\"0\",\"InstallmentAmount\":\"0,00 TL\",\"Amount\":\"0,00 TL\",\"Dividend\":\"0,00 TL\",\"RemainingAmount\":\"-\",\"KKDF\":\"0 TL\",\"BSMV\":\"0 TL\"}},\"AmortizationScheduleExpenses\":[],\"FeeDetailHtml\":\"\",\"ProfitRate\":\"0\",\"XkampMinAmount\":0,\"XkampMaxAmount\":0,\"XkampMinAmountManuel\":0,\"XkampMaxAmountManuel\":9999999,\"ApplicationName\":\"Hemen Başvur \",\"ApplicationLink\":\"https://basvur.albaraka.com.tr/jet-finansman\",\"ApplicationAlert\":null,\"DetailTitle\":\"Finansman Kullandırım Koşulları\",\"DetailInformation\":null},\"ProductCode\":\"IHTKRED",
+      "headers": [
+        "referer: https://www.albaraka.com.tr/tr/hesaplama-araclari/finansman-hesaplama/ihtiyac-finansmani-hesaplama",
+        "accept: application/json, text/javascript, */*; q=0.01",
+        "content-type: application/json; charset=utf-8"
+      ]
+    },
+    {
+      "page": "https://www.albaraka.com.tr/tr/hesaplama-araclari/finansman-hesaplama/tasit-finansmani-hesaplama",
+      "method": "GET",
+      "endpoint": "https://www.albaraka.com.tr/plugins/getFinanceCalculate?langId=bf2689d9-071e-4a20-9450-b1dbdd39778f&language=tr&Slug=tasit-finansmani-hesaplama&searchUrl=%2Ftr%2Farama&customFinancingName=&ProfitRateByMe=false&FinanceType=%7B%22ProductCode%22%3A%22TASKRED%22%2C%22ProductParCode%22%3A%222%22%2C%22ProjectParCode%22%3Anull%2C%22ProjectCode%22%3A%22SBZARAC%22%2C%22CampaingCode%22%3A%22SBSZARC%22%2C%22CampaignName%22%3A%22D%C4%B0J%C4%B0TAL%20ARA%C3%87%20F%C4%B0NANSMANI%22%2C%22profitRate%22%3A3.75%2C%22JsonData%22%3Anull%2C%22AmountMinValue%22%3A1.0%2C%22AmountMaxValue%22%3A9999999.0%2C%22AmountDefaultValue%22%3A150000.0%2C%22MaturityMinValue%22%3A1%2C%22MaturityMaxValue%22%3A48%2C%22MaturityDefaultValue%22%3A23%2C%22Selected%22%3Atrue%2C%22ApplicationName%22%3Anull%2C%22ApplicationLink%22%3Anull%2C%22DetailTitle%22%3Anull%2C%22DetailInformation%22%3Anull%2C%22XkampMinAmount%22%3A0.0%2C%22XkampMaxAmount%22%3A0.0%2C%22XkampMinAmountManuel%22%3A0.0%2C%22XkampMaxAmountManuel%22%3A9999999.0%7D&FinanceAmount=150020&Maturity=24&ProfitRate=250000&Type=B&CreditType=B&_=1786199129820",
+      "request_body": "",
+      "response": "{\"Result\":true,\"Data\":{\"AnnualCostRate\":\"% 0\",\"MonthlyInstallmentAmount\":\"0,00 TL\",\"TotalAmountTobeRefunded\":\"0,00 TL\",\"TotalFees\":\"0,00\",\"PaymentPlan\":{\"Rows\":[],\"TotalRow\":{\"InstallmentNo\":\"0\",\"InstallmentAmount\":\"0,00 TL\",\"Amount\":\"0,00 TL\",\"Dividend\":\"0,00 TL\",\"RemainingAmount\":\"-\",\"KKDF\":\"0 TL\",\"BSMV\":\"0 TL\"}},\"AmortizationScheduleExpenses\":[],\"FeeDetailHtml\":\"\",\"ProfitRate\":\"0\",\"XkampMinAmount\":0,\"XkampMaxAmount\":0,\"XkampMinAmountManuel\":0,\"XkampMaxAmountManuel\":9999999,\"ApplicationName\":\"Hemen Başvur \",\"ApplicationLink\":\"https://basvur.albaraka.com.tr/jet-finansman\",\"ApplicationAlert\":null,\"DetailTitle\":\"Finansman Kullandırım Koşulları\",\"DetailInformation\":null},\"ProductCode\":\"TASKRED",
+      "headers": [
+        "referer: https://www.albaraka.com.tr/tr/hesaplama-araclari/finansman-hesaplama/tasit-finansmani-hesaplama",
+        "accept: application/json, text/javascript, */*; q=0.01",
+        "content-type: application/json; charset=utf-8"
+      ]
+    },
+    {
+      "page": "https://www.albaraka.com.tr/tr/hesaplama-araclari/kar-payi-hesaplama",
+      "method": "GET",
+      "endpoint": "https://www.albaraka.com.tr/plugins/getProfitShareCalculate?langId=bf2689d9-071e-4a20-9450-b1dbdd39778f&language=tr&Slug=kar-payi-hesaplama&searchUrl=%2Ftr%2Farama&customFinancingName=&DepositedAmount=250000&Currency=TRY&Maturity=24&Period=MONTH&Type=KTLMHSP&_=1786199142834",
+      "request_body": "",
+      "response": "{\"Result\":true,\"Error\":null,\"Data\":{\"JsonData\":null,\"ButtonModel\":null,\"GrossProfit\":\"0,00 TRY\",\"GrossRate\":\"% 0\",\"NetProfit\":\"0,00 TRY\",\"InvestedAmountPlusNetProfit\":\"0,00 TRY\",\"NetRate\":\"% 0\",\"IncomeTax\":\"% 0,1\",\"AccountApplicationLink\":\"/tr/bireysel/banka-hesabi-acma\",\"AccountApplicationAlert\":null,\"CurrencyCode\":\"TRY\"}}",
+      "headers": [
+        "referer: https://www.albaraka.com.tr/tr/hesaplama-araclari/kar-payi-hesaplama",
+        "accept: application/json, text/javascript, */*; q=0.01",
+        "content-type: application/json; charset=utf-8"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "result": true,
+  "currencies": [
+    {
+      "currencyId": 0,
+      "currencyName": "TL"
+    },
+    {
+      "currencyId": 1,
+      "currencyName": "USD"
+    },
+    {
+      "currencyId": 2,
+      "currencyName": "AUD"
+    },
+    {
+      "currencyId": 6,
+      "currencyName": "DKK"
+    },
+    {
+      "currencyId": 9,
+      "currencyName": "SEK"
+    },
+    {
+      "currencyId": 10,
+      "currencyName": "CHF"
+    },
+    {
+      "currencyId": 12,
+      "currencyName": "CAD"
+    },
+    {
+      "currencyId": 14,
+      "currencyName": "NOK"
+    },
+    {
+      "currencyId": 15,
+      "currencyName": "GBP"
+    },
+    {
+      "currencyId": 16,
+      "currencyName": "SAR"
+    },
+    {
+      "currencyId": 17,
+      "currencyName": "JPY"
+    },
+    {
+      "currencyId": 19,
+      "currencyName": "EUR"
+    },
+    {
+      "currencyId": 29,
+      "currencyName": "AED"
+    },
+    {
+      "currencyId": 37,
+      "currencyName": "QAR"
+    },
+    {
+      "currencyId": 24,
+      "currencyName": "ALT (gr)"
+    },
+    {
+      "currencyId": 26,
+      "currencyName": "GMS (gr)"
+    },
+    {
+      "currencyId": 27,
+      "currencyName": "PLT (gr)"
+    }
+  ]
+}

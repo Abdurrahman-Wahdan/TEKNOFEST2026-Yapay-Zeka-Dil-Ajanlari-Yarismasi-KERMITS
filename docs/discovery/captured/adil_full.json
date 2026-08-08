@@ -1,0 +1,22 @@
+{
+  "bank": "adil",
+  "brand": "adilkatilim",
+  "pages": [
+    {
+      "page": "https://www.adilkatilim.com.tr",
+      "inventory": {
+        "inputs": [],
+        "selects": [],
+        "buttons": [
+          "I",
+          "Tamam"
+        ]
+      },
+      "clicked": [
+        "I"
+      ]
+    }
+  ],
+  "endpoints": [],
+  "third_party": []
+}

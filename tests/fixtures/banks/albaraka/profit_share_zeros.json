@@ -1,0 +1,17 @@
+{
+  "Result": true,
+  "Error": null,
+  "Data": {
+    "JsonData": null,
+    "ButtonModel": null,
+    "GrossProfit": "0,00 TRY",
+    "GrossRate": "% 0",
+    "NetProfit": "0,00 TRY",
+    "InvestedAmountPlusNetProfit": "0,00 TRY",
+    "NetRate": "% 0",
+    "IncomeTax": "% 0",
+    "AccountApplicationLink": "/tr/bireysel/banka-hesabi-acma",
+    "AccountApplicationAlert": null,
+    "CurrencyCode": "TRY"
+  }
+}

@@ -68,6 +68,20 @@ class Settings(BaseSettings):
     QDRANT_TIMEOUT: int = Field(default=30, gt=0)
     QDRANT_COLLECTION_CAMPAIGNS: str = "campaigns"
 
+    # ===== Banks (live calculator endpoints) =====
+    BANK_HTTP_TIMEOUT: float = Field(default=30.0, gt=0)
+    BANK_HTTP_RETRIES: int = Field(
+        default=1,
+        ge=0,
+        description="Extra attempts. Kuveyt Türk's finance endpoint "
+        "intermittently answers 200 with an empty Meta.",
+    )
+    BANK_USER_AGENT: str = Field(
+        default="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36",
+        description="These are public browser endpoints; they expect a browser.",
+    )
+
     # ===== Application =====
     LOG_LEVEL: str = "INFO"
     ENVIRONMENT: str = "development"

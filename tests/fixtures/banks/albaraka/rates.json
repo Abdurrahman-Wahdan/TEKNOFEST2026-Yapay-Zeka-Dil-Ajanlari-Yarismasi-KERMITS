@@ -1,0 +1,47 @@
+{
+  "ExchangeRate": {
+    "Result": true,
+    "Error": null,
+    "Data": {
+      "TranDate": "08.08.2026-18:49",
+      "CurrencyPrices": [
+        {
+          "CurrencyCodeName": "Amerikan Doları",
+          "CurrencyName": "USD",
+          "Bid": 47.25,
+          "Ask": 48.225
+        },
+        {
+          "CurrencyCodeName": "Avrupa Para Birimi",
+          "CurrencyName": "EUR",
+          "Bid": 54.602,
+          "Ask": 55.739
+        },
+        {
+          "CurrencyCodeName": "Altın",
+          "CurrencyName": "XAU",
+          "Bid": 6548.702,
+          "Ask": 6712.478
+        },
+        {
+          "CurrencyCodeName": "Sterlin",
+          "CurrencyName": "GBP",
+          "Bid": 63.744,
+          "Ask": 65.075
+        }
+      ]
+    }
+  },
+  "FxRates": null,
+  "Bist100": {
+    "Result": true,
+    "Error": null,
+    "Data": {
+      "LastUpdateDate": "07.08.2026-18:10",
+      "BistValue": 13779.39,
+      "DailyChangePercent": -0.14,
+      "DailyChangePercentColor": "red",
+      "DailyChangePercentIcon": "/_assets/img/bist100down.svg"
+    }
+  }
+}

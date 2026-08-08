@@ -1,0 +1,1413 @@
+{
+  "bank": "turkiyefinans",
+  "brand": "turkiyefinans",
+  "pages": [
+    {
+      "page": "https://www.turkiyefinans.com.tr/tr-tr/hesaplama-araclari/Sayfalar/finansman-odeme-plani.aspx",
+      "inventory": {
+        "inputs": [
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "_wpcmWpid",
+            "name": "_wpcmWpid",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "wpcmVal",
+            "name": "wpcmVal",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOWebPartPage_PostbackSource",
+            "name": "MSOWebPartPage_PostbackSource",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOTlPn_SelectedWpId",
+            "name": "MSOTlPn_SelectedWpId",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOTlPn_View",
+            "name": "MSOTlPn_View",
+            "ph": "",
+            "val": "0"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOTlPn_ShowSettings",
+            "name": "MSOTlPn_ShowSettings",
+            "ph": "",
+            "val": "False"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOGallery_SelectedLibrary",
+            "name": "MSOGallery_SelectedLibrary",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOGallery_FilterString",
+            "name": "MSOGallery_FilterString",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOTlPn_Button",
+            "name": "MSOTlPn_Button",
+            "ph": "",
+            "val": "none"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "__EVENTTARGET",
+            "name": "__EVENTTARGET",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "__EVENTARGUMENT",
+            "name": "__EVENTARGUMENT",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "__REQUESTDIGEST",
+            "name": "__REQUESTDIGEST",
+            "ph": "",
+            "val": "0xF297020566DBF7A1831E6BD7E39B4E0D15B350"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOSPWebPartManager_DisplayModeName",
+            "name": "MSOSPWebPartManager_DisplayModeName",
+            "ph": "",
+            "val": "Browse"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOSPWebPartManager_ExitingDesignMode",
+            "name": "MSOSPWebPartManager_ExitingDesignMode",
+            "ph": "",
+            "val": "false"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOWebPartPage_Shared",
+            "name": "MSOWebPartPage_Shared",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOLayout_LayoutChanges",
+            "name": "MSOLayout_LayoutChanges",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOLayout_InDesignMode",
+            "name": "MSOLayout_InDesignMode",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "_wpSelected",
+            "name": "_wpSelected",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "_wzSelected",
+            "name": "_wzSelected",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOSPWebPartManager_OldDisplayModeName",
+            "name": "MSOSPWebPartManager_OldDisplayModeName",
+            "ph": "",
+            "val": "Browse"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOSPWebPartManager_StartWebPartEditingName",
+            "name": "MSOSPWebPartManager_StartWebPartEditingName",
+            "ph": "",
+            "val": "false"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOSPWebPartManager_EndWebPartEditing",
+            "name": "MSOSPWebPartManager_EndWebPartEditing",
+            "ph": "",
+            "val": "false"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "__VIEWSTATE",
+            "name": "__VIEWSTATE",
+            "ph": "",
+            "val": "SArLOF9bz5XpeXfhXD77+aAj7xsxDMkZEcCgLJqO"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "__VIEWSTATEGENERATOR",
+            "name": "__VIEWSTATEGENERATOR",
+            "ph": "",
+            "val": "BAB98CB3"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "txtAutoCompleteSearch",
+            "name": "",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "s2id_autogen2",
+            "name": "",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "s2id_autogen2_search",
+            "name": "",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "txtFinansman",
+            "name": "",
+            "ph": "",
+            "val": "100.000"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "txtAylikTaksitTutari",
+            "name": "",
+            "ph": "",
+            "val": "5.996,94"
+          },
+          {
+            "tag": "INPUT",
+            "type": "checkbox",
+            "id": "ratecheck",
+            "name": "expenseCheck",
+            "ph": "",
+            "val": "on"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "txtRate",
+            "name": "",
+            "ph": "",
+            "val": "3.80"
+          }
+        ],
+        "selects": [
+          {
+            "id": "financial_type",
+            "name": "financial_type",
+            "options": [
+              {
+                "v": "0",
+                "t": "İhtiyaç Finansmanı"
+              },
+              {
+                "v": "1",
+                "t": "Sigortasız İhtiyaç Finansmanı"
+              },
+              {
+                "v": "2",
+                "t": "Sigortalı Taşıt Finansmanı 0 km"
+              },
+              {
+                "v": "3",
+                "t": "Sigortalı Taşıt Finansmanı 2. El"
+              },
+              {
+                "v": "4",
+                "t": "Sigortasız Taşıt Finansmanı 0 km"
+              },
+              {
+                "v": "5",
+                "t": "Sigortasız Taşıt Finansmanı 2. El"
+              },
+              {
+                "v": "6",
+                "t": "Sigortalı Motosiklet Finansmanı"
+              },
+              {
+                "v": "7",
+                "t": "Sigortasız Motosiklet Finansmanı"
+              },
+              {
+                "v": "8",
+                "t": "İlk Konutunu Alan / Sigortalı Konut Finansmanı"
+              },
+              {
+                "v": "9",
+                "t": "Mevcut Konutu Olan / Sigortalı Konut Finansmanı"
+              },
+              {
+                "v": "10",
+                "t": "İlk Konutunu Alan / Sigortasız Konut Finansmanı"
+              },
+              {
+                "v": "11",
+                "t": "Mevcut Konutu Olan / Sigortasız Konut Finansmanı"
+              },
+              {
+                "v": "12",
+                "t": "Arsa Finansmanı Sigortalı"
+              },
+              {
+                "v": "13",
+                "t": "Arsa Finansmanı Sigortasız"
+              },
+              {
+                "v": "14",
+                "t": "İşyeri Finansmanı Sigortalı"
+              },
+              {
+                "v": "15",
+                "t": "İşyeri Finansmanı Sigortasız"
+              }
+            ]
+          }
+        ],
+        "buttons": [
+          "INPUT"
+        ]
+      },
+      "clicked": [
+        "Tüm Çerezleri Reddet",
+        "A",
+        "Sayfayı Yazdır",
+        "Facebook'da Paylaş",
+        "Twitter'da Paylaş",
+        "Linkedin'de Paylaş",
+        "Sigortalı Taşıt Finansmanı 0 km",
+        "INPUT",
+        "ÖDEME PLANI",
+        "Sigortalı Taşıt Finansmanı 0 km",
+        "INPUT",
+        "ÖDEME PLANI",
+        "BAŞA DÖN"
+      ]
+    },
+    {
+      "page": "https://www.turkiyefinans.com.tr/tr-tr/hesaplama-araclari/Sayfalar/kar-payi-hesap-makinesi.aspx",
+      "inventory": {
+        "inputs": [
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "_wpcmWpid",
+            "name": "_wpcmWpid",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "wpcmVal",
+            "name": "wpcmVal",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOWebPartPage_PostbackSource",
+            "name": "MSOWebPartPage_PostbackSource",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOTlPn_SelectedWpId",
+            "name": "MSOTlPn_SelectedWpId",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOTlPn_View",
+            "name": "MSOTlPn_View",
+            "ph": "",
+            "val": "0"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOTlPn_ShowSettings",
+            "name": "MSOTlPn_ShowSettings",
+            "ph": "",
+            "val": "False"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOGallery_SelectedLibrary",
+            "name": "MSOGallery_SelectedLibrary",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOGallery_FilterString",
+            "name": "MSOGallery_FilterString",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOTlPn_Button",
+            "name": "MSOTlPn_Button",
+            "ph": "",
+            "val": "none"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "__EVENTTARGET",
+            "name": "__EVENTTARGET",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "__EVENTARGUMENT",
+            "name": "__EVENTARGUMENT",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "__REQUESTDIGEST",
+            "name": "__REQUESTDIGEST",
+            "ph": "",
+            "val": "0x5A42F61712B600D1A4D9F4F378539EE31AD135"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOSPWebPartManager_DisplayModeName",
+            "name": "MSOSPWebPartManager_DisplayModeName",
+            "ph": "",
+            "val": "Browse"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOSPWebPartManager_ExitingDesignMode",
+            "name": "MSOSPWebPartManager_ExitingDesignMode",
+            "ph": "",
+            "val": "false"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOWebPartPage_Shared",
+            "name": "MSOWebPartPage_Shared",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOLayout_LayoutChanges",
+            "name": "MSOLayout_LayoutChanges",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOLayout_InDesignMode",
+            "name": "MSOLayout_InDesignMode",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "_wpSelected",
+            "name": "_wpSelected",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "_wzSelected",
+            "name": "_wzSelected",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOSPWebPartManager_OldDisplayModeName",
+            "name": "MSOSPWebPartManager_OldDisplayModeName",
+            "ph": "",
+            "val": "Browse"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOSPWebPartManager_StartWebPartEditingName",
+            "name": "MSOSPWebPartManager_StartWebPartEditingName",
+            "ph": "",
+            "val": "false"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOSPWebPartManager_EndWebPartEditing",
+            "name": "MSOSPWebPartManager_EndWebPartEditing",
+            "ph": "",
+            "val": "false"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "__VIEWSTATE",
+            "name": "__VIEWSTATE",
+            "ph": "",
+            "val": "oZUOK6lMDelrXnqjyOZskWBY9hIyG2eOB90+Ji14"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "__VIEWSTATEGENERATOR",
+            "name": "__VIEWSTATEGENERATOR",
+            "ph": "",
+            "val": "BAB98CB3"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "txtAutoCompleteSearch",
+            "name": "",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "s2id_autogen1",
+            "name": "",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "s2id_autogen1_search",
+            "name": "",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "s2id_autogen7",
+            "name": "",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "s2id_autogen7_search",
+            "name": "",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "",
+            "name": "",
+            "ph": "",
+            "val": "100.000,00"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "",
+            "name": "",
+            "ph": "",
+            "val": "99/1"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "",
+            "name": "",
+            "ph": "",
+            "val": "40,75"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "",
+            "name": "",
+            "ph": "",
+            "val": "2.855,51"
+          }
+        ],
+        "selects": [
+          {
+            "id": "profit-account-type",
+            "name": "profit-account-type",
+            "options": [
+              {
+                "v": "3",
+                "t": "E-Katılma Hesabı"
+              },
+              {
+                "v": "1",
+                "t": "Katılma Hesabı"
+              },
+              {
+                "v": "4",
+                "t": "Tanışma Hesabı"
+              }
+            ]
+          },
+          {
+            "id": "",
+            "name": "",
+            "options": [
+              {
+                "v": "0",
+                "t": "TL"
+              },
+              {
+                "v": "1",
+                "t": "USD"
+              },
+              {
+                "v": "2",
+                "t": "EUR"
+              },
+              {
+                "v": "3",
+                "t": "ALTIN"
+              },
+              {
+                "v": "4",
+                "t": "GÜMÜŞ"
+              },
+              {
+                "v": "0",
+                "t": "TL"
+              },
+              {
+                "v": "1",
+                "t": "USD"
+              },
+              {
+                "v": "2",
+                "t": "EUR"
+              },
+              {
+                "v": "3",
+                "t": "ALTIN"
+              },
+              {
+                "v": "4",
+                "t": "GÜMÜŞ"
+              }
+            ]
+          }
+        ],
+        "buttons": [
+          "INPUT",
+          "INPUT"
+        ]
+      },
+      "clicked": [
+        "Tüm Çerezleri Reddet",
+        "A",
+        "Sayfayı Yazdır",
+        "Facebook'da Paylaş",
+        "Twitter'da Paylaş",
+        "Linkedin'de Paylaş",
+        "Tanışma Hesabı",
+        "INPUT",
+        "TL",
+        "INPUT",
+        "BAŞA DÖN"
+      ]
+    },
+    {
+      "page": "https://www.turkiyefinans.com.tr/tr-tr/hesaplama-araclari/Sayfalar/taksitle-hesaplama-araci.aspx",
+      "inventory": {
+        "inputs": [
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "_wpcmWpid",
+            "name": "_wpcmWpid",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "wpcmVal",
+            "name": "wpcmVal",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOWebPartPage_PostbackSource",
+            "name": "MSOWebPartPage_PostbackSource",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOTlPn_SelectedWpId",
+            "name": "MSOTlPn_SelectedWpId",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOTlPn_View",
+            "name": "MSOTlPn_View",
+            "ph": "",
+            "val": "0"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOTlPn_ShowSettings",
+            "name": "MSOTlPn_ShowSettings",
+            "ph": "",
+            "val": "False"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOGallery_SelectedLibrary",
+            "name": "MSOGallery_SelectedLibrary",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOGallery_FilterString",
+            "name": "MSOGallery_FilterString",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOTlPn_Button",
+            "name": "MSOTlPn_Button",
+            "ph": "",
+            "val": "none"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "__EVENTTARGET",
+            "name": "__EVENTTARGET",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "__EVENTARGUMENT",
+            "name": "__EVENTARGUMENT",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "__REQUESTDIGEST",
+            "name": "__REQUESTDIGEST",
+            "ph": "",
+            "val": "0x34D32200CCBAFA5DB900009881317DB8B6ED83"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOSPWebPartManager_DisplayModeName",
+            "name": "MSOSPWebPartManager_DisplayModeName",
+            "ph": "",
+            "val": "Browse"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOSPWebPartManager_ExitingDesignMode",
+            "name": "MSOSPWebPartManager_ExitingDesignMode",
+            "ph": "",
+            "val": "false"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOWebPartPage_Shared",
+            "name": "MSOWebPartPage_Shared",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOLayout_LayoutChanges",
+            "name": "MSOLayout_LayoutChanges",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOLayout_InDesignMode",
+            "name": "MSOLayout_InDesignMode",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "_wpSelected",
+            "name": "_wpSelected",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "_wzSelected",
+            "name": "_wzSelected",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOSPWebPartManager_OldDisplayModeName",
+            "name": "MSOSPWebPartManager_OldDisplayModeName",
+            "ph": "",
+            "val": "Browse"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOSPWebPartManager_StartWebPartEditingName",
+            "name": "MSOSPWebPartManager_StartWebPartEditingName",
+            "ph": "",
+            "val": "false"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOSPWebPartManager_EndWebPartEditing",
+            "name": "MSOSPWebPartManager_EndWebPartEditing",
+            "ph": "",
+            "val": "false"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "__VIEWSTATE",
+            "name": "__VIEWSTATE",
+            "ph": "",
+            "val": "/9OB0KHQo16/RVpSH9PAV4LUho45XdYquJ5MN940"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "__VIEWSTATEGENERATOR",
+            "name": "__VIEWSTATEGENERATOR",
+            "ph": "",
+            "val": "BAB98CB3"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "txtAutoCompleteSearch",
+            "name": "",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "range",
+            "id": "txtTaksitSayısı",
+            "name": "",
+            "ph": "",
+            "val": "2"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "txtTaksitleKarPayi",
+            "name": "",
+            "ph": "",
+            "val": "4.25"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "s2id_autogen2",
+            "name": "",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "s2id_autogen2_search",
+            "name": "",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "datepicker",
+            "name": "",
+            "ph": "Seçiniz",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "txtHarcamaTutari",
+            "name": "",
+            "ph": "",
+            "val": ""
+          }
+        ],
+        "selects": [
+          {
+            "id": "ctl00_ctl38_g_fce2cb41_14e4_4083_97b1_d112aece867c_ctl00_drpHKT",
+            "name": "ctl00$ctl38$g_fce2cb41_14e4_4083_97b1_d112aece867c$ctl00$drpHKT",
+            "options": [
+              {
+                "v": "3",
+                "t": "Her Ayın 3. Günü"
+              },
+              {
+                "v": "5",
+                "t": "Her Ayın 5. Günü"
+              },
+              {
+                "v": "7",
+                "t": "Her Ayın 7. Günü"
+              },
+              {
+                "v": "10",
+                "t": "Her Ayın 10. Günü"
+              },
+              {
+                "v": "17",
+                "t": "Her Ayın 17. Günü"
+              },
+              {
+                "v": "25",
+                "t": "Her Ayın 25. Günü"
+              },
+              {
+                "v": "29",
+                "t": "Her Ayın 29. Günü"
+              }
+            ]
+          }
+        ],
+        "buttons": [
+          "INPUT"
+        ]
+      },
+      "clicked": [
+        "Tüm Çerezleri Reddet",
+        "A",
+        "Sayfayı Yazdır",
+        "Facebook'da Paylaş",
+        "Twitter'da Paylaş",
+        "Linkedin'de Paylaş",
+        "Her Ayın 7. Günü",
+        "INPUT",
+        "Taksit Hesapla",
+        "A"
+      ]
+    },
+    {
+      "page": "https://www.turkiyefinans.com.tr/tr-tr/hesaplama-araclari/Sayfalar/doviz-hesaplama.aspx",
+      "inventory": {
+        "inputs": [
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "_wpcmWpid",
+            "name": "_wpcmWpid",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "wpcmVal",
+            "name": "wpcmVal",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOWebPartPage_PostbackSource",
+            "name": "MSOWebPartPage_PostbackSource",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOTlPn_SelectedWpId",
+            "name": "MSOTlPn_SelectedWpId",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOTlPn_View",
+            "name": "MSOTlPn_View",
+            "ph": "",
+            "val": "0"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOTlPn_ShowSettings",
+            "name": "MSOTlPn_ShowSettings",
+            "ph": "",
+            "val": "False"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOGallery_SelectedLibrary",
+            "name": "MSOGallery_SelectedLibrary",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOGallery_FilterString",
+            "name": "MSOGallery_FilterString",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOTlPn_Button",
+            "name": "MSOTlPn_Button",
+            "ph": "",
+            "val": "none"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "__EVENTTARGET",
+            "name": "__EVENTTARGET",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "__EVENTARGUMENT",
+            "name": "__EVENTARGUMENT",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "__REQUESTDIGEST",
+            "name": "__REQUESTDIGEST",
+            "ph": "",
+            "val": "0x4491A75F3447C44FAA2CB9A843D0299BF5FD7E"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOSPWebPartManager_DisplayModeName",
+            "name": "MSOSPWebPartManager_DisplayModeName",
+            "ph": "",
+            "val": "Browse"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOSPWebPartManager_ExitingDesignMode",
+            "name": "MSOSPWebPartManager_ExitingDesignMode",
+            "ph": "",
+            "val": "false"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOWebPartPage_Shared",
+            "name": "MSOWebPartPage_Shared",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOLayout_LayoutChanges",
+            "name": "MSOLayout_LayoutChanges",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOLayout_InDesignMode",
+            "name": "MSOLayout_InDesignMode",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "_wpSelected",
+            "name": "_wpSelected",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "_wzSelected",
+            "name": "_wzSelected",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOSPWebPartManager_OldDisplayModeName",
+            "name": "MSOSPWebPartManager_OldDisplayModeName",
+            "ph": "",
+            "val": "Browse"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOSPWebPartManager_StartWebPartEditingName",
+            "name": "MSOSPWebPartManager_StartWebPartEditingName",
+            "ph": "",
+            "val": "false"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "MSOSPWebPartManager_EndWebPartEditing",
+            "name": "MSOSPWebPartManager_EndWebPartEditing",
+            "ph": "",
+            "val": "false"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "__VIEWSTATE",
+            "name": "__VIEWSTATE",
+            "ph": "",
+            "val": "0b2fitQqevtBUrVJVgVKs5r98rbF3CYKBN2BjfoX"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "__VIEWSTATEGENERATOR",
+            "name": "__VIEWSTATEGENERATOR",
+            "ph": "",
+            "val": "BAB98CB3"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "txtAutoCompleteSearch",
+            "name": "",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "s2id_autogen6",
+            "name": "",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "s2id_autogen6_search",
+            "name": "",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "s2id_autogen8",
+            "name": "",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "s2id_autogen8_search",
+            "name": "",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "",
+            "name": "",
+            "ph": "",
+            "val": "1.000"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "",
+            "name": "",
+            "ph": "",
+            "val": "20,96"
+          }
+        ],
+        "selects": [
+          {
+            "id": "",
+            "name": "",
+            "options": [
+              {
+                "v": "0",
+                "t": "TL"
+              },
+              {
+                "v": "1",
+                "t": "EUR"
+              },
+              {
+                "v": "2",
+                "t": "USD"
+              }
+            ]
+          },
+          {
+            "id": "",
+            "name": "",
+            "options": [
+              {
+                "v": "0",
+                "t": "TL"
+              },
+              {
+                "v": "1",
+                "t": "EUR"
+              },
+              {
+                "v": "2",
+                "t": "USD"
+              }
+            ]
+          }
+        ],
+        "buttons": [
+          "INPUT",
+          "INPUT"
+        ]
+      },
+      "clicked": [
+        "Tüm Çerezleri Reddet",
+        "A",
+        "Sayfayı Yazdır",
+        "Facebook'da Paylaş",
+        "Twitter'da Paylaş",
+        "Linkedin'de Paylaş",
+        "USD",
+        "INPUT",
+        "USD",
+        "INPUT",
+        "HEMEN BAŞVUR",
+        "BAŞA DÖN"
+      ]
+    }
+  ],
+  "endpoints": [
+    {
+      "page": "https://www.turkiyefinans.com.tr/tr-tr/hesaplama-araclari/Sayfalar/finansman-odeme-plani.aspx",
+      "method": "GET",
+      "endpoint": "https://marketing.turkiyefinans.com.tr/cdn/automation.js",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.turkiyefinans.com.tr/\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.turkiyefinans.com.tr/tr-tr/hesaplama-araclari/Sayfalar/finansman-odeme-plani.aspx",
+      "method": "GET",
+      "endpoint": "https://marketing.turkiyefinans.com.tr/cdn/automation.js",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.turkiyefinans.com.tr/\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.turkiyefinans.com.tr/tr-tr/hesaplama-araclari/Sayfalar/finansman-odeme-plani.aspx",
+      "method": "GET",
+      "endpoint": "https://www.turkiyefinans.com.tr/_vti_bin/TurkiyeFinansServices/FrontEndService.svc/GetFinanceCalculatorCreditTypeItems?_=1786203552417",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.turkiyefinans.com.tr/tr-tr/hesaplama-araclari/Sayfalar/finansman-odeme-plani.aspx\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/json; charset=utf-8",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.turkiyefinans.com.tr/tr-tr/hesaplama-araclari/Sayfalar/finansman-odeme-plani.aspx",
+      "method": "GET",
+      "endpoint": "https://www.turkiyefinans.com.tr/SitePages/behaviorpad-crossbanner-tr.aspx",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.turkiyefinans.com.tr/tr-tr/hesaplama-araclari/Sayfalar/finansman-odeme-plani.aspx\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: application/json, text/javascript, */*; q=0.01\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.turkiyefinans.com.tr/tr-tr/hesaplama-araclari/Sayfalar/finansman-odeme-plani.aspx",
+      "method": "GET",
+      "endpoint": "https://www.turkiyefinans.com.tr/_vti_bin/TurkiyeFinansServices/FrontEndService.svc/GetCrossBannerData/%7Bb77a3f48-238f-4751-907e-01f3c8d04597%7D/3?s=/tr-tr/hesaplama-araclari",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.turkiyefinans.com.tr/tr-tr/hesaplama-araclari/Sayfalar/finansman-odeme-plani.aspx\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: application/json, text/javascript, */*; q=0.01\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.turkiyefinans.com.tr/tr-tr/hesaplama-araclari/Sayfalar/finansman-odeme-plani.aspx",
+      "method": "GET",
+      "endpoint": "https://marketing.turkiyefinans.com.tr/cdn/automation.js",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.turkiyefinans.com.tr/\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.turkiyefinans.com.tr/tr-tr/hesaplama-araclari/Sayfalar/finansman-odeme-plani.aspx",
+      "method": "GET",
+      "endpoint": "https://www.turkiyefinans.com.tr/_vti_bin/TurkiyeFinansServices/FrontEndService.svc/GetFinanceCalculatorCreditTypeItems?_=1786203567738",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.turkiyefinans.com.tr/tr-tr/hesaplama-araclari/Sayfalar/finansman-odeme-plani.aspx\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/json; charset=utf-8",
+      "request_body": "",
+      "response": "{\"GetFinanceCalculatorCreditTypeItemsResult\":{\"Data\":[{\"AllocationFee\":0.00575,\"Bitt\":0.15,\"Calculate\":true,\"Code\":\"ihtiyac_kredisi\",\"CreditID\":1,\"DetailTextBottom\":\"<div class=\\\"ExternalClass9DB792B40763431D88CC1D83D86B4C29\\\">Ödeme tablosu bilgileri eşit ödemeli finansman kullandırımları için geçerli olup, ötelemeli ve değişken ödemeli esnek ödeme türlerinde ilgili tablo bilgileri değişkenlik göstermektedir.​<\\/div>\",\"DetailTextTop\":\"text10\",\"EnglishName\":\"Consumer Loan\",\"ExpertiseFee\":0,\"FinanceCalculatorCreditList\":[{\"Cost\":96.05,\"Currency\":\"TL\",\"EnglishName\":\"Consumer Loan\",\"ID\":400,\"Max\":3,\"Min\":1,\"ParentID\":1,\"SpecialAllocationFee\":0.00,\"SpecialAllocationRate\":0,\"Title\":\"İhtiyaç Finansmanı\",\"TutarMax\":0,\"TutarMin\":0,\"Value\":4.2},{\"Cost\":90.09,\"Currency\":\"TL\",\"EnglishName\":\"Consumer Loan\",\"ID\":743,\"Max\":12,\"Min\":4,\"ParentID\":1,\"SpecialAllocationFee\":0.00,\"SpecialAllocationRate\":0,\"Title\":\"İhtiyaç Finansmanı  \",\"TutarMax\":0,\"TutarMin\":0,\"Value\":4.15},{\"Cost\":88.07,\"Currency\":\"TL\",\"EnglishName\":\"Consumer Loan\",\"ID\":744,\"Max\":18,\"Min\":13,\"ParentID\":1,\"SpecialAllocationFee\":0.00,\"SpecialAllocationRate\":0,\"Title\":\"İhtiyaç Finansmanı\",\"TutarMax\":0,\"TutarMin\":0,\"Value\":4.1},{\"Cost\":86.37,\"Currency\":\"TL\",\"EnglishName\":\"Consumer Loan\",\"ID\":751,\"Max\":24,\"Min\":19,\"ParentID\":1,\"SpecialAllocationFee\":0.00,\"SpecialAllocationRate\":0,\"Title\":\"İhtiyaç Finansmanı\",\"TutarMax\":0,\"TutarMin\":0,\"Value\":4.05},{\"Cost\":84.71,\"Currency\":\"TL\",\"EnglishName\":\"Consumer Loan\",\"ID\":806,\"Max\":35,\"Min\":25,\"ParentID\":1,\"SpecialAllocationFee\":0.00,\"SpecialAllocationRate\":0,\"Title\":\"İhtiyaç Finansmanı\",\"TutarMax\":0,\"TutarMin\":0,\"Value\":4},{\"Cost\":79.27,\"Currency\":\"TL\",\"EnglishName\":\"Consumer Loan\",\"ID\":832,\"Max\":36,\"Min\":36,\"ParentID\":1,\"SpecialAllocationFee\":0.00,\"SpecialAllocationRate\":0,\"Title\":\"İhtiyaç Finansmanı\",\"TutarMax\":0,\"TutarMin\":0,\"Value\":3.8}],\"ID\":34,\"MortgageFee\":0,\"Rusf\":0.15,\"ShowInHomePage\":true,\"ShowInSubPage\":true,\"Title\":\"İhtiyaç Finansmanı\"},{\"AllocationFee\":0.00575,\"Bitt\":0.15,\"Calculate\":true,\"Code\":\"ihtiyac_kredisi\",\"CreditID\":999,\"DetailTextBottom\":\"\",\"DetailTextTop\":\"text4\",\"EnglishName\":\"Uninsured Consumer Loan\",\"ExpertiseFee\":0,\"FinanceCalculatorCreditList\":[{\"Cost\":158.9,\"Currency\":\"TL\",\"EnglishName\":\"Uninsured Consumer Loan\",\"ID\":690,\"Max\":3,\"Min\":1,\"ParentID\":999,\"SpecialAllocationFee\":0.00,\"SpecialAllocationRate\":0,\"Title\":\"Sigortasız İhtiyaç Finansmanı\",\"TutarMax\":0,\"TutarMin\":0,\"Value\":6.1},{\"Cost\":151.15,\"Currency\":\"TL\",\"EnglishName\":\"Uninsured Consumer Loan\",\"ID\":746,\"Max\":12,\"Min\":4,\"ParentID\":999,\"SpecialAllocationFee\":0.00,\"SpecialAllocationRate\":0,\"Title\":\"Sigortasız İhtiyaç Finansmanı  \",\"TutarMax\":0,\"TutarMin\":0,\"Value\":6.05},{\"Cost\":148.55,\"Currency\":\"TL\",\"EnglishName\":\"Uninsured Consumer Loan\",\"ID\":752,\"Max\":18,\"Min\":13,\"ParentID\":999,\"SpecialAllocationFee\":0.00,\"SpecialAllocationRate\":0,\"Title\":\"Sigortasız İhtiyaç Finansmanı\",\"TutarMax\":0,\"TutarMin\":0,\"Value\":6},{\"Cost\":146.37,\"Currency\":\"TL\",\"EnglishName\":\"Uninsured Consumer Loan\",\"ID\":753,\"Max\":24,\"Min\":19,\"ParentID\":999,\"SpecialAllocationFee\":0.00,\"SpecialAllocationRate\":0,\"Title\":\"Sigortasız İhtiyaç Finansmanı\",\"TutarMax\":0,\"TutarMin\":0,\"Value\":5.95},{\"Cost\":144.25,\"Currency\":\"TL\",\"EnglishName\":\"Uninsured Consumer Loan\",\"ID\":807,\"Max\":35,\"Min\":25,\"ParentID\":999,\"SpecialAllocationFee\":0.00,\"SpecialAllocationRate\":0,\"Title\":\"Sigortasız İhtiyaç Finansmanı\",\"TutarMax\":0,\"TutarMin\":0,\"Value\":5.9},{\"Cost\":137.22,\"Currency\":\"TL\",\"EnglishName\":\"Uninsured Consumer Loan\",\"ID\":833,\"Max\":36,\"Min\":36,\"ParentID\":999,\"SpecialAllocationFee\":0.00,\"SpecialAllocationRate\":0,\"Title\":\"Sigortasız İhtiyaç Finansmanı\",\"TutarMax\":0,\"TutarMin\":0,\"Value\":5.7}],\"ID\":94,\"MortgageFee\":0,\"Rusf\":0.15,\"ShowInHomePage\":true,\"ShowInSubPage\":true,\"Title\":\"Sigortasız İhtiyaç Finansmanı\"},{\"AllocationFee\":0.00575,\"Bitt\":0.15,\"Calculate\":true,\"Code\":\"tasit_kredisi_0_km\",\"CreditID\":14,\"DetailTextBottom\":\"<div class=\\\"ExternalClass7694C78349354709AA2635C902EA5BF0\\\"><p><small>Ödeme tablosu bilgileri eşit ödemeli finansman kullandırımları için geçerli olup, ötelemeli ve değişken ödemeli esnek ödeme türlerinde ilgili tablo bilgileri değişkenlik göstermektedir.<\\/small>​<br><\\/p><\\/div>\",\"DetailTextTop\":\"text6\",\"EnglishName\":\"Vehicle Loan\",\"ExpertiseFee\":0,\"FinanceCalculatorCreditList\":[{\"Cost\":81.11,\"Currency\":\"TL\",\"EnglishName\":\"Vehicle Loan\",\"ID\":428,\"Max\":3,\"Min\":1,\"ParentID\":14,\"SpecialAllocationFee\":0.00,\"SpecialAllocationRate\":0,\"Title\":\"Taşıt Finansmanı\",\"TutarMax\":0,\"TutarMin\":0,\"Value\":3.67},{\"Cost\":78.49,\"Currency\":\"TL\",\"EnglishName\":\"Vehicle Loan\",\"ID\":429,\"Max\":6,\"Min\":4,\"ParentID\":14,\"SpecialAllocationFee\":0.00,\"SpecialAllocationRate\":0,\"Title\":\"Taşıt Finansmanı\",\"TutarMax\":0,\"TutarMin\":0,\"Value\":3.67},{\"Cost\":75.81,\"Currency\":\"TL\",\"EnglishName\":\"Vehicle Loan\",\"ID\":430,\"Max\":12,\"Min\":7,\"ParentID\":14,\"SpecialAllocationFee\":0.00,\"SpecialAllocationRate\":0,\"Title\":\"Taşıt Finansmanı\",\"TutarMax\":0,\"TutarMin\":0,\"Value\":3.63},{\"Cost\":73.61,\"Currency\":\"TL\",\"EnglishName\":\"Vehicle Loan\",\"ID\":776,\"Max\":18,\"Min\":13,\"ParentID\":14,\"SpecialAllocationFee\":0.00,\"SpecialAllocationRate\":0,\"Title\":\"Taşıt Finansmanı\",\"TutarMax\":0,\"TutarMin\":0,\"Value\":3.56},{\"Cost\":72.24,\"Currency\":\"TL\",\"EnglishName\":\"Vehicle Loan\",\"ID\":782,\"Max\":24,\"Min\":19,\"ParentID\":14,\"SpecialAllocationFee\":0.00,\"SpecialAllocationRate\":0,\"Title\":\"Taşıt Finansmanı\",\"TutarMax\":0,\"TutarMin\":0,\"Value\":3.52},{\"Cost\":70.88,\"Currency\":\"TL\",\"EnglishName\":\"Vehicle Loan\",\"ID\":808,\"Max\":36,\"Min\":25,\"ParentID\":14,\"SpecialAllocationFee\":0.00,\"SpecialAllocationRate\":0,\"Title\":\"Taşıt Finansmanı\",\"TutarMax\":0,\"TutarMin\":0,\"Value\":3.48},{\"Cost\":69.16,\"Currency\":\"TL\",\"EnglishName\":\"Vehicle Loan\",\"ID\":811,\"Max\":48,\"Min\":37,\"ParentID\":14,\"SpecialAllocationFee\":0.00,\"SpecialAllocationRate\":0,\"Title\":\"Taşıt Finansmanı\",\"TutarMax\":0,\"TutarMin\":0,\"Value\":3.42}],\"ID\":44,\"MortgageFee\":0,\"Rusf\":0.15,\"ShowInHomePage\":true,\"ShowInSubPage\":true,\"Title\":\"Sigortalı Taşıt Finansmanı 0 km\"},{\"AllocationFee\":0.00575,\"Bitt\":0.15,\"Calcula"
+    },
+    {
+      "page": "https://www.turkiyefinans.com.tr/tr-tr/hesaplama-araclari/Sayfalar/finansman-odeme-plani.aspx",
+      "method": "GET",
+      "endpoint": "https://www.turkiyefinans.com.tr/SitePages/behaviorpad-crossbanner-tr.aspx",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.turkiyefinans.com.tr/tr-tr/hesaplama-araclari/Sayfalar/finansman-odeme-plani.aspx\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: application/json, text/javascript, */*; q=0.01\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ".playwright-mcp/response-2026-08-08T15-39-40-383Z.bin"
+    },
+    {
+      "page": "https://www.turkiyefinans.com.tr/tr-tr/hesaplama-araclari/Sayfalar/finansman-odeme-plani.aspx",
+      "method": "GET",
+      "endpoint": "https://www.turkiyefinans.com.tr/_vti_bin/TurkiyeFinansServices/FrontEndService.svc/GetCrossBannerData/%7Bb77a3f48-238f-4751-907e-01f3c8d04597%7D/3?s=/tr-tr/hesaplama-araclari",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.turkiyefinans.com.tr/tr-tr/hesaplama-araclari/Sayfalar/finansman-odeme-plani.aspx\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: application/json, text/javascript, */*; q=0.01\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": "{\"GetCrossBannerDataResult\":{\"Data\":{\"CrossBannerURL\":null,\"GoogleAnalyticsParameters\":null,\"IsTrackEvent\":false,\"NavigateURL\":null},\"Message\":null,\"Result\":1}}"
+    },
+    {
+      "page": "https://www.turkiyefinans.com.tr/tr-tr/hesaplama-araclari/Sayfalar/kar-payi-hesap-makinesi.aspx",
+      "method": "GET",
+      "endpoint": "https://www.turkiyefinans.com.tr/_vti_bin/TurkiyeFinansServices/FrontEndService.svc/GetKarPayiHesaplama/4/Bireysel?_=1786203583995",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.turkiyefinans.com.tr/tr-tr/hesaplama-araclari/Sayfalar/kar-payi-hesap-makinesi.aspx\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/json; charset=utf-8",
+      "request_body": "",
+      "response": "{\"GetKarPayiHesaplamaResult\":{\"Data\":[{\"AccountGroupType\":4,\"AnnuallyGrossRatio\":\"40.75313361\",\"Currency\":\"TL \",\"CurrencyTypeId\":0,\"CustomerType\":1,\"MaximumAmount\":10000000.0000,\"MaximumDueDay\":31,\"MinimumAmount\":10000.0000,\"MinimumDueDay\":0,\"NetRatio\":\"28.72816788\",\"ProfitRate\":\"99\\/1\"},{\"AccountGroupType\":4,\"AnnuallyGrossRatio\":\"41.09859932\",\"Currency\":\"TL \",\"CurrencyTypeId\":0,\"CustomerType\":1,\"MaximumAmount\":10000000.0000,\"MaximumDueDay\":91,\"MinimumAmount\":10000.0000,\"MinimumDueDay\":32,\"NetRatio\":\"85.04595087\",\"ProfitRate\":\"96\\/4\"},{\"AccountGroupType\":4,\"AnnuallyGrossRatio\":\"29.80493729\",\"Currency\":\"TL \",\"CurrencyTypeId\":0,\"CustomerType\":1,\"MaximumAmount\":10000000.0000,\"MaximumDueDay\":180,\"MinimumAmount\":10000.0000,\"MinimumDueDay\":92,\"NetRatio\":\"121.99609950\",\"ProfitRate\":\"68\\/32\"},{\"AccountGroupType\":4,\"AnnuallyGrossRatio\":\"27.21241487\",\"Currency\":\"TL \",\"CurrencyTypeId\":0,\"CustomerType\":1,\"MaximumAmount\":10000000.0000,\"MaximumDueDay\":364,\"MinimumAmount\":10000.0000,\"MinimumDueDay\":181,\"NetRatio\":\"230.67181262\",\"ProfitRate\":\"64\\/36\"},{\"AccountGroupType\":4,\"AnnuallyGrossRatio\":\"27.13786031\",\"Currency\":\"TL \",\"CurrencyTypeId\":0,\"CustomerType\":1,\"MaximumAmount\":10000000.0000,\"MaximumDueDay\":450,\"MinimumAmount\":10000.0000,\"MinimumDueDay\":365,\"NetRatio\":\"244.24074277\",\"ProfitRate\":\"64\\/36\"}],\"Message\":null,\"Result\":1}}"
+    },
+    {
+      "page": "https://www.turkiyefinans.com.tr/tr-tr/hesaplama-araclari/Sayfalar/kar-payi-hesap-makinesi.aspx",
+      "method": "GET",
+      "endpoint": "https://www.turkiyefinans.com.tr/_vti_bin/TurkiyeFinansServices/FrontEndService.svc/GetParticipationCurrencyTypeItems?_=1786203583996",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.turkiyefinans.com.tr/tr-tr/hesaplama-araclari/Sayfalar/kar-payi-hesap-makinesi.aspx\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/json; charset=utf-8",
+      "request_body": "",
+      "response": "{\"GetParticipationCurrencyTypeItemsResult\":{\"Data\":[{\"CurrencyCode\":\"TL \",\"CurrencyTypeID\":0,\"ID\":31,\"Title\":\"TL -Türk Lirası\"},{\"CurrencyCode\":\"USD\",\"CurrencyTypeID\":1,\"ID\":32,\"Title\":\"USD-Amerikan Doları\"},{\"CurrencyCode\":\"EUR\",\"CurrencyTypeID\":19,\"ID\":33,\"Title\":\"EUR-Avrupa Para Birimi\"},{\"CurrencyCode\":\"YAU\",\"CurrencyTypeID\":26,\"ID\":34,\"Title\":\"YAU-Altın-Gr\"},{\"CurrencyCode\":\"YAG\",\"CurrencyTypeID\":28,\"ID\":35,\"Title\":\"YAG-Gümüş-Gr\"}],\"Message\":null,\"Result\":1}}"
+    }
+  ],
+  "third_party": []
+}

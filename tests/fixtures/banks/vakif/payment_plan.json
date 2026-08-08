@@ -1,0 +1,244 @@
+{
+  "tablePrintUrl": "/",
+  "print": "Yazdır",
+  "tableHeading": "Ödeme Planı",
+  "tableHead": [
+    "Taksit Sayısı",
+    "Taksit Tutarı",
+    "Ana Para",
+    "Kâr Tutarı",
+    "KKDF Tutarı",
+    "BSMV Tutarı",
+    "Kalan Ana Para Tutarı"
+  ],
+  "tableBody": [
+    {
+      "taksitSayisi": "1",
+      "taksitTutari": "7.159,22 TL",
+      "anaPara": "2.284,22 TL",
+      "karTutari": "3.750,00 TL",
+      "kkdfTutari": "562,50 TL",
+      "bsmfTutari": "562,50 TL",
+      "kalanAnaParaTutari": "97.715,78 TL"
+    },
+    {
+      "taksitSayisi": "2",
+      "taksitTutari": "7.159,22 TL",
+      "anaPara": "2.395,58 TL",
+      "karTutari": "3.664,34 TL",
+      "kkdfTutari": "549,65 TL",
+      "bsmfTutari": "549,65 TL",
+      "kalanAnaParaTutari": "95.320,20 TL"
+    },
+    {
+      "taksitSayisi": "3",
+      "taksitTutari": "7.159,22 TL",
+      "anaPara": "2.512,36 TL",
+      "karTutari": "3.574,51 TL",
+      "kkdfTutari": "536,18 TL",
+      "bsmfTutari": "536,18 TL",
+      "kalanAnaParaTutari": "92.807,83 TL"
+    },
+    {
+      "taksitSayisi": "4",
+      "taksitTutari": "7.159,22 TL",
+      "anaPara": "2.634,84 TL",
+      "karTutari": "3.480,29 TL",
+      "kkdfTutari": "522,04 TL",
+      "bsmfTutari": "522,04 TL",
+      "kalanAnaParaTutari": "90.172,99 TL"
+    },
+    {
+      "taksitSayisi": "5",
+      "taksitTutari": "7.159,22 TL",
+      "anaPara": "2.763,29 TL",
+      "karTutari": "3.381,49 TL",
+      "kkdfTutari": "507,22 TL",
+      "bsmfTutari": "507,22 TL",
+      "kalanAnaParaTutari": "87.409,70 TL"
+    },
+    {
+      "taksitSayisi": "6",
+      "taksitTutari": "7.159,22 TL",
+      "anaPara": "2.898,00 TL",
+      "karTutari": "3.277,86 TL",
+      "kkdfTutari": "491,68 TL",
+      "bsmfTutari": "491,68 TL",
+      "kalanAnaParaTutari": "84.511,70 TL"
+    },
+    {
+      "taksitSayisi": "7",
+      "taksitTutari": "7.159,22 TL",
+      "anaPara": "3.039,28 TL",
+      "karTutari": "3.169,19 TL",
+      "kkdfTutari": "475,38 TL",
+      "bsmfTutari": "475,38 TL",
+      "kalanAnaParaTutari": "81.472,43 TL"
+    },
+    {
+      "taksitSayisi": "8",
+      "taksitTutari": "7.159,22 TL",
+      "anaPara": "3.187,44 TL",
+      "karTutari": "3.055,22 TL",
+      "kkdfTutari": "458,28 TL",
+      "bsmfTutari": "458,28 TL",
+      "kalanAnaParaTutari": "78.284,98 TL"
+    },
+    {
+      "taksitSayisi": "9",
+      "taksitTutari": "7.159,22 TL",
+      "anaPara": "3.342,83 TL",
+      "karTutari": "2.935,69 TL",
+      "kkdfTutari": "440,35 TL",
+      "bsmfTutari": "440,35 TL",
+      "kalanAnaParaTutari": "74.942,15 TL"
+    },
+    {
+      "taksitSayisi": "10",
+      "taksitTutari": "7.159,22 TL",
+      "anaPara": "3.505,79 TL",
+      "karTutari": "2.810,33 TL",
+      "kkdfTutari": "421,55 TL",
+      "bsmfTutari": "421,55 TL",
+      "kalanAnaParaTutari": "71.436,36 TL"
+    },
+    {
+      "taksitSayisi": "11",
+      "taksitTutari": "7.159,22 TL",
+      "anaPara": "3.676,70 TL",
+      "karTutari": "2.678,86 TL",
+      "kkdfTutari": "401,83 TL",
+      "bsmfTutari": "401,83 TL",
+      "kalanAnaParaTutari": "67.759,66 TL"
+    },
+    {
+      "taksitSayisi": "12",
+      "taksitTutari": "7.159,22 TL",
+      "anaPara": "3.855,94 TL",
+      "karTutari": "2.540,99 TL",
+      "kkdfTutari": "381,15 TL",
+      "bsmfTutari": "381,15 TL",
+      "kalanAnaParaTutari": "63.903,72 TL"
+    },
+    {
+      "taksitSayisi": "13",
+      "taksitTutari": "7.159,22 TL",
+      "anaPara": "4.043,92 TL",
+      "karTutari": "2.396,39 TL",
+      "kkdfTutari": "359,46 TL",
+      "bsmfTutari": "359,46 TL",
+      "kalanAnaParaTutari": "59.859,80 TL"
+    },
+    {
+      "taksitSayisi": "14",
+      "taksitTutari": "7.159,22 TL",
+      "anaPara": "4.241,06 TL",
+      "karTutari": "2.244,74 TL",
+      "kkdfTutari": "336,71 TL",
+      "bsmfTutari": "336,71 TL",
+      "kalanAnaParaTutari": "55.618,75 TL"
+    },
+    {
+      "taksitSayisi": "15",
+      "taksitTutari": "7.159,22 TL",
+      "anaPara": "4.447,81 TL",
+      "karTutari": "2.085,70 TL",
+      "kkdfTutari": "312,86 TL",
+      "bsmfTutari": "312,86 TL",
+      "kalanAnaParaTutari": "51.170,94 TL"
+    },
+    {
+      "taksitSayisi": "16",
+      "taksitTutari": "7.159,22 TL",
+      "anaPara": "4.664,64 TL",
+      "karTutari": "1.918,91 TL",
+      "kkdfTutari": "287,84 TL",
+      "bsmfTutari": "287,84 TL",
+      "kalanAnaParaTutari": "46.506,30 TL"
+    },
+    {
+      "taksitSayisi": "17",
+      "taksitTutari": "7.159,22 TL",
+      "anaPara": "4.892,04 TL",
+      "karTutari": "1.743,99 TL",
+      "kkdfTutari": "261,60 TL",
+      "bsmfTutari": "261,60 TL",
+      "kalanAnaParaTutari": "41.614,25 TL"
+    },
+    {
+      "taksitSayisi": "18",
+      "taksitTutari": "7.159,22 TL",
+      "anaPara": "5.130,53 TL",
+      "karTutari": "1.560,53 TL",
+      "kkdfTutari": "234,08 TL",
+      "bsmfTutari": "234,08 TL",
+      "kalanAnaParaTutari": "36.483,73 TL"
+    },
+    {
+      "taksitSayisi": "19",
+      "taksitTutari": "7.159,22 TL",
+      "anaPara": "5.380,64 TL",
+      "karTutari": "1.368,14 TL",
+      "kkdfTutari": "205,22 TL",
+      "bsmfTutari": "205,22 TL",
+      "kalanAnaParaTutari": "31.103,08 TL"
+    },
+    {
+      "taksitSayisi": "20",
+      "taksitTutari": "7.159,22 TL",
+      "anaPara": "5.642,95 TL",
+      "karTutari": "1.166,37 TL",
+      "kkdfTutari": "174,95 TL",
+      "bsmfTutari": "174,95 TL",
+      "kalanAnaParaTutari": "25.460,14 TL"
+    },
+    {
+      "taksitSayisi": "21",
+      "taksitTutari": "7.159,22 TL",
+      "anaPara": "5.918,04 TL",
+      "karTutari": "954,76 TL",
+      "kkdfTutari": "143,21 TL",
+      "bsmfTutari": "143,21 TL",
+      "kalanAnaParaTutari": "19.542,10 TL"
+    },
+    {
+      "taksitSayisi": "22",
+      "taksitTutari": "7.159,22 TL",
+      "anaPara": "6.206,55 TL",
+      "karTutari": "732,83 TL",
+      "kkdfTutari": "109,92 TL",
+      "bsmfTutari": "109,92 TL",
+      "kalanAnaParaTutari": "13.335,55 TL"
+    },
+    {
+      "taksitSayisi": "23",
+      "taksitTutari": "7.159,22 TL",
+      "anaPara": "6.509,12 TL",
+      "karTutari": "500,08 TL",
+      "kkdfTutari": "75,01 TL",
+      "bsmfTutari": "75,01 TL",
+      "kalanAnaParaTutari": "6.826,43 TL"
+    },
+    {
+      "taksitSayisi": "24",
+      "taksitTutari": "7.159,22 TL",
+      "anaPara": "6.826,43 TL",
+      "karTutari": "255,99 TL",
+      "kkdfTutari": "38,40 TL",
+      "bsmfTutari": "38,40 TL",
+      "kalanAnaParaTutari": "0,00 TL"
+    }
+  ],
+  "ornekOdemeBilgisi": {
+    "finansmanTutari": "100.000,00 TL",
+    "odenecekToplamTutar": "171.821,36 TL",
+    "taksitTutari": "7.159,22 TL",
+    "karOrani": "%3,75"
+  },
+  "ornekOdemeBilgisiBaslik": {
+    "finansmanTutari": "Finansman Tutarı",
+    "odenecekToplamTutar": "Geri Ödenecek Toplam Tutar",
+    "taksitTutari": "Taksit Tutarı",
+    "karOrani": "Kâr Oranı"
+  }
+}

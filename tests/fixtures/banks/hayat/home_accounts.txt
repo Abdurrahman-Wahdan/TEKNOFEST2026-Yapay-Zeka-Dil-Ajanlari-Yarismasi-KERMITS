@@ -1,0 +1,3 @@
+"inputAccountTypeItemOptionID":2,"value":"2","label":"Avantajlı Hesap","selected":true,"buttonUrl":"https://hayatfinans.com.tr/hesaplar/avantajli-hesap","productTypeId":null,"accountType":1
+"inputAccountTypeItemOptionID":1,"value":"1","label":"Katılma Hesabı","selected":false,"buttonUrl":"https://hayatfinans.com.tr/hesaplar/katilma-hesabi","productTypeId":"BBACALCULATOR","accountType":0
+"inputAccountTypeItemOptionID":3,"value":"3","label":"Avantajlı Günlük Hesap","selected":false,"buttonUrl":"https://hayatfinans.com.tr/hesaplar/avantajli-gunluk-hesap","productTypeId":"2","accountType":2

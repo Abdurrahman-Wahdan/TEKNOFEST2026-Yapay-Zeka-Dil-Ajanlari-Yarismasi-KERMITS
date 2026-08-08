@@ -1,0 +1,30 @@
+{
+  "bank": "kuveytturk",
+  "host": "www.kuveytturk.com.tr",
+  "endpoints": [
+    {
+      "page": "https://www.kuveytturk.com.tr/hesaplama-araclari/finansman-hesaplama",
+      "method": "POST",
+      "endpoint": "https://www.kuveytturk.com.tr/ck0d84?30134915811C6D92B8F34A01FCF910EE",
+      "request_body": "{\"i\":false,\"p1\":\"1\",\"p2\":\"1000\",\"p3\":\"24\",\"p4\":\"ECOMMERCE\",\"p5\":\"ECOMMERCE\",\"p6\":\"0.00\",\"p7\":\"\",\"p8\":\"Alışveriş Finansmanı\"}",
+      "response": "{\"Meta\":{\"AllocationAmount\":5.75,\"TotalAmount\":1797.96,\"LoanAmount\":1000.0,\"InstallmentCount\":\"24\",\"InstallmentPayment\":74.90,\"SurveyFee\":0.0,\"HypothecFee\":0.0,\"MonthlyCost\":5.4034005988796707242727279700,\"YearlyCost\":88.042264,\"TotalCost\":5.75,\"ProfitRate\":4.11000,\"AnnualSimpleProfitRate\":49.3200},\"Installments\":[{\"OrderNumber\":1,\"Date\":0.0,\"Amount\":74.90,\"PrincipalAmount\":21.48,\"ProfitAmount\":41.10,\"BSMV\":6.16,\"KKDF\":6.16,\"RemainingPrincipalAmount\":978.52,\"GovermentalSupport\":0.0,\"MaturityDate\":\"2026-09-08T00:00:00+03:00\"},{\"OrderNumber\":2,\"Date\":0.0,\"Amount\":74.90,\"PrincipalAmount\":22.62,\"ProfitAmount\":40.22,\"BSMV\":6.03,\"KKDF\":6.03,\"RemainingPrincipalAmount\":955.90,\"GovermentalSupport\":0.",
+      "headers": [
+        "referer: https://www.kuveytturk.com.tr/hesaplama-araclari/finansman-hesaplama",
+        "accept: application/json",
+        "content-type: application/json"
+      ]
+    },
+    {
+      "page": "https://www.kuveytturk.com.tr/hesaplama-araclari/kar-payi-hesaplama",
+      "method": "POST",
+      "endpoint": "https://www.kuveytturk.com.tr/ck0d84?1E32FE5C30C44BF2B51A08D1756ADEEB",
+      "request_body": "{\"i\":false,\"p1\":\"1000\",\"p2\":\"2\",\"p3\":\"24\",\"p4\":\"0\",\"p5\":\"\",\"p9\":\"Katılma Hesabı\",\"p10\":false}",
+      "response": "{\"ProductCode\":\"GUNLUKKATILMA\",\"SegmentCode\":\"KATKLASIK\",\"SegmentName\":\"Klasik\",\"ProfitShareRatio\":84.00,\"GrossProfitShare\":19.766986,\"NetProfitShare\":16.307763,\"GrossProfitShareYearly\":30.062290693051177,\"NetProfitShareYearly\":24.801390,\"ExtraPaymentConversionAcc\":0.0,\"ExtraAmountForYuvam\":0.0,\"ExtraMilyemForFatsi\":0.0,\"ExtraAmountForFatsi\":0.0}",
+      "headers": [
+        "referer: https://www.kuveytturk.com.tr/hesaplama-araclari/kar-payi-hesaplama",
+        "accept: application/json",
+        "content-type: application/json"
+      ]
+    }
+  ]
+}

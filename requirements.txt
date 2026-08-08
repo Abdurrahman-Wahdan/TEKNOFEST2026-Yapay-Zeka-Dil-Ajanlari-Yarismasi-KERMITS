@@ -17,7 +17,11 @@ pydantic==2.13.4
 pydantic-settings==2.15.0
 python-dotenv==1.2.2
 
+# Bank endpoints
 httpx==0.28.1
+# Albaraka's WAF fingerprints the TLS handshake and rejects httpx and curl
+# regardless of headers. curl_cffi impersonates Chrome's handshake and passes.
+curl_cffi==0.16.0
 
 # Tests
 pytest==9.0.1

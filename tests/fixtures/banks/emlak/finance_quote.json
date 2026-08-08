@@ -1,0 +1,236 @@
+{
+  "Success": true,
+  "Message": "",
+  "Data": {
+    "CommissionAmount": 575,
+    "CalculatedMinAmount": 500,
+    "InstallmentCount": 24,
+    "FundingAmount": 100000,
+    "HypothecAmount": 0,
+    "TotalCost": 93.1300505,
+    "ProfitRate": 4.29,
+    "TotalInstallmentAmount": 183820.42,
+    "Amount": 0,
+    "ExpertiseAmount": 0,
+    "MonthlyConstRate": 5.638158320243748,
+    "TotalExpense": 575,
+    "InstallmentContractList": [
+      {
+        "OrderNumber": 1,
+        "Amount": 7659.18,
+        "PrincipalAmount": 2082.18,
+        "RemainingPrincipalAmount": 97917.82,
+        "ProfitAmount": 4290,
+        "RUSFAmount": 643.5,
+        "BITTAmount": 643.5
+      },
+      {
+        "OrderNumber": 2,
+        "Amount": 7659.18,
+        "PrincipalAmount": 2198.31,
+        "RemainingPrincipalAmount": 95719.51,
+        "ProfitAmount": 4200.67,
+        "RUSFAmount": 630.1,
+        "BITTAmount": 630.1
+      },
+      {
+        "OrderNumber": 3,
+        "Amount": 7659.18,
+        "PrincipalAmount": 2320.89,
+        "RemainingPrincipalAmount": 93398.62,
+        "ProfitAmount": 4106.37,
+        "RUSFAmount": 615.96,
+        "BITTAmount": 615.96
+      },
+      {
+        "OrderNumber": 4,
+        "Amount": 7659.18,
+        "PrincipalAmount": 2450.34,
+        "RemainingPrincipalAmount": 90948.28,
+        "ProfitAmount": 4006.8,
+        "RUSFAmount": 601.02,
+        "BITTAmount": 601.02
+      },
+      {
+        "OrderNumber": 5,
+        "Amount": 7659.18,
+        "PrincipalAmount": 2587,
+        "RemainingPrincipalAmount": 88361.28,
+        "ProfitAmount": 3901.68,
+        "RUSFAmount": 585.25,
+        "BITTAmount": 585.25
+      },
+      {
+        "OrderNumber": 6,
+        "Amount": 7659.18,
+        "PrincipalAmount": 2731.28,
+        "RemainingPrincipalAmount": 85630,
+        "ProfitAmount": 3790.7,
+        "RUSFAmount": 568.6,
+        "BITTAmount": 568.6
+      },
+      {
+        "OrderNumber": 7,
+        "Amount": 7659.18,
+        "PrincipalAmount": 2883.59,
+        "RemainingPrincipalAmount": 82746.41,
+        "ProfitAmount": 3673.53,
+        "RUSFAmount": 551.03,
+        "BITTAmount": 551.03
+      },
+      {
+        "OrderNumber": 8,
+        "Amount": 7659.18,
+        "PrincipalAmount": 3044.42,
+        "RemainingPrincipalAmount": 79701.99,
+        "ProfitAmount": 3549.82,
+        "RUSFAmount": 532.47,
+        "BITTAmount": 532.47
+      },
+      {
+        "OrderNumber": 9,
+        "Amount": 7659.18,
+        "PrincipalAmount": 3214.2,
+        "RemainingPrincipalAmount": 76487.79,
+        "ProfitAmount": 3419.22,
+        "RUSFAmount": 512.88,
+        "BITTAmount": 512.88
+      },
+      {
+        "OrderNumber": 10,
+        "Amount": 7659.18,
+        "PrincipalAmount": 3393.45,
+        "RemainingPrincipalAmount": 73094.34,
+        "ProfitAmount": 3281.33,
+        "RUSFAmount": 492.2,
+        "BITTAmount": 492.2
+      },
+      {
+        "OrderNumber": 11,
+        "Amount": 7659.18,
+        "PrincipalAmount": 3582.71,
+        "RemainingPrincipalAmount": 69511.63,
+        "ProfitAmount": 3135.75,
+        "RUSFAmount": 470.36,
+        "BITTAmount": 470.36
+      },
+      {
+        "OrderNumber": 12,
+        "Amount": 7659.18,
+        "PrincipalAmount": 3782.51,
+        "RemainingPrincipalAmount": 65729.12,
+        "ProfitAmount": 2982.05,
+        "RUSFAmount": 447.31,
+        "BITTAmount": 447.31
+      },
+      {
+        "OrderNumber": 13,
+        "Amount": 7659.18,
+        "PrincipalAmount": 3993.46,
+        "RemainingPrincipalAmount": 61735.66,
+        "ProfitAmount": 2819.78,
+        "RUSFAmount": 422.97,
+        "BITTAmount": 422.97
+      },
+      {
+        "OrderNumber": 14,
+        "Amount": 7659.18,
+        "PrincipalAmount": 4216.18,
+        "RemainingPrincipalAmount": 57519.48,
+        "ProfitAmount": 2648.46,
+        "RUSFAmount": 397.27,
+        "BITTAmount": 397.27
+      },
+      {
+        "OrderNumber": 15,
+        "Amount": 7659.18,
+        "PrincipalAmount": 4451.31,
+        "RemainingPrincipalAmount": 53068.17,
+        "ProfitAmount": 2467.59,
+        "RUSFAmount": 370.14,
+        "BITTAmount": 370.14
+      },
+      {
+        "OrderNumber": 16,
+        "Amount": 7659.18,
+        "PrincipalAmount": 4699.58,
+        "RemainingPrincipalAmount": 48368.59,
+        "ProfitAmount": 2276.62,
+        "RUSFAmount": 341.49,
+        "BITTAmount": 341.49
+      },
+      {
+        "OrderNumber": 17,
+        "Amount": 7659.18,
+        "PrincipalAmount": 4961.67,
+        "RemainingPrincipalAmount": 43406.92,
+        "ProfitAmount": 2075.01,
+        "RUSFAmount": 311.25,
+        "BITTAmount": 311.25
+      },
+      {
+        "OrderNumber": 18,
+        "Amount": 7659.18,
+        "PrincipalAmount": 5238.38,
+        "RemainingPrincipalAmount": 38168.54,
+        "ProfitAmount": 1862.16,
+        "RUSFAmount": 279.32,
+        "BITTAmount": 279.32
+      },
+      {
+        "OrderNumber": 19,
+        "Amount": 7659.18,
+        "PrincipalAmount": 5530.53,
+        "RemainingPrincipalAmount": 32638.01,
+        "ProfitAmount": 1637.43,
+        "RUSFAmount": 245.61,
+        "BITTAmount": 245.61
+      },
+      {
+        "OrderNumber": 20,
+        "Amount": 7659.18,
+        "PrincipalAmount": 5838.95,
+        "RemainingPrincipalAmount": 26799.06,
+        "ProfitAmount": 1400.17,
+        "RUSFAmount": 210.03,
+        "BITTAmount": 210.03
+      },
+      {
+        "OrderNumber": 21,
+        "Amount": 7659.18,
+        "PrincipalAmount": 6164.6,
+        "RemainingPrincipalAmount": 20634.46,
+        "ProfitAmount": 1149.68,
+        "RUSFAmount": 172.45,
+        "BITTAmount": 172.45
+      },
+      {
+        "OrderNumber": 22,
+        "Amount": 7659.18,
+        "PrincipalAmount": 6508.4,
+        "RemainingPrincipalAmount": 14126.06,
+        "ProfitAmount": 885.22,
+        "RUSFAmount": 132.78,
+        "BITTAmount": 132.78
+      },
+      {
+        "OrderNumber": 23,
+        "Amount": 7659.18,
+        "PrincipalAmount": 6871.37,
+        "RemainingPrincipalAmount": 7254.69,
+        "ProfitAmount": 606.01,
+        "RUSFAmount": 90.9,
+        "BITTAmount": 90.9
+      },
+      {
+        "OrderNumber": 24,
+        "Amount": 7659.28,
+        "PrincipalAmount": 7254.69,
+        "RemainingPrincipalAmount": 0,
+        "ProfitAmount": 311.23,
+        "RUSFAmount": 46.68,
+        "BITTAmount": 46.68
+      }
+    ]
+  }
+}

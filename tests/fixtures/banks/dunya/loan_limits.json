@@ -1,0 +1,11 @@
+{
+  "result": "SUCCESS",
+  "defaultInstallment": 12,
+  "maxInstallment": 60,
+  "minInstallment": 1,
+  "defaultAmount": 6000000.0,
+  "maxAmount": 12000000.0,
+  "minAmount": 0.0,
+  "name": "<strong>Konut Yeni</strong> için hesaplamanız",
+  "category": "Mortgage"
+}
