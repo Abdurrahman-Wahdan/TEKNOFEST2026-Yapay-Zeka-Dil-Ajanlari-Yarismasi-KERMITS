@@ -25,6 +25,8 @@ from pathlib import Path
 
 from config.settings import PROJECT_ROOT, settings
 
+from .parse import fold
+
 logger = logging.getLogger(__name__)
 
 DOWN = "down"
@@ -131,7 +133,29 @@ def outage(bank: str, capability: str) -> str | None:
     return entry.get("reason") or "the last health check could not reach it"
 
 
-def entry(state: str, reason: str = "", previous: dict | None = None) -> dict:
+def product_outage(bank: str, capability: str, *keys: str) -> str | None:
+    """Why one product is down, or None.
+
+    One broken product must not disable the other eighteen, so the audit records
+    products under their capability. `keys` are the identifiers that could name
+    it — a code and a name — because which one is the identity differs by bank.
+    All are folded before comparing, so casing and Turkish letters do not decide
+    whether a user gets a price.
+    """
+    if getattr(_LOCAL, "bypass", False):
+        return None
+    products = ((read().get(bank) or {}).get(capability) or {}).get("products") or {}
+    if not products:
+        return None
+    folded = {fold(str(key)): key for key in keys if key}
+    for recorded, record in products.items():
+        if fold(recorded) in folded and record.get("state") == DOWN:
+            return record.get("reason") or "the last health check could not reach it"
+    return None
+
+
+def entry(state: str, reason: str = "", previous: dict | None = None,
+          products: dict | None = None) -> dict:
     """One capability's record, keeping `since` from an unchanged state.
 
     `since` is when the state last *changed*, not when it was last checked, so a
@@ -139,11 +163,18 @@ def entry(state: str, reason: str = "", previous: dict | None = None) -> dict:
     """
     was = (previous or {}).get("state")
     since = (previous or {}).get("since") if was == state else None
-    return {
+    record = {
         "state": state,
         "since": since or datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "reason": reason,
     }
+    # Keep whatever product-level state the caller did not look at. A run
+    # checking only the capability must not wipe the products under it.
+    keep = (previous or {}).get("products") or {}
+    merged = {**keep, **(products or {})}
+    if merged:
+        record["products"] = merged
+    return record
 
 
 def clear_cache() -> None:

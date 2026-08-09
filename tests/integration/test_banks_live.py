@@ -512,3 +512,63 @@ def test_vakif_finance_carries_its_payment_plan(bank):
     quote = bank.finance_quote("IF", 100_000, 24)
     assert len(quote.schedule) == 24
     assert quote.schedule[-1].remaining == 0.0
+
+
+# ----- the family table and comparison, live -----
+
+
+@pytest.mark.parametrize("category", ["finance", "profit_share"])
+def test_every_family_entry_still_resolves(live, category):
+    """A bank renaming a product would otherwise drop out of comparisons quietly.
+
+    Resolution goes through resolve(), the same path a quote takes — Ziraat's
+    banded products answer "matches several" through find_product and would
+    report a healthy table as broken.
+    """
+    from banks import families, get_bank
+
+    broken = []
+    for family in families.families(category):
+        for name, query in families.entries(category, family).items():
+            try:
+                get_bank(name).resolve(category, query, 100_000, 24)
+            except Exception as exc:  # noqa: BLE001 - collect them all
+                broken.append(f"{category}/{family}/{name}: {str(exc)[:60]}")
+    assert not broken, "family entries no longer resolve: " + "; ".join(broken)
+
+
+def test_comparing_is_faster_than_asking_each_bank(live):
+    """The whole point is saving the agent time, so it is asserted."""
+    import time
+
+    from banks import compare, get_bank
+
+    for name in ("kuveytturk", "vakif", "emlak", "dunya", "ziraat"):
+        get_bank(name).products("finance")   # warm the catalogues for both paths
+
+    together = compare.finance("ihtiyac", 100_000, 24)
+    assert len(together.quotes) >= 4
+
+    started = time.monotonic()
+    for quote in together.quotes:
+        get_bank(quote.bank).finance_quote(quote.product.code, 100_000, 24)
+    one_at_a_time = time.monotonic() - started
+
+    assert together.seconds < one_at_a_time
+
+
+def test_a_comparison_never_loses_a_bank(live):
+    from banks import compare
+
+    result = compare.finance("konut-yeni", 1_000_000, 120)
+    assert result.in_scope == 6
+    assert len(result.quotes) + len(result.unavailable) == result.in_scope
+    assert result.quotes, "no bank quoted a 1m konut over 120 months"
+
+
+def test_a_bank_that_does_not_sell_it_says_so(live):
+    from banks import compare
+
+    result = compare.finance("ihtiyac", 100_000, 24)
+    missing = {u.bank: u.why for u in result.unavailable}
+    assert missing.get("albaraka") == compare.NOT_OFFERED

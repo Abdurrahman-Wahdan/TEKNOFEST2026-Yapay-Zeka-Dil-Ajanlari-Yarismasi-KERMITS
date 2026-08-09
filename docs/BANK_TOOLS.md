@@ -101,7 +101,7 @@ banks/http.py            httpx │ httpx+CSRF │ curl_cffi, one cached client e
 
 ---
 
-## 3. The eight tools
+## 3. The eleven tools
 
 | tool | arguments | returns |
 |---|---|---|
@@ -112,6 +112,9 @@ banks/http.py            httpx │ httpx+CSRF │ curl_cffi, one cached client e
 | `exchange_rates` | `bank`, `codes` | buy, sell, unit and as-of per currency |
 | `card_installment_quote` | `bank`, `card`, `amount`, `installments` | instalment, total, profit rate |
 | `convert_currency` | `bank`, `source`, `target`, `amount` | result, rate, **`derived`** |
+| `compare_finance` | `family`, `amount`, `term_months`, `banks` | every bank ranked cheapest first, plus who was not compared and why |
+| `compare_profit_share` | `family`, `amount`, `term_months` **or** `term_days`, `currency`, `banks` | every bank ranked by net profit |
+| `compare_exchange` | `source`, `target`, `amount`, `banks` | every bank ranked by what you receive |
 | `check_bank_health` | `bank` (empty for all) | per capability: ok, down or known |
 
 `convert_currency` is the seventh and was added by decision: it is the only home
@@ -119,7 +122,7 @@ for the brief's one agreed arithmetic exception (Kuveyt Türk and Hayat publish
 gold and FX rates but no converter) and for the four banks that do convert
 server-side. `leasing_quote` was deliberately not added.
 
-`tools.py` holds sixteen `def`s, and only eight are tools. The rest are seven
+`tools.py` holds twenty `def`s, and only eleven are tools. The rest are seven
 `_`-prefixed formatters that turn a dataclass into a dict, plus `build_tools()`.
 A function is a tool if and only if it carries `@tool`.
 
@@ -695,16 +698,140 @@ live in `banks/probes.py`, one known-good call per capability; a unit test fails
 if a bank declares a capability with no probe, so a new bank cannot be added and
 silently go unchecked.
 
-## 16. What is not built
+## 16. Comparing banks
+
+`compare_finance`, `compare_profit_share` and `compare_exchange` ask every bank
+at once. This is the question the product exists to answer — *"hangi bankada en
+uygun?"* — and one call replaces one per bank.
+
+### Three tools, not one
+
+A single `compare(category=…)` would need arguments that only apply sometimes:
+financing is months, profit share is days **or** months, currency is neither.
+That re-opens the trap §11 already paid for, where the same `12` meant twelve
+days at one bank and twelve months at another. Three tools with parameters that
+always mean something are easier for a small model to use correctly.
+
+No `compare_card`: only two banks publish a card calculator, so the description
+would cost more prompt space than the call saves. Add it when a third does.
+
+`compare_exchange` rather than comparing rate feeds — three banks publish a rate
+table but five convert, and each row carries the `derived` flag so a figure we
+multiplied out is never presented as the bank's own.
+
+### Families, and why free text will not do
+
+Measured with `find_product` across seven banks: `"taşıt"` resolved correctly at
+**0 of 7**, `"konut"` at 2 of 7, `"ihtiyaç finansmanı"` at 5 of 7. Banks split
+the same product by new versus second-hand, insured versus uninsured, or
+first-home versus subsequent-home. One query for all of them would compare two
+banks and drop five, or rank a second-hand car loan against a new-car one.
+
+So `banks/families.py` writes the mapping down: family → bank → that bank's own
+code. A family needs **two banks to exist**; one bank is not a comparison, it is
+`finance_quote`. Ten families today:
+
+| family | banks | family | banks |
+|---|---|---|---|
+| `konut-yeni` | 6 | `arsa` | 5 |
+| `tasit-0km` | 6 | `isyeri` | 4 |
+| `ihtiyac` | 5 | `konut-2el` | 3 |
+| `tasit-2el` | 5 | `egitim`, `hac-umre`, `kira` | 2 each |
+
+Ziraat's entries are **name stems, not codes** — it lists one product per term
+band with a falling ceiling, and its own resolver picks the band that fits. Its
+numeric ids change when a band is republished; the stem does not.
+
+`ALIASES` maps Turkish words onto families, and a word that could mean two says
+which two rather than listing every key: `"konut"` answers *"say konut-yeni or
+konut-2el"*.
+
+### Nothing is ever silently missing
+
+`len(ranked) + len(not_compared)` always equals the banks in scope, and that is a
+test. A bank appears under `not_compared` with one of four reasons:
+
+- `not_offered` — it does not sell this. **That is an answer worth giving**, not
+  a gap: six banks checked, five quoted, one does not sell it at all.
+- `maintenance` — it does sell this and the last audit could not reach it
+- `declined` — it was asked and said no, usually a limit
+- `error` — it failed during this comparison
+
+`TemporarilyUnavailable` subclasses `UnsupportedProduct`, so the order the
+fan-out catches them in decides whether a user is told the wrong thing. Two
+tests pin it.
+
+### Parallel, because sequential would be pointless
+
+Six banks measured **11.99s one at a time against 0.59s together**. One thread
+per bank and no more — providers hold their own caches and share one client per
+transport. The pool is deliberately not used as a context manager: its exit
+joins every worker, which would wait for the very bank the timeout exists to
+escape.
+
+## 17. The extensive audit
+
+`python -m banks.audit` walks **every product in every catalogue** — 155 checks
+in about 18 seconds — and is what the schedule runs. `python -m banks.health`
+stays the quick one-probe-per-capability check for on demand.
+
+```bash
+python -m banks.audit                     # everything, ~18s
+python -m banks.audit --bank vakif        # one bank
+python -m banks.audit --no-write --json   # look, change nothing
+python -m banks.schedule                  # the crontab line for HEALTH_SCHEDULE
+python -m banks.schedule --launchd        # the same as a launchd plist
+```
+
+Products come from each bank's own catalogue, so one added tomorrow is covered
+the next morning. Probe inputs come from each product's declared limits — a flat
+100 000 / 24 is refused by every product with a lower ceiling, which would be a
+`known` result that checked nothing. Family entries are checked too, so a
+curated code that stopped resolving is caught every morning rather than only
+when someone runs the suite.
+
+### Two rules that stop it causing the outage it looks for
+
+170 requests a day from one address, against banks two of which fingerprint TLS.
+A throttled address looks exactly like an outage, and the audit would then
+disable working capabilities. So: **one thread per bank** with a pause between
+products, and **a failure must happen twice** before anything is disabled. The
+capability probe still runs every time and catches a real outage quickly, so the
+product level can afford to be slow and certain.
+
+### Maintenance at two levels
+
+One broken product must not disable the eighteen beside it, so the status file
+records products under their capability. The gate lives at the end of
+`find_product` and Ziraat's `_resolve` — every quote resolves its product first,
+so one place covers them all.
+
+If **every** product under a capability fails, the capability is marked down
+instead: that is an endpoint change rather than a product change, and it keeps
+the refusal cheap. A product the bank merely *declines* is `known` and is never
+disabled.
+
+`list_banks` reports a `maintenance` key so the agent can route around a bank
+before spending a call on it.
+
+### One report, every run
+
+`notify.py` argues against a message every morning, and it is right — so the
+audit sends **one** message with the verdict in the first line:
+
+```
+bank audit 2026-08-09 06:00 — 155/155 ok, 17 known gaps, 17.5s. All well.
+bank audit 2026-08-09 06:00 — 1 DOWN, 154/155 ok, 17.5s
+```
+
+State changes travel inside that message rather than firing a second one.
+`health.run()` keeps its change-only behaviour, so on-demand checks stay quiet.
+
+## 18. What is not built
 
 - **No agent or graph.** `build_tools()` is ready for
   `get_llm().bind_tools(...)`; nothing binds it in the repo yet, and neither
   does the system prompt or the Turkish output conventions.
-- **No cross-bank comparison tool.** "Hangi bankada en uygun?" is the question
-  this exists to answer, and today it is N sequential `finance_quote` calls with
-  a different product name per bank. A `compare_finance` tool fanning out in
-  parallel is the obvious next tool — the first one that would earn an eighth
-  slot.
 - **No leasing.** Kuveyt Türk's leasing endpoint is verified in discovery across
   TL/USD/EUR and Ziraat's is browser-only, but there is no `leasing` capability
   and no tool, so leasing is unreachable for every bank. This was a scope

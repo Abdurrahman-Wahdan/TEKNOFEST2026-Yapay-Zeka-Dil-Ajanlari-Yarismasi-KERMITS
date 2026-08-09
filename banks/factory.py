@@ -10,6 +10,7 @@
 
 import logging
 
+from . import status
 from .providers import BANKS, get_provider
 from .providers.base import BaseBank
 
@@ -40,11 +41,21 @@ def list_banks() -> dict[str, dict]:
     integrate, while T.O.M. needs only a credential, and the same user-facing
     answer today has different remedies.
     """
-    return {
-        bank.name: {
+    listing = {}
+    for bank in BANKS:
+        entry = {
             "display_name": bank.display_name,
             "publishes": sorted(bank.capabilities),
             "notes": bank.notes,
         }
-        for bank in BANKS
-    }
+        # What the last check found broken. Read from the cached status file, so
+        # it costs nothing and lets the agent route around a bank before
+        # spending a call on it.
+        down = sorted(
+            capability for capability in bank.capabilities
+            if status.outage(bank.name, capability)
+        )
+        if down:
+            entry["maintenance"] = down
+        listing[bank.name] = entry
+    return listing

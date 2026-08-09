@@ -120,6 +120,19 @@ class TemporarilyUnavailable(UnsupportedProduct):
     """
 
 
+def maintenance_error(display_name: str, what: str, reason: str) -> "TemporarilyUnavailable":
+    """The one sentence used whenever something is down.
+
+    Written once so the capability-level and product-level refusals cannot drift
+    into saying different things about the same situation.
+    """
+    return TemporarilyUnavailable(
+        f"{display_name}'s {what} is temporarily unavailable: {reason}. "
+        f"It is under maintenance and being looked at. The bank does publish "
+        f"this — it cannot be reached right now, so no figure can be quoted."
+    )
+
+
 def _gated(capability: str, method):
     """Refuse a capability the last health check found broken.
 
@@ -131,11 +144,10 @@ def _gated(capability: str, method):
     def guarded(self, *args, **kwargs):
         reason = status.outage(self.name, capability)
         if reason:
-            label = CAPABILITY_LABELS.get(capability, capability)
-            raise TemporarilyUnavailable(
-                f"{self.display_name}'s {label} is temporarily unavailable: "
-                f"{reason}. The bank does publish this — it cannot be reached "
-                f"right now, so no figure can be quoted. Try again later."
+            raise maintenance_error(
+                self.display_name,
+                CAPABILITY_LABELS.get(capability, capability),
+                reason,
             )
         return method(self, *args, **kwargs)
 
@@ -295,7 +307,7 @@ class BaseBank(ABC):
             [p for p in available if fold(p.name) == wanted],
         ):
             if len(match) == 1:
-                return match[0]
+                return self._not_under_maintenance(category, match[0])
             if len(match) > 1:
                 # Kuveyt Türk lists ELKTRARACSARJUNITE twice, as Bisiklet
                 # Finansmanı and Elektrikli Araç Şarj Ünitesi, with different
@@ -309,7 +321,7 @@ class BaseBank(ABC):
 
         partial = [p for p in available if wanted in fold(p.name)]
         if len(partial) == 1:
-            return partial[0]
+            return self._not_under_maintenance(category, partial[0])
         if len(partial) > 1:
             names = ", ".join(p.name for p in partial)
             raise UnsupportedProduct(
@@ -516,6 +528,33 @@ class BaseBank(ABC):
             published = ", ".join(sorted(self.capabilities))
             return f"It publishes: {published}." + (f" {self.notes}" if self.notes else "")
         return self.notes or "It publishes no public calculator."
+
+    def _not_under_maintenance(self, category: str, product: Product) -> Product:
+        """The product, unless the last audit found this one broken.
+
+        Checked here rather than in each provider because every quote resolves
+        its product through find_product first, so one place covers them all.
+        One dead product must not disable the eighteen beside it.
+        """
+        reason = status.product_outage(self.name, category, product.code, product.name)
+        if reason:
+            raise maintenance_error(self.display_name, product.name, reason)
+        return product
+
+    def resolve(self, category: str, query: str,
+                amount: float | None = None, term: int | None = None) -> Product:
+        """The product a query names, by the path a quote really takes.
+
+        Defaults to find_product. Ziraat overrides it, because it lists one
+        product per term band with a falling ceiling and picking the band needs
+        the amount and the term.
+
+        This exists so the family table in banks/families.py can be checked
+        against the same resolution a quote uses. Testing it against
+        find_product instead would fail on a healthy Ziraat entry, and could
+        pass on an entry the tool cannot actually use.
+        """
+        return self.find_product(category, query)
 
     def _require_unit(self, term: int, term_unit) -> str:
         """The term unit, insisted upon rather than guessed.

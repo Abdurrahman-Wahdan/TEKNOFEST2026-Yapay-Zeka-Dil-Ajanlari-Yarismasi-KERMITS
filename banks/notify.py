@@ -11,6 +11,7 @@ when nobody is listening.
 
 import json
 import logging
+from datetime import datetime
 
 from config.settings import settings
 
@@ -32,6 +33,73 @@ def summarise(changes: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def send_report(report, changes: list[dict] | None = None) -> bool:
+    """The scheduled audit's message, sent whether or not anything is wrong.
+
+    This is the one exception to the change-only rule above, and it earns it by
+    putting the verdict in the first line — the only part anyone reads. A green
+    day is one sentence; a bad day leads with what broke. Any state changes are
+    carried inside this message rather than sent again separately, so a
+    scheduled run is never two notifications.
+    """
+    changes = changes or []
+    when = datetime.now().strftime("%Y-%m-%d %H:%M")
+    checked = len(report.results)
+    ok = checked - len(report.failures)
+
+    if report.healthy:
+        headline = (f"bank audit {when} — {ok}/{checked} ok, "
+                    f"{len(report.known_gaps)} known gaps, "
+                    f"{report.seconds:.1f}s. All well.")
+        lines = [headline]
+    else:
+        headline = (f"bank audit {when} — {len(report.failures)} DOWN, "
+                    f"{ok}/{checked} ok, {report.seconds:.1f}s")
+        lines = [headline, ""]
+        lines += [
+            f"  {failure.bank} {failure.capability}: {failure.reason or failure.detail}"
+            for failure in report.failures
+        ]
+        lines.append("")
+        lines.append("These are disabled and shown to users as under maintenance.")
+
+    if changes:
+        lines.append("")
+        lines.append(summarise(changes))
+
+    text = "\n".join(lines)
+    (logger.info if report.healthy else logger.warning)("%s", headline)
+
+    return _post({
+        "source": "tf26-bank-audit",
+        "text": text,
+        "healthy": report.healthy,
+        "totals": {"checked": checked, "ok": ok, "down": len(report.failures),
+                   "known": len(report.known_gaps)},
+        "banks": report.per_bank(),
+        "failures": [
+            {"bank": f.bank, "capability": f.capability, "reason": f.reason}
+            for f in report.failures
+        ],
+        "changes": changes,
+    })
+
+
+def _post(payload: dict) -> bool:
+    """Deliver to the webhook, or say why not. Never raises."""
+    url = (settings.HEALTH_WEBHOOK_URL or "").strip()
+    if not url:
+        logger.debug("No HEALTH_WEBHOOK_URL set; logged only")
+        return False
+    try:
+        request("POST", url, headers={"content-type": "application/json"}, json=payload)
+        return True
+    except Exception as exc:  # noqa: BLE001 - alerting must never break the run
+        logger.error("Could not deliver health notification: %s", exc)
+        logger.error("Unsent payload: %s", json.dumps(payload, ensure_ascii=False))
+        return False
+
+
 def send(changes: list[dict]) -> bool:
     """Announce state changes. Returns whether a webhook was delivered.
 
@@ -45,25 +113,4 @@ def send(changes: list[dict]) -> bool:
     for line in text.splitlines():
         logger.warning("%s", line)
 
-    url = (settings.HEALTH_WEBHOOK_URL or "").strip()
-    if not url:
-        logger.debug("No HEALTH_WEBHOOK_URL set; logged %d change(s) only", len(changes))
-        return False
-
-    payload = {
-        "source": "tf26-bank-health",
-        "text": text,
-        "changes": changes,
-    }
-    try:
-        request(
-            "POST", url,
-            headers={"content-type": "application/json"},
-            json=payload,
-        )
-        logger.info("Notified %d bank state change(s)", len(changes))
-        return True
-    except Exception as exc:  # noqa: BLE001 - alerting must never break the run
-        logger.error("Could not deliver health notification: %s", exc)
-        logger.error("Unsent payload: %s", json.dumps(payload, ensure_ascii=False))
-        return False
+    return _post({"source": "tf26-bank-health", "text": text, "changes": changes})

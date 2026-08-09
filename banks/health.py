@@ -31,7 +31,11 @@ from config.settings import settings
 
 from . import probes, status
 from .providers import BANKS, get_provider
-from .providers.base import CAPABILITY_METHODS, UnsupportedProduct
+from .providers.base import (
+    CAPABILITY_METHODS,
+    TemporarilyUnavailable,
+    UnsupportedProduct,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -199,7 +203,12 @@ def _plain_reason(exc: Exception) -> str:
 def _run_one(bank, capability: str) -> CheckResult:
     started = time.monotonic()
     try:
-        detail = CHECKS[capability](bank)
+        # The bypass is opened here, inside whichever thread is doing the work.
+        # It is thread-local, so a caller that opened one around a thread pool
+        # would not pass it to the workers -- and the gate would then refuse the
+        # very probe meant to clear an outage.
+        with status.bypass():
+            detail = CHECKS[capability](bank)
         elapsed = time.monotonic() - started
         # A bank that takes minutes is broken for a chatbot even when it
         # eventually answers, so the budget is part of the contract.
@@ -211,6 +220,20 @@ def _run_one(bank, capability: str) -> CheckResult:
                 reason="the bank answered too slowly to be useful",
             )
         return CheckResult(bank.name, capability, OK, detail, elapsed)
+    except TemporarilyUnavailable as exc:
+        # Must sit above UnsupportedProduct, which it subclasses. The gate fired
+        # inside the checker, so the bypass above did not take effect and this
+        # probe never reached the bank. Calling that KNOWN would write it back as
+        # ok and clear a real outage without a single network call, so it is a
+        # loud failure instead.
+        logger.error("Health gate fired inside the checker for %s/%s: %s",
+                     bank.name, capability, exc)
+        return CheckResult(
+            bank.name, capability, DOWN,
+            f"the health gate fired inside the checker: {str(exc)[:150]}",
+            time.monotonic() - started,
+            reason="the last recorded outage was never re-tested",
+        )
     except UnsupportedProduct as exc:
         # The bank answered and declined. Not an outage, and not ours to fix.
         return CheckResult(
@@ -249,29 +272,28 @@ def run(
     previous = status.read()
     fresh: dict = {}
 
-    # The checker must ignore the status file it writes. Without this a
-    # capability marked down would refuse the very probe meant to clear it, and
-    # nothing would ever come back up on its own.
-    with status.bypass():
-        for bank in wanted:
-            if bank.transport == "none" or not bank.capabilities:
-                # Nothing to call. Adil has no calculator and T.O.M.'s API needs
-                # a credential we do not have; polling either is noise.
-                report.skipped.append(bank.name)
+    # The bypass that lets the checker ignore its own status file is opened per
+    # check, inside _run_one, so it works the same whether this loop runs here or
+    # in a worker thread.
+    for bank in wanted:
+        if bank.transport == "none" or not bank.capabilities:
+            # Nothing to call. Adil has no calculator and T.O.M.'s API needs
+            # a credential we do not have; polling either is noise.
+            report.skipped.append(bank.name)
+            continue
+        report.checked_banks.append(bank.name)
+        for capability in sorted(bank.capabilities):
+            if capabilities and capability not in capabilities:
                 continue
-            report.checked_banks.append(bank.name)
-            for capability in sorted(bank.capabilities):
-                if capabilities and capability not in capabilities:
-                    continue
-                if capability not in CAPABILITY_METHODS:
-                    continue
-                result = _run_one(bank, capability)
-                report.results.append(result)
-                was = (previous.get(bank.name) or {}).get(capability)
-                state = status.DOWN if result.state == DOWN else status.OK
-                fresh.setdefault(bank.name, {})[capability] = status.entry(
-                    state, result.reason if result.state == DOWN else "", was
-                )
+            if capability not in CAPABILITY_METHODS:
+                continue
+            result = _run_one(bank, capability)
+            report.results.append(result)
+            was = (previous.get(bank.name) or {}).get(capability)
+            state = status.DOWN if result.state == DOWN else status.OK
+            fresh.setdefault(bank.name, {})[capability] = status.entry(
+                state, result.reason if result.state == DOWN else "", was
+            )
 
     if write_status:
         status.write(_merge(previous, fresh))
@@ -283,7 +305,10 @@ def run(
 def _merge(previous: dict, fresh: dict) -> dict:
     """Keep entries for anything this run did not check.
 
-    A scoped run must not clear an outage it never looked at.
+    A scoped run must not clear an outage it never looked at. Two levels are
+    enough here because status.entry() carries a capability's product-level
+    records forward from `previous`, so replacing the capability record does not
+    drop the products underneath it.
     """
     merged = {bank: dict(caps) for bank, caps in previous.items()}
     for bank, caps in fresh.items():
