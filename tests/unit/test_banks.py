@@ -431,7 +431,9 @@ def test_albaraka_all_zero_profit_share_raises(monkeypatch):
     serve(monkeypatch, [load("albaraka", "profit_share_zeros.json")],
           text=load("albaraka", "profit_share_page_select.html"))
     with pytest.raises(UnsupportedProduct, match="no profit-share rate"):
-        bank.profit_share_quote("Kur Korumalı Katılma Hesabı (Bireysel)", 100000, 6)
+        bank.profit_share_quote(
+            "Kur Korumalı Katılma Hesabı (Bireysel)", 100000, 6, "TRY", "month"
+        )
 
 
 def test_albaraka_profit_share_quote_maps_onto_the_dataclass(monkeypatch):
@@ -472,7 +474,12 @@ def test_albaraka_rates_quote_gold_by_the_gram(monkeypatch):
 
 
 def test_the_tool_set_is_fixed_and_names_a_bank_as_an_argument():
-    """Adding a bank must not add a tool: ten banks would be forty-plus tools."""
+    """Adding a bank must not add a tool: ten banks would be forty-plus tools.
+
+    The compare tools take `banks` rather than `bank` — comparing across banks
+    is the one thing that cannot name a single one — so the invariant is that a
+    tool says which banks it is about, either way round.
+    """
     tools = build_tools()
     assert [t.name for t in tools] == [
         "list_banks",
@@ -482,20 +489,44 @@ def test_the_tool_set_is_fixed_and_names_a_bank_as_an_argument():
         "exchange_rates",
         "card_installment_quote",
         "convert_currency",
+        "compare_finance",
+        "compare_profit_share",
+        "compare_exchange",
+        "check_bank_health",
     ]
     for tool in tools:
         if tool.name != "list_banks":
-            assert "bank" in tool.args
+            assert "bank" in tool.args or "banks" in tool.args
 
 
 def test_every_tool_description_names_the_live_banks():
-    """Descriptions are prompt text and must not go stale as banks are added."""
+    """Descriptions are prompt text and must not go stale as banks are added.
+
+    The compare tools name families instead: they cover every bank offering the
+    family, so listing bank names in their description would be noise that goes
+    stale on its own.
+    """
     for tool in build_tools():
-        if tool.name == "list_banks":
+        if tool.name == "list_banks" or tool.name.startswith("compare_"):
             continue
         assert "{banks}" not in tool.description
         for bank in BANKS:
             assert bank.name in tool.description
+
+
+def test_compare_descriptions_name_the_live_families():
+    """Same guarantee for the compare tools, against the family table."""
+    from banks import families
+
+    described = {t.name: t.description for t in build_tools()}
+    for name, category in (
+        ("compare_finance", "finance"),
+        ("compare_profit_share", "profit_share"),
+    ):
+        description = described[name]
+        assert "{" not in description, f"{name} has an unfilled placeholder"
+        for family in families.families(category):
+            assert family in description
 
 
 def test_a_tool_returns_json(monkeypatch):
@@ -1309,7 +1340,7 @@ def test_the_payment_schedule_is_available_on_request(monkeypatch):
         "InstallmentPayBack": load("vakif", "payment_plan.json"),
     }
     tool = next(t for t in build_tools() if t.name == "finance_quote")
-    call = {"bank": "vakif", "product": "IF", "amount": 100000, "term": 24}
+    call = {"bank": "vakif", "product": "IF", "amount": 100000, "term_months": 24}
 
     serve(monkeypatch, [], text=load("vakif", "finance_page_select.html"), routes=routes)
     lean = json.loads(tool.invoke(call))

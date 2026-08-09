@@ -50,9 +50,16 @@ def get_provider(name: str) -> BaseBank:
 
 
 def clear_catalogue_cache() -> None:
-    """Drop every cached product catalogue. Lets tests start clean."""
+    """Drop everything a bank has cached. Lets tests start clean.
+
+    `_scratch` matters as much as the catalogue: several providers keep the
+    calculator page's HTML there, so leaving it behind leaks one test's fixture
+    page into the next test's parsing and makes failures depend on ordering.
+    """
     for bank in BANKS:
         bank._catalogue.clear()
+        bank._fetched_at.clear()
+        bank._scratch.clear()
 
 
 __all__ = [

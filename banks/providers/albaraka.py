@@ -247,7 +247,7 @@ class Albaraka(BaseBank):
                 f"Available: {', '.join(chosen.currencies)}."
             )
 
-        for unit in _units(term_unit):
+        for unit in _units(self._require_unit(term, term_unit)):
             payload = self._plugin(
                 "getProfitShareCalculate",
                 PROFIT_PAGE,
@@ -342,16 +342,14 @@ class Albaraka(BaseBank):
         )
 
 
-def _units(term_unit: str | None) -> list[str]:
-    """Which periods to try, in order.
+def _units(term_unit: str) -> list[str]:
+    """Which periods to try.
 
-    Katılma Hesabı takes months or days; Ara Dönem takes months only and
-    answers days with zeros. When the caller does not say, month is asked
-    first and the quote reports the period that answered.
+    Katılma Hesabı takes months or days; Ara Dönem takes months only and answers
+    days with zeros. The caller's unit is honoured rather than substituted — a
+    day term that this product does not offer is refused, not quietly re-asked
+    as months, because those are different questions.
+
+    The unit is always stated: BaseBank._require_unit refuses a bare number.
     """
-    if term_unit:
-        unit = term_unit.lower().rstrip("s")
-        if unit not in ("day", "month"):
-            raise ValueError(f"term_unit must be 'day' or 'month', got {term_unit!r}")
-        return [unit]
-    return ["month", "day"]
+    return [term_unit]

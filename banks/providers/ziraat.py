@@ -118,6 +118,19 @@ class Ziraat(BaseBank):
         logger.debug("Loaded %d finance product(s) from %s", len(built), self.name)
         return built
 
+    def resolve(self, category: str, query: str,
+                amount: float | None = None, term: int | None = None) -> Product:
+        """Ziraat resolves by band, so it needs the amount and the term.
+
+        Overrides BaseBank.resolve so anything checking that a product name
+        still works here — the family table, the daily audit — goes through the
+        same path a quote takes. find_product answers "matches several" for
+        every banded product and would report a healthy catalogue as broken.
+        """
+        if category != "finance":
+            return self.find_product(category, query)
+        return self._resolve(query, amount or 100_000, term or 24)
+
     def _resolve(self, query: str, amount: float, term: int) -> Product:
         """Pick the band that actually covers this amount and term.
 
@@ -181,7 +194,9 @@ class Ziraat(BaseBank):
                 f"{self.display_name} has no {query!r} band covering "
                 f"{amount:,.0f} TL over {term} months. It offers: {offers}."
             )
-        return min(fits, key=lambda p: (p.max_term or 0))
+        # Same product-level maintenance gate find_product applies, because
+        # this path bypasses it.
+        return self._not_under_maintenance("finance", min(fits, key=lambda p: (p.max_term or 0)))
 
     # ----- finance -----
 
