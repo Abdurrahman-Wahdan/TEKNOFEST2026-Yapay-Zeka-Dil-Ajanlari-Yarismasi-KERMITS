@@ -121,6 +121,16 @@ def has(blob: str) -> bool:
     return (raw_dir() / blob).exists()
 
 
+def blob_file(blob: str) -> Path:
+    """The blob's path on disk.
+
+    Needed because poppler's tools take a filename, not a stream: `pdftoppm`
+    fed a PDF on stdin produces empty output *and* empty stderr, which is a
+    failure mode worth never discovering at 3am.
+    """
+    return raw_dir() / blob
+
+
 def read_manifest() -> dict:
     """The whole manifest, or {} when there is none.
 
@@ -190,6 +200,50 @@ def write_text(relative: str, text: str) -> Path:
         Path(temporary).unlink(missing_ok=True)
         raise
     return target
+
+
+def collect_garbage(manifest: dict, keep_suffixes: tuple[str, ...] = (".pdf",)) -> tuple[int, int]:
+    """Delete stored blobs the manifest no longer points at.
+
+    Necessary because page bytes churn on every single run while their meaning
+    does not. Measured on two consecutive Emlak runs: all 60 pages re-stored
+    under new hashes, differing in four lines out of 2,855 -- an FX rate
+    timestamp and a rotating F5 WAF token. Extrapolated across ~7,100 documents
+    that is roughly a gigabyte a day, so without this the store grows without
+    bound and none of the growth is information.
+
+    PDFs are kept even when orphaned, and the measurement is why: they answered
+    304 on the second run, so they do not churn, and an orphaned PDF is usually a
+    document the bank has withdrawn -- the only remaining copy of what a fee
+    schedule said before it changed.
+
+    Returns:
+        `(files_deleted, bytes_freed)`, for the run report.
+    """
+    live = {entry.get("blob") for entry in manifest.values() if isinstance(entry, dict)}
+    deleted = freed = 0
+    root_dir = raw_dir()
+    if not root_dir.exists():
+        return 0, 0
+
+    for path in root_dir.rglob("*"):
+        if not path.is_file() or path.suffix in keep_suffixes:
+            continue
+        relative = str(path.relative_to(root_dir))
+        if relative in live:
+            continue
+        try:
+            size = path.stat().st_size
+            path.unlink()
+        except OSError:  # noqa: PERF203 - a file vanishing under us is fine
+            continue
+        deleted += 1
+        freed += size
+
+    if deleted:
+        logger.info("Collected %d orphaned blob(s), freeing %.1f MB",
+                    deleted, freed / 1_000_000)
+    return deleted, freed
 
 
 def clear_cache() -> None:

@@ -106,13 +106,17 @@ SITES: list[Site] = [
         ),
     ),
     Site(
+        # Like Dünya, Hayat redirects www -> no-www, so the canonical host has no
+        # www. Getting this wrong is not fatal (every fetch just redirects) but it
+        # stores URLs the server does not consider canonical, and costs a redirect
+        # on every request. Verified against the live server, 2026-08-09.
         slug="hayat",
         display_name="Hayat Finans Katılım Bankası",
-        base="https://www.hayatfinans.com.tr",
+        base="https://hayatfinans.com.tr",
         root_domain="hayatfinans.com.tr",
-        host="www.hayatfinans.com.tr",
+        host="hayatfinans.com.tr",
         mode="auto",
-        sitemaps=("https://www.hayatfinans.com.tr/sitemap.xml",),
+        sitemaps=("https://hayatfinans.com.tr/sitemap.xml",),
     ),
     Site(
         slug="tom",

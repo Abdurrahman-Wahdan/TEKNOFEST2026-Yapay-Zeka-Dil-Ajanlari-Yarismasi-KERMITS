@@ -19,7 +19,12 @@ document — with filename rules to override, and a model to judge what is left.
 """
 
 from dataclasses import dataclass
+from pathlib import Path
 from urllib.parse import urlsplit
+
+from langchain_core.messages import HumanMessage
+from pydantic import BaseModel
+from pydantic import Field as PydanticField
 
 from banks.parse import fold
 
@@ -81,7 +86,9 @@ DENY_PATTERNS = (
     "izahname", "ihracbelgesi", "tertip", "kirasertifikasi", "sermayepiyasa",
     "articlesofassociation", "articleofassociation",
     "genelkurul", "bankinglicense", "faaliyetizni", "certificateofactivity",
-    "patriot", "wolfsberg", "w8ben", "antimoneylaundering", "aml",
+    # No bare "aml": as a folded substring it fires inside ordinary Turkish
+    # words -- it rejected "bina-tamamlama-sigortasi" on a live run.
+    "patriot", "wolfsberg", "w8ben", "antimoneylaundering", "aklamaylamucadele",
     "kvkk", "kisiselveri", "aydinlatmametni", "acikriza", "cerez",
     "etikilke", "politikasi", "prosedur", "yonetmelik", "uyumbeyani",
 )
@@ -180,6 +187,99 @@ def _label_for(pattern: str) -> str:
     if pattern in ("sss", "sikcasorulan"):
         return "faq"
     return "product"
+
+
+# Longest side of the page image sent to the classifier. Deciding what a
+# document *is* needs the layout and the title, not legible fine print, and an
+# uncapped 200 DPI render of a large-format brochure earned a 413 from the vLLM
+# host on a live run. Extraction, which does need the fine print, tiles instead.
+CLASSIFY_MAX_PX = 1400
+
+# Turkish, because these documents are Turkish and the model mirrors the prompt
+# language. The label set is closed and repeated in the prompt: an open question
+# gets an essay back, and an essay cannot be filtered on.
+CLASSIFY_PROMPT = """Bu, bir Türk katılım bankasının web sitesinden alınmış bir PDF belgesinin ilk sayfasıdır.
+
+Belgeyi aşağıdaki etiketlerden TAM OLARAK biriyle sınıflandır:
+
+- campaign: kampanya, indirim, taksit fırsatı, promosyon koşulları
+- product: ürün veya hizmet tanıtımı, bilgilendirme formu, ön bilgilendirme formu, talep formu
+- fees: ücret, tarife, komisyon veya masraf listesi
+- rates: kâr payı oranı, getiri oranı, referans oran tablosu
+- faq: sıkça sorulan sorular
+- contract: sözleşme, taahhütname, akit metni
+- corporate: faaliyet raporu, finansal tablo, ana sözleşme, basın bülteni, kurumsal belge
+- regulatory: izahname, ihraç belgesi, lisans, yetki belgesi, denetim raporu
+- privacy: KVKK, aydınlatma metni, açık rıza, çerez politikası
+- other: yukarıdakilerin hiçbiri
+
+Kurallar:
+- Sadece listedeki etiketlerden birini kullan. Yeni etiket uydurma.
+- Emin değilsen en yakın etiketi seç ve gerekçende belirt.
+- Gerekçe tek cümle, Türkçe olsun.
+"""
+
+
+class _Verdict(BaseModel):
+    """What the classifier must return."""
+
+    label: str = PydanticField(description="Yalnızca izin verilen etiketlerden biri.")
+    reason: str = PydanticField(description="Tek cümlelik Türkçe gerekçe.")
+
+
+def classify(pdf: Path, url: str = "", anchor_text: str = "",
+             model: str | None = None) -> Decision:
+    """Ask a model what this PDF is, from its first page.
+
+    Used only where the rules abstained — 161 of 1,088 files measured against the
+    crawled corpus, or about one in seven. The verdict is cached by the caller
+    against the PDF's content hash, so a file is classified once, ever.
+
+    Both the page image and the page's text layer are sent. The text is what the
+    file itself says; the image is what it looks like, which is the only evidence
+    available for the scans.
+
+    Returns:
+        A Decision. On any failure it returns one that still reports
+        `needs_model`, so a transient outage means "ask again tomorrow" rather
+        than "this document is excluded forever".
+    """
+    import base64
+
+    from config.settings import settings
+    from llm import get_llm
+
+    from . import pdftools
+
+    try:
+        page_text = (pdftools.text_pages(pdf) or [""])[0][:4000]
+        image = pdftools.render(pdf, 1, dpi=settings.CORPUS_PDF_DPI,
+                                scale_to=CLASSIFY_MAX_PX)
+    except Exception as exc:  # noqa: BLE001 - an unreadable PDF is not a crash
+        return Decision(False, "", f"could not read the first page: {exc}", "")
+
+    described = f"Dosya adı: {urlsplit(url).path.rsplit('/', 1)[-1]}\n"
+    if anchor_text:
+        described += f"Bağlantı metni: {anchor_text}\n"
+    described += f"\nSayfadaki metin katmanı:\n{page_text or '(metin katmanı yok)'}"
+
+    try:
+        llm = get_llm(model or settings.CORPUS_PDF_MODEL)
+        # function_calling, never json_schema: the latter invents values for
+        # fields it cannot find, which for a classifier means a confident label
+        # for a page it could not read. See docs/ARCHITECTURE.md.
+        structured = llm.with_structured_output(_Verdict, method="function_calling")
+        verdict = structured.invoke([HumanMessage(content=[
+            {"type": "text", "text": CLASSIFY_PROMPT + "\n" + described},
+            {"type": "image_url", "image_url": {
+                "url": "data:image/png;base64," + base64.b64encode(image).decode()}},
+        ])])
+    except Exception as exc:  # noqa: BLE001 - an LLM outage is not a verdict
+        return Decision(False, "", f"classifier unavailable: {exc}", "")
+
+    if verdict is None:
+        return Decision(False, "", "classifier returned nothing", "")
+    return from_label(verdict.label, verdict.reason)
 
 
 def from_label(label: str, reason: str = "") -> Decision:

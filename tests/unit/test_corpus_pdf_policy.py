@@ -48,6 +48,14 @@ def test_a_product_information_form_is_accepted(filename):
     assert decide(f"{KUVEYT}/documents/{filename}").accepted
 
 
+def test_a_short_deny_pattern_does_not_fire_inside_a_turkish_word():
+    """A live run rejected this as anti-money-laundering policy: "aml" is a
+    substring of "bina-ta(ml)ama". Folded matching makes short patterns
+    dangerous, so the deny list spells the words out."""
+    decision = decide(f"{KUVEYT}/documents/bina-tamamlama-sigortasi-bulteni.pdf")
+    assert decision.decided_by != "rule:deny"
+
+
 def test_a_faq_is_accepted():
     decision = decide(f"{KUVEYT}/documents/yatirim-hesabi-sss.pdf")
     assert decision.accepted

@@ -106,7 +106,8 @@ def test_a_pdf_outside_the_language_prefix_is_still_fetched():
 
 
 def test_a_pdf_on_a_regulator_host_is_allowed_by_the_asset_rule():
-    """Host is the selection policy's decision, made from the linking section."""
+    """The host surface is bounded to the bank plus named Turkish authorities.
+    The selection policy still decides whether an allowed file is worth reading."""
     assert fetch.wanted_asset("https://www.tkbb.org.tr/standart.pdf", KUVEYT)
 
 
@@ -276,3 +277,47 @@ def test_links_carry_their_anchor_text():
 
 def test_unparseable_html_yields_no_links_rather_than_raising():
     assert fetch.links("", "https://x.com.tr/") == []
+
+
+# ----- host surface -----
+
+def test_a_pdf_on_an_unrelated_host_is_not_fetched():
+    """Following PDF links to any host means the crawler walks the open
+    internet, downloading files the policy will then reject."""
+    assert not fetch.wanted_asset("https://random-blog.example.com/x.pdf", KUVEYT)
+    assert not fetch.wanted_asset("https://www.oecd.org/report.pdf", KUVEYT)
+
+
+def test_a_pdf_on_a_named_authority_is_fetched():
+    """The banks cite these, and the documents are worth having."""
+    for url in ("https://www.tkbb.org.tr/standart.pdf",
+                "https://spk.gov.tr/form.pdf",
+                "https://borsaistanbul.com/files/endeks.pdf"):
+        assert fetch.wanted_asset(url, KUVEYT)
+
+
+def test_the_banks_own_subdomains_are_still_fetched():
+    assert fetch.wanted_asset(
+        "https://asset.emlakkatilim.com.tr/documents/ucretler.pdf", EMLAK)
+
+
+def test_a_lookalike_of_a_trusted_host_is_not_fetched():
+    assert not fetch.wanted_asset("https://nottkbb.org.tr/x.pdf", KUVEYT)
+
+
+# ----- PDFs behind an unchanged page -----
+
+def test_an_unchanged_page_still_yields_its_pdfs(serve):
+    """A 304 page links the same PDFs it did yesterday, and its HTML is already
+    in the store. Skipping it meant that on any site whose pages send an ETag,
+    no PDF was ever looked at again after the first run."""
+    html = (b'<html><a href="/documents/ucretler.pdf">Ucret Tarifesi</a></html>')
+    content_hash, blob = store.put(html, "text/html")
+    page = "https://www.kuveytturk.com.tr/kendim-icin"
+    unchanged = fetch.RawDoc(url=page, fetched_at="now", status=304,
+                             content_type="text/html", content_hash=content_hash,
+                             blob=blob)
+    serve({"ucretler.pdf": response(body=b"%PDF-1.4 x",
+                                    content_type="application/pdf")})
+    found = fetch._fetch_linked_pdfs(KUVEYT, {page: unchanged}, {}, cap=10)
+    assert "https://www.kuveytturk.com.tr/documents/ucretler.pdf" in found

@@ -57,6 +57,15 @@ FOREIGN_PREFIXES = frozenset({
     "az", "kmr", "fa", "zh",
 })
 
+# Hosts other than the bank's own whose PDFs are worth following. All ten banks
+# cite the same handful of authorities, so this is one shared list rather than a
+# per-site field nobody would vary: the participation-banking association, the
+# capital markets and banking regulators, the exchange, and the insurance union.
+TRUSTED_PDF_HOSTS = frozenset({
+    "tkbb.org.tr", "spk.gov.tr", "bddk.org.tr", "tsb.org.tr",
+    "borsaistanbul.com", "tcmb.gov.tr", "resmigazete.gov.tr",
+})
+
 _HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,"
               "application/pdf;q=0.9,*/*;q=0.8",
@@ -152,11 +161,20 @@ def wanted_asset(url: str, site: Site) -> bool:
     the old crawler tested PDFs against the page language prefix, so every PDF
     under `/documents/` or `/upload/` at a site declaring `/tr` was thrown away.
 
-    Host is not checked here either. A PDF may legitimately live on a regulator's
-    domain (TKBB, SPK); whether to follow it there is the selection policy's
-    decision, made from the linking page's section, not this function's.
+    It *does* check the host. The banks link PDFs on regulators' and the
+    association's sites, and those are worth having -- but following a PDF link
+    to any host at all means the crawler walks the open internet, downloading
+    files the selection policy will then reject. So the surface is bounded here,
+    to the bank's own domain plus a named list of Turkish financial authorities,
+    and the policy still decides whether an allowed file is worth reading.
     """
-    return url.startswith("https://") and is_pdf(url)
+    if not url.startswith("https://") or not is_pdf(url):
+        return False
+    if same_site(url, site.root_domain):
+        return True
+    host = (urlsplit(url).hostname or "").lower()
+    return any(host == trusted or host.endswith("." + trusted)
+               for trusted in TRUSTED_PDF_HOSTS)
 
 
 # ----- robots -----
@@ -407,7 +425,13 @@ def _fetch_linked_pdfs(site: Site, fetched: dict[str, RawDoc], manifest: dict,
     """
     targets: dict[str, str] = {}
     for page_url, record in fetched.items():
-        if record.status != 200 or not record.blob or "html" not in record.content_type:
+        # 304 counts. A page that has not changed still links the same PDFs, and
+        # its HTML is already in the store -- so skipping it here meant that on
+        # any site whose pages send an ETag, no PDF was ever looked at again
+        # after the first run. Emlak hid this because its page CDN sends none.
+        if record.status not in (200, 304) or not record.blob:
+            continue
+        if "html" not in record.content_type:
             continue
         try:
             html = store.get(record.blob).decode("utf-8", errors="replace")
@@ -449,7 +473,9 @@ def _crawl_recursive(site: Site, manifest: dict, cap: int) -> dict[str, RawDoc]:
             with lock:
                 results[url] = record
             time.sleep(delay)
-            if record.status != 200 or not record.blob:
+            # 304 as well as 200: an unchanged page still has links to follow,
+            # and its HTML is in the store.
+            if record.status not in (200, 304) or not record.blob:
                 return
             if "html" not in record.content_type:
                 return

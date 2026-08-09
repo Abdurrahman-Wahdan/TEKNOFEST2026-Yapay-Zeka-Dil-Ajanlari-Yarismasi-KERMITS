@@ -187,6 +187,16 @@ def test_every_site_display_name_matches_its_bank():
         assert site.display_name == get_bank(site.slug).display_name
 
 
+def test_every_site_host_is_its_base_url_host():
+    """The canonical host must match the base URL, or every fetch redirects and
+    the stored URLs are not the ones the server considers canonical. Hayat and
+    Dünya redirect www -> no-www; the rest keep www. Verified live 2026-08-09."""
+    from urllib.parse import urlsplit
+    for site in SITES:
+        assert site.host == urlsplit(site.base).hostname
+        assert site.base.startswith(f"https://{site.host}")
+
+
 def test_an_unknown_site_lists_the_valid_ones():
     with pytest.raises(ValueError, match="kuveytturk"):
         get_site("kuveyt-turk")
@@ -208,10 +218,11 @@ def test_every_site_declares_a_host_inside_its_own_domain():
         assert same_site(site.base, site.root_domain)
 
 
-def test_dunya_is_the_one_site_without_www():
-    """Recorded because it is why host folding is per-site rather than global."""
-    assert get_site("dunya").host == "dunyakatilim.com.tr"
-    assert all(s.host.startswith("www.") for s in SITES if s.slug != "dunya")
+def test_the_no_www_sites_are_dunya_and_hayat():
+    """Both redirect www -> no-www, so their canonical host has none. This is why
+    host folding is per-site rather than global -- verified live 2026-08-09."""
+    no_www = {s.slug for s in SITES if not s.host.startswith("www.")}
+    assert no_www == {"dunya", "hayat"}
 
 
 def test_doc_kinds_include_the_kinds_the_pdf_policy_accepts():

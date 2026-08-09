@@ -153,3 +153,39 @@ def test_whitespace_only_setting_is_treated_as_empty(monkeypatch):
 
     monkeypatch.setattr(settings, "CORPUS_ROOT", "   ")
     assert store.root() == PROJECT_ROOT / "corpus_data"
+
+
+# ----- garbage collection -----
+
+def test_an_orphaned_page_blob_is_collected(corpus_root):
+    """Page bytes churn every run on an FX timestamp and a rotating WAF token,
+    so without this the store grows about a gigabyte a day and none of the
+    growth is information."""
+    _, old = store.put(b"<html>yesterday</html>", "text/html")
+    _, new = store.put(b"<html>today</html>", "text/html")
+    manifest = {"https://x.com.tr/p": {"blob": new, "content_hash": "n"}}
+    deleted, freed = store.collect_garbage(manifest)
+    assert deleted == 1
+    assert freed > 0
+    assert not store.has(old)
+    assert store.has(new)
+
+
+def test_a_referenced_blob_is_never_collected(corpus_root):
+    _, blob = store.put(b"<html>live</html>", "text/html")
+    store.collect_garbage({"https://x.com.tr/p": {"blob": blob}})
+    assert store.has(blob)
+
+
+def test_an_orphaned_pdf_is_kept(corpus_root):
+    """PDFs answered 304 on a second run, so they do not churn -- an orphaned
+    one is usually a document the bank withdrew, and the only copy left of what
+    a fee schedule said before it changed."""
+    _, pdf = store.put(b"%PDF-1.4 withdrawn", "application/pdf")
+    deleted, _ = store.collect_garbage({})
+    assert deleted == 0
+    assert store.has(pdf)
+
+
+def test_collecting_an_empty_store_is_harmless():
+    assert store.collect_garbage({}) == (0, 0)

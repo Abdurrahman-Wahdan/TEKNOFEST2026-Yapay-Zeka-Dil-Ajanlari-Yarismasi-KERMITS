@@ -131,6 +131,90 @@ class Settings(BaseSettings):
         description="A PDF past this is refused and reported rather than "
         "silently skipped. Measured sizes run 0.2-9.8 MB.",
     )
+    CORPUS_PDF_MODEL: str = Field(
+        default="gemma",
+        description="Reads PDF pages as images, for classifying the files the "
+        "filename rules cannot judge and for extracting scanned ones. Measured "
+        "against qwen on a real scanned Turkish page: gemma spent 304 prompt "
+        "tokens per tile to qwen's 4,328 and made no transcription errors "
+        "where qwen made three. gpt-oss cannot see images at all.",
+    )
+    CORPUS_PDF_DPI: int = Field(
+        default=200,
+        gt=0,
+        description="The vision encoder resamples to a fixed grid, so a higher "
+        "DPI costs raster time and bandwidth without giving the model more to "
+        "read. Tiling is the lever for detail, not DPI.",
+    )
+    CORPUS_PDF_MIN_CHARS_PER_PAGE: int = Field(
+        default=100,
+        gt=0,
+        description="Below this, after stamp-stripping, a page has no text "
+        "layer and must be read as an image. The measured gap is disjoint: "
+        "scanned pages yield 0-1 characters, text pages 269 and up.",
+    )
+    CORPUS_PDF_STAMP_FRACTION: float = Field(
+        default=0.8,
+        gt=0,
+        le=1,
+        description="A line on this share of pages is a header, footer or "
+        "watermark. The 113-page scans carry a per-page 'Dogrulama Kodu' stamp, "
+        "which is what let the old crawler mistake them for readable text.",
+    )
+    CORPUS_PDF_TILES: int = Field(
+        default=2,
+        gt=0,
+        description="Vertical tiles per page sent to the model. Its image token "
+        "budget is fixed per tile, so tiling doubles effective resolution at no "
+        "extra input cost and is the lever for detail, not DPI.",
+    )
+    CORPUS_PDF_MAX_PAGES: int = Field(
+        default=40,
+        gt=0,
+        description="Pages read per PDF. Beyond it the document is marked "
+        "truncated with its real page count. The only files this touches are "
+        "113-127 page SPK prospectus annexes, which answer no product question.",
+    )
+    CORPUS_PDF_MAX_TOKENS: int = Field(
+        default=2048,
+        gt=0,
+        description="Per tile. Measured 399-951 completion tokens for half a "
+        "page, so this is headroom; a 'length' finish means retry with more tiles.",
+    )
+    CORPUS_PDF_MIN_UNIQUE_LINES: float = Field(
+        default=0.60,
+        gt=0,
+        le=1,
+        description="Below this, extraction is suspect and the document is "
+        "refused. The corpus median is 0.972; the files pypdf mangled sat at "
+        "0.008-0.043.",
+    )
+    CORPUS_MIN_CHARS: int = Field(
+        default=250,
+        gt=0,
+        description="Below this a document is a navigation stub, not content. "
+        "262 Emlak and 155 Ziraat documents in the crawled corpus were these.",
+    )
+    CORPUS_MAX_SHRINK_PCT: int = Field(
+        default=10,
+        gt=0,
+        description="A run that would shrink the corpus more than this writes "
+        "nothing and leaves yesterday's artifact in place. A site rolling out a "
+        "WAF block 403s everything, and would otherwise quietly delete thousands "
+        "of documents that are still there.",
+    )
+    CORPUS_MAX_ERROR_PCT: int = Field(
+        default=20,
+        gt=0,
+        description="Share of one site's fetches that may fail before the whole "
+        "run refuses to publish.",
+    )
+    CORPUS_SCHEDULE: str = Field(
+        default="0 3 * * *",
+        description="Cron expression for the nightly run, in local time. Nothing "
+        "reads it at run time -- it is what `python -m corpus.schedule` prints. "
+        "03:00 keeps it clear of the 06:00 health check's request budget.",
+    )
     CORPUS_MISSING_RUNS: int = Field(
         default=3,
         gt=0,
