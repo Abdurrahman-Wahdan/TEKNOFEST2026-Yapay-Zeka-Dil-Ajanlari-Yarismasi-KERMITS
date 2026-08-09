@@ -80,6 +80,10 @@ models/
 # Runtime output.
 logs/
 *.log
+# Crawled bank sites, written by the scripts in download_sites/. Regenerable
+# with `python download_sites/<bank>.py`, and far too large to track: the
+# 2026-08-08 crawl was ~7,100 markdown files and 134MB. The crawlers ARE tracked.
+download_sites/*_site/
 # Playwright MCP artifacts and stray screenshots. Images under docs/ are kept.
 .playwright-mcp/
 *.png
