@@ -97,6 +97,48 @@ class Settings(BaseSettings):
         "as an error rather than holding up the answer.",
     )
 
+    # ===== Corpus (crawled bank sites) =====
+    CORPUS_ROOT: str = Field(
+        default="",
+        description="Where raw bytes, the manifest and the clean artifact live. "
+        "Empty means beside the project, so a blank line in .env cannot "
+        "silently move the whole corpus into the working directory.",
+    )
+    CORPUS_USER_AGENT: str = Field(
+        default="TF26-corpus/1.0 (+https://github.com/Abdurrahman-Wahdan/TF26)",
+        description="An honest identifier, unlike the browser string the bank "
+        "endpoints need. These are public content pages, not calculators that "
+        "reject non-browsers, and a nightly job should say who it is.",
+    )
+    CORPUS_TIMEOUT: float = Field(default=40.0, gt=0)
+    CORPUS_CONCURRENCY: int = Field(
+        default=6,
+        gt=0,
+        description="Per site. Lower than the old crawler's 12: this runs every "
+        "night against ten hosts, and around 170 requests in a burst from one "
+        "address is what a WAF throttles.",
+    )
+    CORPUS_DELAY: float = Field(
+        default=0.25,
+        ge=0,
+        description="Pause between requests to one site, matching "
+        "HEALTH_AUDIT_PRODUCT_DELAY. robots.txt Crawl-delay overrides it upward.",
+    )
+    CORPUS_MAX_PAGES_PER_SITE: int = Field(default=8000, gt=0)
+    CORPUS_MAX_PDF_MB: int = Field(
+        default=50,
+        gt=0,
+        description="A PDF past this is refused and reported rather than "
+        "silently skipped. Measured sizes run 0.2-9.8 MB.",
+    )
+    CORPUS_MISSING_RUNS: int = Field(
+        default=3,
+        gt=0,
+        description="Consecutive runs a URL must be missing before its document "
+        "is dropped. The same rule as the audit's: one WAF blip returning 403 "
+        "for everything must not delete a site's 2,366 documents.",
+    )
+
     # ===== Health checks =====
     HEALTH_STATUS_FILE: str = Field(
         default=str(PROJECT_ROOT / "bank_status.json"),
