@@ -11,10 +11,10 @@ when nobody is listening.
 
 import json
 import logging
-from datetime import datetime
 
 from config.settings import settings
 
+from . import clock
 from .http import request
 
 logger = logging.getLogger(__name__)
@@ -43,7 +43,8 @@ def send_report(report, changes: list[dict] | None = None) -> bool:
     scheduled run is never two notifications.
     """
     changes = changes or []
-    when = datetime.now().strftime("%Y-%m-%d %H:%M")
+    generated_at = clock.now()
+    when = clock.display(generated_at)
     checked = len(report.results)
     ok = checked - len(report.failures)
 
@@ -73,6 +74,7 @@ def send_report(report, changes: list[dict] | None = None) -> bool:
     return _post({
         "source": "tf26-bank-audit",
         "text": text,
+        "generated_at": clock.stamp(generated_at),
         "healthy": report.healthy,
         "totals": {"checked": checked, "ok": ok, "down": len(report.failures),
                    "known": len(report.known_gaps)},

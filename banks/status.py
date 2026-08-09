@@ -15,16 +15,17 @@ outage. Writes are atomic, because the checker writes it while the tools read.
 """
 
 import contextlib
+import fcntl
 import json
 import logging
 import os
 import tempfile
 import threading
-from datetime import datetime, timezone
 from pathlib import Path
 
 from config.settings import PROJECT_ROOT, settings
 
+from . import clock
 from .parse import fold
 
 logger = logging.getLogger(__name__)
@@ -101,6 +102,73 @@ def write(status: dict) -> Path:
     return target
 
 
+def apply(fresh: dict) -> tuple[dict, list[dict]]:
+    """Merge freshly-checked results into the status file, under a lock.
+
+    `fresh` is `{bank: {capability: (state, reason, products_or_None)}}`,
+    `products` being `{code: (state, reason)}` for a capability checked
+    product by product, or `None` for a capability checked as a whole.
+
+    The file is re-read from disk inside the lock, immediately before
+    merging -- against what the last writer actually left, not against
+    whatever the caller saw when it started checking, seconds or tens of
+    seconds ago. That gap is what let one checker's outage get overwritten by
+    another's stale snapshot: `health.run()` and `audit.run()` can each take
+    up to ~20 seconds, and both read-modify-write the same file.
+
+    The lock is a real OS file lock, not the in-process `_LOCK` above (which
+    only ever guarded the read cache): `health.py` and `audit.py` run as
+    separate processes under cron/launchd, so nothing in this process can see
+    the other one coming.
+
+    Returns the merged file and the list of capability-level state changes,
+    for `notify.send()` / `notify.send_report()` to announce. A capability
+    seen for the first time and already `ok` is not a change -- otherwise a
+    fresh install would announce that every working bank just came back up.
+    """
+    target = path()
+    target.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = target.with_name(target.name + ".lock")
+
+    with open(lock_path, "a+") as lock_file:
+        fcntl.flock(lock_file, fcntl.LOCK_EX)
+        try:
+            clear_cache()
+            current = read()
+            merged = {bank: dict(caps) for bank, caps in current.items()}
+            changes: list[dict] = []
+
+            for bank, capabilities in fresh.items():
+                bank_current = current.get(bank) or {}
+                merged.setdefault(bank, {})
+                for capability, (state, reason, products) in capabilities.items():
+                    was_entry = bank_current.get(capability) or {}
+                    product_entries = None
+                    if products:
+                        was_products = was_entry.get("products") or {}
+                        product_entries = {
+                            code: entry(p_state, p_reason, was_products.get(code))
+                            for code, (p_state, p_reason) in products.items()
+                        }
+                    merged[bank][capability] = entry(state, reason, was_entry, product_entries)
+
+                    was_state = was_entry.get("state")
+                    if was_state is None and state == OK:
+                        continue
+                    if was_state != state:
+                        changes.append({
+                            "bank": bank, "capability": capability,
+                            "from": was_state or "unknown", "to": state,
+                            "reason": reason,
+                        })
+
+            write(merged)
+        finally:
+            fcntl.flock(lock_file, fcntl.LOCK_UN)
+
+    return merged, changes
+
+
 _LOCAL = threading.local()
 
 
@@ -165,7 +233,7 @@ def entry(state: str, reason: str = "", previous: dict | None = None,
     since = (previous or {}).get("since") if was == state else None
     record = {
         "state": state,
-        "since": since or datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "since": since or clock.stamp(),
         "reason": reason,
     }
     # Keep whatever product-level state the caller did not look at. A run

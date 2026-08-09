@@ -269,7 +269,6 @@ def run(
     """
     wanted = [get_provider(n) for n in banks] if banks else list(BANKS)
     report = HealthReport()
-    previous = status.read()
     fresh: dict = {}
 
     # The bypass that lets the checker ignore its own status file is opened per
@@ -289,57 +288,22 @@ def run(
                 continue
             result = _run_one(bank, capability)
             report.results.append(result)
-            was = (previous.get(bank.name) or {}).get(capability)
             state = status.DOWN if result.state == DOWN else status.OK
-            fresh.setdefault(bank.name, {})[capability] = status.entry(
-                state, result.reason if result.state == DOWN else "", was
+            fresh.setdefault(bank.name, {})[capability] = (
+                state, result.reason if result.state == DOWN else "", None
             )
 
+    changes: list[dict] = []
     if write_status:
-        status.write(_merge(previous, fresh))
-    if notify:
-        _notify_changes(previous, fresh)
-    return report
+        # status.apply() re-reads the file itself, right before merging, so a
+        # scoped run here cannot clear an outage another writer recorded (or
+        # is mid-recording) that this run never looked at.
+        _, changes = status.apply(fresh)
+    if notify and changes:
+        from .notify import send
 
-
-def _merge(previous: dict, fresh: dict) -> dict:
-    """Keep entries for anything this run did not check.
-
-    A scoped run must not clear an outage it never looked at. Two levels are
-    enough here because status.entry() carries a capability's product-level
-    records forward from `previous`, so replacing the capability record does not
-    drop the products underneath it.
-    """
-    merged = {bank: dict(caps) for bank, caps in previous.items()}
-    for bank, caps in fresh.items():
-        merged.setdefault(bank, {}).update(caps)
-    return merged
-
-
-def _notify_changes(previous: dict, fresh: dict) -> None:
-    from .notify import send
-
-    changes = []
-    for bank, caps in fresh.items():
-        for capability, record in caps.items():
-            was = ((previous.get(bank) or {}).get(capability) or {}).get("state")
-            if was is None and record["state"] == status.OK:
-                # First time we have ever checked it, and it is fine. Announcing
-                # that a working bank works is the noise that teaches people to
-                # ignore the alert that matters.
-                continue
-            if was != record["state"]:
-                changes.append(
-                    {
-                        "bank": bank,
-                        "capability": capability,
-                        "from": was or "unknown",
-                        "to": record["state"],
-                        "reason": record.get("reason", ""),
-                    }
-                )
-    if changes:
         send(changes)
+    return report
 
 
 def main(argv: list[str] | None = None) -> int:

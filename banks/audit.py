@@ -288,24 +288,29 @@ def run(banks: list[str] | None = None, capabilities: list[str] | None = None,
     report.results.sort(key=lambda r: (r.bank, r.capability))
     report.seconds = time.monotonic() - started
 
-    previous = status.read()
+    changes: list[dict] = []
     if write_status:
-        status.write(_record(previous, report))
+        # status.apply() re-reads the file itself, right before merging, so a
+        # run that took ~20 seconds merges against what is on disk now, not
+        # against a snapshot from when this run started.
+        _, changes = status.apply(_record(report))
     if notify:
         from .notify import send_report
 
-        send_report(report, _changes(previous, report))
+        send_report(report, changes)
     return report
 
 
-def _record(previous: dict, report: AuditReport) -> dict:
-    """Fold the audit into the status file, product by product.
+def _record(report: AuditReport) -> dict:
+    """This run's results, grouped for status.apply(): {bank: {capability:
+    (state, reason, products_or_None)}}.
 
     A capability is only marked down when *every* product under it failed: that
     is an endpoint change rather than a product change, and it keeps the refusal
-    cheap. One broken product disables itself and nothing else.
+    cheap. One broken product disables itself and nothing else. Carrying
+    forward whatever this run did not check -- unrelated banks, products it
+    never looked at -- is status.apply()'s job, not this one's.
     """
-    merged = {bank: dict(caps) for bank, caps in previous.items()}
     by_capability: dict = {}
     for result in report.results:
         capability, _, product = result.capability.partition("/")
@@ -316,47 +321,23 @@ def _record(previous: dict, report: AuditReport) -> dict:
             continue
         by_capability.setdefault((result.bank, capability), []).append((product, result))
 
+    fresh: dict = {}
     for (bank, capability), items in by_capability.items():
-        was = (previous.get(bank) or {}).get(capability) or {}
         products = {}
-        failures = 0
         for product, result in items:
             if not product:
                 continue
             state = status.DOWN if result.state == DOWN else status.OK
-            failures += result.state == DOWN
-            products[product] = status.entry(
-                state, result.reason if result.state == DOWN else "",
-                (was.get("products") or {}).get(product),
-            )
+            products[product] = (state, result.reason if result.state == DOWN else "")
         priced = [r for _, r in items if r.state != KNOWN]
         everything_failed = bool(priced) and all(r.state == DOWN for r in priced)
-        merged.setdefault(bank, {})[capability] = status.entry(
+        fresh.setdefault(bank, {})[capability] = (
             status.DOWN if everything_failed else status.OK,
             "every product under it failed, so the endpoint itself looks broken"
             if everything_failed else "",
-            was,
             products or None,
         )
-    return merged
-
-
-def _changes(previous: dict, report: AuditReport) -> list[dict]:
-    """Capabilities that crossed between ok and down since the last run."""
-    changes = []
-    for result in report.results:
-        capability, _, product = result.capability.partition("/")
-        if product:
-            continue
-        was = ((previous.get(result.bank) or {}).get(capability) or {}).get("state")
-        now = status.DOWN if result.state == DOWN else status.OK
-        if was is None and now == status.OK:
-            continue
-        if was != now:
-            changes.append({"bank": result.bank, "capability": capability,
-                            "from": was or "unknown", "to": now,
-                            "reason": result.reason})
-    return changes
+    return fresh
 
 
 def main(argv: list[str] | None = None) -> int:

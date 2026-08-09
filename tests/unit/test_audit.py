@@ -228,6 +228,8 @@ def test_a_green_run_still_reports(monkeypatch):
     assert len(sent) == 1
     assert sent[0]["healthy"] is True
     assert "All well" in sent[0]["text"]
+    assert "+03" in sent[0]["text"], "the report must say which clock it used"
+    assert sent[0]["generated_at"].endswith("+00:00"), "the machine field stays UTC"
 
 
 def test_a_broken_run_leads_with_what_broke(monkeypatch):
