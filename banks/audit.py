@@ -44,6 +44,10 @@ logger = logging.getLogger(__name__)
 DEFAULT_AMOUNT = 100_000.0
 DEFAULT_TERM = 24
 
+# The pseudo-capability under which family-table entries are checked. Not
+# something a bank declares, so it never reaches the status file.
+FAMILIES = "families"
+
 
 @dataclass(frozen=True)
 class Unit:
@@ -157,11 +161,11 @@ def plan(bank, capabilities: list[str] | None = None) -> list[Unit]:
             continue
         units.extend(Unit(bank.name, capability, p.code or p.name) for p in catalogue)
 
-    if not wanted or "families" in wanted:
+    if not wanted or FAMILIES in wanted:
         for category, table in families.BY_CATEGORY.items():
             for family, entries in table.items():
                 if bank.name in entries:
-                    units.append(Unit(bank.name, "families", f"{category}/{family}"))
+                    units.append(Unit(bank.name, FAMILIES, f"{category}/{family}"))
     return units
 
 
@@ -172,7 +176,7 @@ def _check(bank, unit: Unit) -> str:
     if not unit.product:
         return CHECKS[unit.capability](bank)
 
-    if unit.capability == "families":
+    if unit.capability == FAMILIES:
         category, family = unit.product.split("/", 1)
         query = families.entries(category, family)[bank.name]
         product = bank.resolve(category, query, DEFAULT_AMOUNT, DEFAULT_TERM)
@@ -305,6 +309,11 @@ def _record(previous: dict, report: AuditReport) -> dict:
     by_capability: dict = {}
     for result in report.results:
         capability, _, product = result.capability.partition("/")
+        if capability == FAMILIES:
+            # Not a capability a bank declares, and nothing gates on it. It is
+            # checked so a stale family entry is found every morning, and it
+            # belongs in the report rather than in the file the tools read.
+            continue
         by_capability.setdefault((result.bank, capability), []).append((product, result))
 
     for (bank, capability), items in by_capability.items():

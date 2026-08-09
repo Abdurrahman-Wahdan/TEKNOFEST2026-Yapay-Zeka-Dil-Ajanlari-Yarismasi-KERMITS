@@ -572,3 +572,21 @@ def test_a_bank_that_does_not_sell_it_says_so(live):
     result = compare.finance("ihtiyac", 100_000, 24)
     missing = {u.bank: u.why for u in result.unavailable}
     assert missing.get("albaraka") == compare.NOT_OFFERED
+
+
+def test_no_shared_product_family_is_missing_from_the_table(live):
+    """Coverage must not fall behind as banks add products.
+
+    A family only earns its place when two banks sell it; this fails when a
+    second bank starts selling something the table does not cover yet.
+    """
+    from banks import families, get_bank
+
+    catalogues = {
+        "finance": {
+            name: [p.name for p in get_bank(name).products("finance")]
+            for name in ("kuveytturk", "albaraka", "vakif", "emlak", "dunya", "ziraat")
+        }
+    }
+    missing = families.shared_families_missing(catalogues)
+    assert not missing, "two or more banks sell these and no family covers them: " + "; ".join(missing)

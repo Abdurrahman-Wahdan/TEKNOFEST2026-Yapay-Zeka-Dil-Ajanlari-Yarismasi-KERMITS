@@ -209,3 +209,19 @@ def test_an_unknown_family_is_a_sentence_not_a_traceback():
     out = tool.invoke({"family": "nope", "amount": 100000, "term_months": 24})
     assert not out.startswith("{")
     assert "konut-yeni" in out
+
+
+def test_naming_only_banks_that_cannot_be_compared_says_who_can(monkeypatch):
+    """An empty ranking is an answer with no information in it."""
+    with pytest.raises(UnsupportedProduct, match="It is sold by"):
+        compare.finance("ihtiyac", 100_000, 24, banks=["adil"])
+    with pytest.raises(UnsupportedProduct, match="These do"):
+        compare.exchange("USD", "TRY", 1000, banks=["ziraat"])
+
+
+def test_the_tool_turns_that_into_a_sentence():
+    tool = next(t for t in build_tools() if t.name == "compare_finance")
+    out = tool.invoke({"family": "ihtiyac", "amount": 100000,
+                       "term_months": 24, "banks": ["adil"]})
+    assert not out.startswith("{")
+    assert "kuveytturk" in out

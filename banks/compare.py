@@ -133,6 +133,14 @@ def _prepare(category: str, capability: str, family: str, banks: list[str] | Non
     """Split the banks in scope into ones to ask and ones that do not sell it."""
     table = families.entries(category, family)
     scope = _scope(capability, banks)
+    if not scope:
+        # Nothing to compare and nothing to report against, so an empty ranking
+        # would be an answer with no information in it. Say who does sell it.
+        raise UnsupportedProduct(
+            f"None of the banks named can be compared on "
+            f"{families.label(family)}. It is sold by: "
+            f"{', '.join(sorted(table))}."
+        )
     asking = [(bank, table[bank.name]) for bank in scope if bank.name in table]
     # The label is not lowercased: "İhtiyaç".lower() leaves a combining dot and
     # renders as "i̇htiyaç". The sentence is worded so it can stay as written.
@@ -186,6 +194,12 @@ def exchange(source: str, target: str, amount: float,
     """
     started = time.monotonic()
     scope = _scope("convert", banks)
+    if not scope:
+        converting = sorted(b.name for b in BANKS if "convert" in b.capabilities)
+        raise UnsupportedProduct(
+            f"None of the banks named convert currency. These do: "
+            f"{', '.join(converting)}."
+        )
     work = [
         (bank, partial(_convert, source=source, target=target, amount=amount))
         for bank in scope

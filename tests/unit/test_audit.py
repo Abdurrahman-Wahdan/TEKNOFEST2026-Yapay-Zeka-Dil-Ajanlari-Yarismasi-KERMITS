@@ -291,3 +291,13 @@ def test_a_schedule_launchd_cannot_express_is_refused():
 def test_a_malformed_schedule_says_what_is_expected():
     with pytest.raises(ValueError, match="Five fields"):
         schedule.crontab_line("0 6 *")
+
+
+def test_the_families_check_never_reaches_the_status_file(monkeypatch):
+    """It is not a capability a bank declares, and nothing gates on it."""
+    catalogue(monkeypatch, "vakif", ["A"])
+    checks(monkeypatch, {})
+    report = audit.run(banks=["vakif"], notify=False)
+
+    assert any(r.capability.startswith("families/") for r in report.results)
+    assert audit.FAMILIES not in status.read().get("vakif", {})
