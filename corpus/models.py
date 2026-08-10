@@ -80,7 +80,10 @@ class RawDoc:
 
 @dataclass(frozen=True)
 class Block:
-    """One piece of a PDF page, in reading order."""
+    """One piece of a PDF page, in reading order.
+
+    Kept for the HTML path. PDF pages are markdown plus items, not blocks.
+    """
 
     kind: str                      # heading|paragraph|table|list|image|figure_caption
     text: str                      # markdown; tables as markdown tables
@@ -89,19 +92,36 @@ class Block:
 
 
 @dataclass(frozen=True)
+class Item:
+    """A table, chart, image or diagram on a page.
+
+    Only elements needing more than plain text become items; prose, headings and
+    simple lists live in the page markdown alone. `marker` appears verbatim in
+    that markdown, which is what pins the item to its place on the page.
+    """
+
+    id: str                        # "table_1", "figure_2"
+    marker: str                    # "<table_1>" -- verbatim in the markdown
+    summary: str                   # what it represents
+    visible_text: str              # the exact text inside it
+    visual_representation: str     # layout and meaning the summary misses
+
+
+@dataclass(frozen=True)
 class Page:
-    """One page of a PDF."""
+    """One page of a PDF, transcribed whole."""
 
     number: int                    # 1-based, matching what a PDF viewer shows
-    blocks: tuple[Block, ...]
+    markdown: str                  # the whole page, in reading order
     cite_url: str                  # ".../form.pdf#page=7" -- viewers honour it
     text_hash: str
+    items: tuple[Item, ...] = ()
     has_tables: bool = False
     has_images: bool = False
 
-    # True where the page had no text layer and a model read the image instead.
-    # Vision paraphrases plausibly, so a citation from such a page should hedge.
-    from_vision: bool = False
+    # Every PDF page is read from its image, so this is always true. It stays
+    # because a PDF citation is hedged differently from a web one.
+    from_vision: bool = True
 
 
 @dataclass(frozen=True)

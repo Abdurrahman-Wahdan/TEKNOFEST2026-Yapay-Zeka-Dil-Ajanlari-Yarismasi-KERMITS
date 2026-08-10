@@ -145,6 +145,15 @@ class _FakeLLM:
 def fake_pdf(monkeypatch):
     monkeypatch.setattr(pdftools, "page_size", lambda *a, **k: (1000, 2000))
     monkeypatch.setattr(pdftools, "render", lambda *a, **k: b"\x89PNG")
+    monkeypatch.setattr(settings, "CORPUS_PDF_RETRY_BACKOFF", 0.0)
+    # One request per page here, so a test counting calls is counting pages.
+    # The tiling tests set this themselves.
+    monkeypatch.setattr(settings, "CORPUS_PDF_TILES", 1)
+
+
+def _pages(monkeypatch, count):
+    """How many pages the file has. The text layer is never consulted."""
+    monkeypatch.setattr(pdftools, "page_count", lambda _p: count)
 
 
 def _install(monkeypatch, llm):
@@ -152,11 +161,38 @@ def _install(monkeypatch, llm):
     monkeypatch.setattr(llm_module, "get_llm", lambda *a, **k: llm)
 
 
+def test_the_text_layer_is_never_read(monkeypatch, fake_pdf):
+    """The standard is one thing only: every page is read from its image. If
+    anything ever calls pdftotext for content again, this fails."""
+    _pages(monkeypatch, 1)
+
+    def forbidden(_p):
+        raise AssertionError("the text layer must never be read")
+
+    monkeypatch.setattr(pdftools, "text_pages", forbidden)
+    _install(monkeypatch, _FakeLLM([_Out([("paragraph", "görüntüden okundu")])]))
+    result = extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
+    assert result.text == "görüntüden okundu"
+
+
+def test_every_page_is_marked_from_vision(monkeypatch, fake_pdf):
+    """One provenance for every PDF page, so a citation means the same thing
+    everywhere."""
+    _pages(monkeypatch, 2)
+    _install(monkeypatch, _FakeLLM([_Out([("paragraph", "bir")]),
+                                    _Out([("paragraph", "iki")])]))
+    result = extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
+    assert all(p.from_vision for p in result.pages)
+    assert result.engine == "ocr"
+    assert result.low_confidence
+
+
 def test_a_block_repeated_across_tiles_is_kept_once(monkeypatch, fake_pdf):
     """Tiles overlap so a seam line survives, which makes the model return the
     straddling block twice. Measured on a real bulletin: every paragraph on
     page 2 doubled, and the document was wrongly flagged suspect."""
-    monkeypatch.setattr(pdftools, "text_pages", lambda _p: ["kâr payı oranı " * 20])
+    monkeypatch.setattr(settings, "CORPUS_PDF_TILES", 2)
+    _pages(monkeypatch, 1)
     both = _Out([("paragraph", "Tapu Güvenilir Hesap uygulaması."),
                  ("paragraph", "Taraflar tapu müdürlüklerine başvuruyor.")])
     _install(monkeypatch, _FakeLLM([both, both]))
@@ -166,7 +202,7 @@ def test_a_block_repeated_across_tiles_is_kept_once(monkeypatch, fake_pdf):
 
 
 def test_a_page_carries_its_number_and_citation(monkeypatch, fake_pdf):
-    monkeypatch.setattr(pdftools, "text_pages", lambda _p: ["a" * 200, "b" * 200])
+    _pages(monkeypatch, 2)
     _install(monkeypatch, _FakeLLM([_Out([("paragraph", "içerik bir")]),
                                     _Out([("paragraph", "içerik iki")])]))
     result = extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
@@ -175,7 +211,7 @@ def test_a_page_carries_its_number_and_citation(monkeypatch, fake_pdf):
 
 
 def test_a_table_is_marked_as_a_table(monkeypatch, fake_pdf):
-    monkeypatch.setattr(pdftools, "text_pages", lambda _p: ["x" * 200])
+    _pages(monkeypatch, 1)
     _install(monkeypatch, _FakeLLM([_Out([("table", "| Ücret | Tutar |\n|---|---|")])]))
     result = extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
     assert result.pages[0].has_tables
@@ -184,7 +220,7 @@ def test_a_table_is_marked_as_a_table(monkeypatch, fake_pdf):
 def test_an_unknown_block_kind_becomes_a_paragraph(monkeypatch, fake_pdf):
     """A model inventing a kind must not create an unbounded vocabulary that
     later becomes chunk boundaries."""
-    monkeypatch.setattr(pdftools, "text_pages", lambda _p: ["x" * 200])
+    _pages(monkeypatch, 1)
     _install(monkeypatch, _FakeLLM([_Out([("sidebar", "bir şey")])]))
     result = extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
     assert result.pages[0].blocks[0].kind == "paragraph"
@@ -192,7 +228,7 @@ def test_an_unknown_block_kind_becomes_a_paragraph(monkeypatch, fake_pdf):
 
 def test_a_blind_model_fails_the_document_rather_than_emptying_it(monkeypatch, fake_pdf):
     """Continuing would write pages that look like a document with nothing in it."""
-    monkeypatch.setattr(pdftools, "text_pages", lambda _p: ["x" * 200])
+    _pages(monkeypatch, 1)
     _install(monkeypatch, _FakeLLM([_Out([("paragraph", "I cannot see the image")])]))
     result = extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
     assert not result.ok
@@ -200,27 +236,123 @@ def test_a_blind_model_fails_the_document_rather_than_emptying_it(monkeypatch, f
     assert result.pages == ()
 
 
-def test_a_page_the_model_ignores_falls_back_to_its_text_layer(monkeypatch, fake_pdf):
-    """Losing a page because the model returned nothing would be silent data loss."""
-    monkeypatch.setattr(pdftools, "text_pages", lambda _p: ["kâr payı oranı " * 30])
-    _install(monkeypatch, _FakeLLM([_Out([])]))
+# ----- empty versus failed: the distinction the whole design turns on -----
+
+def test_a_page_the_model_read_as_blank_is_dropped(monkeypatch, fake_pdf):
+    """The reading succeeded and found nothing, so the page really is blank --
+    a separator or a back cover. This is the only honest reason to drop one."""
+    _pages(monkeypatch, 2)
+    _install(monkeypatch, _FakeLLM([_Out([]), _Out([("paragraph", "ikinci sayfa")])]))
     result = extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
-    assert len(result.pages) == 1
-    assert "kâr payı" in result.text
+    assert [p.number for p in result.pages] == [2]
+    assert result.empty_pages == 1
 
 
-def test_a_scanned_page_is_marked_as_read_from_vision(monkeypatch, fake_pdf):
-    """So the agent can hedge: vision paraphrases plausibly."""
-    monkeypatch.setattr(pdftools, "text_pages", lambda _p: [""])
-    _install(monkeypatch, _FakeLLM([_Out([("paragraph", "taranmış içerik burada")])]))
+def test_a_region_the_model_loops_on_is_split_and_retried(monkeypatch, fake_pdf):
+    """The model burns its whole budget on a region with too much text in it and
+    returns no tool call. Halving that region is what gets the text out, and it
+    is the difference between reading a dense contract page and losing it."""
+    monkeypatch.setattr(settings, "CORPUS_PDF_MAX_SPLIT_DEPTH", 2)
+    _pages(monkeypatch, 1)
+    calls = {"n": 0}
+
+    class _FailsUntilSplit(_FakeLLM):
+        def invoke(self, _messages):
+            calls["n"] += 1
+            # the whole tile fails; each half succeeds
+            return None if calls["n"] == 1 else _Out([("paragraph", f"parça {calls['n']}")])
+
+    _install(monkeypatch, _FailsUntilSplit([]))
     result = extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
-    assert result.pages[0].from_vision
-    assert result.low_confidence
+    assert calls["n"] == 3                       # one failure, then two halves
+    assert len(result.pages[0].blocks) == 2      # both halves' text kept
+
+
+def test_a_region_still_failing_at_max_depth_gives_up(monkeypatch, fake_pdf):
+    """Splitting has to stop somewhere: a region that fails when it is tiny is
+    not failing because of its length, so more cuts would only burn tokens."""
+    monkeypatch.setattr(settings, "CORPUS_PDF_MAX_SPLIT_DEPTH", 1)
+    monkeypatch.setattr(settings, "CORPUS_PDF_PAGE_ATTEMPTS", 1)
+    _pages(monkeypatch, 1)
+    _install(monkeypatch, _FakeLLM([None]))
+    with pytest.raises(pdf_extract.TransientExtractionError):
+        extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
+
+
+def test_no_structured_output_is_a_failure_not_a_blank_page(monkeypatch, fake_pdf):
+    """The subtlest form of the loss. The call returns None, which looks like a
+    page with no blocks on it -- and a real bilingual form was emptied that way
+    before the image was capped."""
+    monkeypatch.setattr(settings, "CORPUS_PDF_PAGE_ATTEMPTS", 2)
+    _pages(monkeypatch, 1)
+    _install(monkeypatch, _FakeLLM([None]))
+    with pytest.raises(pdf_extract.TransientExtractionError):
+        extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
+
+
+def test_the_page_image_is_capped_in_size(monkeypatch, fake_pdf):
+    """Uncapped, a dense page renders large enough that the model returns
+    nothing at all."""
+    seen = {}
+    monkeypatch.setattr(pdftools, "render",
+                        lambda *a, **k: seen.update(k) or b"\x89PNG")
+    _pages(monkeypatch, 1)
+    _install(monkeypatch, _FakeLLM([_Out([("paragraph", "içerik")])]))
+    extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
+    assert seen["scale_to"] == settings.CORPUS_PDF_SCALE_TO
+
+
+def test_a_page_that_fails_is_retried_before_anything_is_concluded(monkeypatch, fake_pdf):
+    """A tunnel blip is not a verdict about the page."""
+    monkeypatch.setattr(settings, "CORPUS_PDF_PAGE_ATTEMPTS", 3)
+    _pages(monkeypatch, 1)
+    calls = {"n": 0}
+
+    class _Flaky(_FakeLLM):
+        def invoke(self, _messages):
+            calls["n"] += 1
+            if calls["n"] < 3:
+                raise RuntimeError("ngrok gateway error")
+            return _Out([("paragraph", "sonunda okundu")])
+
+    _install(monkeypatch, _Flaky([]))
+    result = extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
+    assert calls["n"] == 3
+    assert result.pages[0].blocks[0].text == "sonunda okundu"
+
+
+def test_a_page_that_never_reads_refuses_the_whole_pdf(monkeypatch, fake_pdf):
+    """The bug this replaces: the page was dropped and the document was still
+    written, so a 40-page contract silently became 39 pages and the cache made
+    that permanent. Refusing the file means the next run redoes it."""
+    monkeypatch.setattr(settings, "CORPUS_PDF_PAGE_ATTEMPTS", 2)
+    _pages(monkeypatch, 3)
+    _install(monkeypatch, _FakeLLM([], error=RuntimeError("ngrok gateway error")))
+    with pytest.raises(pdf_extract.TransientExtractionError):
+        extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
+
+
+def test_one_bad_page_among_good_ones_still_refuses_the_pdf(monkeypatch, fake_pdf):
+    """A document with a hole must never be written, however small the hole."""
+    monkeypatch.setattr(settings, "CORPUS_PDF_PAGE_ATTEMPTS", 2)
+    _pages(monkeypatch, 3)
+    calls = {"n": 0}
+
+    class _SecondPageDies(_FakeLLM):
+        def invoke(self, _messages):
+            calls["n"] += 1
+            if calls["n"] >= 2:
+                raise RuntimeError("ngrok gateway error")
+            return _Out([("paragraph", "ilk sayfa")])
+
+    _install(monkeypatch, _SecondPageDies([]))
+    with pytest.raises(pdf_extract.TransientExtractionError):
+        extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
 
 
 def test_a_long_pdf_is_truncated_and_says_so(monkeypatch, fake_pdf):
     monkeypatch.setattr(settings, "CORPUS_PDF_MAX_PAGES", 3)
-    monkeypatch.setattr(pdftools, "text_pages", lambda _p: ["x" * 200] * 120)
+    _pages(monkeypatch, 120)
     _install(monkeypatch, _FakeLLM([_Out([("paragraph", "sayfa")])]))
     result = extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
     assert result.truncated
@@ -228,48 +360,18 @@ def test_a_long_pdf_is_truncated_and_says_so(monkeypatch, fake_pdf):
     assert len(result.pages) <= 3
 
 
-def test_an_extractor_outage_on_every_page_is_reported_not_a_success(monkeypatch, fake_pdf):
-    """Falling back to the text layer for every page would produce a document
-    with no tables and no headings that still reads as a clean extraction."""
-    monkeypatch.setattr(pdftools, "text_pages", lambda _p: ["x" * 200] * 3)
-    _install(monkeypatch, _FakeLLM([], error=RuntimeError("connection refused")))
-    result = extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
-    assert not result.ok
-    assert "every page" in result.error
-
-
-def test_one_failed_page_keeps_the_document_but_lowers_confidence(monkeypatch, fake_pdf):
-    """One bad page must not lose the file, but must not pass unremarked either."""
-    monkeypatch.setattr(pdftools, "text_pages", lambda _p: ["kâr payı " * 40] * 2)
-    calls = {"n": 0}
-
-    class _Flaky(_FakeLLM):
-        def invoke(self, _messages):
-            calls["n"] += 1
-            # Only the first tile fails; a page aborts on its first bad tile, so
-            # this loses page 1 and leaves page 2 intact.
-            if calls["n"] == 1:
-                raise RuntimeError("timeout")
-            return _Out([("paragraph", "ikinci sayfa içeriği")])
-
-    _install(monkeypatch, _Flaky([]))
-    result = extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
-    assert result.pages
-    assert result.low_confidence
-
-
 def test_an_unreadable_file_is_reported(monkeypatch):
     def boom(_p):
         raise pdftools.PdfToolError("not a PDF")
 
-    monkeypatch.setattr(pdftools, "text_pages", boom)
+    monkeypatch.setattr(pdftools, "page_count", boom)
     result = extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
     assert not result.ok
     assert "not a PDF" in result.error
 
 
 def test_each_page_hashes_separately_for_surgical_re_embedding(monkeypatch, fake_pdf):
-    monkeypatch.setattr(pdftools, "text_pages", lambda _p: ["a" * 200, "b" * 200])
+    _pages(monkeypatch, 2)
     _install(monkeypatch, _FakeLLM([_Out([("paragraph", "sayfa bir")]),
                                     _Out([("paragraph", "sayfa iki")])]))
     result = extract(Path("x.pdf"), "https://x.com.tr/a.pdf")

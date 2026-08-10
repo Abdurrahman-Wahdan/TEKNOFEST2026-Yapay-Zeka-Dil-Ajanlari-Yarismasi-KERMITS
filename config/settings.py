@@ -51,22 +51,69 @@ class Settings(BaseSettings):
     # ===== Embeddings =====
     EMBEDDING_PROVIDER: str = "local"
     EMBEDDING_MODEL: str = Field(
-        default="BAAI/bge-m3",
-        description="Multilingual, strong on Turkish, Apache-2.0. Change freely.",
+        default="Qwen/Qwen3-Embedding-0.6B",
+        description="Multilingual, strong on Turkish, 1024-dim, 32k context so "
+        "long fee-table pages embed whole. Queries take an instruction prefix "
+        "(handled in index/embed_text.py); passages do not.",
     )
-    EMBEDDING_DEVICE: str = "cpu"
+    EMBEDDING_DEVICE: str = Field(
+        default="mps",
+        description="Apple GPU. Measured on an M1 Max (32 GPU cores): 0.09s per "
+        "chunk against 3.61s on CPU -- 40x, turning a 20-hour index into 25 "
+        "minutes. Use 'cpu' on a machine without Metal, 'cuda' with an NVIDIA GPU.",
+    )
     EMBEDDING_DIMENSIONS: int = Field(
         default=1024,
         gt=0,
         description="Must match the model. Collections are created with this size.",
     )
-    EMBEDDING_BATCH_SIZE: int = Field(default=16, gt=0)
+    EMBEDDING_BATCH_SIZE: int = Field(
+        default=32,
+        gt=0,
+        description="Measured on an M1 Max: 32 is the fastest batch on MPS "
+        "(0.074s/chunk); 64 and 128 are slower, not faster.",
+    )
 
     # ===== Vector store (local Qdrant) =====
     VECTOR_STORE: str = "qdrant"
     QDRANT_URL: str = "http://localhost:6333"
     QDRANT_TIMEOUT: int = Field(default=30, gt=0)
-    QDRANT_COLLECTION_CAMPAIGNS: str = "campaigns"
+    QDRANT_COLLECTION_CHUNKS: str = Field(
+        default="bank_chunks",
+        description="One collection for every chunk -- web sections and PDF pages "
+        "together -- so a query searches both in one ranked list. Source type and "
+        "kind are payload filters, not separate collections.",
+    )
+
+    # ===== Index (embedding the corpus into Qdrant) =====
+    INDEX_MAX_CHUNK_CHARS: int = Field(
+        default=3500,
+        gt=0,
+        description="A unit larger than this is split on paragraph boundaries. "
+        "Rare: Qwen3's context is 32k, so this only touches a few long sections.",
+    )
+    INDEX_EMBED_BATCH: int = Field(
+        default=128,
+        gt=0,
+        description="Chunks embedded and upserted per batch. Each batch is "
+        "written to Qdrant before the next is embedded, so the point count is "
+        "live progress and a killed run keeps what it finished -- a restart "
+        "skips those chunks on the text_hash diff and resumes.",
+    )
+    INDEX_RETRIEVE_TOP_K: int = Field(default=8, gt=0)
+    INDEX_MAX_DELETE_PCT: int = Field(
+        default=20,
+        gt=0,
+        description="A sync that would delete more than this share of the index "
+        "in one run refuses, so a truncated documents.jsonl cannot wipe it. Same "
+        "guard as the corpus shrink gate.",
+    )
+    INDEX_SCHEDULE: str = Field(
+        default="30 3 * * *",
+        description="Cron for the nightly index, staggered 30 min after the "
+        "corpus build (0 3) so documents.jsonl is finished first. Printed by "
+        "index.schedule, never installed.",
+    )
 
     # ===== Banks (live calculator endpoints) =====
     BANK_HTTP_TIMEOUT: float = Field(default=30.0, gt=0)
@@ -114,9 +161,18 @@ class Settings(BaseSettings):
     CORPUS_CONCURRENCY: int = Field(
         default=6,
         gt=0,
-        description="Per site. Lower than the old crawler's 12: this runs every "
-        "night against ten hosts, and around 170 requests in a burst from one "
-        "address is what a WAF throttles.",
+        description="Connections per site. Lower than the old crawler's 12: this "
+        "runs every night against ten hosts, and around 170 requests in a burst "
+        "from one address is what a WAF throttles.",
+    )
+    CORPUS_SITE_WORKERS: int = Field(
+        default=10,
+        gt=0,
+        description="Banks crawled at once, one thread each. Ten is one per bank. "
+        "Each is a different server, so parallelising across them does not raise "
+        "the per-host request rate (still CORPUS_CONCURRENCY each) -- it only "
+        "overlaps the wait, so the crawl takes the slowest bank's time, not the "
+        "sum of all ten.",
     )
     CORPUS_DELAY: float = Field(
         default=0.25,
@@ -162,11 +218,24 @@ class Settings(BaseSettings):
         "which is what let the old crawler mistake them for readable text.",
     )
     CORPUS_PDF_TILES: int = Field(
-        default=2,
+        default=4,
         gt=0,
-        description="Vertical tiles per page sent to the model. Its image token "
-        "budget is fixed per tile, so tiling doubles effective resolution at no "
-        "extra input cost and is the lever for detail, not DPI.",
+        description="Vertical tiles a page starts as, and a legibility knob as "
+        "much as a length one: a tile is rendered to CORPUS_PDF_SCALE_TO on its "
+        "longest side, so quartering a page doubles the pixels per line of text "
+        "against halving it. Measured on a card-sector table the model was "
+        "misreading -- two tiles recovered 26.7% of the words and invented the "
+        "column header, four recovered 94.6% and every number. A tile the model "
+        "still cannot transcribe is halved again by the extractor.",
+    )
+    CORPUS_PDF_MAX_SPLIT_DEPTH: int = Field(
+        default=3,
+        ge=0,
+        description="How many times a failing region may be halved before the "
+        "page is given up as unreadable. Three takes a half-page down to a "
+        "sixteenth, well past the quarter page that read a dense 46-page "
+        "contract cleanly. A region still failing that small is not a matter of "
+        "length, so splitting further would only burn tokens.",
     )
     CORPUS_PDF_MAX_PAGES: int = Field(
         default=40,
@@ -175,11 +244,64 @@ class Settings(BaseSettings):
         "truncated with its real page count. The only files this touches are "
         "113-127 page SPK prospectus annexes, which answer no product question.",
     )
-    CORPUS_PDF_MAX_TOKENS: int = Field(
-        default=2048,
+    CORPUS_PDF_WORKERS: int = Field(
+        default=6,
         gt=0,
-        description="Per tile. Measured 399-951 completion tokens for half a "
-        "page, so this is headroom; a 'length' finish means retry with more tiles.",
+        description="PDFs OCR'd at once. A single vLLM instance serves these "
+        "concurrently by continuous batching, which is what it is built for: "
+        "measured 23.9s per page one at a time against 4.8s per page with six in "
+        "flight, a clean 5x. An earlier run was read as six workers deadlocking "
+        "on one instance; it was really six 40-page contracts in progress, and a "
+        "PDF writes nothing until its last page returns.",
+    )
+    CORPUS_PDF_MAX_TOKENS: int = Field(
+        default=4096,
+        gt=0,
+        description="Output budget for one tile, which is half a page. Measured "
+        "399-951 tokens for a real half page, so this is generous headroom "
+        "without being an invitation: the failure mode at the top end is the "
+        "model repeating itself until it hits the ceiling, and a lower ceiling "
+        "makes that cheap to detect and retry. A truncated tool call arrives as "
+        "no structured output at all, which the extractor treats as a failed "
+        "page rather than a blank one.",
+    )
+    CORPUS_PDF_JPEG_QUALITY: int = Field(
+        default=90,
+        gt=0,
+        le=100,
+        description="Quality of the JPEG sent to the model. Ninety, because the "
+        "request has to fit the tunnel's size limit and PNG does not: a scanned "
+        "A4 quarter-tile is 497 KB of base64 as PNG and 222 KB at this quality, "
+        "reading identically. Lower starts softening the small print that the "
+        "resolution settings exist to preserve.",
+    )
+    CORPUS_PDF_SCALE_TO: int = Field(
+        default=2200,
+        gt=0,
+        description="Longest side, in pixels, of the image sent for one tile. "
+        "This is the single most important quality setting in the PDF path. Too "
+        "large and the request returns no structured output at all -- an "
+        "uncapped A4 page rendered to 714 KB did exactly that, which reads "
+        "downstream as a blank page. Too small and small print stops being "
+        "legible, and a vision model that cannot read does not say so: it emits "
+        "something plausible instead. At 1400 a sector table came back with MCC "
+        "code 5013 rewritten as NACE 4511, an invented value in a bank "
+        "document. At 2200 the same page returned every number correctly, and "
+        "pages that were already fine were unaffected.",
+    )
+    CORPUS_PDF_PAGE_ATTEMPTS: int = Field(
+        default=4,
+        gt=0,
+        description="Tries per page before the whole PDF is refused. The tunnel "
+        "in front of the model fails in bursts -- one run lost 12 of its first "
+        "50 pages to gateway errors, then only 1 of the next 85 -- so a page is "
+        "worth retrying, and a burst outlasting four tries is worth stopping for.",
+    )
+    CORPUS_PDF_RETRY_BACKOFF: float = Field(
+        default=2.0,
+        gt=0,
+        description="Seconds before the second try, doubling after. Four tries "
+        "spans about fourteen seconds, which covered every burst measured.",
     )
     CORPUS_PDF_MIN_UNIQUE_LINES: float = Field(
         default=0.60,

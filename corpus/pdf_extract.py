@@ -1,18 +1,20 @@
 """Turning a PDF into pages of ordered blocks, with citable page numbers.
 
-Two sources per page, and which one is authoritative matters:
+**One standard, no exceptions: every page is an image, and the model reads the
+image.** Text, tables, figures, logos, placement -- all of it comes out of the
+picture of the page, whether or not the file happens to carry a text layer.
+Nothing is ever read from `pdftotext`, and there is no fallback to it.
 
-- **`pdftotext` is the authority for what the document says.** It is the file's
-  own text layer -- the characters the bank embedded -- so a profit rate read
-  from it is the rate, not a reading of a picture of the rate.
-- **The page image is the authority for how it is laid out.** The text layer
-  loses table structure, and a fee schedule whose columns have been flattened
-  into a list of numbers is worse than useless.
+That uniformity is the point. A pipeline that reads some pages by OCR and
+others from an embedded text layer produces two kinds of document that look
+alike downstream: same shape, same fields, different provenance and different
+failure modes. Every page here is `from_vision`, so a citation means the same
+thing everywhere.
 
-So both go to the model, and the prompt says the text layer wins on numbers.
-Only genuinely scanned pages have no text layer; those are marked
-`from_vision`, and the document is flagged `low_confidence` so the agent can
-hedge when it cites them.
+The consequence is that a page which fails is never quietly patched over. A
+page counts as empty only when the model **succeeded** and reported no text;
+a page whose request failed is retried, and a document still holding a failed
+page is not written at all, so the next run redoes it.
 
     from corpus.pdf_extract import extract
 
@@ -22,6 +24,7 @@ hedge when it cites them.
 
 import base64
 import logging
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -32,7 +35,7 @@ from pydantic import Field as PydanticField
 from config.settings import settings
 
 from . import pdftools, quality
-from .models import Block, Page
+from .models import Block, Item, Page
 from .urls import text_hash
 
 logger = logging.getLogger(__name__)
@@ -41,32 +44,42 @@ logger = logging.getLogger(__name__)
 # an open vocabulary would make that ungovernable.
 BLOCK_KINDS = ("heading", "paragraph", "table", "list", "image", "figure_caption")
 
-EXTRACT_PROMPT = """Bu, bir Türk katılım bankasının belgesinden bir sayfa görüntüsüdür.
+EXTRACT_PROMPT = """You transcribe a single document page into structured JSON.
 
-Sayfadaki metnin TAMAMINI, olduğu gibi, yapısını koruyarak çıkar.
+Return:
+- markdown: the full page transcribed in clean markdown, preserving reading
+  order, headings, lists, and tables. Transcribe exactly what is on the page;
+  do not summarize, translate, invent, or omit visible content.
+- items: ONLY the non-text or visually rich elements (tables, charts, images,
+  diagrams) that need more than plain text. For each, place an inline marker
+  like <table_1> or <figure_1> at the right spot in the markdown, and add a
+  matching item with: id (e.g. table_1), marker (the exact <...> text),
+  summary (a summary of what the item visually represents), visible_text
+  (exact text inside it), and visual_representation (layout/meaning not
+  captured by the summary).
 
-Kurallar:
-- Sadece görselde ve metin katmanında olanı yaz. Yorum, özet veya açıklama ekleme.
-- Okuma sırasını koru. Sayfa iki sütunlu ise önce sol sütunun tamamını, sonra sağ sütunun tamamını yaz.
-- Tabloları markdown tablosu olarak yaz ve kind alanına "table" yaz.
-- Başlıkları "heading", paragrafları "paragraph", maddeleri "list" olarak işaretle.
-- Sayfadaki HER görseli yaz; hiçbirini atlama. Logo, ikon, fotoğraf, grafik, şema, tablo görüntüsü — hepsi "image" türünde bir blok olsun.
-- Görsel bilgi taşıyorsa (grafik, şema, infografik, görüntü hâlindeki tablo) içindeki TÜM veriyi de yaz: eksen adlarını, etiketleri, sayıları, oranları. Tablo görüntüsünü markdown tablosu olarak aktar.
-- Görsel yalnızca süsse (logo, ikon, dekoratif fotoğraf) kısa bir açıklama yeter.
-- Sayıları, oranları, tutarları ve tarihleri BİREBİR kopyala. Yuvarlama, biçim değiştirme.
-- Aşağıda bir metin katmanı verildiyse sayı ve oranlarda O metin esastır; görsel yalnızca yerleşim içindir.
-- Okunamayan bir yer varsa oraya {unreadable} yaz. Tahmin etme, uydurma.
-- Sayfada metin yoksa tek bir blok olarak {no_text} yaz.
-""".format(unreadable=quality.UNREADABLE, no_text=quality.NO_TEXT)
+Rules:
+- Plain prose, headings, and simple lists belong in markdown only, not items.
+- Every item.marker must appear verbatim in the markdown.
+- If the page has no rich elements, items is an empty list.
+"""
 
 
-class _BlockOut(BaseModel):
-    kind: str = PydanticField(description="heading, paragraph, table, list, image veya figure_caption")
-    text: str = PydanticField(description="Bloğun metni. Tablolar markdown tablosu olarak.")
+class _ItemOut(BaseModel):
+    id: str = PydanticField(description="e.g. table_1, figure_1")
+    marker: str = PydanticField(description="The exact <...> marker text.")
+    summary: str = PydanticField(description="What the item visually represents.")
+    visible_text: str = PydanticField(description="Exact text inside the item.")
+    visual_representation: str = PydanticField(
+        description="Layout/meaning not captured by the summary.")
 
 
 class _PageOut(BaseModel):
-    blocks: list[_BlockOut] = PydanticField(description="Sayfadaki bloklar, okuma sırasıyla.")
+    markdown: str = PydanticField(
+        description="The full page in clean markdown, reading order preserved.")
+    items: list[_ItemOut] = PydanticField(
+        default_factory=list,
+        description="Only tables, charts, images and diagrams. Empty if none.")
 
 
 @dataclass(frozen=True)
@@ -92,190 +105,217 @@ def cite_url(url: str, page: int) -> str:
     return f"{url}#page={page}" if url else ""
 
 
-def _tiles(width: int, height: int, count: int) -> list[tuple[int, int, int, int]]:
-    """Vertical crop boxes covering the page, with a little overlap.
+class TransientExtractionError(Exception):
+    """A page could not be read because the model or the network failed.
 
-    The overlap is 5% of a tile, so a line sitting on a seam appears whole in at
-    least one of them; the joiner drops the duplicate.
+    Distinct from a page the model read and found empty. This one says nothing
+    about the document, so the caller must not persist a verdict from it -- the
+    PDF has to be tried again.
     """
-    if count < 2 or not width or not height:
-        return []
-    band = height // count
-    overlap = max(band // 20, 1)
-    boxes = []
-    for index in range(count):
-        top = max(index * band - (overlap if index else 0), 0)
-        bottom = min((index + 1) * band + overlap, height)
-        boxes.append((0, top, width, bottom - top))
-    return boxes
 
 
-def _join(parts: list[str]) -> str:
-    """Concatenate tile results, dropping a line duplicated across a seam."""
-    out: list[str] = []
-    for part in parts:
-        lines = [ln for ln in part.splitlines()]
-        if out and lines:
-            # The tail of what we have, against the head of what is arriving.
-            tail = out[-1].strip()
-            while lines and lines[0].strip() and lines[0].strip() == tail:
-                lines.pop(0)
-        out.extend(lines)
-    return "\n".join(out)
+def _too_large(exc: Exception) -> bool:
+    """Whether a request failed because the image was too big to accept."""
+    text = str(exc)
+    return "413" in text or "Too Large" in text or "too large" in text
 
 
-def _read_page(pdf: Path, number: int, text_layer: str, llm) -> tuple[list[Block], str]:
-    """Ask the model for one page as ordered blocks."""
-    width, height = pdftools.page_size(pdf, dpi=settings.CORPUS_PDF_DPI)
-    boxes = _tiles(width, height, settings.CORPUS_PDF_TILES)
-    crops: list[tuple[int, int, int, int] | None] = boxes or [None]
+def _read_page(pdf: Path, number: int, llm) -> tuple[str, list]:
+    """One page, one image, one request.
 
-    blocks: list[Block] = []
-    texts: list[str] = []
-    # Tiles overlap so a line on a seam survives in one of them, which means the
-    # model returns the straddling blocks twice. Measured on a two-page bulletin:
-    # every paragraph on page 2 came back doubled and the unique-line ratio fell
-    # under the suspect threshold, so a good document would have been refused.
-    # A page that genuinely repeats a paragraph verbatim is rare; losing that
-    # duplicate is much cheaper than doubling every page.
-    seen: set[str] = set()
-    order = 0
-    for crop in crops:
-        image = pdftools.render(pdf, number, dpi=settings.CORPUS_PDF_DPI, crop=crop)
-        prompt = EXTRACT_PROMPT
-        if text_layer.strip():
-            prompt += f"\nSayfanın metin katmanı:\n{text_layer[:6000]}"
-        result = llm.invoke([HumanMessage(content=[
-            {"type": "text", "text": prompt},
-            {"type": "image_url", "image_url": {
-                "url": "data:image/png;base64," + base64.b64encode(image).decode()}},
-        ])])
-        if result is None:
-            continue
-        for item in result.blocks:
-            kind = item.kind.strip().lower()
-            body = quality.normalise(item.text)
-            if not body or body == quality.NO_TEXT:
-                continue
-            key = " ".join(body.split()).casefold()
-            if key in seen:
-                continue
-            seen.add(key)
-            blocks.append(Block(
-                kind=kind if kind in BLOCK_KINDS else "paragraph",
-                text=body, order=order))
-            texts.append(body)
-            order += 1
-    return blocks, _join(texts)
+    The whole page goes up intact. There is no tiling: cutting a page into
+    strips split tables across the seams and left rows without the column
+    header that gave them meaning -- a sector code kept its sector and lost its
+    description, which reads as complete data and is not.
+
+    Returns the page markdown and its rich items.
+    """
+    image = pdftools.render(pdf, number, dpi=settings.CORPUS_PDF_DPI,
+                            scale_to=settings.CORPUS_PDF_SCALE_TO)
+    result = llm.invoke([HumanMessage(content=[
+        {"type": "text", "text": EXTRACT_PROMPT},
+        {"type": "image_url", "image_url": {
+            "url": "data:image/jpeg;base64," + base64.b64encode(image).decode()}},
+    ])])
+    if result is None:
+        # No parseable output. The request failed; the page is not blank.
+        raise TransientExtractionError(
+            f"page {number}: the model returned no structured output")
+    return result.markdown or "", list(result.items or ())
+
+
+def _read_page_retrying(pdf: Path, number: int, llm) -> tuple[str, list]:
+    """One page, retried through a transient failure.
+
+    The tunnel in front of the model drops requests in bursts -- one measured
+    run lost 12 of its first 50 pages to gateway errors and recovered on its
+    own. Without this, each of those was a page silently missing from a
+    document that still looked complete. Raises TransientExtractionError when
+    every attempt fails, so the caller can refuse the whole PDF rather than
+    write one with a hole in it.
+    """
+    last = ""
+    for attempt in range(settings.CORPUS_PDF_PAGE_ATTEMPTS):
+        try:
+            return _read_page(pdf, number, llm)
+        except Exception as exc:  # noqa: BLE001 - any failure is worth retrying
+            last = f"{type(exc).__name__}: {exc}"
+            logger.warning("page %d of %s attempt %d/%d failed: %s", number,
+                           pdf.name[:40], attempt + 1,
+                           settings.CORPUS_PDF_PAGE_ATTEMPTS, last[:120])
+            if attempt + 1 < settings.CORPUS_PDF_PAGE_ATTEMPTS:
+                time.sleep(settings.CORPUS_PDF_RETRY_BACKOFF * (2 ** attempt))
+    raise TransientExtractionError(f"page {number}: {last}")
 
 
 def extract(pdf: Path, url: str = "", model: str | None = None) -> Extraction:
-    """Read a PDF into citable pages.
+    """Read a PDF into citable pages, every page from its image.
 
-    Pages whose text layer is real are still sent to the model, because layout
-    is what the text layer loses; pages without one are read from the image
-    alone and marked.
+    The text layer is never consulted -- not for content, not as a hint, not as
+    a fallback. `pdftotext` is used only to count pages.
 
     Returns an Extraction. Failure is always reported, never returned as a
     short document that looks fine.
     """
     try:
-        raw_pages = pdftools.text_pages(pdf)
+        total = pdftools.page_count(pdf)
     except pdftools.PdfToolError as exc:
-        return Extraction((), "", "pdftotext", 0, error=str(exc))
-    if not raw_pages:
-        return Extraction((), "", "pdftotext", 0, error="no pages")
-
-    total = len(raw_pages)
-    stamps = quality.stamp_lines(raw_pages, settings.CORPUS_PDF_STAMP_FRACTION)
-    cleaned = [quality.strip_stamps(p, stamps) for p in raw_pages]
+        return Extraction((), "", "ocr", 0, error=str(exc))
+    if not total:
+        return Extraction((), "", "ocr", 0, error="no pages")
 
     limit = settings.CORPUS_PDF_MAX_PAGES
     truncated = total > limit
-    cleaned = cleaned[:limit]
+    numbers = list(range(1, min(total, limit) + 1))
 
     from llm import get_llm
 
     try:
+        # A ceiling high above any real page, rather than none at all. Both
+        # failures were measured on the same contract page: 2048 truncated the
+        # tool call mid-string, which arrives as no structured output and reads
+        # downstream as a blank page; removing the cap entirely let generation
+        # run against the model's full 65k context and a single page stopped
+        # returning inside seven minutes. A dense A4 page needs about 8k, so
+        # this is double the worst case and never binds in practice.
         llm = get_llm(model or settings.CORPUS_PDF_MODEL,
                       max_tokens=settings.CORPUS_PDF_MAX_TOKENS)
         structured = llm.with_structured_output(_PageOut, method="function_calling")
     except Exception as exc:  # noqa: BLE001 - an LLM outage is not a verdict
-        return Extraction((), "", "pdftotext", total, truncated,
-                          error=f"extractor unavailable: {exc}")
+        raise TransientExtractionError(f"extractor unavailable: {exc}") from exc
 
     pages: list[Page] = []
     whole: list[str] = []
-    vision_pages = 0
-    failed_pages: list[int] = []
-    last_failure = ""
 
-    for index, layer in enumerate(cleaned, start=1):
-        has_text = quality.page_has_text(layer, settings.CORPUS_PDF_MIN_CHARS_PER_PAGE)
-        try:
-            blocks, page_text = _read_page(pdf, index, layer if has_text else "", structured)
-        except Exception as exc:  # noqa: BLE001 - one page must not lose the file
-            logger.warning("page %d of %s failed: %s", index, pdf.name, exc)
-            failed_pages.append(index)
-            last_failure = f"{type(exc).__name__}: {exc}"
-            blocks, page_text = [], ""
+    for index in numbers:
+        # Per page, because a PDF writes nothing until its last page returns.
+        logger.info("  %s page %d/%d", pdf.name[:40], index, len(numbers))
+        markdown, items = _read_page_retrying(pdf, index, structured)
 
-        if quality.looks_blind(page_text):
-            # HTTP 200 with a fluent refusal. Continuing would write empty pages
-            # that look like a document with nothing in it.
-            return Extraction((), "", "pdftotext+vision", total, truncated,
-                              error="the model reported it could not see the page")
-
-        if not blocks and has_text:
-            # The model gave nothing but the file has a text layer: keep the
-            # text rather than losing the page.
-            page_text = quality.normalise(layer)
-            blocks = [Block(kind="paragraph", text=page_text, order=0)]
-
-        if not blocks:
-            continue
-
-        if not has_text:
-            vision_pages += 1
-
+        # Every page is kept, including one that comes back empty. A page that
+        # looks blank is still part of the document, and whether a file is
+        # wanted at all is decided by relevance, upstream -- not by how much
+        # text happens to be on one of its pages.
+        page_items = tuple(Item(
+            id=i.id, marker=i.marker, summary=i.summary,
+            visible_text=i.visible_text,
+            visual_representation=i.visual_representation) for i in items)
         pages.append(Page(
             number=index,
-            blocks=tuple(blocks),
+            markdown=markdown,
             cite_url=cite_url(url, index),
-            text_hash=text_hash(page_text),
-            has_tables=any(b.kind == "table" for b in blocks),
-            has_images=any(b.kind in ("image", "figure_caption") for b in blocks),
-            from_vision=not has_text,
+            text_hash=text_hash(markdown),
+            items=page_items,
+            has_tables=any(i.id.startswith("table") for i in page_items),
+            has_images=bool(page_items) and any(
+                not i.id.startswith("table") for i in page_items),
+            from_vision=True,
         ))
-        whole.append(page_text)
-
-    # Every page failing is an outage, not a document. Falling back to the text
-    # layer for all of them would produce a structureless document that reads as
-    # a success -- no tables, no headings, nothing saying why.
-    if failed_pages and len(failed_pages) == len(cleaned):
-        return Extraction((), "", "pdftotext", total, truncated,
-                          error=f"extractor unavailable on every page: {last_failure}")
+        whole.append(markdown)
 
     document_text = quality.normalise("\n\n".join(whole))
-    ratio = quality.unique_line_ratio(document_text)
-    suspect = ratio < settings.CORPUS_PDF_MIN_UNIQUE_LINES
 
-    engine = "pdftotext+vision" if any(not p.from_vision for p in pages) else "ocr"
-    if pages and all(p.from_vision for p in pages):
-        engine = "ocr"
+    return Extraction((), "", "ocr", 0, error=str(exc))
+    if not total:
+        return Extraction((), "", "ocr", 0, error="no pages")
+
+    limit = settings.CORPUS_PDF_MAX_PAGES
+    truncated = total > limit
+    numbers = list(range(1, min(total, limit) + 1))
+
+    from llm import get_llm
+
+    try:
+        # A ceiling high above any real page, rather than none at all. Both
+        # failures were measured on the same contract page: 2048 truncated the
+        # tool call mid-string, which arrives as no structured output and reads
+        # downstream as a blank page; removing the cap entirely let generation
+        # run against the model's full 65k context and a single page stopped
+        # returning inside seven minutes. A dense A4 page needs about 8k, so
+        # this is double the worst case and never binds in practice.
+        llm = get_llm(model or settings.CORPUS_PDF_MODEL,
+                      max_tokens=settings.CORPUS_PDF_MAX_TOKENS)
+        structured = llm.with_structured_output(_PageOut, method="function_calling")
+    except Exception as exc:  # noqa: BLE001 - an LLM outage is not a verdict
+        raise TransientExtractionError(f"extractor unavailable: {exc}") from exc
+
+    pages: list[Page] = []
+    whole: list[str] = []
+
+    for index in numbers:
+        # Per page, because a PDF writes nothing until its last page returns: a
+        # 40-page contract is twenty silent minutes, which has twice been read as
+        # a hung process. This line is the difference between "stalled" and
+        # "on page 12 of 44".
+        logger.info("  %s page %d/%d", pdf.name[:40], index, len(numbers))
+        # No try/except: a page that will not read raises, and the PDF is
+        # refused whole. Catching here is what used to drop a page and leave a
+        # document that looked complete.
+        markdown, items = _read_page_retrying(pdf, index, structured)
+
+        if quality.looks_blind(markdown):
+            # HTTP 200 with a fluent refusal. Continuing would write empty pages
+            # that look like a document with nothing in it.
+            return Extraction((), "", "ocr", total, truncated,
+                              error="the model reported it could not see the page")
+
+        # Every page is kept, empty ones included. A page that comes back blank
+        # is still the document's page, and page numbers have to keep matching
+        # what a reader sees -- dropping page 3 silently renumbers every
+        # citation after it. What we do not want is decided upstream, by
+        # relevance, not by how much text landed on one page.
+        page_items = tuple(Item(
+            id=i.id, marker=i.marker, summary=i.summary,
+            visible_text=i.visible_text,
+            visual_representation=i.visual_representation) for i in items)
+        pages.append(Page(
+            number=index,
+            markdown=markdown,
+            cite_url=cite_url(url, index),
+            text_hash=text_hash(markdown),
+            items=page_items,
+            has_tables=any(i.id.startswith("table") for i in page_items),
+            has_images=any(not i.id.startswith("table") for i in page_items),
+            from_vision=True,
+        ))
+        whole.append(markdown)
+
+    document_text = quality.normalise("\n\n".join(whole))
 
     return Extraction(
         pages=tuple(pages),
         text=document_text,
-        engine=engine,
+        # Every page came from its image, so there is only ever one engine.
+        engine="ocr",
         page_count=total,
         truncated=truncated,
-        # Vision paraphrases plausibly. A document any part of which was read
-        # from an image should be cited with a hedge.
-        low_confidence=vision_pages > 0
-        or bool(failed_pages)
-        or quality.unreadable_ratio(document_text) > 0.2
-        or quality.turkish_score(document_text) < 0.3,
-        suspect=suspect,
-        error="" if pages else "no readable pages",
+        # Vision paraphrases plausibly, and now every page is vision, so this is
+        # true of every PDF. It stays because the agent hedges a PDF citation
+        # differently from a web one, and that is exactly the distinction.
+        low_confidence=True,
+        # No suspect gate and no emptiness gate. A page that reads short or
+        # repetitive is still the document's page; relevance is decided
+        # upstream, by whether the file is one we want at all.
+        suspect=False,
+        error="",
     )

@@ -202,6 +202,51 @@ def write_text(relative: str, text: str) -> Path:
     return target
 
 
+def pdf_doc_dir() -> Path:
+    return root() / "pdf_doc"
+
+
+def read_pdf_doc(content_hash: str) -> dict | None:
+    """A PDF's cached OCR result, or None if it has not been read yet.
+
+    Keyed on the hash of the PDF's bytes, so an unchanged file is OCR'd once,
+    ever. This is what makes the OCR pass resumable -- a killed run resumes from
+    where it stopped rather than re-reading everything through the vision model.
+    """
+    path = pdf_doc_dir() / content_hash[:2] / f"{content_hash}.json"
+    try:
+        return json.loads(path.read_text("utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def write_pdf_doc(content_hash: str, record: dict) -> None:
+    """Cache one PDF's OCR result atomically, keyed on its content hash.
+
+    `record` holds the decision (accepted/label/reason) and, when accepted, the
+    built document -- so a resume skips both the classifier and the OCR, not just
+    the OCR.
+    """
+    target = pdf_doc_dir() / content_hash[:2] / f"{content_hash}.json"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    handle, temporary = tempfile.mkstemp(dir=str(target.parent), suffix=".tmp")
+    try:
+        with os.fdopen(handle, "w", encoding="utf-8") as fh:
+            json.dump(record, fh, ensure_ascii=False)
+        os.replace(temporary, target)
+    except BaseException:
+        Path(temporary).unlink(missing_ok=True)
+        raise
+
+
+def count_pdf_docs() -> int:
+    """How many PDFs have a cached result -- the OCR pass's visible progress."""
+    directory = pdf_doc_dir()
+    if not directory.exists():
+        return 0
+    return sum(1 for _ in directory.rglob("*.json"))
+
+
 def collect_garbage(manifest: dict, keep_suffixes: tuple[str, ...] = (".pdf",)) -> tuple[int, int]:
     """Delete stored blobs the manifest no longer points at.
 

@@ -53,6 +53,9 @@ class BuildReport:
     campaigns_active: int = 0
     campaigns_expired: int = 0
     previous_documents: int = 0
+    # PDFs the model could not read this run. Not refusals -- no verdict was
+    # reached and nothing was cached -- so each one is still owed a reading.
+    deferred: list[tuple[str, str]] = field(default_factory=list)
 
     @property
     def documents(self) -> int:
@@ -118,6 +121,8 @@ class BuildReport:
             "sites": {name: s.as_dict() for name, s in sorted(self.sites.items())},
             "refusals": [{"url": u, "reason": r} for u, r in self.refusals[:50]],
             "refusals_total": len(self.refusals),
+            "deferred": [{"url": u, "reason": r} for u, r in self.deferred[:50]],
+            "deferred_total": len(self.deferred),
         }
 
     def text(self) -> str:
@@ -134,6 +139,14 @@ class BuildReport:
             f"{len(self.refusals)} refused, {self.errors} errors. {verdict}",
             "",
         ]
+        if self.deferred:
+            lines += [
+                f"{len(self.deferred)} PDF(s) deferred -- unread, nothing cached, "
+                "listed in clean/pdf_deferred.jsonl and retried on the next run:",
+                *(f"  {url}  ({reason})" for url, reason in self.deferred[:10]),
+                *(["  ..."] if len(self.deferred) > 10 else []),
+                "",
+            ]
         if self.sites:
             lines.append(f"{'site':16}{'docs':>6}{'new':>6}{'chg':>6}{'same':>6}"
                          f"{'miss':>6}{'err':>6}{'ref':>6}{'sect':>6}{'pdf':>6}")

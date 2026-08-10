@@ -349,8 +349,18 @@ def fetch_one(url: str, previous: dict | None = None) -> RawDoc:
                       error=f"HTTP {response.status_code}")
 
     body = response.content
+
+    # Trust the bytes, not the URL or the header. Kuveyt Türk serves PDFs at
+    # extensionless URLs (.../aydinlatma-...-turkce) with no Content-Type at all,
+    # so is_pdf(url) misses them and they reach the HTML parser as garbage. A
+    # file that starts with the PDF signature is a PDF whatever it is called --
+    # the honest content type, so the blob is stored .pdf and routed to the PDF
+    # path where the policy can judge it (and keep it, if it is a fee schedule).
+    if body[:5] == b"%PDF-":
+        content_type = "application/pdf"
+
     limit = settings.CORPUS_MAX_PDF_MB * 1_000_000
-    if is_pdf(url) and len(body) > limit:
+    if content_type == "application/pdf" and len(body) > limit:
         # Refused and reported, never silently skipped: a document we chose not
         # to read is a different thing from one that was not there.
         return RawDoc(url=url, fetched_at=now, status=200, content_type=content_type,

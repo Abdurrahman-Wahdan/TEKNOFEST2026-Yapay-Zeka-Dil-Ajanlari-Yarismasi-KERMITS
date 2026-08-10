@@ -6,7 +6,7 @@
     print(report.text())
 """
 
-from .build import run
+from .build import process_pdfs, run
 from .models import Block, Document, Page, RawDoc, Section, Site
 from .report import BuildReport, SiteResult
 from .sites import SITES, get_site, list_sites
@@ -29,6 +29,7 @@ __all__ = [
     "get_site",
     "is_pdf",
     "list_sites",
+    "process_pdfs",
     "run",
     "same_site",
     "text_hash",

@@ -193,6 +193,17 @@ def test_a_stored_page_keeps_its_bytes(serve):
     assert store.get(record.blob).decode("utf-8") == "kâr payı"
 
 
+def test_a_pdf_at_an_extensionless_url_is_detected_by_its_bytes(serve):
+    """Kuveyt Türk serves PDFs at URLs like .../aydinlatma-...-turkce with no
+    .pdf and no Content-Type. Trusting the URL sends them to the HTML parser as
+    garbage; the byte signature is the honest type."""
+    serve({"/aydinlatma-turkce": response(body=b"%PDF-1.7\nfake pdf body",
+                                           content_type="")})
+    record = fetch.fetch_one("https://www.kuveytturk.com.tr/kvkk/aydinlatma-turkce")
+    assert record.content_type == "application/pdf"
+    assert record.blob.endswith(".pdf")
+
+
 # ----- robots -----
 
 def test_a_disallowed_path_is_not_fetched(serve):

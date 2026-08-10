@@ -21,6 +21,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from config.settings import settings
+
 logger = logging.getLogger(__name__)
 
 # Page separator in pdftotext's output.
@@ -103,12 +105,17 @@ def page_count(pdf: Path) -> int:
 def render(pdf: Path, page: int, dpi: int = 200, gray: bool = True,
            crop: tuple[int, int, int, int] | None = None,
            scale_to: int | None = None) -> bytes:
-    """One page as a PNG.
+    """One page, or one crop of it, as a grayscale JPEG.
 
-    Grayscale by default: these are black-ink scans, so colour is three times the
-    bytes over the tunnel for nothing. 200 DPI because the vision encoder
-    resamples to a fixed grid — a higher DPI costs raster time and bandwidth
-    without giving the model more to read.
+    Grayscale: these are black ink on white, so colour is three times the bytes
+    over the tunnel for nothing.
+
+    `scale_to` is not only a cap. A tile is a wide, short strip, so forcing its
+    long side to a larger number upscales it — and that is deliberate, because
+    the vision encoder cuts the image into a patch grid and a bigger image means
+    more patches spent on the same text. That is what took a misread sector
+    table from 26.7% of its words to 94.6%. The cost is payload, which is why
+    the output is JPEG.
 
     Args:
         crop: `(x, y, width, height)` in pixels, for sending half a page at a
@@ -121,8 +128,15 @@ def render(pdf: Path, page: int, dpi: int = 200, gray: bool = True,
             size, and costs nothing in what the model can read: the vision
             encoder resamples to a fixed grid anyway.
     """
-    argv = [require("pdftoppm"), "-png", "-r", str(dpi),
-            "-f", str(page), "-l", str(page), "-singlefile"]
+    # JPEG, not PNG. The image goes over a tunnel with a request-size limit, and
+    # a losslessly-compressed upscaled scan is the one thing guaranteed to
+    # exceed it: measured on a scanned A4 quarter-tile, 497 KB of base64 as PNG
+    # against 222 KB at JPEG quality 90, for the same legible text. PNG's
+    # advantage is exact pixels, which matters for nothing here -- the model is
+    # reading letters, not inspecting compression artefacts.
+    quality = settings.CORPUS_PDF_JPEG_QUALITY
+    argv = [require("pdftoppm"), "-jpeg", "-jpegopt", f"quality={quality}",
+            "-r", str(dpi), "-f", str(page), "-l", str(page), "-singlefile"]
     if scale_to:
         argv += ["-scale-to", str(scale_to)]
     if gray:
@@ -141,7 +155,7 @@ def render(pdf: Path, page: int, dpi: int = 200, gray: bool = True,
     with tempfile.TemporaryDirectory() as scratch:
         prefix = Path(scratch) / "page"
         _run([*argv, str(pdf), str(prefix)])
-        rendered = prefix.with_suffix(".png")
+        rendered = prefix.with_suffix(".jpg")
         if not rendered.exists():
             raise PdfToolError(
                 f"pdftoppm produced no image for page {page} of {pdf.name}")
