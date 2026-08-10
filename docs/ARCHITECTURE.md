@@ -10,10 +10,54 @@ llm/                    chat models
 embeddings/             embedding models
 vector_stores/          Qdrant collections
 banks/                  live pricing from ten banks' own calculators
+corpus/                 crawl, clean and standardise the ten banks' websites
 docs/FINDINGS.md        measured behaviour of the models and bank endpoints
 tests/unit/             no network
 tests/integration/      real vLLM, Qdrant and bank endpoints
 ```
+
+## corpus/ — the crawled website corpus
+
+`banks/` prices products live; `corpus/` is the other half — the campaigns,
+product pages, fees and PDFs the banks publish, cleaned into one artifact ready
+to embed. It runs nightly (`python -m corpus.build`) and is incremental: an
+unchanged page costs a conditional GET and nothing else.
+
+```
+corpus/
+├── sites.py       the ten sites as data (replaces ten copied crawler scripts)
+├── urls.py        canonicalisation and stable doc ids
+├── fetch.py       one crawl engine: conditional GET, robots, PDF discovery
+├── store.py       content-addressed raw bytes + manifest + garbage collection
+├── extract.py     HTML -> clean text and citable sections (anchors from the HTML)
+├── pdf_policy.py  which PDFs are worth reading; a model classifies the ambiguous
+├── pdf_extract.py pdftotext for numbers, a vision model for layout and scans
+├── quality.py     the detectors that refuse rather than emit garbage
+├── clean.py       one function per measured content defect
+├── classify.py    doc_kind / audience / section, from the URL path
+├── dates.py       campaign validity dates (the expiry-filter correctness gate)
+├── report.py      what a run did, and the gates that let it publish
+├── build.py       the orchestrator and `python -m corpus.build`
+└── schedule.py    prints a cron line / launchd plist; never installs
+```
+
+Three rules worth knowing before changing it:
+
+- **Change is decided on cleaned text, not raw bytes.** Bank pages carry a
+  rotating WAF token and an FX timestamp, so their bytes churn every run while
+  the words do not. `text_hash` is the semantic key; a document with an
+  unchanged `text_hash` is carried forward byte-identical, so the embedder can
+  skip it.
+- **A bad run publishes nothing.** If the corpus would shrink past a threshold,
+  or a site that had documents yields none, the gate refuses and yesterday's
+  `documents.jsonl` stays in place. Stale but correct beats fresh but empty.
+- **Nothing computes `is_active`.** A campaign's expiry is `end >= today`, and
+  today moves without the document changing, so it is computed at query time
+  from the stored `campaign_end`, never baked into the artifact.
+
+PDF text comes from poppler (`pdftotext`, `pdfinfo`, `pdftoppm` via
+`subprocess`), not `pypdf` — measured wrong on this corpus — and not PyMuPDF,
+whose AGPL network clause is a hazard for a bank-facing service.
 
 ## The four factory packages are the same shape
 
