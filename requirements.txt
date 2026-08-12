@@ -36,6 +36,23 @@ lxml==6.1.1                   # heading anchors for citation; trafilatura's dep
 # The corpus refuses a PDF with a clear message if poppler is missing, rather
 # than failing deep inside a subprocess.
 
+# API (the service the dashboard talks to)
+fastapi==0.141.1
+uvicorn[standard]==0.52.1
+sqlalchemy==2.0.51
+# psycopg 3, binary build -- no local libpq needed to install.
+psycopg[binary]==3.3.4
+alembic==1.19.1
+# Argon2id, not bcrypt: bcrypt silently truncates at 72 BYTES, and a Turkish
+# passphrase passes 72 bytes well before 72 characters, so two different long
+# passwords would authenticate each other.
+argon2-cffi==25.1.0
+pyjwt==2.13.0
+# EmailStr's validator. pydantic does not pull it in on its own.
+email-validator==2.3.0
+
 # Tests
 pytest==9.0.1
+# TestClient, and the async transport the API's own tests use.
+httpx-sse==0.4.3
 pytest-asyncio==1.3.0

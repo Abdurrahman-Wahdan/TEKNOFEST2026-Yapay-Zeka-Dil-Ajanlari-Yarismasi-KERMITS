@@ -1,0 +1,112 @@
+// Global styles: the reset, the document defaults, and nothing else.
+// Anything belonging to a component belongs in that component's .module.scss.
+
+@use "tokens" as *;
+@use "mixins" as *;
+
+// Everything below lives in the `app` cascade layer, declared in tailwind.css
+// between Tailwind's `components` and `utilities`. Unlayered CSS beats any
+// layered CSS regardless of specificity, so leaving these rules unlayered made
+// the `button` reset below override every Tailwind utility on a pasted
+// component.
+@layer app {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  * {
+    margin: 0;
+  }
+
+  html {
+    // The whole type scale is in rem, so a user who raised their browser's font
+    // size gets a bigger app. A px root would silently ignore that.
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    min-height: 100dvh;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  // Turkish sets a real hyphenation dictionary and long compound words are
+  // common in campaign titles; without this they overflow their card.
+  :lang(tr) {
+    hyphens: auto;
+  }
+
+  h1, h2, h3, h4 {
+    line-height: 1.25;
+    font-weight: var(--weight-semibold);
+    // Campaign and product names are long and arrive from the corpus unbroken.
+    overflow-wrap: break-word;
+  }
+
+  a {
+    color: var(--primary);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+
+    @include focus-ring;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    color: inherit;
+  }
+
+  // Placeholders come from the palette, not from Tailwind's preflight default.
+  // Preflight derives them from `currentColor`, which resolved to the light
+  // theme's --foreground (#0f1419) even under .dark — near-black text on a
+  // black field, invisible. A `placeholder:` utility still wins over this,
+  // because utilities sit in a later layer.
+  ::placeholder {
+    color: var(--muted-foreground);
+    opacity: 1;
+  }
+
+  button {
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+  }
+
+  img,
+  svg {
+    display: block;
+    max-width: 100%;
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  // Respect a user who asked their OS to stop animating things. Chart transitions
+  // and the chat's token-by-token reveal are motion, and vestibular disorders are
+  // not a hypothetical.
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

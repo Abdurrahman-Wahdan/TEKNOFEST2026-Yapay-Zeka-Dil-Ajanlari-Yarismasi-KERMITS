@@ -1,0 +1,256 @@
+import type { components } from "@/types/api";
+
+/**
+ * The one place the app talks to FastAPI.
+ *
+ * Every type below is generated from the API's OpenAPI schema by
+ * `npm run api:types` — none of it is hand-written. A field renamed in Python
+ * becomes a TypeScript error here rather than an `undefined` a user finds.
+ */
+type Schemas = components["schemas"];
+
+export type Bank = Schemas["BankOut"];
+export type Family = Schemas["FamilyOut"];
+export type Product = Schemas["ProductOut"];
+export type FinanceQuote = Schemas["FinanceQuoteOut"];
+export type ProfitShareQuote = Schemas["ProfitShareQuoteOut"];
+export type Conversion = Schemas["ConversionOut"];
+export type Rate = Schemas["RateOut"];
+export type Comparison = Schemas["ComparisonOut"];
+export type Unavailable = Schemas["UnavailableOut"];
+export type Chunk = Schemas["ChunkOut"];
+export type SearchResponse = Schemas["SearchResponse"];
+export type Profile = Schemas["ProfileOut"];
+export type SavedView = Schemas["SavedViewOut"];
+export type ChatSession = Schemas["ChatSessionOut"];
+export type ChatSessionDetail = Schemas["ChatSessionDetail"];
+export type ChatMessage = Schemas["ChatMessageOut"];
+export type StreamEvent = Schemas["StreamEvent"];
+export type TokenPair = Schemas["TokenPair"];
+export type User = Schemas["UserOut"];
+
+/**
+ * Relative, so requests go through the Next rewrite to FastAPI and the browser
+ * sees one origin. No CORS preflight on every call, and no API host baked into
+ * the client bundle.
+ */
+const BASE = "/api";
+
+/** An error carrying the status, so callers can branch without parsing strings. */
+export class ApiError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+
+  /** The token is missing or expired; the caller should re-authenticate. */
+  get isUnauthenticated() {
+    return this.status === 401;
+  }
+
+  /**
+   * The request was understood and refused — a bank that does not sell this
+   * product, a family key that does not exist. Not a bug: something to show
+   * the user as an answer.
+   */
+  get isRefusal() {
+    return this.status === 422;
+  }
+
+  /** A dependency is down. Worth offering a retry. */
+  get isUnavailable() {
+    return this.status === 503;
+  }
+}
+
+let accessToken: string | null = null;
+
+/** Set by the auth provider on login and cleared on logout. */
+export function setAccessToken(token: string | null) {
+  accessToken = token;
+}
+
+export function getAccessToken() {
+  return accessToken;
+}
+
+async function toError(response: Response): Promise<ApiError> {
+  // FastAPI puts the message in `detail`, which is a string for our raised
+  // HTTPExceptions and an array for its own validation failures.
+  let detail = response.statusText;
+  try {
+    const body = await response.json();
+    if (typeof body?.detail === "string") {
+      detail = body.detail;
+    } else if (Array.isArray(body?.detail)) {
+      detail = body.detail
+        .map((d: { msg?: string }) => d.msg ?? "")
+        .filter(Boolean)
+        .join("; ");
+    }
+  } catch {
+    // A non-JSON body (a proxy error page) leaves statusText as the message.
+  }
+  return new ApiError(response.status, detail);
+}
+
+type Query = Record<string, string | number | boolean | string[] | null | undefined>;
+
+/** Query string builder that repeats a key per array item, as FastAPI expects. */
+export function queryString(params: Query): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === null || value === undefined || value === "") continue;
+    if (Array.isArray(value)) {
+      value.forEach((v) => search.append(key, v));
+    } else {
+      search.set(key, String(value));
+    }
+  }
+  const qs = search.toString();
+  return qs ? `?${qs}` : "";
+}
+
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const headers = new Headers(init.headers);
+  if (init.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+  if (accessToken) {
+    headers.set("Authorization", `Bearer ${accessToken}`);
+  }
+
+  const response = await fetch(`${BASE}${path}`, { ...init, headers });
+  if (!response.ok) throw await toError(response);
+  if (response.status === 204) return undefined as T;
+  return response.json() as Promise<T>;
+}
+
+export const api = {
+  // ----- auth -----
+  signup: (body: Schemas["SignupRequest"]) =>
+    request<TokenPair>("/auth/signup", { method: "POST", body: JSON.stringify(body) }),
+  login: (body: Schemas["LoginRequest"]) =>
+    request<TokenPair>("/auth/login", { method: "POST", body: JSON.stringify(body) }),
+  refresh: (refresh_token: string) =>
+    request<TokenPair>("/auth/refresh", {
+      method: "POST",
+      body: JSON.stringify({ refresh_token }),
+    }),
+  me: () => request<User>("/auth/me"),
+
+  // ----- banks -----
+  banks: () => request<Bank[]>("/banks"),
+  families: () => request<Family[]>("/banks/families"),
+  bank: (bank: string) => request<Bank>(`/banks/${bank}`),
+  bankProducts: (bank: string, category = "finance") =>
+    request<Product[]>(`/banks/${bank}/products${queryString({ category })}`),
+  bankRates: (bank: string) => request<Rate[]>(`/banks/${bank}/rates`),
+  financeQuote: (bank: string, params: { product: string; amount: number; term: number }) =>
+    request<FinanceQuote>(`/banks/${bank}/finance${queryString(params)}`),
+
+  // ----- comparison -----
+  compareFinance: (params: {
+    family: string;
+    amount: number;
+    term: number;
+    banks?: string[];
+  }) => request<Comparison>(`/compare/finance${queryString(params)}`),
+  compareProfitShare: (params: {
+    family?: string;
+    amount: number;
+    term: number;
+    unit?: string;
+    currency?: string;
+    banks?: string[];
+  }) => request<Comparison>(`/compare/profit-share${queryString(params)}`),
+  compareExchange: (params: {
+    source: string;
+    target: string;
+    amount: number;
+    banks?: string[];
+  }) => request<Comparison>(`/compare/exchange${queryString(params)}`),
+
+  // ----- corpus -----
+  search: (params: {
+    q: string;
+    bank?: string;
+    doc_kind?: string;
+    source_type?: string;
+    active_only?: boolean;
+    k?: number;
+  }) => request<SearchResponse>(`/search${queryString(params)}`),
+
+  // ----- profile -----
+  profile: () => request<Profile>("/me/profile"),
+  saveProfile: (body: Schemas["ProfileIn"]) =>
+    request<Profile>("/me/profile", { method: "PUT", body: JSON.stringify(body) }),
+  views: () => request<SavedView[]>("/me/views"),
+  saveView: (body: Schemas["SavedViewIn"]) =>
+    request<SavedView>(`/me/views/${body.slug}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  deleteView: (slug: string) =>
+    request<void>(`/me/views/${slug}`, { method: "DELETE" }),
+
+  // ----- chat -----
+  chatSessions: () => request<ChatSession[]>("/chat/sessions"),
+  chatSession: (id: string) => request<ChatSessionDetail>(`/chat/sessions/${id}`),
+  deleteChatSession: (id: string) =>
+    request<void>(`/chat/sessions/${id}`, { method: "DELETE" }),
+};
+
+/**
+ * Ask the agent, yielding events as they stream in.
+ *
+ * Hand-rolled over fetch rather than `EventSource`: EventSource cannot send a
+ * POST body or an Authorization header, so the question would have to go in the
+ * URL and the token with it — a user's question in a query string ends up in
+ * every access log it passes through.
+ */
+export async function* askStream(
+  body: { question: string; session_id?: string },
+  signal?: AbortSignal,
+): AsyncGenerator<StreamEvent> {
+  const headers = new Headers({ "Content-Type": "application/json" });
+  if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
+
+  const response = await fetch(`${BASE}/chat/ask`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+    signal,
+  });
+  if (!response.ok) throw await toError(response);
+  if (!response.body) throw new ApiError(500, "The response carried no body.");
+
+  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += value;
+
+    // SSE frames are separated by a blank line. A chunk can split one mid-way,
+    // so the tail stays in the buffer until its terminator arrives — parsing
+    // per chunk instead would drop or corrupt the frame at every boundary.
+    const frames = buffer.split("\n\n");
+    buffer = frames.pop() ?? "";
+
+    for (const frame of frames) {
+      const line = frame.split("\n").find((l) => l.startsWith("data: "));
+      if (!line) continue;
+      try {
+        yield JSON.parse(line.slice(6)) as StreamEvent;
+      } catch {
+        // A malformed frame is dropped rather than killing the stream: losing
+        // one token beats losing the rest of the answer.
+      }
+    }
+  }
+}

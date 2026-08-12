@@ -1,0 +1,104 @@
+{
+  "app": {
+    "name": "TF26",
+    "tagline": "Compare participation-bank campaigns"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "banks": "Banks",
+    "compare": "Compare",
+    "aiOverview": "AI Overview",
+    "chat": "Assistant",
+    "settings": "Settings",
+    "signOut": "Sign out",
+    "theme": "Theme",
+    "language": "Language"
+  },
+  "auth": {
+    "loginTitle": "Sign in",
+    "signupTitle": "Create an account",
+    "email": "Email",
+    "password": "Password",
+    "displayName": "Your name",
+    "login": "Sign in",
+    "signup": "Sign up",
+    "noAccount": "No account yet?",
+    "haveAccount": "Already have an account?",
+    "passwordHint": "At least 12 characters",
+    "failed": "Could not sign in. Incorrect email or password.",
+    "emailTaken": "An account with this email already exists."
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Ten participation banks, on one screen",
+    "banksTracked": "Banks tracked",
+    "productFamilies": "Product families",
+    "maintenance": "In maintenance"
+  },
+  "banks": {
+    "title": "Banks",
+    "publishes": "Publishes",
+    "maintenance": "In maintenance",
+    "noEndpoints": "No callable endpoint",
+    "products": "Products",
+    "rates": "Rates"
+  },
+  "compare": {
+    "title": "Compare",
+    "family": "Product",
+    "amount": "Amount",
+    "term": "Term (months)",
+    "run": "Compare",
+    "bank": "Bank",
+    "installment": "Instalment",
+    "total": "Total",
+    "profitRate": "Profit rate",
+    "annualCost": "Annual cost rate",
+    "unavailable": "Banks not in this ranking",
+    "why": {
+      "not_offered": "Does not offer this product",
+      "maintenance": "Endpoint in maintenance",
+      "declined": "Declined the request",
+      "error": "No response"
+    },
+    "tookSeconds": "Asked {count} banks in {seconds} seconds"
+  },
+  "aiOverview": {
+    "title": "AI Overview",
+    "subtitle": "A dashboard the assistant composed for you",
+    "empty": "No view has been composed yet."
+  },
+  "chat": {
+    "title": "Assistant",
+    "placeholder": "Ask a question — for example \"which bank is cheapest for 1M TRY over 120 months?\"",
+    "send": "Send",
+    "newChat": "New chat",
+    "sources": "Sources",
+    "scanned": "Read from a scanned page",
+    "stage": {
+      "retrieving": "Searching the sources…",
+      "pricing": "Asking the banks…",
+      "writing": "Writing the answer…"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "profile": "Profile",
+    "preferences": "Preferences",
+    "banksOfInterest": "Banks you care about",
+    "productsOfInterest": "Products you care about",
+    "typicalAmount": "The amount you usually think in",
+    "typicalTerm": "The term you usually think in",
+    "save": "Save",
+    "saved": "Saved"
+  },
+  "common": {
+    "loading": "Loading…",
+    "error": "Something went wrong.",
+    "retry": "Try again",
+    "empty": "Nothing to show.",
+    "derived": "Calculated by us from the bank's quoted rate",
+    "expiresIn": "{days} days left",
+    "expired": "Expired"
+  }
+}

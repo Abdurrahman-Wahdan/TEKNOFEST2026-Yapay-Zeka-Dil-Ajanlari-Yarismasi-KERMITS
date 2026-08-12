@@ -101,3 +101,8 @@ corpus_data/
 # Written by `python -m banks.health`. Machine-local runtime state: which bank
 # was unreachable this morning is not a fact about the repository.
 bank_status.json
+
+# Third-party source pulled in for reference (Vision UI Dashboard React, MIT).
+# Not ours to commit -- re-clone with:
+#   git clone --depth 1 https://github.com/creativetimofficial/vision-ui-dashboard-react.git reference/vision-ui-dashboard-react
+/reference/

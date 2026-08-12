@@ -1,0 +1,2720 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "TF26 API",
+    "description": "Turkish participation-banking campaigns and live pricing. This service authenticates callers and exposes what `banks/`, `index/` and `corpus/` already do; it holds no banking logic itself.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/auth/signup": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Signup",
+        "description": "Create an account and sign in immediately.\n\nNo email verification step: nothing here is sent by email, and a\nverification flow on a local, on-premise system would add a mail server to\nthe deployment for no security the deployment actually gains.",
+        "operationId": "signup",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenPair"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Login",
+        "description": "Exchange an email and password for a token pair.",
+        "operationId": "login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenPair"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/refresh": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Refresh",
+        "description": "Trade a refresh token for a new pair.\n\nBoth tokens are reissued, so a session that stays active never has to log in\nagain, while an abandoned one expires on the refresh token's clock.",
+        "operationId": "refresh",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenPair"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Me",
+        "description": "The signed-in user. The frontend's route guard calls this on load.",
+        "operationId": "me",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/me/profile": {
+      "get": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Get Profile",
+        "description": "This user's preferences. Empty defaults when they have not answered yet.",
+        "operationId": "get_profile",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Put Profile",
+        "description": "Write the profile. A partial body updates only the fields it carries.\n\nPUT rather than PATCH is a small lie about semantics, and a deliberate one:\nthe interview arrives in pieces as the agent asks questions, and requiring\nthe client to send the whole profile every time would mean a dropped answer\nsilently erases an earlier one.",
+        "operationId": "put_profile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/me/views": {
+      "get": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "List Views",
+        "description": "Every dashboard this user kept, newest first.",
+        "operationId": "list_views",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SavedViewOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Views"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/me/views/{slug}": {
+      "put": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Put View",
+        "description": "Create or replace a saved dashboard.\n\nComponent types are not checked against a catalog here. The catalog lives in\nthe frontend, and duplicating it in Python would guarantee the two drift;\nan unknown type renders as a visible placeholder tile instead -- which\nmatters, because the AI Overview page writes this JSON and a model will\neventually name a component that does not exist.",
+        "operationId": "put_view",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Slug"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SavedViewIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedViewOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Delete View",
+        "operationId": "delete_view",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Slug"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/banks": {
+      "get": {
+        "tags": [
+          "banks"
+        ],
+        "summary": "All Banks",
+        "description": "Every bank, what it publishes, and what is currently in maintenance.\n\nAll ten are listed, including the two with no callable endpoint. A bank that\npublishes nothing is a legitimate answer with a reason in `notes`, not an\nomission.",
+        "operationId": "all_banks",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BankOut"
+                  },
+                  "type": "array",
+                  "title": "Response All Banks"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/banks/families": {
+      "get": {
+        "tags": [
+          "banks"
+        ],
+        "summary": "Product Families",
+        "description": "The product families that make two banks comparable.\n\nDeclared ahead of /{bank} so the literal path wins the match -- otherwise\n\"families\" is read as a bank name and every request 404s.",
+        "operationId": "product_families",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FamilyOut"
+                  },
+                  "type": "array",
+                  "title": "Response Product Families"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/banks/{bank}": {
+      "get": {
+        "tags": [
+          "banks"
+        ],
+        "summary": "One Bank",
+        "operationId": "one_bank",
+        "parameters": [
+          {
+            "name": "bank",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "A bank key from GET /api/banks.",
+              "title": "Bank"
+            },
+            "description": "A bank key from GET /api/banks."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/banks/{bank}/products": {
+      "get": {
+        "tags": [
+          "banks"
+        ],
+        "summary": "Bank Products",
+        "description": "A bank's own catalogue, as the bank publishes it.",
+        "operationId": "bank_products",
+        "parameters": [
+          {
+            "name": "bank",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "A bank key from GET /api/banks.",
+              "title": "Bank"
+            },
+            "description": "A bank key from GET /api/banks."
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "finance | profit_share",
+              "default": "finance",
+              "title": "Category"
+            },
+            "description": "finance | profit_share"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProductOut"
+                  },
+                  "title": "Response Bank Products"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/banks/{bank}/finance": {
+      "get": {
+        "tags": [
+          "banks"
+        ],
+        "summary": "Bank Finance Quote",
+        "description": "A live financing quote, including the full payment schedule.\n\nThe number is the bank's own. Nothing here recomputes an installment or\nfills a gap with a formula -- an endpoint that will not answer is reported\nas not answering.",
+        "operationId": "bank_finance_quote",
+        "parameters": [
+          {
+            "name": "bank",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "A bank key from GET /api/banks.",
+              "title": "Bank"
+            },
+            "description": "A bank key from GET /api/banks."
+          },
+          {
+            "name": "product",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "A product code from /products.",
+              "title": "Product"
+            },
+            "description": "A product code from /products."
+          },
+          {
+            "name": "amount",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "title": "Amount"
+            }
+          },
+          {
+            "name": "term",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 360,
+              "exclusiveMinimum": 0,
+              "description": "Months.",
+              "title": "Term"
+            },
+            "description": "Months."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinanceQuoteOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/banks/{bank}/profit-share": {
+      "get": {
+        "tags": [
+          "banks"
+        ],
+        "summary": "Bank Profit Share Quote",
+        "description": "A live participation-account quote.\n\nBanks disagree about whether a product takes a term in days or months, so\nthe response repeats the unit that actually answered rather than echoing\nthe one that was asked for.",
+        "operationId": "bank_profit_share_quote",
+        "parameters": [
+          {
+            "name": "bank",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "A bank key from GET /api/banks.",
+              "title": "Bank"
+            },
+            "description": "A bank key from GET /api/banks."
+          },
+          {
+            "name": "product",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Product"
+            }
+          },
+          {
+            "name": "amount",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "title": "Amount"
+            }
+          },
+          {
+            "name": "term",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "title": "Term"
+            }
+          },
+          {
+            "name": "unit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(day|month)$",
+              "default": "month",
+              "title": "Unit"
+            }
+          },
+          {
+            "name": "currency",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "default": "TRY",
+              "title": "Currency"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfitShareQuoteOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/banks/{bank}/rates": {
+      "get": {
+        "tags": [
+          "banks"
+        ],
+        "summary": "Bank Rates",
+        "description": "A bank's FX and gold table, with the timestamp it was quoted at.",
+        "operationId": "bank_rates",
+        "parameters": [
+          {
+            "name": "bank",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "A bank key from GET /api/banks.",
+              "title": "Bank"
+            },
+            "description": "A bank key from GET /api/banks."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RateOut"
+                  },
+                  "title": "Response Bank Rates"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/compare/finance": {
+      "get": {
+        "tags": [
+          "compare"
+        ],
+        "summary": "Compare Finance",
+        "description": "One financing product at every bank that sells it.\n\nPayment schedules are omitted -- ten full schedules would be megabytes of\nrows nobody reads in a ranking. Fetch one from /api/banks/{bank}/finance.",
+        "operationId": "compare_finance",
+        "parameters": [
+          {
+            "name": "family",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "A family key from /api/banks/families.",
+              "title": "Family"
+            },
+            "description": "A family key from /api/banks/families."
+          },
+          {
+            "name": "amount",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "title": "Amount"
+            }
+          },
+          {
+            "name": "term",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 360,
+              "exclusiveMinimum": 0,
+              "description": "Months.",
+              "title": "Term"
+            },
+            "description": "Months."
+          },
+          {
+            "name": "banks",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Limit to these banks. Omitted, every bank that sells it is asked.",
+              "title": "Banks"
+            },
+            "description": "Limit to these banks. Omitted, every bank that sells it is asked."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparisonOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/compare/profit-share": {
+      "get": {
+        "tags": [
+          "compare"
+        ],
+        "summary": "Compare Profit Share",
+        "description": "One participation account at every bank that sells it.",
+        "operationId": "compare_profit_share",
+        "parameters": [
+          {
+            "name": "family",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "katilma",
+              "title": "Family"
+            }
+          },
+          {
+            "name": "amount",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "title": "Amount"
+            }
+          },
+          {
+            "name": "term",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "title": "Term"
+            }
+          },
+          {
+            "name": "unit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(day|month)$",
+              "default": "month",
+              "title": "Unit"
+            }
+          },
+          {
+            "name": "currency",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3,
+              "default": "TRY",
+              "title": "Currency"
+            }
+          },
+          {
+            "name": "banks",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Limit to these banks. Omitted, every bank that sells it is asked.",
+              "title": "Banks"
+            },
+            "description": "Limit to these banks. Omitted, every bank that sells it is asked."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparisonOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/compare/exchange": {
+      "get": {
+        "tags": [
+          "compare"
+        ],
+        "summary": "Compare Exchange",
+        "description": "The same conversion at every bank that converts.\n\nEach result carries `derived`. False means the bank converted it itself;\nTrue means we multiplied the bank's own quoted rate, which is the single\nagreed exception to \"never compute a number ourselves\". The UI must label\na derived figure -- it is our arithmetic, not the bank's answer.",
+        "operationId": "compare_exchange",
+        "parameters": [
+          {
+            "name": "source",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 5,
+              "title": "Source"
+            }
+          },
+          {
+            "name": "target",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 5,
+              "title": "Target"
+            }
+          },
+          {
+            "name": "amount",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "title": "Amount"
+            }
+          },
+          {
+            "name": "banks",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Limit to these banks. Omitted, every bank that sells it is asked.",
+              "title": "Banks"
+            },
+            "description": "Limit to these banks. Omitted, every bank that sells it is asked."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparisonOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/search": {
+      "get": {
+        "tags": [
+          "search"
+        ],
+        "summary": "Search Corpus",
+        "description": "The passages most relevant to the query, each with an openable citation.",
+        "operationId": "search_corpus",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 500,
+              "title": "Q"
+            }
+          },
+          {
+            "name": "bank",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bank"
+            }
+          },
+          {
+            "name": "doc_kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "campaign | product | fee | ...",
+              "title": "Doc Kind"
+            },
+            "description": "campaign | product | fee | ..."
+          },
+          {
+            "name": "source_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "web | pdf. Omitted searches both together -- the point of the single collection. Set it only to narrow.",
+              "title": "Source Type"
+            },
+            "description": "web | pdf. Omitted searches both together -- the point of the single collection. Set it only to narrow."
+          },
+          {
+            "name": "audience",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "retail | corporate",
+              "title": "Audience"
+            },
+            "description": "retail | corporate"
+          },
+          {
+            "name": "active_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Hide expired campaigns. Leave on.",
+              "default": true,
+              "title": "Active Only"
+            },
+            "description": "Hide expired campaigns. Leave on."
+          },
+          {
+            "name": "k",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "exclusiveMinimum": 0,
+              "default": 8,
+              "title": "K"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/sessions": {
+      "get": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "List Sessions",
+        "description": "This user's conversations, most recent first.",
+        "operationId": "list_sessions",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ChatSessionOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Sessions"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/chat/sessions/{session_id}": {
+      "get": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Get Chat Session",
+        "description": "One conversation with all of its turns.",
+        "operationId": "get_chat_session",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatSessionDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Delete Chat Session",
+        "operationId": "delete_chat_session",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/ask": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Ask",
+        "description": "Ask a question. Returns an SSE stream of `StreamEvent` frames.\n\n`response_model=StreamEvent` is a documentation device -- the endpoint\nreturns a stream, not that object. Declaring it is what puts the frame shape\ninto the OpenAPI schema, so the frontend's event types are generated like\neverything else instead of being the one hand-written surface in the app.",
+        "operationId": "ask",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreamEvent"
+                }
+              },
+              "text/event-stream": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/health": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Health",
+        "description": "Liveness. Answers as long as the process is up.",
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ready": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Ready",
+        "description": "Readiness: every dependency checked, and every failure named.\n\nAll dependencies are probed even after the first failure. A report saying\nonly \"Postgres is down\" when Qdrant is down too costs a second deploy to\ndiscover the second problem.",
+        "operationId": "ready",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadyOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AskRequest": {
+        "properties": {
+          "question": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Question"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "question"
+        ],
+        "title": "AskRequest",
+        "description": "A question. `session_id` omitted starts a new conversation."
+      },
+      "BankOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "The key every other endpoint takes."
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "publishes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Publishes"
+          },
+          "maintenance": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Maintenance",
+            "description": "Capabilities the last health check found failing."
+          },
+          "notes": {
+            "type": "string",
+            "title": "Notes",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "display_name",
+          "publishes"
+        ],
+        "title": "BankOut",
+        "description": "One bank, what it publishes, and what is currently down.\n\n`publishes` and `maintenance` are different absences and are reported\nseparately: a bank that does not sell car finance and a bank whose car\nfinance endpoint is broken this morning must never look alike in the UI."
+      },
+      "ChatMessageOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "assistant"
+            ],
+            "title": "Role"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/ChunkOut"
+            },
+            "type": "array",
+            "title": "Citations"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "role",
+          "content",
+          "created_at"
+        ],
+        "title": "ChatMessageOut"
+      },
+      "ChatSessionDetail": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/ChatMessageOut"
+            },
+            "type": "array",
+            "title": "Messages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ChatSessionDetail"
+      },
+      "ChatSessionOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ChatSessionOut"
+      },
+      "ChunkOut": {
+        "properties": {
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "cite_url": {
+            "type": "string",
+            "title": "Cite Url",
+            "description": "Openable: page#anchor, or form.pdf#page=7."
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "bank": {
+            "type": "string",
+            "title": "Bank",
+            "default": ""
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "default": ""
+          },
+          "doc_kind": {
+            "type": "string",
+            "title": "Doc Kind",
+            "default": ""
+          },
+          "source_type": {
+            "type": "string",
+            "title": "Source Type",
+            "default": ""
+          },
+          "campaign_end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campaign End"
+          },
+          "from_vision": {
+            "type": "boolean",
+            "title": "From Vision",
+            "description": "Read by OCR from a scanned page. The UI should mark it, and the agent should hedge on exact figures taken from it.",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "score",
+          "cite_url",
+          "text"
+        ],
+        "title": "ChunkOut",
+        "description": "One retrieved passage, with the link that proves it."
+      },
+      "ComparisonOut": {
+        "properties": {
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "family": {
+            "type": "string",
+            "title": "Family"
+          },
+          "quotes": {
+            "items": {
+              "$ref": "#/components/schemas/FinanceQuoteOut"
+            },
+            "type": "array",
+            "title": "Quotes"
+          },
+          "profit_share_quotes": {
+            "items": {
+              "$ref": "#/components/schemas/ProfitShareQuoteOut"
+            },
+            "type": "array",
+            "title": "Profit Share Quotes"
+          },
+          "conversions": {
+            "items": {
+              "$ref": "#/components/schemas/ConversionOut"
+            },
+            "type": "array",
+            "title": "Conversions"
+          },
+          "unavailable": {
+            "items": {
+              "$ref": "#/components/schemas/UnavailableOut"
+            },
+            "type": "array",
+            "title": "Unavailable"
+          },
+          "seconds": {
+            "type": "number",
+            "title": "Seconds",
+            "description": "How long the fan-out took."
+          }
+        },
+        "type": "object",
+        "required": [
+          "category",
+          "family",
+          "seconds"
+        ],
+        "title": "ComparisonOut"
+      },
+      "Component": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "Type"
+          },
+          "props": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Props"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "title": "Component",
+        "description": "One tile on a dashboard.\n\n`type` names a component in the frontend catalog; `props` is whatever that\ncomponent takes. Unvalidated on purpose -- the catalog lives in TypeScript,\nand duplicating each component's prop schema in Python would guarantee the\ntwo drift. The frontend renders an unknown type as a visible placeholder."
+      },
+      "ConversionOut": {
+        "properties": {
+          "bank": {
+            "type": "string",
+            "title": "Bank"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "target": {
+            "type": "string",
+            "title": "Target"
+          },
+          "amount": {
+            "type": "string",
+            "title": "Amount"
+          },
+          "result": {
+            "type": "string",
+            "title": "Result"
+          },
+          "rate": {
+            "type": "string",
+            "title": "Rate"
+          },
+          "derived": {
+            "type": "boolean",
+            "title": "Derived",
+            "description": "True when we multiplied a quoted rate rather than the bank converting server-side. The UI must label these."
+          }
+        },
+        "type": "object",
+        "required": [
+          "bank",
+          "source",
+          "target",
+          "amount",
+          "result",
+          "rate",
+          "derived"
+        ],
+        "title": "ConversionOut"
+      },
+      "DependencyOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "ok"
+        ],
+        "title": "DependencyOut"
+      },
+      "FamilyOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category",
+            "description": "finance | profit_share"
+          },
+          "banks": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Banks",
+            "description": "Banks that sell it."
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "category",
+          "banks"
+        ],
+        "title": "FamilyOut",
+        "description": "A product family -- the thing that makes two banks comparable."
+      },
+      "FinanceQuoteOut": {
+        "properties": {
+          "bank": {
+            "type": "string",
+            "title": "Bank"
+          },
+          "product": {
+            "$ref": "#/components/schemas/ProductOut"
+          },
+          "amount": {
+            "type": "number",
+            "title": "Amount"
+          },
+          "term": {
+            "type": "integer",
+            "title": "Term"
+          },
+          "installment": {
+            "type": "number",
+            "title": "Installment"
+          },
+          "total": {
+            "type": "number",
+            "title": "Total"
+          },
+          "profit_rate": {
+            "type": "number",
+            "title": "Profit Rate"
+          },
+          "annual_cost_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annual Cost Rate"
+          },
+          "fees": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Fees"
+          },
+          "schedule": {
+            "items": {
+              "$ref": "#/components/schemas/PaymentRowOut"
+            },
+            "type": "array",
+            "title": "Schedule"
+          }
+        },
+        "type": "object",
+        "required": [
+          "bank",
+          "product",
+          "amount",
+          "term",
+          "installment",
+          "total",
+          "profit_rate"
+        ],
+        "title": "FinanceQuoteOut"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthOut": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "ok"
+          },
+          "environment": {
+            "type": "string",
+            "title": "Environment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "environment"
+        ],
+        "title": "HealthOut"
+      },
+      "LoginRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "LoginRequest"
+      },
+      "PaymentRowOut": {
+        "properties": {
+          "order": {
+            "type": "integer",
+            "title": "Order"
+          },
+          "amount": {
+            "type": "number",
+            "title": "Amount"
+          },
+          "principal": {
+            "type": "number",
+            "title": "Principal"
+          },
+          "profit": {
+            "type": "number",
+            "title": "Profit"
+          },
+          "taxes": {
+            "type": "number",
+            "title": "Taxes"
+          },
+          "remaining": {
+            "type": "number",
+            "title": "Remaining"
+          },
+          "due_date": {
+            "type": "string",
+            "title": "Due Date",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "order",
+          "amount",
+          "principal",
+          "profit",
+          "taxes",
+          "remaining"
+        ],
+        "title": "PaymentRowOut"
+      },
+      "ProductOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "min_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Amount"
+          },
+          "max_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Amount"
+          },
+          "min_term": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Term"
+          },
+          "max_term": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Term"
+          },
+          "currencies": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Currencies"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name",
+          "category"
+        ],
+        "title": "ProductOut"
+      },
+      "ProfileIn": {
+        "properties": {
+          "persona": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(customer|analyst)$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Persona"
+          },
+          "banks": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Banks"
+          },
+          "families": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Families"
+          },
+          "typical_amount": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Typical Amount"
+          },
+          "typical_term_months": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 360.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Typical Term Months"
+          },
+          "answers": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answers"
+          }
+        },
+        "type": "object",
+        "title": "ProfileIn",
+        "description": "A profile write. Every field optional -- a partial answer is a valid answer.\n\nBank and family keys are validated against `banks.list_banks()` and\n`banks.families` in the router, not here: pydantic would have to import the\nbank layer to know them, and the error is more useful when it can name what\nis available."
+      },
+      "ProfileOut": {
+        "properties": {
+          "persona": {
+            "type": "string",
+            "title": "Persona"
+          },
+          "banks": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Banks"
+          },
+          "families": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Families"
+          },
+          "typical_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Typical Amount"
+          },
+          "typical_term_months": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Typical Term Months"
+          },
+          "answers": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Answers"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "persona",
+          "banks",
+          "families",
+          "typical_amount",
+          "typical_term_months",
+          "answers",
+          "completed_at"
+        ],
+        "title": "ProfileOut"
+      },
+      "ProfitShareQuoteOut": {
+        "properties": {
+          "bank": {
+            "type": "string",
+            "title": "Bank"
+          },
+          "product": {
+            "$ref": "#/components/schemas/ProductOut"
+          },
+          "amount": {
+            "type": "number",
+            "title": "Amount"
+          },
+          "term": {
+            "type": "integer",
+            "title": "Term"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "term_unit": {
+            "type": "string",
+            "title": "Term Unit"
+          },
+          "ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ratio"
+          },
+          "gross_profit": {
+            "type": "number",
+            "title": "Gross Profit"
+          },
+          "net_profit": {
+            "type": "number",
+            "title": "Net Profit"
+          },
+          "gross_annual_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gross Annual Rate"
+          },
+          "net_annual_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Net Annual Rate"
+          }
+        },
+        "type": "object",
+        "required": [
+          "bank",
+          "product",
+          "amount",
+          "term",
+          "currency",
+          "term_unit",
+          "gross_profit",
+          "net_profit"
+        ],
+        "title": "ProfitShareQuoteOut"
+      },
+      "RateOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "buy": {
+            "type": "number",
+            "title": "Buy"
+          },
+          "sell": {
+            "type": "number",
+            "title": "Sell"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit",
+            "default": "1"
+          },
+          "as_of": {
+            "type": "string",
+            "title": "As Of",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name",
+          "buy",
+          "sell"
+        ],
+        "title": "RateOut"
+      },
+      "ReadyOut": {
+        "properties": {
+          "ready": {
+            "type": "boolean",
+            "title": "Ready",
+            "description": "False if any dependency is down."
+          },
+          "dependencies": {
+            "items": {
+              "$ref": "#/components/schemas/DependencyOut"
+            },
+            "type": "array",
+            "title": "Dependencies"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ready",
+          "dependencies"
+        ],
+        "title": "ReadyOut"
+      },
+      "RefreshRequest": {
+        "properties": {
+          "refresh_token": {
+            "type": "string",
+            "title": "Refresh Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "refresh_token"
+        ],
+        "title": "RefreshRequest"
+      },
+      "SavedViewIn": {
+        "properties": {
+          "slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]{1,80}$",
+            "title": "Slug"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "components": {
+            "items": {
+              "$ref": "#/components/schemas/Component"
+            },
+            "type": "array",
+            "title": "Components"
+          },
+          "generated": {
+            "type": "boolean",
+            "title": "Generated",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "slug",
+          "title"
+        ],
+        "title": "SavedViewIn"
+      },
+      "SavedViewOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "components": {
+            "items": {
+              "$ref": "#/components/schemas/Component"
+            },
+            "type": "array",
+            "title": "Components"
+          },
+          "generated": {
+            "type": "boolean",
+            "title": "Generated"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "slug",
+          "title",
+          "components",
+          "generated",
+          "updated_at"
+        ],
+        "title": "SavedViewOut"
+      },
+      "SearchResponse": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query"
+          },
+          "active_only": {
+            "type": "boolean",
+            "title": "Active Only"
+          },
+          "hits": {
+            "items": {
+              "$ref": "#/components/schemas/ChunkOut"
+            },
+            "type": "array",
+            "title": "Hits"
+          }
+        },
+        "type": "object",
+        "required": [
+          "query",
+          "active_only",
+          "hits"
+        ],
+        "title": "SearchResponse"
+      },
+      "SignupRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 12,
+            "title": "Password"
+          },
+          "display_name": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Display Name",
+            "default": ""
+          },
+          "locale": {
+            "type": "string",
+            "pattern": "^(tr|en)$",
+            "title": "Locale",
+            "default": "tr"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "SignupRequest"
+      },
+      "StreamEvent": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "status",
+              "token",
+              "citation",
+              "done",
+              "error"
+            ],
+            "title": "Type"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage",
+            "description": "status only: retrieving | pricing | writing."
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text",
+            "description": "token only."
+          },
+          "citation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChunkOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "citation only."
+          },
+          "message_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Id",
+            "description": "done only."
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id",
+            "description": "done only."
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail",
+            "description": "error only."
+          }
+        },
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "title": "StreamEvent",
+        "description": "One SSE frame. Only the fields belonging to `type` are populated.\n\nDeclared as a response model on the streaming endpoint purely so it lands in\nthe OpenAPI schema; the endpoint returns a stream, not this object."
+      },
+      "TokenPair": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "refresh_token": {
+            "type": "string",
+            "title": "Refresh Token"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type",
+            "default": "bearer"
+          },
+          "expires_in": {
+            "type": "integer",
+            "title": "Expires In",
+            "description": "Access token lifetime, in seconds."
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "refresh_token",
+          "expires_in"
+        ],
+        "title": "TokenPair",
+        "description": "What a successful signup, login or refresh returns."
+      },
+      "UnavailableOut": {
+        "properties": {
+          "bank": {
+            "type": "string",
+            "title": "Bank"
+          },
+          "why": {
+            "type": "string",
+            "title": "Why"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "bank",
+          "why"
+        ],
+        "title": "UnavailableOut",
+        "description": "A bank absent from a ranking, and why.\n\n`why` is one of not_offered | maintenance | declined | error. Four distinct\nstates, kept distinct: \"no bank offers this\" and \"we could not reach anyone\"\nare opposite answers."
+      },
+      "UserOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "locale": {
+            "type": "string",
+            "title": "Locale"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "has_profile": {
+            "type": "boolean",
+            "title": "Has Profile",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "display_name",
+          "locale",
+          "created_at"
+        ],
+        "title": "UserOut"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}
