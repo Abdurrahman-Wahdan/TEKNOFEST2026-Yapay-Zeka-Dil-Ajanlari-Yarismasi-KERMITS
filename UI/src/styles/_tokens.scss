@@ -1,0 +1,26 @@
+// Compile-time Sass variables. Nothing here emits CSS.
+//
+// next.config.ts prepends this file to every *.module.scss, so anything that
+// produces output would be duplicated into every component stylesheet -- which
+// is exactly what happened when the colour palette lived here: the built app
+// shipped 20 copies of it.
+//
+// The palette and every other custom property now live in src/styles/tailwind.css,
+// emitted once. Component stylesheets read them with var(--primary) as before;
+// they need no import for that, because custom properties are inherited through
+// the document rather than resolved at compile time.
+//
+// So the rule is: a `$variable` belongs here, a `--custom-property` belongs in
+// tailwind.css. The test is whether Sass needs the value while compiling -- a
+// media query cannot read var(), which is why the breakpoints are below.
+
+// ----- breakpoints -----
+$bp-sm: 640px;
+$bp-md: 768px;
+$bp-lg: 1024px;
+$bp-xl: 1280px;
+
+// ----- layout constants -----
+$sidebar-width: 248px;
+$topbar-height: 60px;
+$content-max: 1440px;

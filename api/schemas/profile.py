@@ -1,0 +1,66 @@
+"""The user's profile and their saved dashboard views."""
+
+import uuid
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class ProfileIn(BaseModel):
+    """A profile write. Every field optional -- a partial answer is a valid answer.
+
+    Bank and family keys are validated against `banks.list_banks()` and
+    `banks.families` in the router, not here: pydantic would have to import the
+    bank layer to know them, and the error is more useful when it can name what
+    is available.
+    """
+
+    persona: str | None = Field(default=None, pattern="^(customer|analyst)$")
+    banks: list[str] | None = None
+    families: list[str] | None = None
+    typical_amount: float | None = Field(default=None, gt=0)
+    typical_term_months: int | None = Field(default=None, gt=0, le=360)
+    answers: dict | None = None
+
+
+class ProfileOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    persona: str
+    banks: list[str]
+    families: list[str]
+    typical_amount: float | None
+    typical_term_months: int | None
+    answers: dict
+    completed_at: datetime | None
+
+
+class Component(BaseModel):
+    """One tile on a dashboard.
+
+    `type` names a component in the frontend catalog; `props` is whatever that
+    component takes. Unvalidated on purpose -- the catalog lives in TypeScript,
+    and duplicating each component's prop schema in Python would guarantee the
+    two drift. The frontend renders an unknown type as a visible placeholder.
+    """
+
+    type: str = Field(max_length=64)
+    props: dict = Field(default_factory=dict)
+
+
+class SavedViewIn(BaseModel):
+    slug: str = Field(pattern="^[a-z0-9-]{1,80}$")
+    title: str = Field(min_length=1, max_length=160)
+    components: list[Component] = Field(default_factory=list)
+    generated: bool = False
+
+
+class SavedViewOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    slug: str
+    title: str
+    components: list[Component]
+    generated: bool
+    updated_at: datetime

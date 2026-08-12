@@ -1,0 +1,74 @@
+// Patterns repeated across component stylesheets. Prepended to every
+// .module.scss by next.config.ts, so they need no import.
+
+@use "tokens" as *;
+
+// ----- responsive -----
+// Mobile-first: these open a breakpoint upward, so the base rules are the
+// phone layout and each `@include md { }` adds to it.
+@mixin sm { @media (min-width: $bp-sm) { @content; } }
+@mixin md { @media (min-width: $bp-md) { @content; } }
+@mixin lg { @media (min-width: $bp-lg) { @content; } }
+@mixin xl { @media (min-width: $bp-xl) { @content; } }
+
+// ----- surfaces -----
+@mixin card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+// ----- focus -----
+// :focus-visible, not :focus -- a mouse click on a button should not leave a
+// ring, but a Tab to it must.
+@mixin focus-ring {
+  &:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+  }
+}
+
+// ----- text -----
+@mixin truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@mixin clamp-lines($lines: 2) {
+  display: -webkit-box;
+  -webkit-line-clamp: $lines;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+// Money and rates. Tabular figures stop a column of numbers jittering as its
+// digits change width, which is most of what this app displays.
+@mixin numeric {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+// ----- accessibility -----
+// Visible to screen readers, invisible on screen. For a label whose meaning is
+// carried by an icon.
+@mixin visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+// ----- scrolling -----
+// A wide table or chart scrolls inside its own box. Without this the page body
+// scrolls sideways, which breaks the whole layout on a phone.
+@mixin scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}

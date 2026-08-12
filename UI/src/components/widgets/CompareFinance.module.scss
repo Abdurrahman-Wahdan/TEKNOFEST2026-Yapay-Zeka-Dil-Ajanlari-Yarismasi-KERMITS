@@ -1,0 +1,102 @@
+.form {
+  display: grid;
+  gap: var(--space-3);
+  align-items: end;
+
+  @include md {
+    grid-template-columns: 2fr 1fr 1fr auto;
+  }
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+
+  > span {
+    color: var(--muted-foreground);
+    font-size: var(--text-sm);
+  }
+
+  select,
+  input {
+    @include focus-ring;
+
+    padding: var(--space-2) var(--space-3);
+    min-height: 2.5rem;
+    background: var(--card);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+  }
+
+  input {
+    @include numeric;
+  }
+}
+
+// The table scrolls inside its card. Without this, five columns of money on a
+// phone push the page body sideways and break every other layout on screen.
+.tableWrap {
+  @include scroll-x;
+}
+
+.table {
+  @include numeric;
+
+  font-size: var(--text-sm);
+  min-width: 34rem;
+
+  th,
+  td {
+    padding: var(--space-2) var(--space-3);
+    text-align: right;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  thead th {
+    color: var(--muted-foreground);
+    font-weight: var(--weight-medium);
+    font-size: var(--text-xs);
+  }
+
+  // The bank name column: left-aligned, and not tabular.
+  th[scope="row"],
+  thead th:first-child {
+    text-align: left;
+    font-variant-numeric: normal;
+  }
+
+  tbody tr:first-child {
+    // The cheapest instalment, after the sort.
+    background: var(--ok-subtle);
+  }
+}
+
+.unavailable {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+
+  [data-why="not_offered"] {
+    color: var(--muted-foreground);
+  }
+
+  [data-why="maintenance"] {
+    color: var(--warn);
+  }
+
+  [data-why="declined"],
+  [data-why="error"] {
+    color: var(--danger);
+  }
+}
+
+.detail {
+  color: var(--text-faint);
+  font-size: var(--text-xs);
+}

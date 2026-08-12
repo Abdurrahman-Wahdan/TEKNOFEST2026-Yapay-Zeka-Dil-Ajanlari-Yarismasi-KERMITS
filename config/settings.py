@@ -383,9 +383,53 @@ class Settings(BaseSettings):
         "because one check may call a catalogue and then a quote.",
     )
 
+    # ===== API (the FastAPI service the dashboard talks to) =====
+    API_HOST: str = "127.0.0.1"
+    API_PORT: int = Field(default=8000, gt=0, lt=65536)
+    API_CORS_ORIGINS: str = Field(
+        default="http://localhost:3000",
+        description="Comma-separated browser origins allowed to call the API. "
+        "A list, not '*': the API carries a session cookie, and a wildcard "
+        "origin with credentials is both refused by browsers and wrong. Read "
+        "through the cors_origins property, never split at the call site.",
+    )
+    API_DATABASE_URL: str = Field(
+        default="postgresql+psycopg://tf26:tf26@localhost:5433/tf26",
+        description="Users, profiles and chat history. Separate from Qdrant, "
+        "which holds no user data -- a user's question never becomes a vector. "
+        "Port 5433, not 5432: docker-compose.yml keeps off the default so it "
+        "cannot collide with another project's Postgres on the same machine.",
+    )
+    API_JWT_SECRET: str = Field(
+        default="",
+        description="Signing key for access and refresh tokens. Empty is "
+        "refused at startup outside development, so an unsigned deployment "
+        "cannot happen quietly. Generate with `openssl rand -hex 32`.",
+    )
+    API_JWT_ALGORITHM: str = "HS256"
+    API_ACCESS_TOKEN_MINUTES: int = Field(
+        default=30,
+        gt=0,
+        description="Short, because the refresh token is what carries the "
+        "session. A leaked access token expires before it is useful.",
+    )
+    API_REFRESH_TOKEN_DAYS: int = Field(default=30, gt=0)
+    API_CHAT_HISTORY_TURNS: int = Field(
+        default=12,
+        gt=0,
+        description="Turns replayed into the agent's context. The window is "
+        "bounded rather than whole-session: an unbounded history eventually "
+        "costs more than the retrieved chunks it is meant to support.",
+    )
+
     # ===== Application =====
     LOG_LEVEL: str = "INFO"
     ENVIRONMENT: str = "development"
+
+    @property
+    def cors_origins(self) -> list[str]:
+        """API_CORS_ORIGINS as a list, blanks and stray spaces removed."""
+        return [o.strip() for o in self.API_CORS_ORIGINS.split(",") if o.strip()]
 
     @model_validator(mode="after")
     def validate_model_roles(self):
@@ -406,6 +450,21 @@ class Settings(BaseSettings):
                     f"{field}={value!r} is not a known model. "
                     f"Valid keys: {', '.join(MODEL_KEYS)}"
                 )
+        return self
+
+    @model_validator(mode="after")
+    def validate_jwt_secret(self):
+        """Refuse to start outside development without a signing key.
+
+        A blank key is convenient in development and a vulnerability anywhere
+        else -- anyone could mint a token for any user. Failing at startup makes
+        that impossible to ship by accident.
+        """
+        if self.ENVIRONMENT != "development" and not self.API_JWT_SECRET:
+            raise ValueError(
+                "API_JWT_SECRET is required when ENVIRONMENT is not "
+                "'development'. Generate one with: openssl rand -hex 32"
+            )
         return self
 
 

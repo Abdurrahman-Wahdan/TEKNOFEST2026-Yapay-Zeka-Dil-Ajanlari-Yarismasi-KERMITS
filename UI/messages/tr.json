@@ -1,0 +1,104 @@
+{
+  "app": {
+    "name": "TF26",
+    "tagline": "Katılım bankası kampanyalarını karşılaştırın"
+  },
+  "nav": {
+    "dashboard": "Panel",
+    "banks": "Bankalar",
+    "compare": "Karşılaştır",
+    "aiOverview": "AI Görünümü",
+    "chat": "Asistan",
+    "settings": "Ayarlar",
+    "signOut": "Çıkış yap",
+    "theme": "Tema",
+    "language": "Dil"
+  },
+  "auth": {
+    "loginTitle": "Giriş yap",
+    "signupTitle": "Hesap oluştur",
+    "email": "E-posta",
+    "password": "Parola",
+    "displayName": "Adınız",
+    "login": "Giriş yap",
+    "signup": "Kayıt ol",
+    "noAccount": "Hesabınız yok mu?",
+    "haveAccount": "Zaten hesabınız var mı?",
+    "passwordHint": "En az 12 karakter",
+    "failed": "Giriş yapılamadı. E-posta veya parola hatalı.",
+    "emailTaken": "Bu e-posta ile bir hesap zaten var."
+  },
+  "dashboard": {
+    "title": "Panel",
+    "subtitle": "On katılım bankası, tek ekranda",
+    "banksTracked": "Takip edilen banka",
+    "productFamilies": "Ürün ailesi",
+    "maintenance": "Bakımda"
+  },
+  "banks": {
+    "title": "Bankalar",
+    "publishes": "Yayınladıkları",
+    "maintenance": "Bakımda",
+    "noEndpoints": "Çağrılabilir bir uç nokta yok",
+    "products": "Ürünler",
+    "rates": "Kurlar"
+  },
+  "compare": {
+    "title": "Karşılaştır",
+    "family": "Ürün",
+    "amount": "Tutar",
+    "term": "Vade (ay)",
+    "run": "Karşılaştır",
+    "bank": "Banka",
+    "installment": "Taksit",
+    "total": "Toplam",
+    "profitRate": "Kâr oranı",
+    "annualCost": "Yıllık maliyet oranı",
+    "unavailable": "Bu ürünü sunmayan bankalar",
+    "why": {
+      "not_offered": "Bu ürünü sunmuyor",
+      "maintenance": "Uç nokta bakımda",
+      "declined": "Talebi reddetti",
+      "error": "Yanıt alınamadı"
+    },
+    "tookSeconds": "{seconds} saniyede {count} banka soruldu"
+  },
+  "aiOverview": {
+    "title": "AI Görünümü",
+    "subtitle": "Yapay zekânın sizin için hazırladığı panel",
+    "empty": "Henüz bir görünüm oluşturulmadı."
+  },
+  "chat": {
+    "title": "Asistan",
+    "placeholder": "Bir soru sorun — örneğin \"1 milyon TL, 120 ay konut finansmanında en uygun banka hangisi?\"",
+    "send": "Gönder",
+    "newChat": "Yeni sohbet",
+    "sources": "Kaynaklar",
+    "scanned": "Taranmış sayfadan okundu",
+    "stage": {
+      "retrieving": "Kaynaklar aranıyor…",
+      "pricing": "Bankalara soruluyor…",
+      "writing": "Yanıt yazılıyor…"
+    }
+  },
+  "settings": {
+    "title": "Ayarlar",
+    "profile": "Profil",
+    "preferences": "Tercihler",
+    "banksOfInterest": "İlgilendiğiniz bankalar",
+    "productsOfInterest": "İlgilendiğiniz ürünler",
+    "typicalAmount": "Genelde düşündüğünüz tutar",
+    "typicalTerm": "Genelde düşündüğünüz vade",
+    "save": "Kaydet",
+    "saved": "Kaydedildi"
+  },
+  "common": {
+    "loading": "Yükleniyor…",
+    "error": "Bir şeyler ters gitti.",
+    "retry": "Tekrar dene",
+    "empty": "Gösterilecek bir şey yok.",
+    "derived": "Bankanın kurundan tarafımızca hesaplandı",
+    "expiresIn": "{days} gün kaldı",
+    "expired": "Süresi doldu"
+  }
+}
