@@ -140,26 +140,29 @@ def test_every_bank_declares_a_known_transport():
         assert (bank.impersonate is not None) == (bank.transport == "impersonate")
 
 
-def test_banks_with_nothing_to_call_still_answer(monkeypatch):
-    """Adil and T.O.M. are providers, not absent banks.
+def test_a_bank_with_nothing_to_call_still_answers(monkeypatch):
+    """Adil is a provider, not an absent bank.
 
     "This bank does not publish a calculator" is a correct answer for a user;
     an unknown-bank error, a timeout or an empty result is not.
     """
     no_network(monkeypatch)
-    for name in ("adil", "tom"):
-        bank = get_bank(name)
-        assert bank.capabilities == frozenset()
-        assert bank.notes, f"{name} must say why it publishes nothing"
-        with pytest.raises(UnsupportedProduct) as exc:
-            bank.finance_quote("anything", 100000, 24)
-        assert bank.display_name in str(exc.value)
+    bank = get_bank("adil")
+    assert bank.capabilities == frozenset()
+    assert bank.notes, "adil must say why it publishes nothing"
+    with pytest.raises(UnsupportedProduct) as exc:
+        bank.finance_quote("anything", 100000, 24)
+    assert bank.display_name in str(exc.value)
 
 
-def test_the_two_silent_banks_give_different_reasons():
-    """Same answer today, different remedies: one needs a credential."""
-    assert "credential" in get_bank("tom").notes
-    assert "credential" not in get_bank("adil").notes
+def test_tom_publishes_its_public_financing_calculator():
+    """T.O.M.'s loan API is public: its HTTP Basic credential is embedded in the
+    calculator page's own JavaScript, so financing is a real capability now."""
+    tom = get_bank("tom")
+    assert "finance" in tom.capabilities
+    assert "credential" in tom.notes
+    # Adil remains genuinely silent — nothing to integrate, not a missing key.
+    assert get_bank("adil").capabilities == frozenset()
 
 
 def test_a_bank_without_a_card_calculator_refuses():
@@ -489,6 +492,7 @@ def test_the_tool_set_is_fixed_and_names_a_bank_as_an_argument():
         "exchange_rates",
         "card_installment_quote",
         "convert_currency",
+        "mile_earning_rates",
         "compare_finance",
         "compare_profit_share",
         "compare_exchange",

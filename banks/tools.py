@@ -342,6 +342,44 @@ def convert_currency(bank: str, source: str, target: str, amount: float) -> str:
     )
 
 
+def _mile(row) -> dict:
+    return {
+        "card": row.card,
+        "tier": row.tier,
+        "category": row.category,
+        "miles_per_lira": row.per_lira,
+    }
+
+
+@tool
+def mile_earning_rates(
+    bank: str, card: str | None = None, category: str | None = None
+) -> str:
+    """Get a card loyalty programme's mile/point earning rates per category.
+
+    Use for questions like "hangi kartla akaryakitta kac mil kazanirim",
+    "market harcamasinda mil orani", "Miles&Smiles kazanim oranlari". Valid
+    banks: {banks}, but most publish no reward table and answer with a sentence
+    saying so. `card` optionally filters to one card (e.g. "Platin"); `category`
+    optionally filters to one spending category (e.g. akaryakit, market,
+    yurtdisi, seyahat, restoran, thy, giyim, eticaret). Leave them out for the
+    whole table.
+
+    Returns one row per card, membership tier and category with miles-per-lira:
+    0.06 means 6 miles per 100 TL. To rank cards for a category, filter by that
+    category and compare miles_per_lira.
+    """
+    def build():
+        rows = get_bank(bank).mile_rates()
+        if card:
+            rows = [r for r in rows if card.lower() in r.card.lower()]
+        if category:
+            rows = [r for r in rows if category.lower() in r.category.lower()]
+        return [_mile(r) for r in rows]
+
+    return _answer(build)
+
+
 def _ranked(comparison, row, key, best_label: str) -> dict:
     """Render a comparison: winner first, and everyone who is not in it.
 
@@ -529,6 +567,7 @@ _TOOLS: list[BaseTool] = [
     exchange_rates,
     card_installment_quote,
     convert_currency,
+    mile_earning_rates,
     compare_finance,
     compare_profit_share,
     compare_exchange,

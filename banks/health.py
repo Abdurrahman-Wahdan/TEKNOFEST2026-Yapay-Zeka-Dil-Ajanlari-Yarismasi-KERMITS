@@ -173,6 +173,17 @@ def _check_convert(bank) -> str:
     return f"{amount:,.0f} {source}->{target} = {float(result.result):,.2f}"
 
 
+def _check_mile_rates(bank) -> str:
+    rows = bank.mile_rates()
+    if not rows:
+        raise AssertionError("mile reward table came back empty")
+    priced = [r for r in rows if r.per_lira > 0]
+    if not priced:
+        raise AssertionError(f"{len(rows)} reward row(s), none with a rate")
+    top = max(priced, key=lambda r: r.per_lira)
+    return f"{len(rows)} row(s), e.g. {top.card} {top.category} {top.per_lira}"
+
+
 CHECKS = {
     "products": _check_products,
     "finance": _check_finance,
@@ -180,6 +191,7 @@ CHECKS = {
     "card": _check_card,
     "rates": _check_rates,
     "convert": _check_convert,
+    "mile_rates": _check_mile_rates,
 }
 
 
