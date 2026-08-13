@@ -106,3 +106,9 @@ bank_status.json
 # Not ours to commit -- re-clone with:
 #   git clone --depth 1 https://github.com/creativetimofficial/vision-ui-dashboard-react.git reference/vision-ui-dashboard-react
 /reference/
+
+# Veri hazırlama çıktıları (crawl + pdf metinleri)
+data/
+
+# Endpoint keşfi üretilen çıktıları (lokalde kalır)
+dataprep/discovery/out/
