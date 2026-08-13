@@ -17,6 +17,7 @@ from ..models import (
     CardInstallmentQuote,
     Conversion,
     FinanceQuote,
+    MileRate,
     PaymentRow,
     ProfitShareQuote,
     Product,
@@ -29,6 +30,11 @@ logger = logging.getLogger(__name__)
 
 BASE = "https://www.kuveytturk.com.tr/ck0d84?"
 PAGE = "https://www.kuveytturk.com.tr/hesaplama-araclari/"
+
+# Miles&Smiles reward table. A different host from the calculators, and open:
+# no hash, no auth. States miles-per-lira per card, membership tier and spending
+# category — the data behind the programme's own "how many miles" page.
+MILES_URL = "https://milesandsmiles.kuveytturk.com.tr/api/MemberTypes"
 
 # One hash per calculator. Stable across sessions but page-embedded: re-extract
 # them from the page if these start 404ing, rather than reading it as an outage.
@@ -88,7 +94,8 @@ class KuveytTurk(BaseBank):
     name = "kuveytturk"
     display_name = "Kuveyt Türk Katılım Bankası"
     capabilities = frozenset(
-        {"products", "finance", "profit_share", "card", "rates", "convert"}
+        {"products", "finance", "profit_share", "card", "rates", "convert",
+         "mile_rates"}
     )
     # This feed calls gold "ALT (gr)" and the lira "TL".
     rate_aliases = RATE_ALIASES
@@ -451,6 +458,41 @@ class KuveytTurk(BaseBank):
             profit_rate=float(payload.get("ProfitRate") or 0),
             raw=payload,
         )
+
+    # ----- Miles&Smiles reward rates -----
+
+    def mile_rates(self) -> list[MileRate]:
+        """Flatten the Miles&Smiles table into one row per card/tier/category.
+
+        The feed nests card -> membership tier -> a Features list, each feature a
+        card "Kind" with a Rates map of category to miles-per-lira. One flat row
+        per (card, tier, Kind, category) is what a comparison or a "how many
+        miles for fuel" question actually needs.
+        """
+        payload = self._json("GET", MILES_URL, headers={"accept": "application/json"})
+        cards = payload if isinstance(payload, list) else []
+        rows: list[MileRate] = []
+        for card in cards:
+            card_name = (card.get("Card") or "").strip()
+            for tier in card.get("MemberTypes") or []:
+                tier_name = (tier.get("Title") or "").strip()
+                for feature in tier.get("Features") or []:
+                    kind = (feature.get("Kind") or "").strip()
+                    label = f"{tier_name} ({kind})" if kind and kind != tier_name else tier_name
+                    for category, value in (feature.get("Rates") or {}).items():
+                        rows.append(MileRate(
+                            card=card_name,
+                            tier=label,
+                            category=category,
+                            per_lira=float(value),
+                            raw={"card": card_name, "tier": tier_name, "kind": kind},
+                        ))
+        if not rows:
+            raise UnsupportedProduct(
+                f"{self.display_name} returned no Miles&Smiles reward rates. The "
+                f"feed shape may have changed."
+            )
+        return rows
 
 
 def _slug(title: str) -> str:

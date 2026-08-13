@@ -23,6 +23,7 @@ PRODUCT_CATEGORY = {
     "ziraat": "finance",
     "turkiyefinans": "finance",
     "hayat": "profit_share",
+    "tom": "finance",
 }
 
 # product, amount, term in months.
@@ -33,6 +34,7 @@ FINANCE = {
     "emlak": ("İhtiyaç Finansmanı", 100_000, 24),
     "dunya": ("Tüketici İhtiyaç", 100_000, 24),
     "ziraat": ("ARSA FINANSMANI", 100_000, 24),
+    "tom": ("İhtiyaç Finansmanı", 10_000, 6),
 }
 
 # product, amount, term in DAYS, currency. Days everywhere, because that is what
@@ -73,6 +75,8 @@ BY_CAPABILITY = {
     # rates takes no arguments, so every bank declaring it is probed the same
     # way and needs no entry.
     "rates": {},
+    # mile_rates likewise takes no arguments.
+    "mile_rates": {},
 }
 
 
@@ -84,9 +88,14 @@ def missing() -> list[tuple[str, str]]:
     gaps = []
     for bank in BANKS:
         for capability in sorted(bank.capabilities):
-            if capability == "rates":
-                continue
             table = BY_CAPABILITY.get(capability)
-            if table is None or bank.name not in table:
+            if table is None:
+                gaps.append((bank.name, capability))
+                continue
+            # A no-argument probe (rates, mile_rates) is declared as an empty
+            # table: every bank is called the same way and needs no per-bank row.
+            if table == {}:
+                continue
+            if bank.name not in table:
                 gaps.append((bank.name, capability))
     return gaps

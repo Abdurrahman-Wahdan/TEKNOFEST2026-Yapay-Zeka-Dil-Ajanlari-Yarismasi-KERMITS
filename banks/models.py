@@ -131,3 +131,19 @@ class Conversion:
     result: Decimal
     rate: Decimal
     derived: bool
+
+
+@dataclass(frozen=True)
+class MileRate:
+    """One card reward rate: miles earned per lira spent in a category.
+
+    A loyalty programme states these as a rate per lira per spending category
+    (fuel, market, travel...), varying by card and membership tier. `per_lira`
+    is the multiplier the bank publishes; 0.06 means 6 miles per 100 TL.
+    """
+
+    card: str
+    tier: str
+    category: str
+    per_lira: float
+    raw: dict = field(default_factory=dict)
