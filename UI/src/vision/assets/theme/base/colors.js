@@ -304,10 +304,40 @@ export default function makeColors(mode = "dark") {
         state: `${hexToRgba(surfaceDeep, 0.49)} 76.65%`,
       },
 
+      // The plain `Card` everywhere in the dashboard (stat tiles, the
+      // Projects table, ...).
+      //
+      // In dark mode, both stops are near-black at moderate alpha over a
+      // black page: the card reads as a soft, low-contrast pool that fades
+      // into the page at its edges *and* still shows a visible internal
+      // gradient, because "near-black at partial opacity on black" gives
+      // both at once. Reusing that exact formula in light mode (same alpha,
+      // `surfaceDeep`'s faint blue-grey) put both stops within a few percent
+      // of the white page — no visible gradient at all.
+      //
+      // The second attempt tuned the state stop into a visible blue-grey
+      // wash. That fixed the middle of the card, but not the bottom: a
+      // two-stop `linear-gradient` holds its last colour flat from that stop
+      // to 100%, so the card's final ~23% was a constant-colour band right
+      // up to its rounded corner. Against a black page (dark mode) a flat
+      // near-black band is indistinguishable from the page anyway; against a
+      // white page (light mode) that flat band is exactly the hard edge that
+      // reads as "not blended," no matter how light the tint is upstream of
+      // it. `fade` is the fix — a third stop at 100% that carries the same
+      // hue down to fully transparent, so the card's edge genuinely
+      // dissolves into the page instead of stopping at a solid tail. Dark
+      // mode doesn't need it (its flat tail already matches the page by
+      // coincidence of colour), so it's `undefined` there and `linearGradient`
+      // drops it.
       card: {
         deg: "127.09",
         main: `${hexToRgba(surface, 0.94)} 19.41%`,
-        state: `${hexToRgba(surfaceDeep, 0.49)} 76.65%`,
+        state: isDark
+          ? `${hexToRgba(surfaceDeep, 0.49)} 76.65%`
+          : `${hexToRgba(mix(p.card, p.primary, 0.12), 0.42)} 76.65%`,
+        fade: isDark
+          ? undefined
+          : `${hexToRgba(mix(p.card, p.primary, 0.12), 0)} 100%`,
       },
 
       // Dropdown surfaces. The template's hardcoded navy is one of the black

@@ -20,11 +20,17 @@
   The linearGradient() function helps you to create a linear gradient color background
  */
 
-function linearGradient(color, colorState, angle) {
+function linearGradient(color, colorState, angle, ...extraStops) {
   if (angle === undefined) {
     angle = 310;
   }
-  return `linear-gradient(${angle}deg, ${color}, ${colorState})`;
+  // `extraStops` is how a caller adds a third (or later) stop — e.g. a final
+  // stop that fades to fully transparent, so a gradient's tail dissolves into
+  // whatever is behind it instead of ending as a flat band of colour.
+  // Existing two-stop callers are unaffected: filter(Boolean) drops the
+  // `undefined` an unused optional stop passes through as.
+  const stops = [color, colorState, ...extraStops].filter(Boolean);
+  return `linear-gradient(${angle}deg, ${stops.join(", ")})`;
 }
 
 export default linearGradient;
