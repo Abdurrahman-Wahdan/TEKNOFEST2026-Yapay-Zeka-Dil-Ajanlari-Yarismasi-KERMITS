@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Türkiye Finans (https://www.turkiyefinans.com.tr) için RAG amaçlı, Türkçe-only site indirici.
+"""Vakıf Katılım (https://www.vakifkatilim.com.tr) için RAG amaçlı, Türkçe-only site indirici.
 
 Profesyonel, kendi kendine yeten tek-dosya crawler. Ayrıntı için aşağıdaki
 ENGINE bölümünün başındaki kullanım notlarına bakın.
 """
-SLUG = 'turkiyefinans'
-CONFIG = {'NAME': 'Türkiye Finans', 'BASE': 'https://www.turkiyefinans.com.tr', 'ROOT_DOMAIN': 'turkiyefinans.com.tr', 'MODE': 'recursive', 'SITEMAPS': [], 'INCLUDE_PREFIXES': ['/tr-tr', '/tr'], 'EXTRA_SEEDS': ['https://www.turkiyefinans.com.tr/tr-tr/Sayfalar/default.aspx']}
+SLUG = 'vakifkatilim'
+CONFIG = {'NAME': 'Vakıf Katılım', 'BASE': 'https://www.vakifkatilim.com.tr', 'ROOT_DOMAIN': 'vakifkatilim.com.tr', 'MODE': 'auto', 'SITEMAPS': ['https://www.vakifkatilim.com.tr/sitemap-tr.xml'], 'INCLUDE_PREFIXES': [], 'EXTRA_SEEDS': ['https://www.vakifkatilim.com.tr/tr']}
 
 # ---------------------------------------------------------------------------
 #  RAG CRAWLER MOTORU  (tüm banka dosyalarında ortak, kendi kendine yeter)
@@ -52,10 +52,19 @@ ASSET_EXT = {".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp",
              ".ico", ".bmp", ".woff", ".woff2", ".ttf", ".eot", ".mp4", ".mp3",
              ".avi", ".mov", ".zip", ".rar", ".gz", ".json", ".xml", ".rss",
              ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".css.map"}
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (compatible; RAGCrawler/1.0; +educational)",
-    "Accept-Language": "tr-TR,tr;q=0.9",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+HEADERS = {  # TARAYICI TAKLİDİ: gerçek Chrome (bot-UA WAF bloğunu önler)
+    "User-Agent": ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+                   "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Accept-Encoding": "gzip, deflate, br",
+    "sec-ch-ua": '"Chromium";v="120", "Google Chrome";v="120", "Not?A_Brand";v="24"',
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": '"macOS"',
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Upgrade-Insecure-Requests": "1",
 }
 
 log = logging.getLogger("crawler")

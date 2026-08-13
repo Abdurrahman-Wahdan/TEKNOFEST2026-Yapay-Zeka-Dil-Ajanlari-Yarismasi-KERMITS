@@ -90,3 +90,10 @@ logs/
 
 # ===== Notebooks =====
 .ipynb_checkpoints/
+
+# Veri hazırlama çıktıları (crawl + pdf metinleri)
+data/
+__pycache__/
+
+# Endpoint keşfi üretilen çıktıları (lokalde kalır)
+dataprep/discovery/out/

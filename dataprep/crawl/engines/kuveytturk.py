@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Albaraka Türk (https://www.albaraka.com.tr) için RAG amaçlı, Türkçe-only site indirici.
+"""Kuveyt Türk (https://www.kuveytturk.com.tr) için RAG amaçlı, Türkçe-only site indirici.
 
 Profesyonel, kendi kendine yeten tek-dosya crawler. Ayrıntı için aşağıdaki
 ENGINE bölümünün başındaki kullanım notlarına bakın.
 """
-SLUG = 'albaraka'
-CONFIG = {'NAME': 'Albaraka Türk', 'BASE': 'https://www.albaraka.com.tr', 'ROOT_DOMAIN': 'albaraka.com.tr', 'MODE': 'auto', 'SITEMAPS': ['https://www.albaraka.com.tr/sitemap.xml'], 'INCLUDE_PREFIXES': ['/tr'], 'EXTRA_SEEDS': ['https://www.albaraka.com.tr/tr']}
+SLUG = 'kuveytturk'
+CONFIG = {'NAME': 'Kuveyt Türk', 'BASE': 'https://www.kuveytturk.com.tr', 'ROOT_DOMAIN': 'kuveytturk.com.tr', 'MODE': 'auto', 'SITEMAPS': ['https://www.kuveytturk.com.tr/sitemap.xml'], 'INCLUDE_PREFIXES': [], 'EXTRA_SEEDS': []}
 
 # ---------------------------------------------------------------------------
 #  RAG CRAWLER MOTORU  (tüm banka dosyalarında ortak, kendi kendine yeter)
@@ -52,10 +52,19 @@ ASSET_EXT = {".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp",
              ".ico", ".bmp", ".woff", ".woff2", ".ttf", ".eot", ".mp4", ".mp3",
              ".avi", ".mov", ".zip", ".rar", ".gz", ".json", ".xml", ".rss",
              ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".css.map"}
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (compatible; RAGCrawler/1.0; +educational)",
-    "Accept-Language": "tr-TR,tr;q=0.9",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+HEADERS = {  # TARAYICI TAKLİDİ: gerçek Chrome (bot-UA WAF bloğunu önler)
+    "User-Agent": ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+                   "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Accept-Encoding": "gzip, deflate, br",
+    "sec-ch-ua": '"Chromium";v="120", "Google Chrome";v="120", "Not?A_Brand";v="24"',
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": '"macOS"',
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Upgrade-Insecure-Requests": "1",
 }
 
 log = logging.getLogger("crawler")
