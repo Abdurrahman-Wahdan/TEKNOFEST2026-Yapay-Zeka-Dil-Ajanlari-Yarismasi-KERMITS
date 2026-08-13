@@ -9,6 +9,7 @@ from ..models import (
     CardInstallmentQuote,
     Conversion,
     FinanceQuote,
+    MileRate,
     ProfitShareQuote,
     Product,
     Rate,
@@ -33,6 +34,7 @@ CAPABILITY_METHODS = {
     "card": "card_installment_quote",
     "rates": "rates",
     "convert": "convert",
+    "mile_rates": "mile_rates",
 }
 
 TRANSPORTS = ("httpx", "csrf", "impersonate", "none")
@@ -45,6 +47,7 @@ CAPABILITY_LABELS = {
     "card": "card instalment calculator",
     "rates": "exchange rates",
     "convert": "currency converter",
+    "mile_rates": "mile earning-rate table",
 }
 
 # How far a requested term may sit from a bank's nearest published band before
@@ -284,6 +287,10 @@ class BaseBank(ABC):
     def convert(self, source: str, target: str, amount: float) -> Conversion:
         """Convert between currencies, or price grams of a precious metal."""
         raise self._unsupported("a currency converter")
+
+    def mile_rates(self) -> list[MileRate]:
+        """Card loyalty reward rates: miles earned per lira, per category."""
+        raise self._unsupported("a mile earning-rate table")
 
     # ----- shared helpers -----
 

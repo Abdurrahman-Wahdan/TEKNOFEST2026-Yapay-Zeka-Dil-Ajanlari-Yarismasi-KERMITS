@@ -145,9 +145,11 @@ def test_every_capability_method_is_gated():
 
 
 def test_a_bank_with_nothing_to_call_is_skipped(monkeypatch):
-    report = health.run(banks=["adil", "tom"], write_status=False, notify=False)
+    # Adil is the one bank with an empty capability set; T.O.M. is no longer
+    # here — its public financing calculator is now implemented and checked.
+    report = health.run(banks=["adil"], write_status=False, notify=False)
     assert report.results == []
-    assert sorted(report.skipped) == ["adil", "tom"]
+    assert sorted(report.skipped) == ["adil"]
     assert report.healthy
 
 

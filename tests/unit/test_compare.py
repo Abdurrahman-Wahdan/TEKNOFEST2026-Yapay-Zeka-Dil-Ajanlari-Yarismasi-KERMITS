@@ -131,8 +131,9 @@ def test_no_bank_is_silently_dropped(monkeypatch):
         "dunya": KeyError("shape changed"),
         "ziraat": 1100.0,
     })
-    # Albaraka has no ihtiyaç product, so it is in scope and not offered.
-    assert result.in_scope == 6
+    # Albaraka has no ihtiyaç product, so it is in scope and not offered; T.O.M.
+    # now publishes a financing calculator, so it is in scope too.
+    assert result.in_scope == 7
     assert len(result.quotes) + len(result.unavailable) == result.in_scope
 
 
@@ -182,8 +183,9 @@ def test_compare_finance_names_the_cheapest(monkeypatch):
 
     assert payload["cheapest"] == "vakif"
     assert payload["ranked"][0]["bank"] == "vakif"
-    assert payload["compared"] == 6
-    assert len(payload["ranked"]) + len(payload["not_compared"]) == 6
+    # Seven banks publish a financing calculator now that T.O.M. is implemented.
+    assert payload["compared"] == 7
+    assert len(payload["ranked"]) + len(payload["not_compared"]) == 7
 
 
 def test_shared_values_are_hoisted_out_of_every_row(monkeypatch):
