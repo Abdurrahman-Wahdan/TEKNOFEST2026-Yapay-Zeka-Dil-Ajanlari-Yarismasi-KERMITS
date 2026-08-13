@@ -48,6 +48,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset Password
+         * @description Set a new password directly from an email address — demo shortcut.
+         *
+         *     No emailed token, no proof the requester owns the inbox: whoever submits an
+         *     email gets to set that account's password. Fine for a local demo where
+         *     nobody else can reach this API; the moment this is reachable by anyone but
+         *     the account holder, this needs a time-limited emailed token in front of it.
+         *
+         *     The response is identical whether or not the email has an account, for the
+         *     same reason the module docstring gives for login: a reset endpoint that
+         *     answers differently for known/unknown emails is an account-enumeration
+         *     oracle.
+         */
+        post: operations["reset_password"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/refresh": {
         parameters: {
             query?: never;
@@ -950,6 +980,21 @@ export interface components {
             /** Refresh Token */
             refresh_token: string;
         };
+        /** ResetPasswordRequest */
+        ResetPasswordRequest: {
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            /** New Password */
+            new_password: string;
+        };
+        /** ResetPasswordResponse */
+        ResetPasswordResponse: {
+            /** Detail */
+            detail: string;
+        };
         /** SavedViewIn */
         SavedViewIn: {
             /** Slug */
@@ -1193,6 +1238,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TokenPair"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reset_password: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResetPasswordResponse"];
                 };
             };
             /** @description Validation Error */

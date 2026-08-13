@@ -31,6 +31,8 @@ interface SignInPageProps {
   onGoogleSignIn?: () => void;
   onResetPassword?: () => void;
   onCreateAccount?: () => void;
+  /** Defaults to shown, so existing callers keep the template as supplied. */
+  showGoogleSignIn?: boolean;
 }
 
 // --- SUB-COMPONENTS ---
@@ -63,6 +65,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
   onGoogleSignIn,
   onResetPassword,
   onCreateAccount,
+  showGoogleSignIn = true,
 }) => {
   const [showPassword, setShowPassword] = useState(false);
 
@@ -108,21 +111,25 @@ export const SignInPage: React.FC<SignInPageProps> = ({
               </button>
             </form>
 
-            <div className="animate-element animate-delay-700 relative flex items-center justify-center">
-              <span className="w-full border-t border-border"></span>
-              <span className="px-4 text-sm text-muted-foreground bg-background absolute">Or continue with</span>
-            </div>
+            {showGoogleSignIn && (
+              <>
+                <div className="animate-element animate-delay-700 relative flex items-center justify-center">
+                  <span className="w-full border-t border-border"></span>
+                  <span className="px-4 text-sm text-muted-foreground bg-background absolute">Or continue with</span>
+                </div>
 
-            {/* `hover:text-secondary-foreground` pairs with `hover:bg-secondary`.
-                Without it the label keeps --foreground on hover, which the
-                palette makes invisible in BOTH themes: --secondary is
-                near-white in dark (against light text) and near-black in light
-                (against dark text). --secondary-foreground is the palette's own
-                answer for text on that background. */}
-            <button onClick={onGoogleSignIn} className="animate-element animate-delay-800 w-full flex items-center justify-center gap-3 border border-border rounded-2xl py-4 hover:bg-secondary hover:text-secondary-foreground transition-colors">
-                <GoogleIcon />
-                Continue with Google
-            </button>
+                {/* `hover:text-secondary-foreground` pairs with `hover:bg-secondary`.
+                    Without it the label keeps --foreground on hover, which the
+                    palette makes invisible in BOTH themes: --secondary is
+                    near-white in dark (against light text) and near-black in light
+                    (against dark text). --secondary-foreground is the palette's own
+                    answer for text on that background. */}
+                <button onClick={onGoogleSignIn} className="animate-element animate-delay-800 w-full flex items-center justify-center gap-3 border border-border rounded-2xl py-4 hover:bg-secondary hover:text-secondary-foreground transition-colors">
+                    <GoogleIcon />
+                    Continue with Google
+                </button>
+              </>
+            )}
 
             <p className="animate-element animate-delay-900 text-center text-sm text-muted-foreground">
               New to our platform? <a href="#" onClick={(e) => { e.preventDefault(); onCreateAccount?.(); }} className="text-violet-400 hover:underline transition-colors">Create Account</a>

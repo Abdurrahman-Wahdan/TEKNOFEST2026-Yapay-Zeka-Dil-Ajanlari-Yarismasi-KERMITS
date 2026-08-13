@@ -27,6 +27,8 @@ interface SignUpPageProps {
   onSignUp?: (event: React.FormEvent<HTMLFormElement>) => void;
   onGoogleSignUp?: () => void;
   onSignIn?: () => void;
+  /** Defaults to shown, so existing callers keep the template as supplied. */
+  showGoogleSignUp?: boolean;
 }
 
 // --- SUB-COMPONENTS ---
@@ -64,7 +66,7 @@ const TestimonialCard = ({ testimonial, delay }: { testimonial: Testimonial, del
  * Three differences from the sign-in form, each forced by what an account
  * actually needs:
  *   - a name field, since the API stores a display name
- *   - `minLength={12}` and a visible hint on the password, because the API
+ *   - `minLength={5}` and a visible hint on the password, because the API
  *     refuses anything shorter and a silent rejection after submitting is a
  *     worse way to learn that
  *   - `autoComplete="new-password"`, so a password manager offers to generate
@@ -78,6 +80,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
   onSignUp,
   onGoogleSignUp,
   onSignIn,
+  showGoogleSignUp = true,
 }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState('');
@@ -116,7 +119,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
                 <label className="text-sm font-medium text-muted-foreground">Password</label>
                 <GlassInputWrapper>
                   <div className="relative">
-                    <input name="password" type={showPassword ? 'text' : 'password'} autoComplete="new-password" required minLength={12} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Create a password" className="w-full bg-transparent text-sm p-4 pr-12 rounded-2xl focus:outline-none" />
+                    <input name="password" type={showPassword ? 'text' : 'password'} autoComplete="new-password" required minLength={5} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Create a password" className="w-full bg-transparent text-sm p-4 pr-12 rounded-2xl focus:outline-none" />
                     <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-3 flex items-center">
                       {showPassword ? <EyeOff className="w-5 h-5 text-muted-foreground hover:text-foreground transition-colors" /> : <Eye className="w-5 h-5 text-muted-foreground hover:text-foreground transition-colors" />}
                     </button>
@@ -147,7 +150,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
                   <input type="checkbox" name="rememberMe" defaultChecked className="custom-checkbox" />
                   <span className="text-foreground/90">Keep me signed in</span>
                 </label>
-                <span className="text-muted-foreground">At least 12 characters</span>
+                <span className="text-muted-foreground">At least 5 characters</span>
               </div>
 
               {/* Disabled on mismatch rather than only checked on submit: the
@@ -165,15 +168,19 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
               </button>
             </form>
 
-            <div className="animate-element animate-delay-900 relative flex items-center justify-center">
-              <span className="w-full border-t border-border"></span>
-              <span className="px-4 text-sm text-muted-foreground bg-background absolute">Or continue with</span>
-            </div>
+            {showGoogleSignUp && (
+              <>
+                <div className="animate-element animate-delay-900 relative flex items-center justify-center">
+                  <span className="w-full border-t border-border"></span>
+                  <span className="px-4 text-sm text-muted-foreground bg-background absolute">Or continue with</span>
+                </div>
 
-            <button onClick={onGoogleSignUp} className="animate-element animate-delay-1000 w-full flex items-center justify-center gap-3 border border-border rounded-2xl py-4 hover:bg-secondary hover:text-secondary-foreground transition-colors">
-                <GoogleIcon />
-                Continue with Google
-            </button>
+                <button onClick={onGoogleSignUp} className="animate-element animate-delay-1000 w-full flex items-center justify-center gap-3 border border-border rounded-2xl py-4 hover:bg-secondary hover:text-secondary-foreground transition-colors">
+                    <GoogleIcon />
+                    Continue with Google
+                </button>
+              </>
+            )}
 
             <p className="animate-element animate-delay-1100 text-center text-sm text-muted-foreground">
               Already have an account? <a href="#" onClick={(e) => { e.preventDefault(); onSignIn?.(); }} className="text-violet-400 hover:underline transition-colors">Sign In</a>

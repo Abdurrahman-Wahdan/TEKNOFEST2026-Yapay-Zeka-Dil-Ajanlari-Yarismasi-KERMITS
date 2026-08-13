@@ -20,6 +20,8 @@ import { useEffect } from "react";
 
 // Next routing, via the react-router shim in vision/router.js
 import { useLocation, NavLink } from "vision/router";
+import { useRouter } from "@/i18n/navigation";
+import { useAuth } from "@/lib/auth";
 
 // prop-types is a library for typechecking of props.
 import PropTypes from "prop-types";
@@ -36,7 +38,6 @@ import VuiTypography from "components/VuiTypography";
 
 // Vision UI Dashboard React example components
 import SidenavCollapse from "examples/Sidenav/SidenavCollapse";
-import SidenavCard from "examples/Sidenav/SidenavCard";
 
 // Custom styles for the Sidenav
 import SidenavRoot from "examples/Sidenav/SidenavRoot";
@@ -46,7 +47,11 @@ import sidenavLogoLabel from "examples/Sidenav/styles/sidenav";
 import { useVisionUIController, setMiniSidenav, setTransparentSidenav } from "context";
 
 // Vision UI Dashboard React icons
-import SimmmpleLogo from "examples/Icons/SimmmpleLogo";
+import { IoLogOut } from "react-icons/io5";
+// Served from /public rather than imported: Next resolves a static image
+// import to a StaticImageData object, and this template interpolates the
+// value straight into an <img src>, which expects a plain string.
+const kermitsLogo = "/vision/images/kermits-logo.png";
 
 // function Sidenav({ color = "info", brand, brandName, routes, ...rest }) {
 function Sidenav({ color, brandName, routes, ...rest }) {
@@ -55,8 +60,15 @@ function Sidenav({ color, brandName, routes, ...rest }) {
   const location = useLocation();
   const { pathname } = location;
   const collapseName = pathname.split("/").slice(1)[0];
+  const { logout } = useAuth();
+  const router = useRouter();
 
   const closeSidenav = () => setMiniSidenav(dispatch, true);
+
+  const handleSignOut = () => {
+    logout();
+    router.replace("/login");
+  };
 
   useEffect(() => {
     // A function that sets the mini state of the sidenav.
@@ -77,10 +89,23 @@ function Sidenav({ color, brandName, routes, ...rest }) {
   }, [dispatch, location]);
 
   useEffect(() => {
-    if (window.innerWidth < 1440) {
-      setTransparentSidenav(dispatch, false);
+    // The glass/transparent sidenav is a large-screen-only look: below xl the
+    // sidenav becomes an overlay drawer on top of the page content, and a
+    // transparent background there means the content behind bleeds straight
+    // through it. This ran once on mount before, so shrinking the window
+    // *after* load left it transparent — the drawer needs to react to every
+    // resize, the same way handleMiniSidenav above already does.
+    function handleTransparentSidenav() {
+      if (window.innerWidth < 1440) {
+        setTransparentSidenav(dispatch, false);
+      }
     }
-  }, []);
+
+    window.addEventListener("resize", handleTransparentSidenav);
+    handleTransparentSidenav();
+
+    return () => window.removeEventListener("resize", handleTransparentSidenav);
+  }, [dispatch]);
 
   // Render all the routes from the routes.js (All the visible items on the Sidenav)
   const renderRoutes = routes.map(({ type, name, icon, title, noCollapse, key, route, href }) => {
@@ -183,7 +208,16 @@ function Sidenav({ color, brandName, routes, ...rest }) {
                 })
               }
             >
-              <SimmmpleLogo size="24px" />
+              {/* `height`/`width` as a plain HTML attribute only accepts a
+                  bare number — "24px" is invalid and the browser silently
+                  drops it, which is why this rendered at the image's full
+                  natural size (301x225) instead of icon-sized. The size has
+                  to go through `style` instead. */}
+              <img
+                src={kermitsLogo}
+                alt=""
+                style={{ display: "block", height: "40px", width: "auto" }}
+              />
             </VuiBox>
             <VuiTypography
               variant="button"
@@ -224,10 +258,16 @@ function Sidenav({ color, brandName, routes, ...rest }) {
           },
         })}
       >
-        <SidenavCard color={color} />
         {/*
-          The "Upgrade to PRO" button is deliberately not rendered — it links to
-          Creative Tim's store, which has nothing to do with this app.
+          The "Need help? / DOCUMENTATION" card is deliberately not rendered —
+          it links to Creative Tim's docs for the template, not this app.
+          `SidenavCard` is untouched at `examples/Sidenav/SidenavCard`, so
+          bringing it back is just restoring `<SidenavCard color={color} />`
+          here. Sign Out takes its spot instead: the bottom of the sidenav,
+          not tucked under Account Pages next to a Profile it isn't a peer of.
+
+          The "Upgrade to PRO" button is deliberately not rendered either — it
+          links to Creative Tim's store, which has nothing to do with this app.
           `VuiButton` is untouched; restoring it means putting back:
 
             <VuiBox mt={2}>
@@ -244,6 +284,23 @@ function Sidenav({ color, brandName, routes, ...rest }) {
               </VuiButton>
             </VuiBox>
         */}
+        <List>
+          <SidenavCollapse
+            // `collapseIconBox`'s own styles force-paint every icon's `fill`
+            // from this `color` prop ("& svg, svg g": { fill: ... }) — it
+            // wins over any `fill`/`color` set directly on the icon element,
+            // which is why the glyph ignored an inline colour and stayed the
+            // ambient accent. "error" is the one already reserved for this —
+            // routes.js icons all pass `color="inherit"` and let this same
+            // mechanism recolour them, so Sign Out follows the same
+            // convention rather than fighting it.
+            color="error"
+            name="Sign Out"
+            icon={<IoLogOut size="15px" color="inherit" />}
+            onClick={handleSignOut}
+            noCollapse
+          />
+        </List>
       </VuiBox>
     </SidenavRoot>
   );

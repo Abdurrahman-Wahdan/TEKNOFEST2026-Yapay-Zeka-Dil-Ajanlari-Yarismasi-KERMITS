@@ -6,9 +6,8 @@ import { useState } from "react";
 import { SignUpPage } from "@/components/ui/sign-up";
 import { ThemeToggleIcon } from "@/components/ui/ThemeToggleIcon";
 import { useRouter } from "@/i18n/navigation";
-import { ApiError } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { HERO_IMAGE, TESTIMONIALS } from "@/lib/auth-screen";
-import { useAuth } from "@/lib/auth";
 
 /**
  * The account-creation screen. Same design as /login, different fields.
@@ -17,7 +16,6 @@ import { useAuth } from "@/lib/auth";
  * stays consistent with sign-in.tsx — which is kept as supplied.
  */
 export default function SignupPage() {
-  const { signup } = useAuth();
   const router = useRouter();
   const locale = useLocale() as "tr" | "en";
   const [error, setError] = useState<string | null>(null);
@@ -36,13 +34,18 @@ export default function SignupPage() {
     }
 
     try {
-      await signup(
-        String(data.get("email")),
-        String(data.get("password")),
-        String(data.get("name") ?? ""),
+      // Created, not signed in: the account exists in the database the
+      // moment this call succeeds, but no session is established from it —
+      // the tokens the API returns are discarded, and the user signs in for
+      // themselves on the next screen instead of landing in the app on a
+      // session they never asked to start.
+      await api.signup({
+        email: String(data.get("email")),
+        password: String(data.get("password")),
+        display_name: String(data.get("name") ?? ""),
         locale,
-      );
-      router.replace("/dashboard");
+      });
+      router.replace("/login?created=1");
     } catch (err) {
       // The API distinguishes "this email is taken" (409) from "this password
       // is too short" (422), and so does the message — a single "signup failed"
@@ -65,7 +68,7 @@ export default function SignupPage() {
         heroImageSrc={HERO_IMAGE}
         testimonials={TESTIMONIALS}
         onSignUp={handleSignUp}
-        onGoogleSignUp={() => setError("Google sign-up is not configured.")}
+        showGoogleSignUp={false}
         onSignIn={() => router.push("/login")}
       />
       {error && (

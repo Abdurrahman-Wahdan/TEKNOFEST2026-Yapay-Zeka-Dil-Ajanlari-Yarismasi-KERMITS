@@ -2,11 +2,25 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "api",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "exec \"$HOME/.pyenv/versions/tf26/bin/python\" -m uvicorn api.main:app --reload --host 127.0.0.1 --port 8001"
+      ],
+      "port": 8001,
+      "autoPort": false
+    },
+    {
       "name": "web",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "API_ORIGIN=http://127.0.0.1:8001 exec npm run dev"
+      ],
       "cwd": "UI",
-      "port": 3000
+      "port": 3000,
+      "autoPort": true
     },
     {
       "name": "vision-ui",

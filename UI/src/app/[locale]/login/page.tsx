@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { SignInPage } from "@/components/ui/sign-in";
@@ -18,6 +19,13 @@ import { useAuth } from "@/lib/auth";
 export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Signup no longer signs a user in — it sends them here instead, so this is
+  // the one place that tells them the account they just created is ready.
+  const justCreated = searchParams.get("created") === "1";
+  // Same idea for a password reset: it never signs the user in either, it
+  // just tells them what to do next.
+  const justReset = searchParams.get("reset") === "1";
   const [error, setError] = useState<string | null>(null);
 
   async function handleSignIn(event: React.FormEvent<HTMLFormElement>) {
@@ -51,17 +59,28 @@ export default function LoginPage() {
         heroImageSrc={HERO_IMAGE}
         testimonials={TESTIMONIALS}
         onSignIn={handleSignIn}
-        onGoogleSignIn={() => setError("Google sign-in is not configured.")}
-        onResetPassword={() => setError("Password reset is not built yet.")}
+        showGoogleSignIn={false}
+        onResetPassword={() => router.push("/reset-password")}
         onCreateAccount={() => router.push("/signup")}
       />
-      {error && (
+      {error ? (
         <p
           role="alert"
           className="fixed bottom-6 left-1/2 -translate-x-1/2 rounded-2xl border border-border bg-card px-5 py-3 text-sm text-destructive shadow-lg"
         >
           {error}
         </p>
+      ) : (
+        (justCreated || justReset) && (
+          <p
+            role="status"
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 rounded-2xl border border-border bg-card px-5 py-3 text-sm text-[var(--ok)] shadow-lg"
+          >
+            {justCreated
+              ? "Account created — sign in to continue."
+              : "Password reset — sign in with your new password."}
+          </p>
+        )
       )}
     </div>
   );

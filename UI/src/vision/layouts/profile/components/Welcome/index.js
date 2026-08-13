@@ -25,7 +25,7 @@ const welcome = "/vision/images/welcome-profile.png";
 import VuiTypography from "components/VuiTypography/index";
 import VuiBox from "components/VuiBox/index";
 
-const Welcome = () => {
+const Welcome = ({ name = "Mark Johnson" }) => {
   return (
     <Card
       sx={({ breakpoints }) => ({
@@ -44,7 +44,7 @@ const Welcome = () => {
             Welcome back!
           </VuiTypography>
           <VuiTypography color="onImageMuted" variant="button" fontWeight="regular">
-            Nice to see you, Mark Johnson!
+            Nice to see you, {name}!
           </VuiTypography>
         </VuiBox>
         <VuiBox justifySelf="flex-end">

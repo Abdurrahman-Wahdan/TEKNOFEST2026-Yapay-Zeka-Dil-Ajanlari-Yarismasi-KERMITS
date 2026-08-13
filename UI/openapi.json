@@ -90,6 +90,48 @@
         }
       }
     },
+    "/api/auth/reset-password": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Reset Password",
+        "description": "Set a new password directly from an email address — demo shortcut.\n\nNo emailed token, no proof the requester owns the inbox: whoever submits an\nemail gets to set that account's password. Fine for a local demo where\nnobody else can reach this API; the moment this is reachable by anyone but\nthe account holder, this needs a time-limited emailed token in front of it.\n\nThe response is identical whether or not the email has an account, for the\nsame reason the module docstring gives for login: a reset endpoint that\nanswers differently for known/unknown emails is an account-enumeration\noracle.",
+        "operationId": "reset_password",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResetPasswordResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/refresh": {
       "post": {
         "tags": [
@@ -2346,6 +2388,40 @@
         ],
         "title": "RefreshRequest"
       },
+      "ResetPasswordRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "new_password": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 5,
+            "title": "New Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "new_password"
+        ],
+        "title": "ResetPasswordRequest"
+      },
+      "ResetPasswordResponse": {
+        "properties": {
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "detail"
+        ],
+        "title": "ResetPasswordResponse"
+      },
       "SavedViewIn": {
         "properties": {
           "slug": {
@@ -2458,7 +2534,7 @@
           "password": {
             "type": "string",
             "maxLength": 200,
-            "minLength": 12,
+            "minLength": 5,
             "title": "Password"
           },
           "display_name": {

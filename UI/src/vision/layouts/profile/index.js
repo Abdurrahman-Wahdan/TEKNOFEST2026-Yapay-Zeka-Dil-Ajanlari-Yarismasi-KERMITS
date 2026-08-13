@@ -66,10 +66,19 @@ import PlatformSettings from "layouts/profile/components/PlatformSettings";
 import Welcome from "../profile/components/Welcome/index";
 import CarInformations from "./components/CarInformations";
 
+import { useAuth } from "@/lib/auth";
+
 function Overview() {
+  // This screen only renders inside <RequireAuth>, so `user` is never null
+  // here — the placeholder strings below are the fallback for that contract
+  // being violated, not an expected path.
+  const { user } = useAuth();
+  const name = user?.display_name || "Mark Johnson";
+  const email = user?.email || "mark@simmmple.com";
+
   return (
     <DashboardLayout>
-      <Header />
+      <Header name={name} email={email} />
       <VuiBox mt={5} mb={3}>
         <Grid
           container
@@ -92,7 +101,7 @@ function Overview() {
               },
             })}
           >
-            <Welcome />
+            <Welcome name={name} />
           </Grid>
           <Grid
             item
@@ -105,7 +114,7 @@ function Overview() {
               },
             })}
           >
-            <CarInformations />
+            <CarInformations name={name} />
           </Grid>
           <Grid
             item
@@ -120,11 +129,11 @@ function Overview() {
           >
             <ProfileInfoCard
               title="profile information"
-              description="Hi, I’m Mark Johnson, Decisions: If you can’t decide, the answer is no. If two equally difficult paths, choose the one more painful in the short term (pain avoidance is creating an illusion of equality)."
+              description={`Hi, I’m ${name}.`}
               info={{
-                fullName: "Mark Johnson",
+                fullName: name,
                 mobile: "(44) 123 1234 123",
-                email: "mark@simmmple.com",
+                email: email,
                 location: "United States",
               }}
               social={[

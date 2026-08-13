@@ -28,6 +28,7 @@ export type ChatMessage = Schemas["ChatMessageOut"];
 export type StreamEvent = Schemas["StreamEvent"];
 export type TokenPair = Schemas["TokenPair"];
 export type User = Schemas["UserOut"];
+export type ResetPasswordResponse = Schemas["ResetPasswordResponse"];
 
 /**
  * Relative, so requests go through the Next rewrite to FastAPI and the browser
@@ -141,6 +142,11 @@ export const api = {
       body: JSON.stringify({ refresh_token }),
     }),
   me: () => request<User>("/auth/me"),
+  resetPassword: (body: Schemas["ResetPasswordRequest"]) =>
+    request<ResetPasswordResponse>("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 
   // ----- banks -----
   banks: () => request<Bank[]>("/banks"),
