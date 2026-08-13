@@ -33,7 +33,11 @@ export default function LoginPage() {
     const data = new FormData(event.currentTarget);
     setError(null);
     try {
-      await login(String(data.get("email")), String(data.get("password")));
+      // An unchecked checkbox is simply absent from FormData, not "off" —
+      // `get` returns null, which is why this is a presence check rather
+      // than a value comparison.
+      const remember = data.get("rememberMe") !== null;
+      await login(String(data.get("email")), String(data.get("password")), remember);
       router.replace("/dashboard");
     } catch {
       // One message for a wrong password and for an unknown address, matching
