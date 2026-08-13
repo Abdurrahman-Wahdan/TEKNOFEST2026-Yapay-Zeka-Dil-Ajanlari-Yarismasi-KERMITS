@@ -1,0 +1,254 @@
+{
+  "bank": "hayat",
+  "brand": "hayatfinans",
+  "pages": [
+    {
+      "page": "https://hayatfinans.com.tr",
+      "inventory": {
+        "inputs": [
+          {
+            "tag": "INPUT",
+            "type": "checkbox",
+            "id": "",
+            "name": "",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "account-type-select",
+            "name": "",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "",
+            "name": "",
+            "ph": "",
+            "val": "50000"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "depositAmount",
+            "name": "",
+            "ph": "",
+            "val": "50.000"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "",
+            "name": "",
+            "ph": "",
+            "val": "32"
+          },
+          {
+            "tag": "INPUT",
+            "type": "number",
+            "id": "maturity-period-input",
+            "name": "maturity",
+            "ph": "",
+            "val": "32"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "downloadAppPhone",
+            "name": "phone",
+            "ph": "Telefon Numarası Yazınız",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "requiredAmount",
+            "name": "",
+            "ph": "",
+            "val": "1"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "required-amount-currency",
+            "name": "",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "takenAmount",
+            "name": "",
+            "ph": "",
+            "val": "0,021"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "taken-amount-currency",
+            "name": "",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "button",
+            "id": "",
+            "name": "",
+            "ph": "",
+            "val": "Gonder"
+          },
+          {
+            "tag": "TEXTAREA",
+            "type": "textarea",
+            "id": "cbot-form-message",
+            "name": "",
+            "ph": "Mesajinizi yazin",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "file",
+            "id": "cbot-attachment-file-input",
+            "name": "",
+            "ph": "",
+            "val": ""
+          }
+        ],
+        "selects": [],
+        "buttons": [
+          "EN",
+          "Kendim",
+          "İşim",
+          "Ara",
+          "2",
+          "BUTTON",
+          "BUTTON",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "BUTTON",
+          "BUTTON",
+          "BUTTON",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "BUTTON",
+          "BUTTON",
+          "BUTTON",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "BUTTON",
+          "BUTTON",
+          "BUTTON",
+          "1",
+          "2",
+          "3"
+        ]
+      },
+      "clicked": [
+        "EN",
+        "Kendim",
+        "İşim",
+        "Search",
+        "2",
+        "Get Your Savings Valuable on the S",
+        "BUTTON",
+        "Search",
+        "1",
+        "2",
+        "3",
+        "BUTTON",
+        "BUTTON",
+        "BUTTON",
+        "1",
+        "2",
+        "3",
+        "BUTTON",
+        "BUTTON",
+        "BUTTON",
+        "1",
+        "2",
+        "3",
+        "BUTTON",
+        "BUTTON"
+      ]
+    }
+  ],
+  "endpoints": [
+    {
+      "page": "https://hayatfinans.com.tr",
+      "method": "POST",
+      "endpoint": "https://hayatfinans.com.tr/api/change-language",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://hayatfinans.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: application/json, text/plain, */*\nculture: tr-TR\ncontent-type: application/json",
+      "request_body": "{\"currentCulture\":\"tr-TR\",\"pageRedirectApiUrl\":\"/api/page/change-culture/73\"}",
+      "response": ""
+    },
+    {
+      "page": "https://hayatfinans.com.tr",
+      "method": "GET",
+      "endpoint": "https://hayatfinans.com.tr/api/localization",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://hayatfinans.com.tr/\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\nculture: en-US\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://hayatfinans.com.tr",
+      "method": "GET",
+      "endpoint": "https://hayatfinans.com.tr/_next/static/ZeEOQaTBMwMBkpOURf0IS/_buildManifest.js",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://hayatfinans.com.tr/en/home-self\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://hayatfinans.com.tr",
+      "method": "GET",
+      "endpoint": "https://hayatfinans.com.tr/_next/static/ZeEOQaTBMwMBkpOURf0IS/_ssgManifest.js",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://hayatfinans.com.tr/en/home-self\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": "self.__SSG_MANIFEST=new Set,self.__SSG_MANIFEST_CB&&self.__SSG_MANIFEST_CB();"
+    },
+    {
+      "page": "https://hayatfinans.com.tr",
+      "method": "POST",
+      "endpoint": "https://hayatfinans.com.tr/api/form/accessibility",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://hayatfinans.com.tr/en/home-self\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: application/json, text/plain, */*\nculture: en-US\ncontent-type: application/json",
+      "request_body": "{}",
+      "response": "{\"data\":[{\"accName\":\"modelishow\",\"text\":\"\",\"texten\":\"\",\"status\":true,\"icon\":\"/getmedia/3dc3c6be-6f82-40c9-bf15-21b72d8afeb3/erisilebilirlik-ikon.svg\"},{\"accName\":\"title\",\"text\":\"Erişilebilirlik\",\"texten\":\"Accessibility\",\"status\":true,\"icon\":\"\"},{\"accName\":\"resetText\",\"text\":\"Seçimleri Temizle\",\"texten\":\"Clear the Elections\",\"status\":true,\"icon\":\"\"},{\"accName\":\"fontSize\",\"text\":\"Yazı Boyutu\",\"texten\":\"Font Size\",\"status\":true,\"icon\":\"&lt;svg width=&quot;16&quot; height=&quot;18&quot; viewBox=&quot;0 0 8 9&quot; fill=&quot;none&quot;&gt;<br />\\r\\n&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;path<br />\\r\\n&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; d=&quot;M5.08333 7.68333H2.48333M3.78333 0.75V7.68333M3.78333 0.75C3.18214 0.75 2.40987 0.812992 1.79503 0.875038C1.53498 0.90128 1.40496 0.914401 1.28987 0.960677C1.05049 1.05693 0.857535 1.26797 0.784914 1.51295C0.75 1.63073 0.75 1.76514 0.75 2.03395M3.78333 0.75C4.38453 0.75 5.15679 0.812992 5.77164 0.875038C6.03168 0.90128 6.16171 0.914401 6.2768 0.960677C6.51617 1.05693 6.70913 1.26797 6.78175 1.51295C6.81667 1.63073 6.81667 1.76514 6.81667 2.03395&quot;<br />\\r\\n&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; stroke=&quot;currentColor&quot;<br />\\r\\n&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; strokeWidth=&quot;1.5&quot;<br />\\r\\n&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; strokeLinecap=&quot;round&quot;<br />\\r\\n&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; /&gt;<br />\\r\\n&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;/svg&gt;\"},{\"accName\":\"lineHeight\",\"text\":\"Satır Yüksekliği\",\"texten\":\"Line Height\",\"status\":true,\"icon\":\"&lt;svg width=&quot;20&quot; height=&quot;20&quot; viewBox=&quot;0 0 20 20&quot; fill=&quot;none&quot;&gt;<br />\\r\\n&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;path d=&quot;M10 3.75H18.3333&quot; stroke=&quot;currentColor&quot; strokeWidth=&quot;1.5&quot; strokeLinecap=&quot;round&quot; strokeLinejoin=&quot;round&quot; /&gt;<br />\\r\\n&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;path d=&quot;M10 7.91699H15.8333&quot; stroke=&quot;currentColor&quot; strokeWidth=&quot;1.5&quot; strokeLinecap=&quot;round&quot; strokeLinejoin=&quot;round&quot; /&gt;<br />\\r\\n&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;path d=&quot;M10 12.083H18.3333&quot; stroke=&quot;currentColor&quot; strokeWidth=&quot;1.5&quot; strokeLinecap=&quot;round&quot; strokeLinejoin=&quot;round&quot; /&gt;<br />\\r\\n&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;path d=&quot;M10 16.25H15.8333&quot; stroke=&quot;currentColor&quot; strokeWidth=&quot;1.5&quot; strokeLinecap=&quot;round&quot; strokeLinejoin=&quot;round&quot; /&gt;<br />\\r\\n&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;path<br />\\r\\n&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; d=&quot;M1.66406 7.50033L2.5514 6.58236C3.30239 5.80545 3.67788 5.41699 4.16406 5.41699C4.65024 5.41699 5.02574 5.80545 5.77673 6.58236L6.66406 7.50033&quot;<br />\\r\\n&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; stroke=&quot;currentColor&quot;<br />\\r\\n&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; strokeWidth=&quot;1.5&quot;<br />\\r\\n&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; strokeLinecap=&quot;round&quot;<br />\\r\\n&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; strokeLinejoin=&quot;round&quot;<br />\\r\\n&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; /&gt;<br />\\r\\n&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;path<br />\\r\\n&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; d=&quot;M6.66406 11.667L5.77673 12.585C5.02574 13.3619 4.65024 13.7503 4.16406 13.7503C3.67788 13.7503 3.30239 13.3619 2.5514 12.585L1.66406 11.667&quot;<br />\\r\\n&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; stroke=&quot;currentColor&quot;<br />\\r\\n&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; strokeWidth=&quot;1.5&quot;<br />\\r\\n&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; strokeLinecap=&quot;round&quot;<br />\\r\\n&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; strokeLinejoin=&quot;round&quot;<br />\\r\\n&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; /&gt;<br />\\r\\n&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;/svg&gt;\"},{\"accName\":\"letterSpacing\",\"text\":\"Harf Aralığı\",\"texten\":\"Letter Spacing\",\"status\":true,\"icon\":\"&nbsp; &lt;svg width=&quot;17&quot; height=&quot;15&quot; viewBox=&quot;0 0 17 15&quot; fill=&quot;none&quot;&gt;<br />\\r\\n&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;path d=&quot;M0.75 0.75V14.0833&quot; stroke=&quot;currentColor&quot; strokeWidth=&quot;1.5&quot; strokeLinecap=&quot;round&quot; strokeLinejoin=&quot;round&quot; /&gt;<br />\\r\\n&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;path d=&quot;M15.75 0.75V14.0833&quot; stroke=&quot;currentColor&quot; strokeWidth=&quot;1.5&quot; strokeLinecap=&quot;round&quot; strokeLinejoin=&quot;round&quot; /&gt;<br />\\r\\n&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &lt;path<br />\\r\\n&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; d=&quot;M11.2678 4.91699L12 5.64922C12.8333 6.48256 13.25 6.89923 13.25 7.41699C13.25 7.93476 12.8333 8.35143 12 9.18476L11.2678 9.91699M5.23223 4.91699L4.5 5.64922C3.66667 6.48256 3.25 6.89923 3.25 7.41699C3.25 7.93476 3.66667 8.35143 4.5 9.18476L5.2322"
+    },
+    {
+      "page": "https://hayatfinans.com.tr",
+      "method": "POST",
+      "endpoint": "https://hayatfinans.com.tr/api/integration/calculateprofitsharerate",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://hayatfinans.com.tr/en/home-self\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: application/json, text/plain, */*\nculture: en-US\ncontent-type: application/json",
+      "request_body": "{\"AccountType\":1,\"Maturity\":1,\"ProductGroup\":2,\"Money\":50000,\"FEC\":0,\"MaturityTerm\":32}",
+      "response": "{\"data\":{\"grossProfitShare\":1835.215566,\"grossProfitShareYearly\":41.865855102121936,\"netProfitShareYearly\":34.539330,\"netProfitShare\":1514.052842},\"message\":\"\",\"isSuccessful\":true,\"error\":null}"
+    },
+    {
+      "page": "https://hayatfinans.com.tr",
+      "method": "GET",
+      "endpoint": "https://hayatfinans.com.tr/api/integration/fxrate",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://hayatfinans.com.tr/en/home-self\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: application/json, text/plain, */*\nculture: en-US\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": "{\"data\":[{\"encryptedValue\":null,\"countryCode\":65,\"currencyAsk\":48.36072,\"currencyBid\":46.76837,\"currencyCode\":1,\"currencyDescription\":\"Amerikan Doları\",\"currencyShortCode\":\"USD\",\"effectiveAsk\":48.36072,\"effectiveBid\":46.76837,\"fec\":1,\"fecGroup\":1,\"indexType\":5,\"languageId\":0,\"parity\":1,\"parityAsk\":1,\"parityBid\":1,\"tranDate\":\"2026-08-08T00:00:00+03:00\"},{\"encryptedValue\":null,\"countryCode\":4,\"currencyAsk\":56.04281,\"currencyBid\":53.93116,\"currencyCode\":19,\"currencyDescription\":\"Euro\",\"currencyShortCode\":\"EUR\",\"effectiveAsk\":56.04281,\"effectiveBid\":53.93116,\"fec\":19,\"fecGroup\":1,\"indexType\":5,\"languageId\":0,\"parity\":1.1557,\"parityAsk\":1.15688,\"parityBid\":1.15498,\"tranDate\":\"2026-08-08T00:00:00+03:00\"},{\"encryptedValue\":null,\"countryCode\":1,\"currencyAsk\":6699.90778,\"currencyBid\":6486.45998,\"currencyCode\":24,\"currencyDescription\":\"Altın\",\"currencyShortCode\":\"ALT (gr)\",\"effectiveAsk\":6699.90778,\"effectiveBid\":6486.45998,\"fec\":24,\"fecGroup\":2,\"indexType\":5,\"languageId\":0,\"parity\":138.9562,\"parityAsk\":141.51669,\"parityBid\":137.64654,\"tranDate\":\"2026-08-08T00:00:00+03:00\"},{\"encryptedValue\":null,\"countryCode\":23,\"currencyAsk\":65.16636,\"currencyBid\":63.06188,\"currencyCode\":15,\"currencyDescription\":\"İngiliz Sterlini\",\"currencyShortCode\":\"GBP\",\"effectiveAsk\":65.16636,\"effectiveBid\":63.06188,\"fec\":15,\"fecGroup\":1,\"indexType\":5,\"languageId\":0,\"parity\":1.34925,\"parityAsk\":1.35716,\"parityBid\":1.34845,\"tranDate\":\"2026-08-08T00:00:00+03:00\"}],\"message\":\"\",\"isSuccessful\":true,\"error\":null}"
+    }
+  ],
+  "third_party": []
+}

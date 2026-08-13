@@ -80,6 +80,12 @@ models/
 # Runtime output.
 logs/
 *.log
+# Output of the retired download_sites/ crawlers. Superseded by the corpus
+# package; kept ignored so an old checkout's output does not get committed.
+download_sites/
+# The corpus pipeline's store: raw bytes, the manifest and the clean artifact.
+# Regenerable with `python -m corpus.build`, and gigabytes of it.
+corpus_data/
 # Playwright MCP artifacts and stray screenshots. Images under docs/ are kept.
 .playwright-mcp/
 *.png
@@ -91,9 +97,18 @@ logs/
 # ===== Notebooks =====
 .ipynb_checkpoints/
 
+# ===== Health checks =====
+# Written by `python -m banks.health`. Machine-local runtime state: which bank
+# was unreachable this morning is not a fact about the repository.
+bank_status.json
+
+# Third-party source pulled in for reference (Vision UI Dashboard React, MIT).
+# Not ours to commit -- re-clone with:
+#   git clone --depth 1 https://github.com/creativetimofficial/vision-ui-dashboard-react.git reference/vision-ui-dashboard-react
+/reference/
+
 # Veri hazırlama çıktıları (crawl + pdf metinleri)
 data/
-__pycache__/
 
 # Endpoint keşfi üretilen çıktıları (lokalde kalır)
 dataprep/discovery/out/

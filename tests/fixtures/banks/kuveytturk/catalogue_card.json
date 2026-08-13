@@ -1,0 +1,227 @@
+[
+  {
+    "Title": "Sağlam Kart Troy",
+    "Note": "<p>Tahsis ücreti müşteriden peşin olarak tahsil edilecektir.Ödenecek toplam tutar finansman tahsis ücretini içermemektedir. Bu tablo bilgi amaçlıdır. Kuveyt Türk Katılım Bankası A.Ş.'ni hiçbir şekilde taahhüt altına sokmaz.</p>\n",
+    "FooterNote": "<p>*</p>\n",
+    "Parameters": [
+      {
+        "Key": "ProductType",
+        "Value": "8"
+      },
+      {
+        "Key": "ProductCode",
+        "Value": "SK"
+      },
+      {
+        "Key": "MinInstallmentValue",
+        "Value": "1"
+      },
+      {
+        "Key": "MaxInstallmentValue",
+        "Value": "12"
+      },
+      {
+        "Key": "Amount",
+        "Value": "1"
+      },
+      {
+        "Key": "Button",
+        "Value": "Kart Özellikleri",
+        "Description": "/kendim-icin/kartlar/kredi-karti/saglam-kart"
+      },
+      {
+        "Key": "DefaultParameter",
+        "Value": "100"
+      }
+    ],
+    "ContentBaseId": "28549"
+  },
+  {
+    "Title": "Sağlam Business Kart",
+    "Note": "<p>Bu tablo bilgi amaçlıdır. Kuveyt Türk Katılım Bankası A.Ş.'ni hiçbir şekilde taahhüt altına sokmaz.</p>\n",
+    "FooterNote": "\n  \n",
+    "Parameters": [
+      {
+        "Key": "ProductType",
+        "Value": "3"
+      },
+      {
+        "Key": "ProductCode",
+        "Value": "BP"
+      },
+      {
+        "Key": "MinInstallmentValue",
+        "Value": "2"
+      },
+      {
+        "Key": "MaxInstallmentValue",
+        "Value": "9"
+      },
+      {
+        "Key": "DefaultAmount",
+        "Value": "300"
+      },
+      {
+        "Key": "MinAmount",
+        "Value": "1"
+      },
+      {
+        "Key": "DefaultInstallmentValue",
+        "Value": "3"
+      },
+      {
+        "Key": "TotalInstallmentCountRule",
+        "Value": "9"
+      },
+      {
+        "Key": "MinNonpaymenCount",
+        "Value": "0"
+      },
+      {
+        "Key": "MaxNonpaymenCount",
+        "Value": "0"
+      },
+      {
+        "Key": "MaxAmount",
+        "Value": "9999999"
+      }
+    ],
+    "ContentBaseId": "26139"
+  },
+  {
+    "Title": "Sağlam Tohum Kart",
+    "Note": "<p>Bu tablo bilgi amaçlıdır. Kuveyt Türk Katılım Bankası A.Ş.'ni hiçbir şekilde taahhüt altına sokmaz.</p>\n",
+    "FooterNote": "\n  \n",
+    "Parameters": [
+      {
+        "Key": "ProductType",
+        "Value": "5"
+      },
+      {
+        "Key": "ProductCode",
+        "Value": "TK"
+      },
+      {
+        "Key": "MinInstallmentValue",
+        "Value": "0"
+      },
+      {
+        "Key": "MaxInstallmentValue",
+        "Value": "12"
+      },
+      {
+        "Key": "MinAmount",
+        "Value": "50"
+      },
+      {
+        "Key": "DefaultAmount",
+        "Value": "300"
+      },
+      {
+        "Key": "TotalInstallmentCountRule",
+        "Value": "12"
+      },
+      {
+        "Key": "DefaultInstallmentValue",
+        "Value": "3"
+      },
+      {
+        "Key": "MaxAmount",
+        "Value": "9999999"
+      },
+      {
+        "Key": "MinAmount",
+        "Value": "50"
+      }
+    ],
+    "ContentBaseId": "26143"
+  },
+  {
+    "Title": "Miles&Smiles Business Kredi Kartı",
+    "Note": "<p>Bu tablo bilgi amaçlıdır. Kuveyt Türk Katılım Bankası A.Ş.'ni hiçbir şekilde taahhüt altına sokmaz.</p>\n",
+    "FooterNote": ".\n",
+    "Parameters": [
+      {
+        "Key": "ProductType",
+        "Value": "3"
+      },
+      {
+        "Key": "ProductCode",
+        "Value": "BP"
+      },
+      {
+        "Key": "MinInstallmentValue",
+        "Value": "2"
+      },
+      {
+        "Key": "MaxInstallmentValue",
+        "Value": "9"
+      },
+      {
+        "Key": "DefaultInstallmentValue",
+        "Value": "3"
+      },
+      {
+        "Key": "MaxAmount",
+        "Value": "9999999"
+      },
+      {
+        "Key": "MinAmount",
+        "Value": "1"
+      },
+      {
+        "Key": "DefaultAmount",
+        "Value": "300"
+      },
+      {
+        "Key": "TotalInstallmentCountRule",
+        "Value": "9"
+      },
+      {
+        "Key": "MaxNonpaymenCount",
+        "Value": "0"
+      }
+    ],
+    "ContentBaseId": "27843"
+  },
+  {
+    "Title": "Sağlam Business Finansman Kart",
+    "Note": "<p>Bu tablo bilgi amaçlıdır. Kuveyt Türk Katılım Bankası A.Ş.'ni hiçbir şekilde taahhüt altına sokmaz.</p>\n",
+    "FooterNote": "\n",
+    "Parameters": [
+      {
+        "Key": "ProductType",
+        "Value": "7"
+      },
+      {
+        "Key": "ProductCode",
+        "Value": "KK"
+      },
+      {
+        "Key": "MinInstallmentValue",
+        "Value": "3"
+      },
+      {
+        "Key": "MaxInstallmentValue",
+        "Value": "12"
+      },
+      {
+        "Key": "DefaultAmount",
+        "Value": "1000"
+      },
+      {
+        "Key": "DefaultInstallmentValue",
+        "Value": "6"
+      },
+      {
+        "Key": "MinAmount",
+        "Value": "150"
+      },
+      {
+        "Key": "MaxAmount",
+        "Value": "99999999999"
+      }
+    ],
+    "ContentBaseId": "26181"
+  }
+]

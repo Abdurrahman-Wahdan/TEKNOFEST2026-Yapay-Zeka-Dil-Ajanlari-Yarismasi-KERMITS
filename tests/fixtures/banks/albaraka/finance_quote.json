@@ -1,0 +1,257 @@
+{
+  "Result": true,
+  "Data": {
+    "AnnualCostRate": "% 64,46",
+    "MonthlyInstallmentAmount": "6.684,28 TL",
+    "TotalAmountTobeRefunded": "160.422,77 TL",
+    "TotalFees": "575,00",
+    "PaymentPlan": {
+      "Rows": [
+        {
+          "InstallmentNo": "1",
+          "InstallmentAmount": "6.684,28 TL",
+          "Amount": "2.372,18 TL",
+          "Dividend": "3.317,00 TL",
+          "RemainingAmount": "100.000,00 TL",
+          "KKDF": "497,55 TL",
+          "BSMV": "497,55 TL"
+        },
+        {
+          "InstallmentNo": "2",
+          "InstallmentAmount": "6.684,28 TL",
+          "Amount": "2.610,27 TL",
+          "Dividend": "3.133,85 TL",
+          "RemainingAmount": "97.627,82 TL",
+          "KKDF": "470,08 TL",
+          "BSMV": "470,08 TL"
+        },
+        {
+          "InstallmentNo": "3",
+          "InstallmentAmount": "6.684,28 TL",
+          "Amount": "2.719,20 TL",
+          "Dividend": "3.050,06 TL",
+          "RemainingAmount": "95.017,55 TL",
+          "KKDF": "457,51 TL",
+          "BSMV": "457,51 TL"
+        },
+        {
+          "InstallmentNo": "4",
+          "InstallmentAmount": "6.684,28 TL",
+          "Amount": "2.832,66 TL",
+          "Dividend": "2.962,78 TL",
+          "RemainingAmount": "92.298,35 TL",
+          "KKDF": "444,42 TL",
+          "BSMV": "444,42 TL"
+        },
+        {
+          "InstallmentNo": "5",
+          "InstallmentAmount": "6.684,28 TL",
+          "Amount": "2.950,87 TL",
+          "Dividend": "2.871,85 TL",
+          "RemainingAmount": "89.465,69 TL",
+          "KKDF": "430,78 TL",
+          "BSMV": "430,78 TL"
+        },
+        {
+          "InstallmentNo": "6",
+          "InstallmentAmount": "6.684,28 TL",
+          "Amount": "3.074,01 TL",
+          "Dividend": "2.777,13 TL",
+          "RemainingAmount": "86.514,82 TL",
+          "KKDF": "416,57 TL",
+          "BSMV": "416,57 TL"
+        },
+        {
+          "InstallmentNo": "7",
+          "InstallmentAmount": "6.684,28 TL",
+          "Amount": "3.202,29 TL",
+          "Dividend": "2.678,45 TL",
+          "RemainingAmount": "83.440,81 TL",
+          "KKDF": "401,77 TL",
+          "BSMV": "401,77 TL"
+        },
+        {
+          "InstallmentNo": "8",
+          "InstallmentAmount": "6.684,28 TL",
+          "Amount": "3.335,92 TL",
+          "Dividend": "2.575,66 TL",
+          "RemainingAmount": "80.238,52 TL",
+          "KKDF": "386,35 TL",
+          "BSMV": "386,35 TL"
+        },
+        {
+          "InstallmentNo": "9",
+          "InstallmentAmount": "6.684,28 TL",
+          "Amount": "3.475,13 TL",
+          "Dividend": "2.468,57 TL",
+          "RemainingAmount": "76.902,60 TL",
+          "KKDF": "370,29 TL",
+          "BSMV": "370,29 TL"
+        },
+        {
+          "InstallmentNo": "10",
+          "InstallmentAmount": "6.684,28 TL",
+          "Amount": "3.620,16 TL",
+          "Dividend": "2.357,02 TL",
+          "RemainingAmount": "73.427,47 TL",
+          "KKDF": "353,55 TL",
+          "BSMV": "353,55 TL"
+        },
+        {
+          "InstallmentNo": "11",
+          "InstallmentAmount": "6.684,28 TL",
+          "Amount": "3.771,23 TL",
+          "Dividend": "2.240,81 TL",
+          "RemainingAmount": "69.807,31 TL",
+          "KKDF": "336,12 TL",
+          "BSMV": "336,12 TL"
+        },
+        {
+          "InstallmentNo": "12",
+          "InstallmentAmount": "6.684,28 TL",
+          "Amount": "3.928,60 TL",
+          "Dividend": "2.119,76 TL",
+          "RemainingAmount": "66.036,08 TL",
+          "KKDF": "317,96 TL",
+          "BSMV": "317,96 TL"
+        },
+        {
+          "InstallmentNo": "13",
+          "InstallmentAmount": "6.684,28 TL",
+          "Amount": "4.092,53 TL",
+          "Dividend": "1.993,65 TL",
+          "RemainingAmount": "62.107,48 TL",
+          "KKDF": "299,05 TL",
+          "BSMV": "299,05 TL"
+        },
+        {
+          "InstallmentNo": "14",
+          "InstallmentAmount": "6.684,28 TL",
+          "Amount": "4.263,32 TL",
+          "Dividend": "1.862,28 TL",
+          "RemainingAmount": "58.014,95 TL",
+          "KKDF": "279,34 TL",
+          "BSMV": "279,34 TL"
+        },
+        {
+          "InstallmentNo": "15",
+          "InstallmentAmount": "6.684,28 TL",
+          "Amount": "4.441,23 TL",
+          "Dividend": "1.725,43 TL",
+          "RemainingAmount": "53.751,63 TL",
+          "KKDF": "258,81 TL",
+          "BSMV": "258,81 TL"
+        },
+        {
+          "InstallmentNo": "16",
+          "InstallmentAmount": "6.684,28 TL",
+          "Amount": "4.626,56 TL",
+          "Dividend": "1.582,86 TL",
+          "RemainingAmount": "49.310,40 TL",
+          "KKDF": "237,43 TL",
+          "BSMV": "237,43 TL"
+        },
+        {
+          "InstallmentNo": "17",
+          "InstallmentAmount": "6.684,28 TL",
+          "Amount": "4.819,63 TL",
+          "Dividend": "1.434,35 TL",
+          "RemainingAmount": "44.683,84 TL",
+          "KKDF": "215,15 TL",
+          "BSMV": "215,15 TL"
+        },
+        {
+          "InstallmentNo": "18",
+          "InstallmentAmount": "6.684,28 TL",
+          "Amount": "5.020,74 TL",
+          "Dividend": "1.279,64 TL",
+          "RemainingAmount": "39.864,21 TL",
+          "KKDF": "191,95 TL",
+          "BSMV": "191,95 TL"
+        },
+        {
+          "InstallmentNo": "19",
+          "InstallmentAmount": "6.684,28 TL",
+          "Amount": "5.230,26 TL",
+          "Dividend": "1.118,48 TL",
+          "RemainingAmount": "34.843,47 TL",
+          "KKDF": "167,77 TL",
+          "BSMV": "167,77 TL"
+        },
+        {
+          "InstallmentNo": "20",
+          "InstallmentAmount": "6.684,28 TL",
+          "Amount": "5.448,52 TL",
+          "Dividend": "950,58 TL",
+          "RemainingAmount": "29.613,21 TL",
+          "KKDF": "142,59 TL",
+          "BSMV": "142,59 TL"
+        },
+        {
+          "InstallmentNo": "21",
+          "InstallmentAmount": "6.684,28 TL",
+          "Amount": "5.675,89 TL",
+          "Dividend": "775,69 TL",
+          "RemainingAmount": "24.164,69 TL",
+          "KKDF": "116,35 TL",
+          "BSMV": "116,35 TL"
+        },
+        {
+          "InstallmentNo": "22",
+          "InstallmentAmount": "6.684,28 TL",
+          "Amount": "5.912,75 TL",
+          "Dividend": "593,49 TL",
+          "RemainingAmount": "18.488,80 TL",
+          "KKDF": "89,02 TL",
+          "BSMV": "89,02 TL"
+        },
+        {
+          "InstallmentNo": "23",
+          "InstallmentAmount": "6.684,28 TL",
+          "Amount": "6.159,49 TL",
+          "Dividend": "403,69 TL",
+          "RemainingAmount": "12.576,05 TL",
+          "KKDF": "60,55 TL",
+          "BSMV": "60,55 TL"
+        },
+        {
+          "InstallmentNo": "24",
+          "InstallmentAmount": "6.684,33 TL",
+          "Amount": "6.416,56 TL",
+          "Dividend": "205,97 TL",
+          "RemainingAmount": "6.416,56 TL",
+          "KKDF": "30,9 TL",
+          "BSMV": "30,9 TL"
+        }
+      ],
+      "TotalRow": {
+        "InstallmentNo": "0",
+        "InstallmentAmount": "160.422,77 TL",
+        "Amount": "100.000,00 TL",
+        "Dividend": "46.479,05 TL",
+        "RemainingAmount": "-",
+        "KKDF": "6971,86 TL",
+        "BSMV": "6971,86 TL"
+      }
+    },
+    "AmortizationScheduleExpenses": [
+      {
+        "FeeShortCode": "ARTAO",
+        "FeeExplanation": "Araç Finansmanı Tahsis Ücreti (Orta ve Uzun Vadeli)",
+        "AmountWithTax": "575,00 TL"
+      }
+    ],
+    "FeeDetailHtml": "<table id=\"masraf_table\" class=\"table w-100\"><tbody><tr class=\"masraf_tr\"><td>Araç Finansmanı Tahsis Ücreti (Orta ve Uzun Vadeli)</td><td class=\"text-right\">575,00 TL</td></tr></tbody></table>",
+    "ProfitRate": "3,21",
+    "XkampMinAmount": 0,
+    "XkampMaxAmount": 0,
+    "XkampMinAmountManuel": 0,
+    "XkampMaxAmountManuel": 9999999,
+    "ApplicationName": "Hemen Başvur ",
+    "ApplicationLink": "https://basvur.albaraka.com.tr/jet-finansman",
+    "ApplicationAlert": null,
+    "DetailTitle": "Finansman Kullandırım Koşulları",
+    "DetailInformation": null
+  },
+  "ProductCode": "TASKRED"
+}

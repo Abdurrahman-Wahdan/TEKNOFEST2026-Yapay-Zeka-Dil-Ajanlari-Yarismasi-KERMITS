@@ -1,0 +1,19 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "UI",
+      "port": 3000
+    },
+    {
+      "name": "vision-ui",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "BROWSER=none PORT=3001 npm start"],
+      "cwd": "reference/vision-ui-dashboard-react",
+      "port": 3001
+    }
+  ]
+}

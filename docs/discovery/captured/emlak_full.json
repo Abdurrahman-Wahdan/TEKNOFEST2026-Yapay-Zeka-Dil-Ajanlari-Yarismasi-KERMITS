@@ -1,0 +1,594 @@
+{
+  "bank": "emlak",
+  "brand": "emlakkatilim",
+  "pages": [
+    {
+      "page": "https://www.emlakkatilim.com.tr/tr/hesaplama-araclari",
+      "inventory": {
+        "inputs": [
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "",
+            "name": "text",
+            "ph": "Aramak istediğiniz kelimeyi yazınız",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "",
+            "name": "language",
+            "ph": "",
+            "val": "tr"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "",
+            "name": "text",
+            "ph": "Aramak istediğiniz kelimeyi yazınız",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "",
+            "name": "language",
+            "ph": "",
+            "val": "tr"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "",
+            "name": "LanguageId",
+            "ph": "",
+            "val": "1"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "price-input",
+            "name": "Money",
+            "ph": "",
+            "val": "100.000"
+          },
+          {
+            "tag": "INPUT",
+            "type": "range",
+            "id": "price",
+            "name": "",
+            "ph": "",
+            "val": "100000"
+          },
+          {
+            "tag": "INPUT",
+            "type": "radio",
+            "id": "installmentradio-month",
+            "name": "profitShareInstallment",
+            "ph": "",
+            "val": "0"
+          },
+          {
+            "tag": "INPUT",
+            "type": "radio",
+            "id": "installmentradio-day",
+            "name": "profitShareInstallment",
+            "ph": "",
+            "val": "1"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "",
+            "name": "",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "number",
+            "id": "day-input",
+            "name": "profitShareInstallmentValueDay",
+            "ph": "",
+            "val": "31"
+          },
+          {
+            "tag": "INPUT",
+            "type": "range",
+            "id": "maturity",
+            "name": "",
+            "ph": "",
+            "val": "0"
+          },
+          {
+            "tag": "INPUT",
+            "type": "radio",
+            "id": "finansman-tutari",
+            "name": "CalculationTypeId",
+            "ph": "",
+            "val": "1"
+          },
+          {
+            "tag": "INPUT",
+            "type": "radio",
+            "id": "taksit-tutari",
+            "name": "CalculationTypeId",
+            "ph": "",
+            "val": "2"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "js-financial-rate",
+            "name": "CustomRate",
+            "ph": "0",
+            "val": "4.29"
+          },
+          {
+            "tag": "INPUT",
+            "type": "checkbox",
+            "id": "kar-orani",
+            "name": "finance-rate-status",
+            "ph": "",
+            "val": "2"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "financial-price-input",
+            "name": "LoanAmount",
+            "ph": "",
+            "val": "1.000"
+          },
+          {
+            "tag": "INPUT",
+            "type": "range",
+            "id": "price-finansman",
+            "name": "",
+            "ph": "",
+            "val": "1000"
+          },
+          {
+            "tag": "INPUT",
+            "type": "number",
+            "id": "financial-amount-input",
+            "name": "LoanMaturity",
+            "ph": "",
+            "val": "48"
+          },
+          {
+            "tag": "INPUT",
+            "type": "range",
+            "id": "vade-financial",
+            "name": "",
+            "ph": "",
+            "val": "48"
+          }
+        ],
+        "selects": [
+          {
+            "id": "js-currencyType",
+            "name": "Fec",
+            "options": [
+              {
+                "v": "0",
+                "t": "TL"
+              }
+            ]
+          },
+          {
+            "id": "js-installmentSelectMonth",
+            "name": "MaturityTerm",
+            "options": [
+              {
+                "v": "31",
+                "t": "1 Ay"
+              },
+              {
+                "v": "91",
+                "t": "3 Ay"
+              },
+              {
+                "v": "180",
+                "t": "6 Ay"
+              },
+              {
+                "v": "364",
+                "t": "12 Ay"
+              },
+              {
+                "v": "366",
+                "t": "12+ Ay"
+              }
+            ]
+          },
+          {
+            "id": "js-installmentSelectMonth",
+            "name": "",
+            "options": [
+              {
+                "v": "31",
+                "t": "1 Ay"
+              }
+            ]
+          },
+          {
+            "id": "js-installmentSelectAraDonem",
+            "name": "",
+            "options": [
+              {
+                "v": "30",
+                "t": "1 Ay"
+              },
+              {
+                "v": "90",
+                "t": "3 Ay"
+              },
+              {
+                "v": "180",
+                "t": "6 Ay"
+              },
+              {
+                "v": "360",
+                "t": "12 Ay"
+              }
+            ]
+          },
+          {
+            "id": "js-productType",
+            "name": "ProductTypeId",
+            "options": [
+              {
+                "v": "ARACBINEK2EL",
+                "t": "2. El Taşıt Finansmanı"
+              }
+            ]
+          },
+          {
+            "id": "js-financial-currencyType",
+            "name": "",
+            "options": [
+              {
+                "v": "TL",
+                "t": "TL"
+              }
+            ]
+          },
+          {
+            "id": "financial-amount-select",
+            "name": "",
+            "options": [
+              {
+                "v": "Ay",
+                "t": "Ay"
+              }
+            ]
+          }
+        ],
+        "buttons": [
+          "A",
+          "MÜŞTERİ OL",
+          "İNTERNET ŞUBE",
+          "A",
+          "A",
+          "A",
+          "BUTTON"
+        ]
+      },
+      "clicked": [
+        "Bireysel",
+        "Kurumsal",
+        "Dijital Bankacılık",
+        "A",
+        "İNTERNET ŞUBE",
+        "A",
+        "BUTTON",
+        "Arama Sonuçları"
+      ]
+    },
+    {
+      "page": "https://www.emlakkatilim.com.tr/tr/tum-kurlarimiz",
+      "inventory": {
+        "inputs": [
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "",
+            "name": "text",
+            "ph": "Aramak istediğiniz kelimeyi yazınız",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "",
+            "name": "language",
+            "ph": "",
+            "val": "tr"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "",
+            "name": "text",
+            "ph": "Aramak istediğiniz kelimeyi yazınız",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "",
+            "name": "language",
+            "ph": "",
+            "val": "tr"
+          }
+        ],
+        "selects": [],
+        "buttons": [
+          "A",
+          "MÜŞTERİ OL",
+          "İNTERNET ŞUBE",
+          "A",
+          "A",
+          "A",
+          "BUTTON"
+        ]
+      },
+      "clicked": [
+        "Bireysel",
+        "Kurumsal",
+        "Dijital Bankacılık",
+        "A",
+        "İNTERNET ŞUBE",
+        "A",
+        "BUTTON",
+        "Arama Sonuçları"
+      ]
+    }
+  ],
+  "endpoints": [
+    {
+      "page": "https://www.emlakkatilim.com.tr/tr/hesaplama-araclari",
+      "method": "GET",
+      "endpoint": "https://www.emlakkatilim.com.tr/Plugins/CalculateProfitShareRate?LanguageId=1&Money=100000&Fec=0&profitShareInstallment=0&MaturityTerm=31&profitShareInstallmentValueDay=31",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.emlakkatilim.com.tr/tr/hesaplama-araclari\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.emlakkatilim.com.tr/tr/hesaplama-araclari",
+      "method": "GET",
+      "endpoint": "https://www.emlakkatilim.com.tr/Plugins/CalculateProfitShareRate?LanguageId=1&Money=100000&Fec=0&profitShareInstallment=0&MaturityTerm=31&profitShareInstallmentValueDay=31",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.emlakkatilim.com.tr/tr/hesaplama-araclari\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.emlakkatilim.com.tr/tr/hesaplama-araclari",
+      "method": "GET",
+      "endpoint": "https://www.emlakkatilim.com.tr/Plugins/CalculateProfitShareRate?LanguageId=1&Money=100000&Fec=0&profitShareInstallment=0&MaturityTerm=31&profitShareInstallmentValueDay=31",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.emlakkatilim.com.tr/tr/hesaplama-araclari\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.emlakkatilim.com.tr/tr/hesaplama-araclari",
+      "method": "GET",
+      "endpoint": "https://www.emlakkatilim.com.tr/Plugins/CalculateProfitShareRate?LanguageId=1&Money=100000&Fec=0&profitShareInstallment=0&MaturityTerm=31&profitShareInstallmentValueDay=31",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.emlakkatilim.com.tr/tr/hesaplama-araclari\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.emlakkatilim.com.tr/tr/hesaplama-araclari",
+      "method": "GET",
+      "endpoint": "https://www.emlakkatilim.com.tr/Plugins/CalculateProfitShareRate?LanguageId=1&Money=100000&Fec=0&profitShareInstallment=0&MaturityTerm=31&profitShareInstallmentValueDay=31",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.emlakkatilim.com.tr/tr/hesaplama-araclari\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.emlakkatilim.com.tr/tr/hesaplama-araclari",
+      "method": "GET",
+      "endpoint": "https://www.emlakkatilim.com.tr/Plugins/CalculateProfitShareRate?LanguageId=1&Money=100000&Fec=0&profitShareInstallment=0&MaturityTerm=31&profitShareInstallmentValueDay=31",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.emlakkatilim.com.tr/tr/hesaplama-araclari\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.emlakkatilim.com.tr/tr/hesaplama-araclari",
+      "method": "GET",
+      "endpoint": "https://www.emlakkatilim.com.tr/Plugins/CalculateProfitShareRate?LanguageId=1&Money=100000&Fec=0&profitShareInstallment=0&MaturityTerm=31&profitShareInstallmentValueDay=31",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.emlakkatilim.com.tr/tr/hesaplama-araclari\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.emlakkatilim.com.tr/tr/hesaplama-araclari",
+      "method": "GET",
+      "endpoint": "https://www.emlakkatilim.com.tr/Plugins/CalculateProfitShareRate?LanguageId=1&Money=100000&Fec=0&profitShareInstallment=0&MaturityTerm=31&profitShareInstallmentValueDay=31",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.emlakkatilim.com.tr/tr/hesaplama-araclari\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.emlakkatilim.com.tr/tr/hesaplama-araclari",
+      "method": "GET",
+      "endpoint": "https://www.emlakkatilim.com.tr/Plugins/CalculateProfitShareRate?LanguageId=1&Money=100000&Fec=0&profitShareInstallment=0&MaturityTerm=31&profitShareInstallmentValueDay=31",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.emlakkatilim.com.tr/tr/hesaplama-araclari\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.emlakkatilim.com.tr/tr/hesaplama-araclari",
+      "method": "GET",
+      "endpoint": "https://www.emlakkatilim.com.tr/Plugins/CalculateProfitShareRate?LanguageId=1&Money=100000&Fec=0&profitShareInstallment=0&MaturityTerm=31&profitShareInstallmentValueDay=31",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.emlakkatilim.com.tr/tr/hesaplama-araclari\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.emlakkatilim.com.tr/tr/hesaplama-araclari",
+      "method": "GET",
+      "endpoint": "https://www.emlakkatilim.com.tr/Plugins/CalculateProfitShareRate?LanguageId=1&Money=100000&Fec=0&profitShareInstallment=0&MaturityTerm=180&profitShareInstallmentValueDay=24",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.emlakkatilim.com.tr/tr/hesaplama-araclari\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.emlakkatilim.com.tr/tr/hesaplama-araclari",
+      "method": "GET",
+      "endpoint": "https://www.emlakkatilim.com.tr/Plugins/CalculateProfitShareRate?LanguageId=1&Money=100000&Fec=0&profitShareInstallment=0&MaturityTerm=31&profitShareInstallmentValueDay=24",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.emlakkatilim.com.tr/tr/hesaplama-araclari\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.emlakkatilim.com.tr/tr/hesaplama-araclari",
+      "method": "GET",
+      "endpoint": "https://www.emlakkatilim.com.tr/Plugins/CalculateProfitShareRate?LanguageId=1&Money=100000&Fec=0&profitShareInstallment=0&MaturityTerm=366&profitShareInstallmentValueDay=24",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.emlakkatilim.com.tr/tr/hesaplama-araclari\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.emlakkatilim.com.tr/tr/hesaplama-araclari",
+      "method": "GET",
+      "endpoint": "https://www.emlakkatilim.com.tr/Plugins/SelectLoansProperty?ProductTypeId=ARACBINEK2EL",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.emlakkatilim.com.tr/tr/hesaplama-araclari\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.emlakkatilim.com.tr/tr/hesaplama-araclari",
+      "method": "GET",
+      "endpoint": "https://www.emlakkatilim.com.tr/Plugins/CalculateProfitShareRate?LanguageId=1&Money=100000&Fec=0&profitShareInstallment=0&MaturityTerm=366&profitShareInstallmentValueDay=24",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.emlakkatilim.com.tr/tr/hesaplama-araclari\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.emlakkatilim.com.tr/tr/hesaplama-araclari",
+      "method": "GET",
+      "endpoint": "https://www.emlakkatilim.com.tr/Plugins/CalculateLoansProduct?CalculationTypeId=1&ProductTypeId=ARACBINEK2EL&LoanAmount=1000&LoanMaturity=48&LoanSegmentId=1",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.emlakkatilim.com.tr/tr/hesaplama-araclari\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.emlakkatilim.com.tr/tr/hesaplama-araclari",
+      "method": "GET",
+      "endpoint": "https://www.emlakkatilim.com.tr/Plugins/CalculateProfitShareRate?LanguageId=1&Money=100000&Fec=0&profitShareInstallment=0&MaturityTerm=366&profitShareInstallmentValueDay=24",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.emlakkatilim.com.tr/tr/hesaplama-araclari\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.emlakkatilim.com.tr/tr/hesaplama-araclari",
+      "method": "GET",
+      "endpoint": "https://www.emlakkatilim.com.tr/Plugins/CalculateLoansProduct?CalculationTypeId=1&ProductTypeId=ARACBINEK2EL&LoanAmount=100000&LoanMaturity=48&LoanSegmentId=1",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.emlakkatilim.com.tr/tr/hesaplama-araclari\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.emlakkatilim.com.tr/tr/hesaplama-araclari",
+      "method": "GET",
+      "endpoint": "https://www.emlakkatilim.com.tr/Plugins/CalculateProfitShareRate?LanguageId=1&Money=100000&Fec=0&profitShareInstallment=0&MaturityTerm=366&profitShareInstallmentValueDay=24",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.emlakkatilim.com.tr/tr/hesaplama-araclari\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.emlakkatilim.com.tr/tr/hesaplama-araclari",
+      "method": "GET",
+      "endpoint": "https://www.emlakkatilim.com.tr/Plugins/CalculateProfitShareRate?LanguageId=1&Money=100000&Fec=0&profitShareInstallment=0&MaturityTerm=366&profitShareInstallmentValueDay=24",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.emlakkatilim.com.tr/tr/hesaplama-araclari\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.emlakkatilim.com.tr/tr/hesaplama-araclari",
+      "method": "GET",
+      "endpoint": "https://www.emlakkatilim.com.tr/Plugins/CalculateLoansProduct?CalculationTypeId=1&ProductTypeId=ARACBINEK2EL&LoanAmount=100000&LoanMaturity=48&LoanSegmentId=1",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.emlakkatilim.com.tr/tr/hesaplama-araclari\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.emlakkatilim.com.tr/tr/hesaplama-araclari",
+      "method": "GET",
+      "endpoint": "https://www.emlakkatilim.com.tr/Plugins/CalculateProfitShareRate?LanguageId=1&Money=100000&Fec=0&profitShareInstallment=0&MaturityTerm=366&profitShareInstallmentValueDay=24",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.emlakkatilim.com.tr/tr/hesaplama-araclari\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.emlakkatilim.com.tr/tr/hesaplama-araclari",
+      "method": "GET",
+      "endpoint": "https://www.emlakkatilim.com.tr/Plugins/CalculateLoansProduct?CalculationTypeId=1&ProductTypeId=ARACBINEK2EL&LoanAmount=100000&LoanMaturity=24&LoanSegmentId=1",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.emlakkatilim.com.tr/tr/hesaplama-araclari\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.emlakkatilim.com.tr/tr/hesaplama-araclari",
+      "method": "GET",
+      "endpoint": "https://www.emlakkatilim.com.tr/Plugins/CalculateProfitShareRate?LanguageId=1&Money=100000&Fec=0&profitShareInstallment=0&MaturityTerm=366&profitShareInstallmentValueDay=24",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.emlakkatilim.com.tr/tr/hesaplama-araclari\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.emlakkatilim.com.tr/tr/hesaplama-araclari",
+      "method": "GET",
+      "endpoint": "https://www.emlakkatilim.com.tr/Plugins/CalculateProfitShareRate?LanguageId=1&Money=100000&Fec=0&profitShareInstallment=0&MaturityTerm=366&profitShareInstallmentValueDay=24",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.emlakkatilim.com.tr/tr/hesaplama-araclari\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.emlakkatilim.com.tr/tr/hesaplama-araclari",
+      "method": "GET",
+      "endpoint": "https://www.emlakkatilim.com.tr/Plugins/CalculateLoansProduct?CalculationTypeId=1&ProductTypeId=ARACBINEK2EL&LoanAmount=100000&LoanMaturity=24&LoanSegmentId=1",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.emlakkatilim.com.tr/tr/hesaplama-araclari\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.emlakkatilim.com.tr/tr/hesaplama-araclari",
+      "method": "GET",
+      "endpoint": "https://www.emlakkatilim.com.tr/Plugins/CalculateProfitShareRate?LanguageId=1&Money=100000&Fec=0&profitShareInstallment=0&MaturityTerm=366&profitShareInstallmentValueDay=24",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.emlakkatilim.com.tr/tr/hesaplama-araclari\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.emlakkatilim.com.tr/tr/hesaplama-araclari",
+      "method": "GET",
+      "endpoint": "https://www.emlakkatilim.com.tr/Plugins/CalculateLoansProduct?CalculationTypeId=1&ProductTypeId=ARACBINEK2EL&LoanAmount=100000&LoanMaturity=24&LoanSegmentId=1",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.emlakkatilim.com.tr/tr/hesaplama-araclari\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ""
+    },
+    {
+      "page": "https://www.emlakkatilim.com.tr/tr/hesaplama-araclari",
+      "method": "GET",
+      "endpoint": "https://www.emlakkatilim.com.tr/search?q=null",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.emlakkatilim.com.tr/tr/arama-sonuclari?text=&language=tr\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: application/xml, text/xml, */*; q=0.01\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": "<!DOCTYPE html>\r\n<html class=\"no-js\" lang=\"tr\">\r\n\r\n\r\n\r\n<head>\r\n    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" />\r\n    <meta charset=\"UTF-8\" />\r\n    <meta name=\"viewport\"\r\n          content=\"width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no\" />\r\n    <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\" />\r\n\r\n    \r\n\r\n\r\n<meta name=\"facebook-domain-verification\" content=\"3j5q5iq5wsuunchv5ndcq4vl954z3o\">\r\n<meta name=\"rating\" content=\"General\">\r\n<meta name=\"googlebot\" content=\"NOODP\">\r\n<meta name=\"revisit-after\" content=\"2 days\">\r\n<meta name=\"pagecategory\" content=\"Diğer\">\r\n\r\n<title>404 | T&#252;rkiye Emlak Katılım Bankası</title>\r\n<meta name=\"title\" content=\"404 | T&#252;rkiye Emlak Katılım Bankası\">\r\n<meta property=\"og:title\" content=\"404 | T&#252;rkiye Emlak Katılım Bankası\">\r\n<meta property=\"twitter:title\" content=\"404 | T&#252;rkiye Emlak Katılım Bankası\">\r\n\r\n<meta name=\"robots\" />\r\n<meta property=\"og:type\" content=\"website\">\r\n<meta property=\"twitter:card\" content=\"summary\" />\r\n<meta property=\"twitter:site\" content=\"@TREmlakKatilim\">\r\n\r\n\r\n\r\n\r\n\r\n    <link rel=\"canonical\" href=\"https://www.emlakkatilim.com.tr/search\" />\r\n    <meta property=\"og:url\" content=\"https://www.emlakkatilim.com.tr/search\">\r\n    <meta property=\"twitter:url\" content=\"https://www.emlakkatilim.com.tr/search\">\r\n\r\n\r\n<script type=\"application/ld+json\">\r\n    {\r\n      \"@context\": \"https://schema.org\",\r\n      \"@type\": \"Organization\",\r\n      \"name\": \"Emlak Katılım\",\r\n      \"legalName\": \"Türkiye Emlak Katılım Bankası\",\r\n      \"url\": \"https://www.emlakkatilim.com.tr/\",\r\n      \"logo\": \"https://www.emlakkatilim.com.tr/Templates/Default/assets/img/emlak-icon.png\",\r\n      \"foundingDate\": \"1926\",\r\n      \"contactPoint\": {\r\n        \"@type\": \"ContactPoint\",\r\n        \"contactType\": \"customer support\",\r\n        \"telephone\": \"[+90 850 222 26 26]\"\r\n      },\r\n      \"sameAs\": [\r\n        \"https://www.facebook.com/TREmlakKatilim\",\r\n        \"https://twitter.com/TREmlakKatilim\",\r\n        \"https://www.youtube.com/channel/UC7TYdwk3C2ozQTdpP8pgQQQ\",\r\n        \"https://www.linkedin.com/company/emlakbank/\",\r\n        \"https://www.instagram.com/tremlakkatilim\"\r\n      ]\r\n    }\r\n</script>\r\n\r\n\r\n    <meta name=\"apple-itunes-app\" content=\"app-id=1467874818\">\r\n    <meta name=\"google-play-app\" content=\"app-id=com.emlakbank.mobil\">\r\n\r\n    <meta name=\"theme-color\" content=\"#ffffff\">\r\n    <meta name=\"msapplication-TileColor\" content=\"#2b5797\">\r\n    <meta name=\"msapplication-config\" content=\"/Templates/Default/assets/browserconfig.xml?v=1.0.0\">\r\n\r\n    <!--<link rel=\"manifest\" href=\"~/Templates/Default/assets/site.webmanifest?v=1.0.0\">-->\r\n    <link rel=\"apple-touch-icon\" sizes=\"180x180\" href=\"/Templates/Default/assets/img/apple-touch-icon.png?v=1.0.0\">\r\n    <link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"/Templates/Default/assets/img/favicon-32x32.png?v=1.0.0\">\r\n    <link rel=\"icon\" type=\"image/png\" sizes=\"16x16\" href=\"/Templates/Default/assets/img/favicon-16x16.png?v=1.0.0\">\r\n    <link rel=\"shortcut icon\" href=\"/Templates/Default/assets/img/favicon.ico?v=1.0.0\" />\r\n    <link href=\"/Templates/Default/assets/css/index.css?v=1.0.1\" rel=\"stylesheet\">\r\n\r\n    <script src=\"/Templates/Default/assets/js/libs.min.js?v=1.0.1\"></script>\r\n    <!-- Google tag (gtag.js) -->\r\n    <script async src=\"https://www.googletagmanager.com/gtag/js?id=G-J430VK26PL\"></script>\r\n    <script>\r\n        window.dataLayer = window.dataLayer || [];\r\n        function gtag(){\r\n            dataLayer.push(arguments);\r\n        }\r\n        gtag('js', new Date());\r\n        gtag('config', 'G-J430VK26PL');\r\n    </script>\r\n</head>\r\n\r\n<body>\r\n\r\n    <script id=\"auto-complate-template\" type=\"x-tmpl-mustache\">\r\n        {{#Data}}\r\n            <li class=\"ui-menu-item\">\r\n                <div id=\"ui-id-88\" tabindex=\"-1\" class=\"ui-menu-item-wrapper\">\r\n                    <a href={{link}}>{{title}}</a>\r\n                </div>\r\n                <span class=\"autocomplate-icon\">\r\n                    <img src=\"/Templates/Default/assets/img/autocomplate-icon.png\">\r\n                </span>\r\n            </li>\r\n        {{/Data}}\r\n\r\n</script>\r\n\r\n<script id=\"auto-complate-template-mobil\" type=\"x-tmpl-mustache\">\r\n        {{#Data}}\r\n            <li class=\"ui-menu-item\">\r\n                <a id=\"ui-id-8\" href=\"{{link}}\" tabindex=\"-1\" class=\"ui-menu-item-wrapper\">{{title}}</a>\r\n                <span class=\"autocomplate-icon\">\r\n                    <img src=\"/Templates/Default/assets/img/autocomplate-icon.png\">\r\n                </span>\r\n            </li>\r\n        {{/Data}}\r\n</script>\r\n\r\n\r\n    <svg width=\"0\"\r\n     height=\"0\"\r\n     style=\"position: absolute\"\r\n     xmlns=\"http://www.w3.org/2000/svg\"\r\n     xmlns:xlink=\"http://www.w3.org/1999/xlink\"\r\n     xmlns:pixel=\"urn:pixel\">\r\n    <symbol id=\"Ellipse 22\" viewBox=\"0 0 23 23\">\r\n        <circle data-name=\"Ellipse 22\" cx=\"11.5\" cy=\"11.5\" r=\"11.5\" fill=\"#fff\" />\r\n    </symbol>\r\n    <symbol id=\"Group 941\" viewBox=\"0 0 23 23\">\r\n        <g data-name=\"Group 941\" transform=\"translate(-446 -802)\">\r\n            <circle data-name=\"Ellipse 21\"\r\n                    cx=\"11.5\"\r\n                    cy=\"11.5\"\r\n                    r=\"11.5\"\r\n                    transform=\"translate(446 802)\"\r\n                    fill=\"#fff\" />\r\n            <path data-name=\"Path 113\"\r\n                  d=\"M458.061 806.234a.775.775 0 0 0-1.113 0l-6.723 7.455a.78.78 0 0 0 .659 1.318l3.155-.485a.769.769 0 0 1 .9.763v4.438a.77.77 0 0 0 .763.763h3.646a.77.77 0 0 0 .763-.763v-4.474a.769.769 0 0 1 .9-.763l3.121.52a.775.775 0 0 0 .659-1.318z\"\r\n                  fill=\"#04a452\" />\r\n        </g>\r\n    </symbol>\r\n    <symbol id=\"access-phone-icon\" viewBox=\"0 0 14.329 15.549\">\r\n        <path data-name=\"Path 1104\"\r\n              d=\"M8.719 10.015c-.207.458.008 1.049-.805 1.035-.359 0-1.338-1-2-1.728-.584-.7-1.819-2.219-1.762-2.648.106-.806.659-.508 1.14-.646.179-.052.56-2.991-2.218-5.952a.632.632 0 0 0-.71.071 4.89 4.89 0 0 0-2.162 2.8c-.293 1.13-.7 2.909 2.354 7.039a9.637 9.637 0 0 0 1.2"
+    },
+    {
+      "page": "https://www.emlakkatilim.com.tr/tr/tum-kurlarimiz",
+      "method": "GET",
+      "endpoint": "https://www.emlakkatilim.com.tr/search?q=null",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://www.emlakkatilim.com.tr/tr/arama-sonuclari?text=&language=tr\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: application/xml, text/xml, */*; q=0.01\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0",
+      "request_body": "",
+      "response": ".playwright-mcp/response-2026-08-08T15-39-07-167Z.bin"
+    }
+  ],
+  "third_party": []
+}

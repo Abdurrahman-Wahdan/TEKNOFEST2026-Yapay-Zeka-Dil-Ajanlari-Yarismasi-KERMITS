@@ -1,0 +1,73 @@
+{
+  "GetKarPayiHesaplamaResult": {
+    "Data": [
+      {
+        "AccountGroupType": 4,
+        "AnnuallyGrossRatio": "40.75313361",
+        "Currency": "TL ",
+        "CurrencyTypeId": 0,
+        "CustomerType": 1,
+        "MaximumAmount": 10000000.0,
+        "MaximumDueDay": 31,
+        "MinimumAmount": 10000.0,
+        "MinimumDueDay": 0,
+        "NetRatio": "28.72816788",
+        "ProfitRate": "99/1"
+      },
+      {
+        "AccountGroupType": 4,
+        "AnnuallyGrossRatio": "41.09859932",
+        "Currency": "TL ",
+        "CurrencyTypeId": 0,
+        "CustomerType": 1,
+        "MaximumAmount": 10000000.0,
+        "MaximumDueDay": 91,
+        "MinimumAmount": 10000.0,
+        "MinimumDueDay": 32,
+        "NetRatio": "85.04595087",
+        "ProfitRate": "96/4"
+      },
+      {
+        "AccountGroupType": 4,
+        "AnnuallyGrossRatio": "29.80493729",
+        "Currency": "TL ",
+        "CurrencyTypeId": 0,
+        "CustomerType": 1,
+        "MaximumAmount": 10000000.0,
+        "MaximumDueDay": 180,
+        "MinimumAmount": 10000.0,
+        "MinimumDueDay": 92,
+        "NetRatio": "121.99609950",
+        "ProfitRate": "68/32"
+      },
+      {
+        "AccountGroupType": 4,
+        "AnnuallyGrossRatio": "27.21241487",
+        "Currency": "TL ",
+        "CurrencyTypeId": 0,
+        "CustomerType": 1,
+        "MaximumAmount": 10000000.0,
+        "MaximumDueDay": 364,
+        "MinimumAmount": 10000.0,
+        "MinimumDueDay": 181,
+        "NetRatio": "230.67181262",
+        "ProfitRate": "64/36"
+      },
+      {
+        "AccountGroupType": 4,
+        "AnnuallyGrossRatio": "27.13786031",
+        "Currency": "TL ",
+        "CurrencyTypeId": 0,
+        "CustomerType": 1,
+        "MaximumAmount": 10000000.0,
+        "MaximumDueDay": 450,
+        "MinimumAmount": 10000.0,
+        "MinimumDueDay": 365,
+        "NetRatio": "244.24074277",
+        "ProfitRate": "64/36"
+      }
+    ],
+    "Message": null,
+    "Result": 1
+  }
+}

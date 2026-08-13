@@ -1,0 +1,1123 @@
+{
+  "bank": "dunya",
+  "brand": "dunyakatilim",
+  "pages": [
+    {
+      "page": "https://dunyakatilim.com.tr",
+      "inventory": {
+        "inputs": [
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "mobileQuery",
+            "name": "query",
+            "ph": "Size nasıl yardımcı olabiliriz ?",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "query",
+            "name": "query",
+            "ph": "Size nasıl yardımcı olabiliriz ?",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "Financial",
+            "name": "",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "tel",
+            "id": "loanAmount",
+            "name": "loanAmount",
+            "ph": "1.000",
+            "val": "200.000"
+          },
+          {
+            "tag": "INPUT",
+            "type": "range",
+            "id": "loanRange",
+            "name": "",
+            "ph": "",
+            "val": "200000"
+          },
+          {
+            "tag": "INPUT",
+            "type": "range",
+            "id": "loanInstallmentRange",
+            "name": "loanInstallmentRange",
+            "ph": "",
+            "val": "12"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "",
+            "name": "__RequestVerificationToken",
+            "ph": "",
+            "val": "CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3g"
+          },
+          {
+            "tag": "INPUT",
+            "type": "checkbox",
+            "id": "checkProfitRateCheckbox",
+            "name": "checkProfitRate",
+            "ph": "",
+            "val": "on"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "checkProfitRateInput",
+            "name": "",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "selectedProductCategory",
+            "name": "",
+            "ph": "",
+            "val": "Vehicle"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "paymentPlanHTML",
+            "name": "",
+            "ph": "",
+            "val": "<html>  <head>    <META http-equiv=\"Cont"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "Dividend",
+            "name": "",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "tel",
+            "id": "balanceInput",
+            "name": "balanceInput",
+            "ph": "",
+            "val": "250"
+          },
+          {
+            "tag": "INPUT",
+            "type": "range",
+            "id": "dividendBalance",
+            "name": "",
+            "ph": "",
+            "val": "250"
+          },
+          {
+            "tag": "INPUT",
+            "type": "radio",
+            "id": "maturityTypeDay",
+            "name": "maturityType",
+            "ph": "",
+            "val": "on"
+          },
+          {
+            "tag": "INPUT",
+            "type": "radio",
+            "id": "maturityTypeMonth",
+            "name": "maturityType",
+            "ph": "",
+            "val": "on"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "maturityDayInp",
+            "name": "",
+            "ph": "",
+            "val": "31"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "",
+            "name": "__RequestVerificationToken",
+            "ph": "",
+            "val": "CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3g"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "CurrencyBuyCalculate",
+            "name": "CurrencyBuyCalculate",
+            "ph": "",
+            "val": "/CurrencyBuyCalculate"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "LoanInstallmentValues",
+            "name": "LoanInstallmentValues",
+            "ph": "",
+            "val": "/LoanInstallmentValues"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "LoanCheckRate",
+            "name": "LoanCheckRate",
+            "ph": "",
+            "val": "/LoanCheckRate"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "DividendEstimatedProfit",
+            "name": "DividendEstimatedProfit",
+            "ph": "",
+            "val": "/DividendEstimatedProfit"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "Currency",
+            "name": "",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "tel",
+            "id": "buyFromAmount",
+            "name": "buyFromAmount",
+            "ph": "",
+            "val": "1"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "buyToAmount",
+            "name": "buyToAmount",
+            "ph": "",
+            "val": "47,6"
+          },
+          {
+            "tag": "INPUT",
+            "type": "tel",
+            "id": "sellFromAmount",
+            "name": "sellFromAmount",
+            "ph": "",
+            "val": "1"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "sellToAmount",
+            "name": "sellToAmount",
+            "ph": "1.000",
+            "val": "47,52"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "",
+            "name": "__RequestVerificationToken",
+            "ph": "",
+            "val": "CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3g"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "paymentPlanHTML",
+            "name": "",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "beginDate",
+            "name": "",
+            "ph": "",
+            "val": "8.07.2026 18:47:53"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "endDate",
+            "name": "",
+            "ph": "",
+            "val": "8.08.2026 18:47:53"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "PreciousMetal",
+            "name": "",
+            "ph": "",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "tel",
+            "id": "metalBuyFromAmount",
+            "name": "metalBuyFromAmount",
+            "ph": "",
+            "val": "1"
+          },
+          {
+            "tag": "INPUT",
+            "type": "tel",
+            "id": "metalDestinationAmount",
+            "name": "metalDestinationAmount",
+            "ph": "",
+            "val": "6.626,43"
+          },
+          {
+            "tag": "INPUT",
+            "type": "tel",
+            "id": "metalSellFromAmount",
+            "name": "metalSellFromAmount",
+            "ph": "",
+            "val": "1"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "metalSellDestinationAmount",
+            "name": "metalSellDestinationAmount",
+            "ph": "1.000",
+            "val": "6.583,9"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "",
+            "name": "__RequestVerificationToken",
+            "ph": "",
+            "val": "CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3g"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "pmBeginDate",
+            "name": "",
+            "ph": "",
+            "val": "8.07.2026 18:47:53"
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "pmEndDate",
+            "name": "",
+            "ph": "",
+            "val": "7.08.2026 18:47:53"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "CurrencyBuyCalculate",
+            "name": "CurrencyBuyCalculate",
+            "ph": "",
+            "val": "/CurrencyBuyCalculate"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "LoanInstallmentValues",
+            "name": "LoanInstallmentValues",
+            "ph": "",
+            "val": "/LoanInstallmentValues"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "LoanCheckRate",
+            "name": "LoanCheckRate",
+            "ph": "",
+            "val": "/LoanCheckRate"
+          },
+          {
+            "tag": "INPUT",
+            "type": "hidden",
+            "id": "DividendEstimatedProfit",
+            "name": "DividendEstimatedProfit",
+            "ph": "",
+            "val": "/DividendEstimatedProfit"
+          },
+          {
+            "tag": "INPUT",
+            "type": "checkbox",
+            "id": "functionalityCookies",
+            "name": "",
+            "ph": "",
+            "val": "on"
+          },
+          {
+            "tag": "INPUT",
+            "type": "checkbox",
+            "id": "personalAdsCookies",
+            "name": "",
+            "ph": "",
+            "val": "on"
+          }
+        ],
+        "selects": [
+          {
+            "id": "loanSelect",
+            "name": "state",
+            "options": [
+              {
+                "v": "ARACBINEK2ELTUKETICI",
+                "t": "Araç Binek 2.El"
+              },
+              {
+                "v": "ARACBINEKYENITUKETICI",
+                "t": "Araç Binek Yeni"
+              },
+              {
+                "v": "ARSATUKETICI",
+                "t": "Arsa"
+              },
+              {
+                "v": "2ELKONUTTUKETICI",
+                "t": "Konut 2.El"
+              },
+              {
+                "v": "KONUTTUKETICI",
+                "t": "Konut Yeni"
+              },
+              {
+                "v": "TUKETICIIHTIYAC",
+                "t": "Tüketici İhtiyaç Finansmanı"
+              }
+            ]
+          },
+          {
+            "id": "dividendSelect",
+            "name": "",
+            "options": [
+              {
+                "v": "{\"id\":143,\"productCode\":\"KTLMHSP\",\"name\":\"Standart Katılma Hesabı\",\"productMaturitySettings\":[{\"id\":871,\"maturityCode\":\"FixedDepositAccount_AYLIK\",\"maturityName\":\"1 ay vadeli\",\"maturityPeriod\":\"Day\",\"maturityPeriodBeginValue\":31,\"maturityPeriodEndValue\":31,\"nameML\":[{\"languageCode\":\"tur\",\"value\":\"1 ay vadeli\"},{\"languageCode\":\"eng\",\"value\":\"1 ay vadeli\"}]},{\"id\":878,\"maturityCode\":\"KTLMHSP_ESNEKVADELI\",\"maturityName\":\"Esnek vadeli\",\"maturityPeriod\":\"Day\",\"maturityPeriodBeginValue\":31,\"maturityPeriodEndValue\":1094,\"nameML\":[{\"languageCode\":\"tur\",\"value\":\"Esnek vadeli\"},{\"languageCode\":\"eng\",\"value\":\"Esnek vadeli\"}]},{\"id\":869,\"maturityCode\":\"FixedDepositAccount_3AYLIK\",\"maturityName\":\"3 ay vadeli\",\"maturityPeriod\":\"Day\",\"maturityPeriodBeginValue\":91,\"maturityPeriodEndValue\":91,\"nameML\":[{\"languageCode\":\"tur\",\"value\":\"3 ay vadeli\"}]},{\"id\":870,\"maturityCode\":\"FixedDepositAccount_6AYLIK\",\"maturityName\":\"6 ay vadeli\",\"maturityPeriod\":\"Day\",\"maturityPeriodBeginValue\":181,\"maturityPeriodEndValue\":181,\"nameML\":[{\"languageCode\":\"tur\",\"value\":\"6 ay vadeli\"},{\"languageCode\":\"eng\",\"value\":\"6 ay vadeli\"}]},{\"id\":1884,\"maturityCode\":\"KTLMHSP_1YILVADELI\",\"maturityName\":\"1 yıl vadeli\",\"maturityPeriod\":\"Day\",\"maturityPeriodBeginValue\":365,\"maturityPeriodEndValue\":365,\"nameML\":[{\"languageCode\":\"tur\",\"value\":\"1 yıl vadeli\"}]},{\"id\":1885,\"maturityCode\":\"KTLMHSP_1YILDANUZUNVADELI\",\"maturityName\":\"1 yıldan uzun vadeli\",\"maturityPeriod\":\"Day\",\"maturityPeriodBeginValue\":366,\"maturityPeriodEndValue\":1094,\"nameML\":[{\"languageCode\":\"tur\",\"value\":\"1 yıldan uzun vadeli\"}]}],\"availableCurrencies\":[\"TRY\",\"USD\",\"EUR\"],\"productCurrencySettings\":[{\"currencyCode\":\"USD\",\"minimumOpeningBalance\":250.000000},{\"currencyCode\":\"TRY\",\"minimumOpeningBalance\":250.000000},{\"currencyCode\":\"EUR\",\"minimumOpeningBalance\":250.000000}],\"nameML\":[{\"languageCode\":\"tur\",\"value\":\"Standart Katılma Hesabı\"},{\"languageCode\":\"eng\",\"value\":\"Standart Katılma Hesabı\"}]}",
+                "t": "Standart Katılma Hesabı"
+              },
+              {
+                "v": "{\"id\":1157,\"productCode\":\"GNSHSP\",\"name\":\"Güneş Katılma Hesabı\",\"productMaturitySettings\":[{\"id\":2888,\"maturityCode\":\"GNSHSP_GÜNLÜK\",\"maturityName\":\"Günlük\",\"maturityPeriod\":\"Day\",\"maturityPeriodBeginValue\":1,\"maturityPeriodEndValue\":30,\"nameML\":[{\"languageCode\":\"tur\",\"value\":\"Günlük\"},{\"languageCode\":\"eng\",\"value\":\"Günlük\"}]}],\"availableCurrencies\":[\"TRY\"],\"productCurrencySettings\":[{\"currencyCode\":\"TRY\",\"minimumOpeningBalance\":5000.000000}],\"nameML\":[{\"languageCode\":\"tur\",\"value\":\"Güneş Katılma Hesabı\"},{\"languageCode\":\"eng\",\"value\":\"Güneş Participation Account\"}]}",
+                "t": "Güneş Katılma Hesabı"
+              },
+              {
+                "v": "{\"id\":1158,\"productCode\":\"ALTKTLMHSP\",\"name\":\"Altın Katılma Hesabı\",\"productMaturitySettings\":[{\"id\":2894,\"maturityCode\":\"ALTKTLMHSP_1AYVADELI\",\"maturityName\":\"1 ay vadeli\",\"maturityPeriod\":\"Day\",\"maturityPeriodBeginValue\":31,\"maturityPeriodEndValue\":31,\"nameML\":[{\"languageCode\":\"tur\",\"value\":\"1 ay vadeli\"},{\"languageCode\":\"eng\",\"value\":\"1 ay vadeli\"}]},{\"id\":2889,\"maturityCode\":\"ALTKTLMHSP_3AYVADELI\",\"maturityName\":\"3 ay vadeli\",\"maturityPeriod\":\"Day\",\"maturityPeriodBeginValue\":91,\"maturityPeriodEndValue\":91,\"nameML\":[{\"languageCode\":\"tur\",\"value\":\"3 ay vadeli\"},{\"languageCode\":\"eng\",\"value\":\"3 ay vadeli\"}]},{\"id\":2893,\"maturityCode\":\"ALTKTLMHSP_ESNEKVADELI\",\"maturityName\":\"Esnek Vadeli\",\"maturityPeriod\":\"Day\",\"maturityPeriodBeginValue\":91,\"maturityPeriodEndValue\":1094,\"nameML\":[{\"languageCode\":\"tur\",\"value\":\"Esnek Vadeli\"},{\"languageCode\":\"eng\",\"value\":\"Esnek Vadeli\"}]},{\"id\":2890,\"maturityCode\":\"ALTKTLMHSP_6AYVADELI\",\"maturityName\":\"6 ay vadeli\",\"maturityPeriod\":\"Day\",\"maturityPeriodBeginValue\":180,\"maturityPeriodEndValue\":180,\"nameML\":[{\"languageCode\":\"tur\",\"value\":\"6 ay vadeli\"},{\"languageCode\":\"eng\",\"value\":\"6 ay vadeli\"}]},{\"id\":2891,\"maturityCode\":\"ALTKTLMHSP_1YILVADELI\",\"maturityName\":\"1 yıl vadeli\",\"maturityPeriod\":\"Day\",\"maturityPeriodBeginValue\":365,\"maturityPeriodEndValue\":365,\"nameML\":[{\"languageCode\":\"tur\",\"value\":\"1 yıl vadeli\"},{\"languageCode\":\"eng\",\"value\":\"1 yıl vadeli\"}]},{\"id\":2892,\"maturityCode\":\"ALTKTLMHSP_1YILDANUZUNVADELI\",\"maturityName\":\"1 yıldan uzun vadeli\",\"maturityPeriod\":\"Day\",\"maturityPeriodBeginValue\":366,\"maturityPeriodEndValue\":1094,\"nameML\":[{\"languageCode\":\"tur\",\"value\":\"1 yıldan uzun vadeli\"},{\"languageCode\":\"eng\",\"value\":\"1 yıldan uzun vadeli\"}]}],\"availableCurrencies\":[\"XAU\"],\"productCurrencySettings\":[{\"currencyCode\":\"XAU\",\"minimumOpeningBalance\":20.000000}],\"nameML\":[{\"languageCode\":\"tur\",\"value\":\"Altın Katılma Hesabı\"},{\"languageCode\":\"eng\",\"value\":\"Gold Participation Account\"}]}",
+                "t": "Altın Katılma Hesabı"
+              }
+            ]
+          },
+          {
+            "id": "dividendCurrencySelect",
+            "name": "",
+            "options": [
+              {
+                "v": "TRY",
+                "t": "TRY"
+              },
+              {
+                "v": "USD",
+                "t": "USD"
+              },
+              {
+                "v": "EUR",
+                "t": "EUR"
+              }
+            ]
+          },
+          {
+            "id": "maturitySelect",
+            "name": "",
+            "options": [
+              {
+                "v": "{\"id\":871,\"maturityCode\":\"FixedDepositAccount_AYLIK\",\"maturityName\":\"1 ay vadeli\",\"maturityPeriod\":\"Day\",\"maturityPeriodBeginValue\":31,\"maturityPeriodEndValue\":31,\"nameML\":[{\"languageCode\":\"tur\",\"value\":\"1 ay vadeli\"},{\"languageCode\":\"eng\",\"value\":\"1 ay vadeli\"}]}",
+                "t": "1 ay vadeli"
+              },
+              {
+                "v": "{\"id\":869,\"maturityCode\":\"FixedDepositAccount_3AYLIK\",\"maturityName\":\"3 ay vadeli\",\"maturityPeriod\":\"Day\",\"maturityPeriodBeginValue\":91,\"maturityPeriodEndValue\":91,\"nameML\":[{\"languageCode\":\"tur\",\"value\":\"3 ay vadeli\"}]}",
+                "t": "3 ay vadeli"
+              },
+              {
+                "v": "{\"id\":870,\"maturityCode\":\"FixedDepositAccount_6AYLIK\",\"maturityName\":\"6 ay vadeli\",\"maturityPeriod\":\"Day\",\"maturityPeriodBeginValue\":181,\"maturityPeriodEndValue\":181,\"nameML\":[{\"languageCode\":\"tur\",\"value\":\"6 ay vadeli\"},{\"languageCode\":\"eng\",\"value\":\"6 ay vadeli\"}]}",
+                "t": "6 ay vadeli"
+              },
+              {
+                "v": "{\"id\":1884,\"maturityCode\":\"KTLMHSP_1YILVADELI\",\"maturityName\":\"1 yıl vadeli\",\"maturityPeriod\":\"Day\",\"maturityPeriodBeginValue\":365,\"maturityPeriodEndValue\":365,\"nameML\":[{\"languageCode\":\"tur\",\"value\":\"1 yıl vadeli\"}]}",
+                "t": "1 yıl vadeli"
+              }
+            ]
+          },
+          {
+            "id": "buyFromCurrency",
+            "name": "",
+            "options": [
+              {
+                "v": "USD",
+                "t": "USD"
+              },
+              {
+                "v": "EUR",
+                "t": "EUR"
+              },
+              {
+                "v": "GBP",
+                "t": "GBP"
+              },
+              {
+                "v": "AUD",
+                "t": "AUD"
+              },
+              {
+                "v": "CAD",
+                "t": "CAD"
+              },
+              {
+                "v": "CNY",
+                "t": "CNY"
+              },
+              {
+                "v": "JPY",
+                "t": "JPY"
+              },
+              {
+                "v": "SAR",
+                "t": "SAR"
+              },
+              {
+                "v": "CHF",
+                "t": "CHF"
+              },
+              {
+                "v": "AED",
+                "t": "AED"
+              }
+            ]
+          },
+          {
+            "id": "buyToCurrency",
+            "name": "",
+            "options": [
+              {
+                "v": "TRY",
+                "t": "TRY"
+              },
+              {
+                "v": "USD",
+                "t": "USD"
+              },
+              {
+                "v": "EUR",
+                "t": "EUR"
+              },
+              {
+                "v": "GBP",
+                "t": "GBP"
+              },
+              {
+                "v": "AUD",
+                "t": "AUD"
+              },
+              {
+                "v": "CAD",
+                "t": "CAD"
+              },
+              {
+                "v": "CNY",
+                "t": "CNY"
+              },
+              {
+                "v": "JPY",
+                "t": "JPY"
+              },
+              {
+                "v": "SAR",
+                "t": "SAR"
+              },
+              {
+                "v": "CHF",
+                "t": "CHF"
+              },
+              {
+                "v": "AED",
+                "t": "AED"
+              }
+            ]
+          },
+          {
+            "id": "sellFromCurrency",
+            "name": "",
+            "options": [
+              {
+                "v": "USD",
+                "t": "USD"
+              },
+              {
+                "v": "EUR",
+                "t": "EUR"
+              },
+              {
+                "v": "GBP",
+                "t": "GBP"
+              },
+              {
+                "v": "AUD",
+                "t": "AUD"
+              },
+              {
+                "v": "CAD",
+                "t": "CAD"
+              },
+              {
+                "v": "CNY",
+                "t": "CNY"
+              },
+              {
+                "v": "JPY",
+                "t": "JPY"
+              },
+              {
+                "v": "SAR",
+                "t": "SAR"
+              },
+              {
+                "v": "CHF",
+                "t": "CHF"
+              },
+              {
+                "v": "AED",
+                "t": "AED"
+              }
+            ]
+          },
+          {
+            "id": "sellToCurrency",
+            "name": "",
+            "options": [
+              {
+                "v": "TRY",
+                "t": "TRY"
+              },
+              {
+                "v": "USD",
+                "t": "USD"
+              },
+              {
+                "v": "EUR",
+                "t": "EUR"
+              },
+              {
+                "v": "GBP",
+                "t": "GBP"
+              },
+              {
+                "v": "AUD",
+                "t": "AUD"
+              },
+              {
+                "v": "CAD",
+                "t": "CAD"
+              },
+              {
+                "v": "CNY",
+                "t": "CNY"
+              },
+              {
+                "v": "JPY",
+                "t": "JPY"
+              },
+              {
+                "v": "SAR",
+                "t": "SAR"
+              },
+              {
+                "v": "CHF",
+                "t": "CHF"
+              },
+              {
+                "v": "AED",
+                "t": "AED"
+              }
+            ]
+          },
+          {
+            "id": "metalBuyFromCurrency",
+            "name": "",
+            "options": [
+              {
+                "v": "XAU",
+                "t": "Altın"
+              },
+              {
+                "v": "XAG",
+                "t": "Gümüş"
+              },
+              {
+                "v": "XPT",
+                "t": "Platin"
+              },
+              {
+                "v": "XPD",
+                "t": "Paladyum"
+              }
+            ]
+          },
+          {
+            "id": "metalBuyDestinationCurrency",
+            "name": "",
+            "options": [
+              {
+                "v": "TRY",
+                "t": "TRY"
+              },
+              {
+                "v": "USD",
+                "t": "USD"
+              },
+              {
+                "v": "EUR",
+                "t": "EUR"
+              },
+              {
+                "v": "GBP",
+                "t": "GBP"
+              },
+              {
+                "v": "AUD",
+                "t": "AUD"
+              },
+              {
+                "v": "CAD",
+                "t": "CAD"
+              },
+              {
+                "v": "CNY",
+                "t": "CNY"
+              },
+              {
+                "v": "JPY",
+                "t": "JPY"
+              },
+              {
+                "v": "SAR",
+                "t": "SAR"
+              },
+              {
+                "v": "CHF",
+                "t": "CHF"
+              },
+              {
+                "v": "AED",
+                "t": "AED"
+              }
+            ]
+          },
+          {
+            "id": "metalSellFromCurrency",
+            "name": "",
+            "options": [
+              {
+                "v": "XAU",
+                "t": "Altın"
+              },
+              {
+                "v": "XAG",
+                "t": "Gümüş"
+              },
+              {
+                "v": "XPT",
+                "t": "Platin"
+              },
+              {
+                "v": "XPD",
+                "t": "Paladyum"
+              }
+            ]
+          },
+          {
+            "id": "metalSellToCurrency",
+            "name": "",
+            "options": [
+              {
+                "v": "TRY",
+                "t": "TRY"
+              },
+              {
+                "v": "USD",
+                "t": "USD"
+              },
+              {
+                "v": "EUR",
+                "t": "EUR"
+              },
+              {
+                "v": "GBP",
+                "t": "GBP"
+              },
+              {
+                "v": "AUD",
+                "t": "AUD"
+              },
+              {
+                "v": "CAD",
+                "t": "CAD"
+              },
+              {
+                "v": "CNY",
+                "t": "CNY"
+              },
+              {
+                "v": "JPY",
+                "t": "JPY"
+              },
+              {
+                "v": "SAR",
+                "t": "SAR"
+              },
+              {
+                "v": "CHF",
+                "t": "CHF"
+              },
+              {
+                "v": "AED",
+                "t": "AED"
+              }
+            ]
+          }
+        ],
+        "buttons": [
+          "BUTTON",
+          "İnternet Şube",
+          "BUTTON",
+          "Ödeme Planı",
+          "1A",
+          "6A",
+          "1Y",
+          "YTD",
+          "Tercihler",
+          "Reddet",
+          "Kabul Et"
+        ]
+      },
+      "clicked": [
+        "BUTTON",
+        "İnternet Şube",
+        "BUTTON",
+        "A",
+        "BUTTON",
+        "A",
+        "Tercihler",
+        "Reddet"
+      ]
+    },
+    {
+      "page": "https://dunyakatilim.com.tr/gunluk-kurlar",
+      "inventory": {
+        "inputs": [
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "query",
+            "name": "query",
+            "ph": "Size nasıl yardımcı olabiliriz ?",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "id": "query",
+            "name": "query",
+            "ph": "Size nasıl yardımcı olabiliriz ?",
+            "val": ""
+          },
+          {
+            "tag": "INPUT",
+            "type": "checkbox",
+            "id": "functionalityCookies",
+            "name": "",
+            "ph": "",
+            "val": "on"
+          },
+          {
+            "tag": "INPUT",
+            "type": "checkbox",
+            "id": "personalAdsCookies",
+            "name": "",
+            "ph": "",
+            "val": "on"
+          }
+        ],
+        "selects": [],
+        "buttons": [
+          "BUTTON",
+          "İnternet Şube",
+          "BUTTON",
+          "Tercihler",
+          "Reddet",
+          "Kabul Et"
+        ]
+      },
+      "clicked": [
+        "BUTTON",
+        "İnternet Şube",
+        "BUTTON",
+        "A",
+        "BUTTON",
+        "A",
+        "Tercihler",
+        "Reddet"
+      ]
+    }
+  ],
+  "endpoints": [
+    {
+      "page": "https://dunyakatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://dunyakatilim.com.tr/LoanInstallmentValues?lang=tr",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://dunyakatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "productCode=ARSATUKETICI&__RequestVerificationToken=CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3gEJR2eSD0Y0SIqJw3t7Z8yTDERdbUMyp_G5ojbRG7iBLv1S2ly7Pf3QeC46rdOi1t6cU2wzjoSMhKt7snklqCMYJwtSswWgaEcvZD98eACapcgSgstmE",
+      "response": ""
+    },
+    {
+      "page": "https://dunyakatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://dunyakatilim.com.tr/LoanCheckRate?lang=tr",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://dunyakatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "productName=Arsa&productCode=ARSATUKETICI&productCategory=MiscellaneousRealEstate&amount=200.000&installmentCount=12&userRate=NaN&userSelected=false&__RequestVerificationToken=CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3gEJR2eSD0Y0SIqJw3t7Z8yTDERdbUMyp_G5ojbRG7iBLv1S2ly7Pf3QeC46rdOi1t6cU2wzjoSMhKt7snklqCMYJwtSswWgaEcvZD98eACapcgSgstmE",
+      "response": ""
+    },
+    {
+      "page": "https://dunyakatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://dunyakatilim.com.tr/LoanCheckRate?lang=tr",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://dunyakatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "productName=Arsa&productCode=ARSATUKETICI&productCategory=MiscellaneousRealEstate&amount=100.000&installmentCount=12&userRate=NaN&userSelected=false&__RequestVerificationToken=CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3gEJR2eSD0Y0SIqJw3t7Z8yTDERdbUMyp_G5ojbRG7iBLv1S2ly7Pf3QeC46rdOi1t6cU2wzjoSMhKt7snklqCMYJwtSswWgaEcvZD98eACapcgSgstmE",
+      "response": ""
+    },
+    {
+      "page": "https://dunyakatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://dunyakatilim.com.tr/LoanCheckRate?lang=tr",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://dunyakatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "productName=Arsa&productCode=ARSATUKETICI&productCategory=MiscellaneousRealEstate&amount=100.000&installmentCount=12&userRate=NaN&userSelected=false&__RequestVerificationToken=CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3gEJR2eSD0Y0SIqJw3t7Z8yTDERdbUMyp_G5ojbRG7iBLv1S2ly7Pf3QeC46rdOi1t6cU2wzjoSMhKt7snklqCMYJwtSswWgaEcvZD98eACapcgSgstmE",
+      "response": ""
+    },
+    {
+      "page": "https://dunyakatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://dunyakatilim.com.tr/LoanCheckRate?lang=tr",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://dunyakatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "productName=Arsa&productCode=ARSATUKETICI&productCategory=MiscellaneousRealEstate&amount=100.000&installmentCount=24&userRate=NaN&userSelected=false&__RequestVerificationToken=CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3gEJR2eSD0Y0SIqJw3t7Z8yTDERdbUMyp_G5ojbRG7iBLv1S2ly7Pf3QeC46rdOi1t6cU2wzjoSMhKt7snklqCMYJwtSswWgaEcvZD98eACapcgSgstmE",
+      "response": ""
+    },
+    {
+      "page": "https://dunyakatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://dunyakatilim.com.tr/LoanCheckRate?lang=tr",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://dunyakatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "productName=Arsa&productCode=ARSATUKETICI&productCategory=MiscellaneousRealEstate&amount=100.000&installmentCount=24&userRate=100000%2C00&userSelected=false&__RequestVerificationToken=CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3gEJR2eSD0Y0SIqJw3t7Z8yTDERdbUMyp_G5ojbRG7iBLv1S2ly7Pf3QeC46rdOi1t6cU2wzjoSMhKt7snklqCMYJwtSswWgaEcvZD98eACapcgSgstmE",
+      "response": ""
+    },
+    {
+      "page": "https://dunyakatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://dunyakatilim.com.tr/DividendEstimatedProfit?lang=tr",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://dunyakatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "balance=20&currencyCode=XAU&maturityCode=ALTKTLMHSP_3AYVADELI&maturityPeriodValue=91&productCode=ALTKTLMHSP&__RequestVerificationToken=CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3gEJR2eSD0Y0SIqJw3t7Z8yTDERdbUMyp_G5ojbRG7iBLv1S2ly7Pf3QeC46rdOi1t6cU2wzjoSMhKt7snklqCMYJwtSswWgaEcvZD98eACapcgSgstmE",
+      "response": ""
+    },
+    {
+      "page": "https://dunyakatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://dunyakatilim.com.tr/DividendEstimatedProfit?lang=tr",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://dunyakatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "balance=20&currencyCode=XAU&maturityCode=ALTKTLMHSP_3AYVADELI&maturityPeriodValue=91&productCode=ALTKTLMHSP&__RequestVerificationToken=CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3gEJR2eSD0Y0SIqJw3t7Z8yTDERdbUMyp_G5ojbRG7iBLv1S2ly7Pf3QeC46rdOi1t6cU2wzjoSMhKt7snklqCMYJwtSswWgaEcvZD98eACapcgSgstmE",
+      "response": ""
+    },
+    {
+      "page": "https://dunyakatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://dunyakatilim.com.tr/DividendEstimatedProfit?lang=tr",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://dunyakatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "balance=100000&currencyCode=XAU&maturityCode=ALTKTLMHSP_3AYVADELI&maturityPeriodValue=91&productCode=ALTKTLMHSP&__RequestVerificationToken=CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3gEJR2eSD0Y0SIqJw3t7Z8yTDERdbUMyp_G5ojbRG7iBLv1S2ly7Pf3QeC46rdOi1t6cU2wzjoSMhKt7snklqCMYJwtSswWgaEcvZD98eACapcgSgstmE",
+      "response": ""
+    },
+    {
+      "page": "https://dunyakatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://dunyakatilim.com.tr/DividendEstimatedProfit?lang=tr",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://dunyakatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "balance=100000&currencyCode=XAU&maturityCode=ALTKTLMHSP_3AYVADELI&maturityPeriodValue=91&productCode=ALTKTLMHSP&__RequestVerificationToken=CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3gEJR2eSD0Y0SIqJw3t7Z8yTDERdbUMyp_G5ojbRG7iBLv1S2ly7Pf3QeC46rdOi1t6cU2wzjoSMhKt7snklqCMYJwtSswWgaEcvZD98eACapcgSgstmE",
+      "response": ""
+    },
+    {
+      "page": "https://dunyakatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://dunyakatilim.com.tr/DividendEstimatedProfit?lang=tr",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://dunyakatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "balance=100000&currencyCode=XAU&maturityCode=ALTKTLMHSP_3AYVADELI&maturityPeriodValue=91&productCode=ALTKTLMHSP&__RequestVerificationToken=CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3gEJR2eSD0Y0SIqJw3t7Z8yTDERdbUMyp_G5ojbRG7iBLv1S2ly7Pf3QeC46rdOi1t6cU2wzjoSMhKt7snklqCMYJwtSswWgaEcvZD98eACapcgSgstmE",
+      "response": ""
+    },
+    {
+      "page": "https://dunyakatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://dunyakatilim.com.tr/CurrencyBuyCalculate?lang=tr",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://dunyakatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "buyFromAmount=100.000&buyFromCurrency=USD&buyToCurrency=TRY&transactionType=2&_RequestVerificationToken=CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3gEJR2eSD0Y0SIqJw3t7Z8yTDERdbUMyp_G5ojbRG7iBLv1S2ly7Pf3QeC46rdOi1t6cU2wzjoSMhKt7snklqCMYJwtSswWgaEcvZD98eACapcgSgstmE",
+      "response": ""
+    },
+    {
+      "page": "https://dunyakatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://dunyakatilim.com.tr/CurrencyHistory",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://dunyakatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "currencyCode=GBP&beginDate=8.07.2026+18%3A47%3A53&endDate=8.08.2026+18%3A47%3A53&chartType=buy&__RequestVerificationToken=CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3gEJR2eSD0Y0SIqJw3t7Z8yTDERdbUMyp_G5ojbRG7iBLv1S2ly7Pf3QeC46rdOi1t6cU2wzjoSMhKt7snklqCMYJwtSswWgaEcvZD98eACapcgSgstmE",
+      "response": ""
+    },
+    {
+      "page": "https://dunyakatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://dunyakatilim.com.tr/CurrencyBuyCalculate?lang=tr",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://dunyakatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "buyFromAmount=100.000&buyFromCurrency=GBP&buyToCurrency=TRY&transactionType=2&_RequestVerificationToken=CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3gEJR2eSD0Y0SIqJw3t7Z8yTDERdbUMyp_G5ojbRG7iBLv1S2ly7Pf3QeC46rdOi1t6cU2wzjoSMhKt7snklqCMYJwtSswWgaEcvZD98eACapcgSgstmE",
+      "response": ""
+    },
+    {
+      "page": "https://dunyakatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://dunyakatilim.com.tr/CurrencyHistory",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://dunyakatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "currencyCode=GBP&beginDate=8.07.2026+18%3A47%3A53&endDate=8.08.2026+18%3A47%3A53&chartType=buy&__RequestVerificationToken=CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3gEJR2eSD0Y0SIqJw3t7Z8yTDERdbUMyp_G5ojbRG7iBLv1S2ly7Pf3QeC46rdOi1t6cU2wzjoSMhKt7snklqCMYJwtSswWgaEcvZD98eACapcgSgstmE",
+      "response": ""
+    },
+    {
+      "page": "https://dunyakatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://dunyakatilim.com.tr/CurrencyBuyCalculate?lang=tr",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://dunyakatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "buyFromAmount=100.000&buyFromCurrency=GBP&buyToCurrency=EUR&transactionType=2&_RequestVerificationToken=CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3gEJR2eSD0Y0SIqJw3t7Z8yTDERdbUMyp_G5ojbRG7iBLv1S2ly7Pf3QeC46rdOi1t6cU2wzjoSMhKt7snklqCMYJwtSswWgaEcvZD98eACapcgSgstmE",
+      "response": ""
+    },
+    {
+      "page": "https://dunyakatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://dunyakatilim.com.tr/CurrencyBuyCalculate?lang=tr",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://dunyakatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "buyFromAmount=100.000&buyFromCurrency=USD&buyToCurrency=TRY&transactionType=1&__RequestVerificationToken=CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3gEJR2eSD0Y0SIqJw3t7Z8yTDERdbUMyp_G5ojbRG7iBLv1S2ly7Pf3QeC46rdOi1t6cU2wzjoSMhKt7snklqCMYJwtSswWgaEcvZD98eACapcgSgstmE",
+      "response": ""
+    },
+    {
+      "page": "https://dunyakatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://dunyakatilim.com.tr/CurrencyHistory",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://dunyakatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "currencyCode=GBP&beginDate=8.07.2026+18%3A47%3A53&endDate=8.08.2026+18%3A47%3A53&chartType=sell&__RequestVerificationToken=CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3gEJR2eSD0Y0SIqJw3t7Z8yTDERdbUMyp_G5ojbRG7iBLv1S2ly7Pf3QeC46rdOi1t6cU2wzjoSMhKt7snklqCMYJwtSswWgaEcvZD98eACapcgSgstmE",
+      "response": ""
+    },
+    {
+      "page": "https://dunyakatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://dunyakatilim.com.tr/CurrencyBuyCalculate?lang=tr",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://dunyakatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "buyFromAmount=100.000&buyFromCurrency=GBP&buyToCurrency=TRY&transactionType=1&__RequestVerificationToken=CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3gEJR2eSD0Y0SIqJw3t7Z8yTDERdbUMyp_G5ojbRG7iBLv1S2ly7Pf3QeC46rdOi1t6cU2wzjoSMhKt7snklqCMYJwtSswWgaEcvZD98eACapcgSgstmE",
+      "response": ""
+    },
+    {
+      "page": "https://dunyakatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://dunyakatilim.com.tr/CurrencyHistory",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://dunyakatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "currencyCode=GBP&beginDate=8.07.2026+18%3A47%3A53&endDate=8.08.2026+18%3A47%3A53&chartType=sell&__RequestVerificationToken=CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3gEJR2eSD0Y0SIqJw3t7Z8yTDERdbUMyp_G5ojbRG7iBLv1S2ly7Pf3QeC46rdOi1t6cU2wzjoSMhKt7snklqCMYJwtSswWgaEcvZD98eACapcgSgstmE",
+      "response": ""
+    },
+    {
+      "page": "https://dunyakatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://dunyakatilim.com.tr/CurrencyBuyCalculate?lang=tr",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://dunyakatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "buyFromAmount=100.000&buyFromCurrency=GBP&buyToCurrency=EUR&transactionType=1&__RequestVerificationToken=CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3gEJR2eSD0Y0SIqJw3t7Z8yTDERdbUMyp_G5ojbRG7iBLv1S2ly7Pf3QeC46rdOi1t6cU2wzjoSMhKt7snklqCMYJwtSswWgaEcvZD98eACapcgSgstmE",
+      "response": ""
+    },
+    {
+      "page": "https://dunyakatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://dunyakatilim.com.tr/CurrencyBuyCalculate?lang=tr",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://dunyakatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "buyFromAmount=100.000&buyFromCurrency=XAU&buyToCurrency=TRY&transactionType=2&__RequestVerificationToken=CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3gEJR2eSD0Y0SIqJw3t7Z8yTDERdbUMyp_G5ojbRG7iBLv1S2ly7Pf3QeC46rdOi1t6cU2wzjoSMhKt7snklqCMYJwtSswWgaEcvZD98eACapcgSgstmE",
+      "response": ""
+    },
+    {
+      "page": "https://dunyakatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://dunyakatilim.com.tr/PreciousMetalHistory",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://dunyakatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "currencyCode=XPT&beginDate=8.07.2026+18%3A47%3A53&endDate=7.08.2026+18%3A47%3A53&chartType=buy&__RequestVerificationToken=CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3gEJR2eSD0Y0SIqJw3t7Z8yTDERdbUMyp_G5ojbRG7iBLv1S2ly7Pf3QeC46rdOi1t6cU2wzjoSMhKt7snklqCMYJwtSswWgaEcvZD98eACapcgSgstmE",
+      "response": ""
+    },
+    {
+      "page": "https://dunyakatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://dunyakatilim.com.tr/CurrencyBuyCalculate?lang=tr",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://dunyakatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "buyFromAmount=100.000&buyFromCurrency=XPT&buyToCurrency=TRY&transactionType=2&__RequestVerificationToken=CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3gEJR2eSD0Y0SIqJw3t7Z8yTDERdbUMyp_G5ojbRG7iBLv1S2ly7Pf3QeC46rdOi1t6cU2wzjoSMhKt7snklqCMYJwtSswWgaEcvZD98eACapcgSgstmE",
+      "response": ""
+    },
+    {
+      "page": "https://dunyakatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://dunyakatilim.com.tr/CurrencyBuyCalculate?lang=tr",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://dunyakatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "buyFromAmount=1&buyFromCurrency=XAU&buyToCurrency=TRY&transactionType=1&__RequestVerificationToken=CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3gEJR2eSD0Y0SIqJw3t7Z8yTDERdbUMyp_G5ojbRG7iBLv1S2ly7Pf3QeC46rdOi1t6cU2wzjoSMhKt7snklqCMYJwtSswWgaEcvZD98eACapcgSgstmE",
+      "response": ""
+    },
+    {
+      "page": "https://dunyakatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://dunyakatilim.com.tr/CurrencyHistory",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://dunyakatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "currencyCode=GBP&beginDate=100000&endDate=100000&chartType=buy&__RequestVerificationToken=CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3gEJR2eSD0Y0SIqJw3t7Z8yTDERdbUMyp_G5ojbRG7iBLv1S2ly7Pf3QeC46rdOi1t6cU2wzjoSMhKt7snklqCMYJwtSswWgaEcvZD98eACapcgSgstmE",
+      "response": ""
+    },
+    {
+      "page": "https://dunyakatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://dunyakatilim.com.tr/CurrencyBuyCalculate?lang=tr",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://dunyakatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "buyFromAmount=100.000&buyFromCurrency=GBP&buyToCurrency=EUR&transactionType=2&_RequestVerificationToken=CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3gEJR2eSD0Y0SIqJw3t7Z8yTDERdbUMyp_G5ojbRG7iBLv1S2ly7Pf3QeC46rdOi1t6cU2wzjoSMhKt7snklqCMYJwtSswWgaEcvZD98eACapcgSgstmE",
+      "response": ""
+    },
+    {
+      "page": "https://dunyakatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://dunyakatilim.com.tr/CurrencyBuyCalculate?lang=tr",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://dunyakatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "buyFromAmount=100.000&buyFromCurrency=XAU&buyToCurrency=TRY&transactionType=1&__RequestVerificationToken=CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3gEJR2eSD0Y0SIqJw3t7Z8yTDERdbUMyp_G5ojbRG7iBLv1S2ly7Pf3QeC46rdOi1t6cU2wzjoSMhKt7snklqCMYJwtSswWgaEcvZD98eACapcgSgstmE",
+      "response": ""
+    },
+    {
+      "page": "https://dunyakatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://dunyakatilim.com.tr/PreciousMetalHistory",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://dunyakatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "currencyCode=XPT&beginDate=8.07.2026+18%3A47%3A53&endDate=7.08.2026+18%3A47%3A53&chartType=sell&__RequestVerificationToken=CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3gEJR2eSD0Y0SIqJw3t7Z8yTDERdbUMyp_G5ojbRG7iBLv1S2ly7Pf3QeC46rdOi1t6cU2wzjoSMhKt7snklqCMYJwtSswWgaEcvZD98eACapcgSgstmE",
+      "response": ""
+    },
+    {
+      "page": "https://dunyakatilim.com.tr",
+      "method": "POST",
+      "endpoint": "https://dunyakatilim.com.tr/CurrencyBuyCalculate?lang=tr",
+      "request_headers": "sec-ch-ua-platform: \"macOS\"\nreferer: https://dunyakatilim.com.tr/\nsec-ch-ua: \"Not=A?Brand\";v=\"99\", \"Google Chrome\";v=\"151\", \"Chromium\";v=\"151\"\nsec-ch-ua-mobile: ?0\nx-requested-with: XMLHttpRequest\nuser-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36\naccept: */*\ncontent-type: application/x-www-form-urlencoded; charset=UTF-8",
+      "request_body": "buyFromAmount=100.000&buyFromCurrency=XPT&buyToCurrency=TRY&transactionType=1&__RequestVerificationToken=CfDJ8AJTKrIX48xJj46f9d8pQ7OVp1VBrzGpzh3gEJR2eSD0Y0SIqJw3t7Z8yTDERdbUMyp_G5ojbRG7iBLv1S2ly7Pf3QeC46rdOi1t6cU2wzjoSMhKt7snklqCMYJwtSswWgaEcvZD98eACapcgSgstmE",
+      "response": ""
+    }
+  ],
+  "third_party": []
+}

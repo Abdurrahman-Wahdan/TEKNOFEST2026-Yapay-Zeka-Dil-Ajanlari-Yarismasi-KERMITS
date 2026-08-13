@@ -17,8 +17,48 @@ pydantic==2.13.4
 pydantic-settings==2.15.0
 python-dotenv==1.2.2
 
+# Bank endpoints
 httpx==0.28.1
+# Albaraka's WAF fingerprints the TLS handshake and rejects httpx and curl
+# regardless of headers. curl_cffi impersonates Chrome's handshake and passes.
+curl_cffi==0.16.0
+
+# Corpus (crawling and cleaning the bank websites)
+trafilatura==2.2.0            # HTML -> markdown, strong on Turkish content
+lxml==6.1.1                   # heading anchors for citation; trafilatura's dep
+# pypdf is deliberately NOT used. Measured on this corpus it returned the whole
+# document body for every page (a 36-page contract came out as 2.5M characters,
+# 23x inflated). PDF text comes from poppler's pdftotext instead -- see below.
+#
+# System dependencies, not pip-installable:
+#   brew install poppler   # pdftotext, pdfinfo, pdftoppm -- required for PDFs
+#   brew install tesseract tesseract-lang   # Turkish OCR fallback -- optional
+# The corpus refuses a PDF with a clear message if poppler is missing, rather
+# than failing deep inside a subprocess.
+
+# API (the service the dashboard talks to)
+fastapi==0.141.1
+uvicorn[standard]==0.52.1
+sqlalchemy==2.0.51
+# psycopg 3, binary build -- no local libpq needed to install.
+psycopg[binary]==3.3.4
+alembic==1.19.1
+# Argon2id, not bcrypt: bcrypt silently truncates at 72 BYTES, and a Turkish
+# passphrase passes 72 bytes well before 72 characters, so two different long
+# passwords would authenticate each other.
+argon2-cffi==25.1.0
+pyjwt==2.13.0
+# EmailStr's validator. pydantic does not pull it in on its own.
+email-validator==2.3.0
+
+# Dataprep (agentic crawl + VLM extraction + embed)
+pypdf==6.16.0
+pymupdf==1.28.2
+pillow==12.3.0
+playwright==1.62.0
 
 # Tests
 pytest==9.0.1
+# TestClient, and the async transport the API's own tests use.
+httpx-sse==0.4.3
 pytest-asyncio==1.3.0

@@ -15,14 +15,26 @@ def clear_caches():
     The factories cache clients and loaded models on purpose; without this,
     state leaks between tests and failures depend on ordering.
     """
+    from banks import clear_catalogue_cache, clear_http_cache
+    from banks import status
+    from corpus import store as corpus_store
     from embeddings import clear_embedding_cache
     from vector_stores import clear_client_cache
 
-    clear_embedding_cache()
-    clear_client_cache()
+    def clear():
+        clear_embedding_cache()
+        clear_client_cache()
+        clear_catalogue_cache()
+        clear_http_cache()
+        # The recorded outages too: a test that marks a bank down must not
+        # leave the next one refusing.
+        status.clear_cache()
+        # The parsed manifest, which is keyed on a path a test may have moved.
+        corpus_store.clear_cache()
+
+    clear()
     yield
-    clear_embedding_cache()
-    clear_client_cache()
+    clear()
 
 
 @pytest.fixture

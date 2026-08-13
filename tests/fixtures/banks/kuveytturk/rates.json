@@ -1,0 +1,245 @@
+[
+  {
+    "Title": "TL",
+    "CurrencyCode": "TL",
+    "CurrencyDescription": "Türk Lirası",
+    "BuyRate": 1.0,
+    "SellRate": 1.0,
+    "ChangeRate": 0.0,
+    "ChangeRateNegative": false
+  },
+  {
+    "Title": "USD",
+    "CurrencyCode": "USD",
+    "CurrencyDescription": "Amerikan Doları",
+    "BuyRate": 44.15409,
+    "SellRate": 48.5844,
+    "ChangeRate": 4758.44,
+    "ChangeRateNegative": false
+  },
+  {
+    "Title": "EUR",
+    "CurrencyCode": "EUR",
+    "CurrencyDescription": "Euro",
+    "BuyRate": 51.01298,
+    "SellRate": 56.18397,
+    "ChangeRate": 1.444259794511347,
+    "ChangeRateNegative": false
+  },
+  {
+    "Title": "ALT (gr)",
+    "CurrencyCode": "ALT (gr)",
+    "CurrencyDescription": "Altın",
+    "BuyRate": 6212.11978,
+    "SellRate": 6820.3351,
+    "ChangeRate": 2.164869529356327,
+    "ChangeRateNegative": false
+  },
+  {
+    "Title": "GMS (gr)",
+    "CurrencyCode": "GMS (gr)",
+    "CurrencyDescription": "Gümüş",
+    "BuyRate": 91.38033,
+    "SellRate": 100.31765,
+    "ChangeRate": 1.707307453935355,
+    "ChangeRateNegative": false
+  },
+  {
+    "Title": "PLT (gr)",
+    "CurrencyCode": "PLT (gr)",
+    "CurrencyDescription": "Platin",
+    "BuyRate": 2509.1918,
+    "SellRate": 2763.48349,
+    "ChangeRate": 1.8590314995232906,
+    "ChangeRateNegative": false
+  },
+  {
+    "Title": "PLD (gr)",
+    "CurrencyCode": "PLD (gr)",
+    "CurrencyDescription": "Paladyum",
+    "BuyRate": 1974.82838,
+    "SellRate": 2188.38354,
+    "ChangeRate": 2.257796610516384,
+    "ChangeRateNegative": false
+  },
+  {
+    "Title": "CAG (gr)",
+    "CurrencyCode": "CAG (gr)",
+    "CurrencyDescription": "Cumhuriyet Altını Grubu (22 ayar)",
+    "BuyRate": 5722.6422,
+    "SellRate": 6282.93382,
+    "ChangeRate": 0.7767054618457235,
+    "ChangeRateNegative": false
+  },
+  {
+    "Title": "BHD",
+    "CurrencyCode": "BHD",
+    "CurrencyDescription": "Bahreyn Dinarı",
+    "BuyRate": 117.07302,
+    "SellRate": 128.88817,
+    "ChangeRate": 0.728925461334322,
+    "ChangeRateNegative": false
+  },
+  {
+    "Title": "AED",
+    "CurrencyCode": "AED",
+    "CurrencyDescription": "Birleşik Arap Emirlikleri Dirhemi",
+    "BuyRate": 12.02051,
+    "SellRate": 13.22842,
+    "ChangeRate": 0.7350040740486906,
+    "ChangeRateNegative": false
+  },
+  {
+    "Title": "RUB",
+    "CurrencyCode": "RUB",
+    "CurrencyDescription": "Rus Rublesi",
+    "BuyRate": 0.53214,
+    "SellRate": 0.59356,
+    "ChangeRate": 0.762218412073268,
+    "ChangeRateNegative": false
+  },
+  {
+    "Title": "CNY",
+    "CurrencyCode": "CNY",
+    "CurrencyDescription": "CNY (Onshore Yuan)",
+    "BuyRate": 6.54455,
+    "SellRate": 7.2027,
+    "ChangeRate": 0.7124130457580312,
+    "ChangeRateNegative": false
+  },
+  {
+    "Title": "QAR",
+    "CurrencyCode": "QAR",
+    "CurrencyDescription": "Katar Riyali",
+    "BuyRate": 12.04983,
+    "SellRate": 13.39014,
+    "ChangeRate": 1.1903151527700842,
+    "ChangeRateNegative": false
+  },
+  {
+    "Title": "AUD",
+    "CurrencyCode": "AUD",
+    "CurrencyDescription": "Avustralya Doları",
+    "BuyRate": 31.18515,
+    "SellRate": 34.35597,
+    "ChangeRate": 0.8844279716386363,
+    "ChangeRateNegative": false
+  },
+  {
+    "Title": "DKK",
+    "CurrencyCode": "DKK",
+    "CurrencyDescription": "Danimarka Kronu",
+    "BuyRate": 6.82176,
+    "SellRate": 7.51715,
+    "ChangeRate": 0.8064894642758961,
+    "ChangeRateNegative": false
+  },
+  {
+    "Title": "SEK",
+    "CurrencyCode": "SEK",
+    "CurrencyDescription": "İsveç Kronu",
+    "BuyRate": 4.61933,
+    "SellRate": 5.15017,
+    "ChangeRate": 1.1517166745555854,
+    "ChangeRateNegative": false
+  },
+  {
+    "Title": "CHF",
+    "CurrencyCode": "CHF",
+    "CurrencyDescription": "İsviçre Frangı",
+    "BuyRate": 54.59075,
+    "SellRate": 60.20521,
+    "ChangeRate": 0.8562490618835235,
+    "ChangeRateNegative": false
+  },
+  {
+    "Title": "CAD",
+    "CurrencyCode": "CAD",
+    "CurrencyDescription": "Kanada Doları",
+    "BuyRate": 31.64759,
+    "SellRate": 34.88254,
+    "ChangeRate": 0.8692398402171769,
+    "ChangeRateNegative": false
+  },
+  {
+    "Title": "KWD",
+    "CurrencyCode": "KWD",
+    "CurrencyDescription": "Kuveyt Dinarı",
+    "BuyRate": 142.60827,
+    "SellRate": 157.37366,
+    "ChangeRate": 0.683250834742431,
+    "ChangeRateNegative": false
+  },
+  {
+    "Title": "NOK",
+    "CurrencyCode": "NOK",
+    "CurrencyDescription": "Norveç Kronu",
+    "BuyRate": 4.62453,
+    "SellRate": 5.12408,
+    "ChangeRate": 0.8565984852063552,
+    "ChangeRateNegative": false
+  },
+  {
+    "Title": "GBP",
+    "CurrencyCode": "GBP",
+    "CurrencyDescription": "İngiliz Sterlini",
+    "BuyRate": 59.51441,
+    "SellRate": 65.60643,
+    "ChangeRate": 0.9187940217012595,
+    "ChangeRateNegative": false
+  },
+  {
+    "Title": "SAR",
+    "CurrencyCode": "SAR",
+    "CurrencyDescription": "Suudi Arabistan Riyali",
+    "BuyRate": 11.75624,
+    "SellRate": 12.94066,
+    "ChangeRate": 0.7289633930385359,
+    "ChangeRateNegative": false
+  },
+  {
+    "Title": "JPY",
+    "CurrencyCode": "JPY",
+    "CurrencyDescription": "Japon Yeni",
+    "BuyRate": 0.27968,
+    "SellRate": 0.30817,
+    "ChangeRate": 0.7783119134046241,
+    "ChangeRateNegative": false
+  },
+  {
+    "Title": "MYR",
+    "CurrencyCode": "MYR",
+    "CurrencyDescription": "Malezya Ringiti",
+    "BuyRate": 10.78771,
+    "SellRate": 11.88318,
+    "ChangeRate": 0.7289023911626413,
+    "ChangeRateNegative": false
+  },
+  {
+    "Title": "CNH",
+    "CurrencyCode": "CNH",
+    "CurrencyDescription": "CNH (Offshore Yuan)",
+    "BuyRate": 6.5454,
+    "SellRate": 7.20845,
+    "ChangeRate": 0.7764672000626318,
+    "ChangeRateNegative": false
+  },
+  {
+    "Title": "Çeyrek",
+    "CurrencyCode": "ZCeyrek",
+    "CurrencyDescription": "Çeyrek Altın (22 ayar)",
+    "BuyRate": 10015.344955,
+    "SellRate": 10995.9259025,
+    "ChangeRate": 0.7767056750229285,
+    "ChangeRateNegative": false
+  },
+  {
+    "Title": "EUR/USD",
+    "CurrencyCode": "EUR/USD",
+    "CurrencyDescription": "EUR/USD",
+    "BuyRate": 1.13801,
+    "SellRate": 1.17377,
+    "ChangeRate": -1.2358429160338469,
+    "ChangeRateNegative": true
+  }
+]

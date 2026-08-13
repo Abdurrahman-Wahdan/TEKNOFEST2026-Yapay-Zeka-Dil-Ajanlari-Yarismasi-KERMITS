@@ -1,0 +1,36 @@
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.label {
+  color: var(--muted-foreground);
+  font-size: var(--text-sm);
+}
+
+.value {
+  @include numeric;
+
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-semibold);
+  line-height: 1.1;
+
+  .tile[data-tone="ok"] & {
+    color: var(--ok);
+  }
+
+  .tile[data-tone="warn"] & {
+    color: var(--warn);
+  }
+
+  .tile[data-tone="danger"] & {
+    color: var(--danger);
+  }
+}
+
+.hint {
+  color: var(--text-faint);
+  font-size: var(--text-xs);
+}

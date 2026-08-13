@@ -1,0 +1,78 @@
+{
+  "bank": "vakif",
+  "host": "www.vakifkatilim.com.tr",
+  "endpoints": [
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/finansman-hesaplama",
+      "method": "POST",
+      "endpoint": "https://www.vakifkatilim.com.tr/plugins/FinancingInstallment?langId=bf2689d9-071e-4a20-9450-b1dbdd39778f&language=tr&financingType=K2",
+      "request_body": "__RequestVerificationToken=cs00T814uiUCEkmCyH-bAZEz25YQkd3OOChFLgj8rNy3nebNxXEwlM1lQbIR-_ezwwHLAe-2xgHyVOoZW733cYsmPr8GmMFvBojnMeeO5Sc1",
+      "response": "{\"installments\":[{\"code\":1,\"text\":\"1 Ay\",\"isSelected\":false},{\"code\":2,\"text\":\"2 Ay\",\"isSelected\":false},{\"code\":3,\"text\":\"3 Ay\",\"isSelected\":false},{\"code\":4,\"text\":\"4 Ay\",\"isSelected\":false},{\"code\":5,\"text\":\"5 Ay\",\"isSelected\":false},{\"code\":6,\"text\":\"6 Ay\",\"isSelected\":false},{\"code\":7,\"text\":\"7 Ay\",\"isSelected\":false},{\"code\":8,\"text\":\"8 Ay\",\"isSelected\":false},{\"code\":9,\"text\":\"9 Ay\",\"isSelected\":false},{\"code\":10,\"text\":\"10 Ay\",\"isSelected\":false},{\"code\":11,\"text\":\"11 Ay\",\"isSelected\":false},{\"code\":12,\"text\":\"12 Ay\",\"isSelected\":false},{\"code\":13,\"text\":\"13 Ay\",\"isSelected\":false},{\"code\":14,\"text\":\"14 Ay\",\"isSelected\":false},{\"code\":15,\"text\":\"15 Ay\",\"isSelected\":false},{\"code\":16,",
+      "headers": [
+        "referer: https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/finansman-hesaplama",
+        "accept: */*",
+        "content-type: application/x-www-form-urlencoded; charset=UTF-8"
+      ]
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/finansman-hesaplama",
+      "method": "POST",
+      "endpoint": "https://www.vakifkatilim.com.tr/plugins/FinancingComputationExecute?langId=bf2689d9-071e-4a20-9450-b1dbdd39778f&language=tr&financingType=K2&amount=100000&numberOfInstallments=24&profitRate=null&calculateType=1",
+      "request_body": "__RequestVerificationToken=cs00T814uiUCEkmCyH-bAZEz25YQkd3OOChFLgj8rNy3nebNxXEwlM1lQbIR-_ezwwHLAe-2xgHyVOoZW733cYsmPr8GmMFvBojnMeeO5Sc1",
+      "response": "{\"installmentAmount\":\"6.058,44 TL\",\"totalAmount\":\"145.402,59 TL\",\"profitRate\":\"3,24\",\"appraisementFee\":\"25.000,00 TL\",\"mortgageReleaseFee\":\"1.000,00 TL\",\"errorMessage\":null,\"isErrorFriendly\":false,\"installmenLabelText\":\"Taksit Tutarı\"}",
+      "headers": [
+        "referer: https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/finansman-hesaplama",
+        "accept: */*",
+        "content-type: application/x-www-form-urlencoded; charset=UTF-8"
+      ]
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/finansman-hesaplama",
+      "method": "POST",
+      "endpoint": "https://www.vakifkatilim.com.tr/plugins/FinancingComputationExecute?langId=bf2689d9-071e-4a20-9450-b1dbdd39778f&language=tr&financingType=K2&amount=100000&numberOfInstallments=60&profitRate=null&calculateType=1",
+      "request_body": "__RequestVerificationToken=cs00T814uiUCEkmCyH-bAZEz25YQkd3OOChFLgj8rNy3nebNxXEwlM1lQbIR-_ezwwHLAe-2xgHyVOoZW733cYsmPr8GmMFvBojnMeeO5Sc1",
+      "response": "{\"installmentAmount\":\"3.605,56 TL\",\"totalAmount\":\"216.333,48 TL\",\"profitRate\":\"2,99\",\"appraisementFee\":\"25.000,00 TL\",\"mortgageReleaseFee\":\"1.000,00 TL\",\"errorMessage\":null,\"isErrorFriendly\":false,\"installmenLabelText\":\"Taksit Tutarı\"}",
+      "headers": [
+        "referer: https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/finansman-hesaplama",
+        "accept: */*",
+        "content-type: application/x-www-form-urlencoded; charset=UTF-8"
+      ]
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/finansman-hesaplama",
+      "method": "POST",
+      "endpoint": "https://www.vakifkatilim.com.tr/plugins/FinancingComputationExecute?langId=bf2689d9-071e-4a20-9450-b1dbdd39778f&language=tr&financingType=K2&amount=250000&numberOfInstallments=60&profitRate=null&calculateType=1",
+      "request_body": "__RequestVerificationToken=cs00T814uiUCEkmCyH-bAZEz25YQkd3OOChFLgj8rNy3nebNxXEwlM1lQbIR-_ezwwHLAe-2xgHyVOoZW733cYsmPr8GmMFvBojnMeeO5Sc1",
+      "response": "{\"installmentAmount\":\"9.013,90 TL\",\"totalAmount\":\"540.833,70 TL\",\"profitRate\":\"2,99\",\"appraisementFee\":\"25.000,00 TL\",\"mortgageReleaseFee\":\"1.000,00 TL\",\"errorMessage\":null,\"isErrorFriendly\":false,\"installmenLabelText\":\"Taksit Tutarı\"}",
+      "headers": [
+        "referer: https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/finansman-hesaplama",
+        "accept: */*",
+        "content-type: application/x-www-form-urlencoded; charset=UTF-8"
+      ]
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/finansman-hesaplama",
+      "method": "POST",
+      "endpoint": "https://www.vakifkatilim.com.tr/plugins/InstallmentPayBack?langId=bf2689d9-071e-4a20-9450-b1dbdd39778f&language=tr&financingType=K2&amount=250000&numberOfInstallments=60&profitRate=null&calculateType=1",
+      "request_body": "__RequestVerificationToken=cs00T814uiUCEkmCyH-bAZEz25YQkd3OOChFLgj8rNy3nebNxXEwlM1lQbIR-_ezwwHLAe-2xgHyVOoZW733cYsmPr8GmMFvBojnMeeO5Sc1",
+      "response": "{\"tablePrintUrl\":\"/\",\"print\":\"Yazdır\",\"tableHeading\":\"Ödeme Planı\",\"tableHead\":[\"Taksit Sayısı\",\"Taksit Tutarı\",\"Ana Para\",\"Kâr Tutarı\",\"KKDF Tutarı\",\"BSMV Tutarı\",\"Kalan Ana Para Tutarı\"],\"tableBody\":[{\"taksitSayisi\":\"1\",\"taksitTutari\":\"9.013,90 TL\",\"anaPara\":\"1.538,90 TL\",\"karTutari\":\"7.475,00 TL\",\"kkdfTutari\":\"0,00 TL\",\"bsmfTutari\":\"0,00 TL\",\"kalanAnaParaTutari\":\"248.461,10 TL\"},{\"taksitSayisi\":\"2\",\"taksitTutari\":\"9.013,90 TL\",\"anaPara\":\"1.584,91 TL\",\"karTutari\":\"7.428,99 TL\",\"kkdfTutari\":\"0,00 TL\",\"bsmfTutari\":\"0,00 TL\",\"kalanAnaParaTutari\":\"246.876,20 TL\"},{\"taksitSayisi\":\"3\",\"taksitTutari\":\"9.013,90 TL\",\"anaPara\":\"1.632,30 TL\",\"karTutari\":\"7.381,60 TL\",\"kkdfTutari\":\"0,00 TL\",\"bsmfTutar",
+      "headers": [
+        "referer: https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/finansman-hesaplama",
+        "accept: */*",
+        "content-type: application/x-www-form-urlencoded; charset=UTF-8"
+      ]
+    },
+    {
+      "page": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/kar-payi-hesaplama",
+      "method": "POST",
+      "endpoint": "https://www.vakifkatilim.com.tr/plugins/GrossAmountCalculationJson?langId=bf2689d9-071e-4a20-9450-b1dbdd39778f&language=tr&accountType=KAH&currencyUnit=0&principal=250000&expiry=31",
+      "request_body": "__RequestVerificationToken=ZSJb4yHX-6-OagesCV7p4kYB2dJxIjrqG2gj6Psjb-RPj4PG472E0b9KtSXEMejXfWivDEAsp_8ntsiNsiGUsPsV5M-00DNCCiYa5iFSum41",
+      "response": "{\"grossProfit\":\"6.751,14 TL\",\"totalAmount\":\"5.569,69 TL\",\"accountName\":\"Altın\",\"grossRate\":\"%31,80\",\"netRate\":\"%26,23\",\"netProfit\":\"5.569,69 TL\",\"day\":null,\"errorMessage\":\"\"}",
+      "headers": [
+        "referer: https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari/kar-payi-hesaplama",
+        "accept: */*",
+        "content-type: application/x-www-form-urlencoded; charset=UTF-8"
+      ]
+    }
+  ]
+}
