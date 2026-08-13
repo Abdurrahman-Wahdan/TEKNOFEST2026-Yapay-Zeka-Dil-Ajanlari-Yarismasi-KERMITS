@@ -51,6 +51,12 @@ pyjwt==2.13.0
 # EmailStr's validator. pydantic does not pull it in on its own.
 email-validator==2.3.0
 
+# Dataprep (agentic crawl + VLM extraction + embed)
+pypdf==6.16.0
+pymupdf==1.28.2
+pillow==12.3.0
+playwright==1.62.0
+
 # Tests
 pytest==9.0.1
 # TestClient, and the async transport the API's own tests use.
