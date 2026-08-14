@@ -1066,6 +1066,77 @@
         }
       }
     },
+    "/api/components": {
+      "get": {
+        "tags": [
+          "components"
+        ],
+        "summary": "All Categories",
+        "description": "Every topic page, and whether a producer has filled it yet.",
+        "operationId": "all_categories",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CategoryOut"
+                  },
+                  "type": "array",
+                  "title": "Response All Categories"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/components/{category}": {
+      "get": {
+        "tags": [
+          "components"
+        ],
+        "summary": "Category Components",
+        "description": "The ordered components for one topic page.\n\nAn unknown category 404s naming the valid ones. A known category with no\nfixture answers 200 with an empty list: \"this page has no content yet\" is\nan answer, not a failure, and the UI has a state for it.",
+        "operationId": "category_components",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "A key from GET /api/components.",
+              "title": "Category"
+            },
+            "description": "A key from GET /api/components."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComponentsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/search": {
       "get": {
         "tags": [
@@ -1488,6 +1559,30 @@
         "title": "BankOut",
         "description": "One bank, what it publishes, and what is currently down.\n\n`publishes` and `maintenance` are different absences and are reported\nseparately: a bank that does not sell car finance and a bank whose car\nfinance endpoint is broken this morning must never look alike in the UI."
       },
+      "CategoryOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "has_components": {
+            "type": "boolean",
+            "title": "Has Components"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "has_components"
+        ],
+        "title": "CategoryOut",
+        "description": "One topic page, and whether a producer has filled it yet."
+      },
       "ChatMessageOut": {
         "properties": {
           "id": {
@@ -1731,6 +1826,40 @@
         ],
         "title": "Component",
         "description": "One tile on a dashboard.\n\n`type` names a component in the frontend catalog; `props` is whatever that\ncomponent takes. Unvalidated on purpose -- the catalog lives in TypeScript,\nand duplicating each component's prop schema in Python would guarantee the\ntwo drift. The frontend renders an unknown type as a visible placeholder."
+      },
+      "ComponentsResponse": {
+        "properties": {
+          "category": {
+            "type": "string",
+            "title": "Category",
+            "description": "A key from GET /api/components."
+          },
+          "generated_at": {
+            "type": "string",
+            "title": "Generated At",
+            "description": "When the producer built these, ISO-8601. Empty if unknown.",
+            "default": ""
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "description": "fixture | agent. Until the RAG agent lands these are hand-written development fixtures; the UI marks them so nobody reads placeholder content as bank data.",
+            "default": "fixture"
+          },
+          "components": {
+            "items": {
+              "$ref": "#/components/schemas/Component"
+            },
+            "type": "array",
+            "title": "Components"
+          }
+        },
+        "type": "object",
+        "required": [
+          "category"
+        ],
+        "title": "ComponentsResponse",
+        "description": "Everything a topic page needs to render, in one response.\n\n`components` is ordered, and the order is meaningful -- it is the producer's\nargument, not an arbitrary set. The frontend preserves it and computes\nwidths itself."
       },
       "ConversionOut": {
         "properties": {

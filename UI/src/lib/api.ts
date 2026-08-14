@@ -19,6 +19,8 @@ export type Rate = Schemas["RateOut"];
 export type Comparison = Schemas["ComparisonOut"];
 export type Unavailable = Schemas["UnavailableOut"];
 export type Chunk = Schemas["ChunkOut"];
+export type ProducedComponents = Schemas["ComponentsResponse"];
+export type ComponentCategory = Schemas["CategoryOut"];
 export type SearchResponse = Schemas["SearchResponse"];
 export type Profile = Schemas["ProfileOut"];
 export type SavedView = Schemas["SavedViewOut"];
@@ -189,6 +191,15 @@ export const api = {
     active_only?: boolean;
     k?: number;
   }) => request<SearchResponse>(`/search${queryString(params)}`),
+
+  // ----- produced components -----
+  componentCategories: () => request<ComponentCategory[]>("/components"),
+  /**
+   * A topic page's RAG content. Served from fixtures until the producer lands;
+   * `source` on the response says which, and the UI badges it.
+   */
+  categoryComponents: (category: string) =>
+    request<ProducedComponents>(`/components/${category}`),
 
   // ----- profile -----
   profile: () => request<Profile>("/me/profile"),

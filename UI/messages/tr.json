@@ -6,6 +6,7 @@
   "nav": {
     "dashboard": "Panel",
     "banks": "Bankalar",
+    "finansman": "Finansman",
     "compare": "Karşılaştır",
     "aiOverview": "AI Görünümü",
     "chat": "Asistan",
@@ -62,6 +63,28 @@
       "error": "Yanıt alınamadı"
     },
     "tookSeconds": "{seconds} saniyede {count} banka soruldu"
+  },
+  "finansman": {
+    "title": "Finansman",
+    "subtitle": "Bankaların yayımladığı finansman koşulları"
+  },
+  "components": {
+    "searchPlaceholder": "Tabloda ara…",
+    "min": "En az",
+    "max": "En çok",
+    "columns": "Sütunlar",
+    "selectAll": "Tümünü seç",
+    "clearAll": "Seçimi temizle",
+    "rowCount": "{count} satır",
+    "rowCountFiltered": "{total} satırın {matched} tanesi",
+    "clearFilters": "Filtreleri temizle",
+    "tableEmpty": "Bu tabloda satır yok.",
+    "noRowsMatch": "Filtrelere uyan satır yok.",
+    "noComponents": "Bu sayfa için henüz içerik üretilmedi.",
+    "malformed": "Gelen içerik okunamadı.",
+    "untitledTable": "Başlıksız tablo",
+    "overflow": "{count} bileşen daha var; ilk 8 tanesi gösteriliyor.",
+    "fixtureNotice": "Bu içerik geliştirme amaçlı örnek veridir — hiçbir bankadan alınmamıştır."
   },
   "aiOverview": {
     "title": "AI Görünümü",

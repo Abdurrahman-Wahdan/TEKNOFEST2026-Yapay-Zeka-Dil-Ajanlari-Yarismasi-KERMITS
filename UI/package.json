@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test 'src/**/*.test.ts'",
     "api:schema": "cd .. && $HOME/.pyenv/versions/tf26/bin/python -m api.export_openapi",
     "api:types": "npm run api:schema && openapi-typescript openapi.json -o src/types/api.ts",
     "palette": "node scripts/generate-palette.mjs"

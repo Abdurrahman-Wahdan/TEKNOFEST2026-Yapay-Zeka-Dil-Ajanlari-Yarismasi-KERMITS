@@ -417,6 +417,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/components": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * All Categories
+         * @description Every topic page, and whether a producer has filled it yet.
+         */
+        get: operations["all_categories"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/components/{category}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Category Components
+         * @description The ordered components for one topic page.
+         *
+         *     An unknown category 404s naming the valid ones. A known category with no
+         *     fixture answers 200 with an empty list: "this page has no content yet" is
+         *     an answer, not a failure, and the UI has a state for it.
+         */
+        get: operations["category_components"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/search": {
         parameters: {
             query?: never;
@@ -590,6 +634,18 @@ export interface components {
              */
             notes: string;
         };
+        /**
+         * CategoryOut
+         * @description One topic page, and whether a producer has filled it yet.
+         */
+        CategoryOut: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Has Components */
+            has_components: boolean;
+        };
         /** ChatMessageOut */
         ChatMessageOut: {
             /**
@@ -733,6 +789,35 @@ export interface components {
             props?: {
                 [key: string]: unknown;
             };
+        };
+        /**
+         * ComponentsResponse
+         * @description Everything a topic page needs to render, in one response.
+         *
+         *     `components` is ordered, and the order is meaningful -- it is the producer's
+         *     argument, not an arbitrary set. The frontend preserves it and computes
+         *     widths itself.
+         */
+        ComponentsResponse: {
+            /**
+             * Category
+             * @description A key from GET /api/components.
+             */
+            category: string;
+            /**
+             * Generated At
+             * @description When the producer built these, ISO-8601. Empty if unknown.
+             * @default
+             */
+            generated_at: string;
+            /**
+             * Source
+             * @description fixture | agent. Until the RAG agent lands these are hand-written development fixtures; the UI marks them so nobody reads placeholder content as bank data.
+             * @default fixture
+             */
+            source: string;
+            /** Components */
+            components?: components["schemas"]["Component"][];
         };
         /** ConversionOut */
         ConversionOut: {
@@ -1785,6 +1870,58 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ComparisonOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    all_categories: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryOut"][];
+                };
+            };
+        };
+    };
+    category_components: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A key from GET /api/components. */
+                category: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComponentsResponse"];
                 };
             };
             /** @description Validation Error */

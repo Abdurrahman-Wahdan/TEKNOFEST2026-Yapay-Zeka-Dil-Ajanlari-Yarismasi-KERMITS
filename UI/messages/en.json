@@ -6,6 +6,7 @@
   "nav": {
     "dashboard": "Dashboard",
     "banks": "Banks",
+    "finansman": "Financing",
     "compare": "Compare",
     "aiOverview": "AI Overview",
     "chat": "Assistant",
@@ -62,6 +63,28 @@
       "error": "No response"
     },
     "tookSeconds": "Asked {count} banks in {seconds} seconds"
+  },
+  "finansman": {
+    "title": "Financing",
+    "subtitle": "Financing terms as the banks publish them"
+  },
+  "components": {
+    "searchPlaceholder": "Search the table…",
+    "min": "Min",
+    "max": "Max",
+    "columns": "Columns",
+    "selectAll": "Select all",
+    "clearAll": "Clear selection",
+    "rowCount": "{count} rows",
+    "rowCountFiltered": "{matched} of {total} rows",
+    "clearFilters": "Clear filters",
+    "tableEmpty": "This table has no rows.",
+    "noRowsMatch": "No rows match the filters.",
+    "noComponents": "No content has been produced for this page yet.",
+    "malformed": "The content that arrived could not be read.",
+    "untitledTable": "Untitled table",
+    "overflow": "{count} more components; showing the first 8.",
+    "fixtureNotice": "This is development sample data — it was not taken from any bank."
   },
   "aiOverview": {
     "title": "AI Overview",

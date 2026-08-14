@@ -15,6 +15,10 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
+    // `node --test` runs the .ts test files directly (Node 23 strips types
+    // natively), and a runtime import needs the real extension. Safe with
+    // noEmit: nothing here is compiled to JS.
+    "allowImportingTsExtensions": true,
     "jsx": "react-jsx",
     "incremental": true,
     "plugins": [

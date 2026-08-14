@@ -28,13 +28,19 @@ export default (colors) => {
   const { xxl } = boxShadows(colors);
   const { borderRadius } = borders(colors);
 
-  // The first column had its left padding forced to 0 here, so the only
-  // thing standing between its content and the card edge was the Card's own
-  // padding — never enough to read as intentional breathing room, and why
-  // the row icons/text sat flush against it. A modest inset instead, not the
-  // full per-column padding the other columns get (that would over-indent
-  // the first column relative to the header text it needs to align under).
-  const firstColumnPadding = pxToRem(12);
+  // The outer edges of every table in the app.
+  //
+  // The first column originally had its left padding forced to 0, leaving only
+  // the Card's own padding between the content and the card edge — never enough
+  // to read as intentional. 12px was the first correction and was still tight,
+  // with the row text sitting close to the border on both sides.
+  //
+  // This is the single place that decides it, and it deliberately covers *both*
+  // edges: setting only the left one is what left the last column's right
+  // padding to whatever each table happened to pass, which is how a header on
+  // 24px ended up above a cell on 8px. Inner gutters stay narrower so columns
+  // still read as related; only the outer edges get the room.
+  const edgePadding = pxToRem(24);
 
   return {
     styleOverrides: {
@@ -46,7 +52,10 @@ export default (colors) => {
           "& tr": {
             "& th": {
               "&:first-of-type": {
-                paddingLeft: `${firstColumnPadding} !important`,
+                paddingLeft: `${edgePadding} !important`,
+              },
+              "&:last-of-type": {
+                paddingRight: `${edgePadding} !important`,
               },
             },
           },
@@ -55,10 +64,13 @@ export default (colors) => {
           "& tr": {
             "& td": {
               "&:first-of-type": {
-                paddingLeft: `${firstColumnPadding} !important`,
+                paddingLeft: `${edgePadding} !important`,
                 "& .MuiBox-root": {
-                  paddingLeft: `${firstColumnPadding} !important`,
+                  paddingLeft: `${edgePadding} !important`,
                 },
+              },
+              "&:last-of-type": {
+                paddingRight: `${edgePadding} !important`,
               },
             },
           },
