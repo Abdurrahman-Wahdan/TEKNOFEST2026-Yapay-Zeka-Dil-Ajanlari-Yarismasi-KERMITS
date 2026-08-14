@@ -23,6 +23,8 @@ from pathlib import Path
 
 import httpx
 
+from dataprep.net_limit import NET_SEM
+
 log = logging.getLogger("dataprep.vlm")
 
 BASE_URL = "https://unbundle-semisoft-mouth.ngrok-free.dev"
@@ -108,7 +110,8 @@ def _post(payload, max_seconds: int = MAX_RETRY_SECONDS) -> str:
     while True:
         attempt += 1
         try:
-            r = _client.post(BASE_URL + VLM_PATH, json=payload)
+            with NET_SEM:               # Qwen (compare/bank_agent) ile PAYLAŞILAN tavan
+                r = _client.post(BASE_URL + VLM_PATH, json=payload)
             if 400 <= r.status_code < 500:          # KALICI istemci hatası (413/400/404...)
                 log.warning("    VLM %d (kalıcı) — retry yok, geçiliyor", r.status_code)
                 return ""                           # retry etme (413 asla düzelmez)

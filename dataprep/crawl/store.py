@@ -287,7 +287,7 @@ async def fetch_and_store(client, url: str, catalog: Catalog, *,
     # LLM İÇERİK TEMİZLEME (kural yok; görsel/PDF ile tutarlı): nav/footer/duyuru gibi
     # tekrarlayan site öğelerini at, sayfaya özgü gerçek içeriği bırak. LLM yoksa ham kalır.
     from dataprep import pages
-    cleaned = pages.clean_page(body, url)
+    cleaned, page_dates = pages.clean_page(body, url)   # içerik + kampanya tarihi
     if cleaned is not None:
         body = cleaned
 
@@ -309,6 +309,17 @@ async def fetch_and_store(client, url: str, catalog: Catalog, *,
     # engine.write_doc: sayfa metni frontmatter formatı BİREBİR aynı
     engine.write_doc(url, title, desc, kind, body)
     path = engine.url_to_path(url)
+    # Gemma'nın bu güncelleme sırasında gördüğü kampanya tarihini frontmatter'a
+    # işle (ayrı date-pass'e gerek yok; re-run/update kontrolünde tarih de yapılır).
+    if page_dates.get("start") or page_dates.get("end"):
+        try:
+            from pathlib import Path as _P
+            _pth = _P(path)
+            _front, _body = pages._split_front(_pth.read_text(encoding="utf-8"))
+            _front = pages._set_front_dates(_front, page_dates)
+            _pth.write_text((_front + "\n\n" + _body).rstrip() + "\n", encoding="utf-8")
+        except Exception as _exc:
+            log.warning("  (tarih frontmatter atlandı: %s)", _exc)
     catalog.record(url, digest, path, kind, reason, parent=_parent_url(url),
                    images=images)               # metin+görsel değişti -> yeniden kaydet
     log.info("  %-5s %s", status, url)
