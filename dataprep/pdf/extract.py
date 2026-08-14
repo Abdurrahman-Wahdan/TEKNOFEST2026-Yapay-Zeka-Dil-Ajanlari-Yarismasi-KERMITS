@@ -319,6 +319,10 @@ def write_output(result: dict, out_dir) -> None:
           f'bank: "{m.get("bank", "")}"',
           "type: pdf_text",
           f'page_count: {result["pages"]}']
+    if m.get("campaign_start"):
+        fm.append(f'campaign_start: "{m.get("campaign_start")}"')
+    if m.get("campaign_end"):
+        fm.append(f'campaign_end: "{m.get("campaign_end")}"')
     if "relevant" in m:                        # Gemma relevance TAG'i (silme yok, işaretle)
         fm.append(f'relevant: {str(m.get("relevant")).lower()}')
         fm.append(f'relevance_reason: "{str(m.get("relevance_reason", "")).replace(chr(34), "")}"')
@@ -386,9 +390,14 @@ def process_bank(slug: str, overwrite: bool = False, examine_images: bool = True
                           relevance_check=relevance_check)
             if res.get("text") and res["meta"].get("relevant") is not False:
                 from dataprep import pages   # LLM-friendly yeniden yaz (sayı/tablo AYNEN)
-                cl = pages.clean_page(res["text"], meta.get("pdf_url", ""))
+                cl, dts = pages.clean_page(res["text"], meta.get("pdf_url", ""))
                 if cl is not None:
                     res["text"] = cl
+                # kampanya tarihi PDF frontmatter'ına (chunk'lara yayılacak).
+                if dts.get("start"):
+                    res["meta"]["campaign_start"] = dts["start"]
+                if dts.get("end"):
+                    res["meta"]["campaign_end"] = dts["end"]
             write_output(res, out_dir)
             m = res.get("meta", {})
             if m.get("relevant") is False:            # gereksiz -> alınmaz (TAG'li)

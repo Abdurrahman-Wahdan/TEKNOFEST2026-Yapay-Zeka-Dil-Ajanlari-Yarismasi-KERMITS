@@ -102,10 +102,16 @@ def iter_docs(slug: str):
             continue
         fm, body = _parse(p.read_text(encoding="utf-8"))
         for i, ch in enumerate(_chunks(body)):
-            yield Document(page_content=ch, metadata={
+            md = {
                 "type": "page", "bank": slug, "source_url": fm.get("url", ""),
                 "parent": fm.get("parent", ""), "title": fm.get("title", ""),
-                "chunk_index": i})
+                "chunk_index": i}
+            # Gemma'nın çıkardığı kampanya tarihi -> sayfanın TÜM chunk'larına.
+            if fm.get("campaign_end"):
+                md["campaign_end"] = fm["campaign_end"]
+            if fm.get("campaign_start"):
+                md["campaign_start"] = fm["campaign_start"]
+            yield Document(page_content=ch, metadata=md)
 
     # 2) PDF (pdf_text/*.md; relevant=false ELE)
     for p in (site / "pdf_text").rglob("*.md") if (site / "pdf_text").exists() else []:
@@ -113,10 +119,15 @@ def iter_docs(slug: str):
         if str(fm.get("relevant", "true")).lower() == "false":   # gereksiz -> alma
             continue
         for i, ch in enumerate(_chunks(body)):
-            yield Document(page_content=ch, metadata={
+            md = {
                 "type": "pdf", "bank": slug, "pdf_url": fm.get("pdf_url", ""),
                 "source_page": fm.get("source_page", ""), "parent": fm.get("parent", ""),
-                "chunk_index": i})
+                "chunk_index": i}
+            if fm.get("campaign_end"):
+                md["campaign_end"] = fm["campaign_end"]
+            if fm.get("campaign_start"):
+                md["campaign_start"] = fm["campaign_start"]
+            yield Document(page_content=ch, metadata=md)
 
     # 3) GÖRSEL (image_text/*.md; her görsel bloğu ayrı, kendi URL'süyle)
     for p in (site / "image_text").rglob("*.md") if (site / "image_text").exists() else []:

@@ -221,6 +221,13 @@ def finance_quote(
     you do not need to know the code. `amount` is in Turkish lira, and
     `term_months` is in months because financing always is — "1 yil" is 12.
 
+    A bank often lists several variants of the same product with different
+    rates. If the request does not uniquely identify one, do not guess: call
+    list_products to see the exact names, pass the one that matches, and if the
+    user's wording still fits more than one, ask them which they mean rather than
+    picking a default. To compare the same variant across banks, use
+    compare_finance with a family key.
+
     Returns the monthly instalment, total payable, monthly profit rate, annual
     cost rate and fees, as the bank calculates them.
 
