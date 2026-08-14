@@ -74,11 +74,10 @@ def search_corpus(query: str, bank: str | None = None) -> str:
         p = h.payload or {}
         meta = p.get("metadata", {}) or {}
         text = (p.get("page_content") or "").strip()
-        # GÜNCELLİK FİLTRESİ: doküman düzeyinde damgalanmış campaign_end
-        # (dataprep.stamp_campaign_end) varsa onu kullan — tarih hangi chunk'ta
-        # olursa olsun tüm chunk'lara yayıldığı için güvenilir. Damgasızsa (eski
-        # veri) chunk metninden dene. Tarih yoksa (ürün/ücret/undated) tutulur.
-        end = p.get("campaign_end") or _dates.extract(text)[1]
+        # GÜNCELLİK FİLTRESİ: Gemma'nın çıkarıp tüm chunk'lara yaydığı
+        # metadata.campaign_end. Tarih yoksa (ürün/ücret/süresiz) tutulur;
+        # varsa ve süresi geçmişse elenir.
+        end = meta.get("campaign_end")
         if end and not _dates.is_active(end):
             dropped += 1
             continue
