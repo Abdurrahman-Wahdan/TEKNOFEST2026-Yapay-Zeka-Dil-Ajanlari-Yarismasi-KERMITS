@@ -86,7 +86,8 @@ def create_table(topic: str, docstring: str, columns: list[str], rows: dict,
         (ROOT / f"{table_id}.json").write_text(
             json.dumps(table, ensure_ascii=False, indent=1), encoding="utf-8")
         reg = load_registry()
-        reg.append({"id": table_id, "docstring": docstring})
+        reg.append({"id": table_id, "docstring": docstring,
+                     "category": category, "subcategory": subcategory})
         _save_registry(reg)
     register_subcategory(subcategory)
     return table_id
@@ -106,6 +107,60 @@ def add_row(table_id: str, bank: str, values: dict, sources: list[dict]) -> None
         table["updated_at"] = _now()
         (ROOT / f"{table_id}.json").write_text(
             json.dumps(table, ensure_ascii=False, indent=1), encoding="utf-8")
+
+
+def overwrite_table(table_id: str, docstring: str, columns: list[str], rows: dict,
+                      sources: dict, category: str = "", subcategory: str = "") -> None:
+    """Mevcut bir tablonun İÇERİĞİNİ TAMAMEN değiştirir (id/created_at korunur) —
+    dedup.py'nin birleştirme adımı tarafından kullanılır (iki tablo tek tabloda
+    toplanınca, kalan tarafın içeriği bu yeni birleşik içerikle değişir)."""
+    with _lock:
+        table = load_table(table_id)
+        if table is None:
+            return
+        table["docstring"] = docstring
+        table["columns"] = columns
+        table["rows"] = rows
+        table["sources"] = sources
+        table["category"] = category
+        table["subcategory"] = subcategory
+        table["updated_at"] = _now()
+        (ROOT / f"{table_id}.json").write_text(
+            json.dumps(table, ensure_ascii=False, indent=1), encoding="utf-8")
+        reg = load_registry()
+        for r in reg:
+            if r["id"] == table_id:
+                r["docstring"] = docstring
+                r["category"] = category
+                r["subcategory"] = subcategory
+                break
+        _save_registry(reg)
+    register_subcategory(subcategory)
+
+
+def delete_table(table_id: str) -> None:
+    """Bir tablo dosyasını ve registry kaydını SİLER — dedup.py'nin birleştirme
+    sonrası artık gereksiz kalan (kaybeden) tabloyu kaldırması için."""
+    with _lock:
+        p = ROOT / f"{table_id}.json"
+        if p.exists():
+            p.unlink()
+        reg = load_registry()
+        reg = [r for r in reg if r["id"] != table_id]
+        _save_registry(reg)
+
+
+def remap_ledger_table(old_id: str, new_id: str) -> None:
+    """Ledger'daki (sayfa -> tablo) referanslarını, silinen bir tablonun id'sinden
+    kalan tabloya taşır — dedup.py birleştirdikten sonra kaynak izleri kopmasın."""
+    with _lock:
+        led = _load_ledger()
+        for rec in led.values():
+            for key in ("tables", "cited_tables"):
+                lst = rec.get(key)
+                if isinstance(lst, list) and old_id in lst:
+                    rec[key] = [new_id if x == old_id else x for x in lst]
+        _save_ledger(led)
 
 
 # --- sayfa ledger'ı -----------------------------------------------------------

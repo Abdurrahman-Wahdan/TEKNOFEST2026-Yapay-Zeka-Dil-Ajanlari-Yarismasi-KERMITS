@@ -138,13 +138,18 @@ def _url_of(front: str) -> str:
 
 
 def _set_front_dates(front: str, dates: dict) -> str:
-    """Frontmatter bloğuna campaign_start/campaign_end anahtarlarını yaz (varsa günceller).
-    Frontmatter yoksa yeni bir blok oluşturur."""
+    """Frontmatter bloğuna campaign_start/campaign_end/campaign_status anahtarlarını
+    yaz (varsa günceller). Frontmatter yoksa yeni bir blok oluşturur.
+    campaign_status: 'bitti'|'bitmedi' — tarihli sayfada tarihten hesaplanır (deterministik,
+    LLM'e sorulmaz); tarihsiz sayfada SADECE model içerikten GERÇEKTEN eminse 'bitti'
+    yazılır, aksi halde 'bitmedi' (varsayılan) kalır."""
     pairs = {}
     if dates.get("start"):
         pairs["campaign_start"] = dates["start"]
     if dates.get("end"):
         pairs["campaign_end"] = dates["end"]
+    if dates.get("status"):
+        pairs["campaign_status"] = dates["status"]
     if not pairs:
         return front
     if not front:
