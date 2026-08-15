@@ -57,5 +57,13 @@ def test_related_text_scores_above_unrelated(embedding):
 
 
 def test_model_instance_is_reused(embedding):
-    """Loading twice would cost seconds and hundreds of MB."""
-    assert get_embedding() is embedding
+    """Loading twice would cost seconds and hundreds of MB.
+
+    Both calls are made inside the test on purpose. `tests/conftest.py` clears
+    every module-level cache around each test so failures do not depend on
+    ordering, and the `embedding` fixture is module-scoped -- so comparing
+    against it asserted that a cache survives a wipe that the harness performs
+    deliberately, which no correct implementation could satisfy.
+    """
+    first = get_embedding()
+    assert get_embedding() is first

@@ -16,9 +16,13 @@ export type FinanceQuote = Schemas["FinanceQuoteOut"];
 export type ProfitShareQuote = Schemas["ProfitShareQuoteOut"];
 export type Conversion = Schemas["ConversionOut"];
 export type Rate = Schemas["RateOut"];
+export type CardInstallmentQuote = Schemas["CardInstallmentQuoteOut"];
+export type MileRate = Schemas["MileRateOut"];
 export type Comparison = Schemas["ComparisonOut"];
 export type Unavailable = Schemas["UnavailableOut"];
 export type Chunk = Schemas["ChunkOut"];
+export type Constraints = Schemas["ConstraintsOut"];
+export type BankLimits = Schemas["BankLimitsOut"];
 export type ProducedComponents = Schemas["ComponentsResponse"];
 export type ComponentCategory = Schemas["CategoryOut"];
 export type SearchResponse = Schemas["SearchResponse"];
@@ -159,6 +163,11 @@ export const api = {
   bankRates: (bank: string) => request<Rate[]>(`/banks/${bank}/rates`),
   financeQuote: (bank: string, params: { product: string; amount: number; term: number }) =>
     request<FinanceQuote>(`/banks/${bank}/finance${queryString(params)}`),
+  cardQuote: (
+    bank: string,
+    params: { card: string; amount: number; installments: number },
+  ) => request<CardInstallmentQuote>(`/banks/${bank}/card${queryString(params)}`),
+  mileRates: (bank: string) => request<MileRate[]>(`/banks/${bank}/miles`),
 
   // ----- comparison -----
   compareFinance: (params: {
@@ -191,6 +200,18 @@ export const api = {
     active_only?: boolean;
     k?: number;
   }) => request<SearchResponse>(`/search${queryString(params)}`),
+
+  /**
+   * What the selected banks will accept, before anyone is asked.
+   *
+   * Read from cached catalogues, so a form can call this on every change
+   * without touching a bank endpoint.
+   */
+  constraints: (params: {
+    family: string;
+    category?: "finance" | "profit_share";
+    banks?: string[];
+  }) => request<Constraints>(`/compare/constraints${queryString(params)}`),
 
   // ----- produced components -----
   componentCategories: () => request<ComponentCategory[]>("/components"),

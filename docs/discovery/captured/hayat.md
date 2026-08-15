@@ -64,10 +64,28 @@ check will tell a user their profit is "0 TL" instead of "this account needs
 
 ## Finansman
 
-`calculateloansproduct` exists and responds, but rejects every payload shape
-tried with `400 {"message":"API Failure"}`. There is **no loan calculator on the
-public site** to observe a working request from, so its contract is unknown.
-Recorded as unknown rather than guessed at.
+`calculateloansproduct` exists and responds, but cannot be made to answer.
+
+Re-probed 2026-08-15 using Emlak's known-good `CalculateLoansProduct` payload,
+since both banks expose an endpoint of that name and Emlak is a working request
+to copy. That got further than the first pass and still ends in the same place:
+
+- The bare Emlak body fails ASP.NET model binding —
+  `{"errors":{"request":["The request field is required."],
+  "$.LoanMaturity":["The JSON value could not be converted..."]}}`. So the body
+  must be wrapped as `{"request": {...}}`, which the first pass never tried.
+- Wrapped, model binding passes and the handler answers
+  `400 {"message":"API Failure"}` — for the full Emlak body, for every field
+  spelling and type, and **identically for `{"request": {}}`**.
+
+An empty request failing exactly like a populated one means the refusal is not
+about our field values, so there is nothing left to guess at from outside. The
+public site has **no loan calculator** to observe: `/finansman` and
+`/hesaplama-araclari` both return the SPA shell with **0 `<input>` and 0
+`<select>` elements**.
+
+Still recorded as unknown rather than guessed at. Turning the endpoint's silence
+into an instalment would mean inventing the number, which the project forbids.
 
 ## FX
 

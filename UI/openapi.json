@@ -739,7 +739,7 @@
           "banks"
         ],
         "summary": "Bank Rates",
-        "description": "A bank's FX and gold table, with the timestamp it was quoted at.",
+        "description": "A bank's FX and gold table, with the timestamp it was quoted at.\n\nCached for a few seconds, and only here. The board is a live page: it polls,\nand without this every tab refreshing would be its own request to the bank.\nTwo of these boards are page reads and one bank fingerprints TLS, so the\nbrowser polls freely and the banks see one request per TTL.",
         "operationId": "bank_rates",
         "parameters": [
           {
@@ -765,6 +765,131 @@
                     "$ref": "#/components/schemas/RateOut"
                   },
                   "title": "Response Bank Rates"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/banks/{bank}/card": {
+      "get": {
+        "tags": [
+          "banks"
+        ],
+        "summary": "Bank Card Quote",
+        "description": "An instalment plan for a credit-card purchase.\n\nOnly two banks publish this (Kuveyt Türk, Vakıf). Kuveyt Türk's own card\ncatalogue has a duplicate code -- `BP` names two different cards -- so a\ncaller quoting `BP` gets whichever the catalogue lists first; this is a\nknown gap in the bank's own data, not something resolved here.",
+        "operationId": "bank_card_quote",
+        "parameters": [
+          {
+            "name": "bank",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "A bank key from GET /api/banks.",
+              "title": "Bank"
+            },
+            "description": "A bank key from GET /api/banks."
+          },
+          {
+            "name": "card",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "A card code from GET /{bank}/products?category=card.",
+              "title": "Card"
+            },
+            "description": "A card code from GET /{bank}/products?category=card."
+          },
+          {
+            "name": "amount",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "title": "Amount"
+            }
+          },
+          {
+            "name": "installments",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "title": "Installments"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardInstallmentQuoteOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/banks/{bank}/miles": {
+      "get": {
+        "tags": [
+          "banks"
+        ],
+        "summary": "Bank Mile Rates",
+        "description": "Miles earned per lira, by card, tier and spending category.\n\nKuveyt Türk is the only publisher, and its table is 567 rows -- every\ncombination of card, membership tier and category. Filtering by card or\ncategory happens in the frontend rather than as query parameters here,\nwhich would need their own \"list the valid values\" endpoints to be usable.",
+        "operationId": "bank_mile_rates",
+        "parameters": [
+          {
+            "name": "bank",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "A bank key from GET /api/banks.",
+              "title": "Bank"
+            },
+            "description": "A bank key from GET /api/banks."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MileRateOut"
+                  },
+                  "title": "Response Bank Mile Rates"
                 }
               }
             }
@@ -1049,6 +1174,83 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ComparisonOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/compare/constraints": {
+      "get": {
+        "tags": [
+          "compare"
+        ],
+        "summary": "Compare Constraints",
+        "description": "What the selected banks will accept, before anyone is asked.\n\nRead from the catalogues, which the provider layer caches, so a form can\ncall this on every change without touching a bank endpoint each time.\n\nThe value is `intersection`: Dünya's konut product stops at 84 months while\nthe other five reach 120, so a run including Dünya can only ask for 84.\nShowing that as a ceiling -- with the bank that set it -- beats letting\nsomeone submit 360 and watch every bank decline.",
+        "operationId": "compare_constraints",
+        "parameters": [
+          {
+            "name": "family",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "A family key from GET /api/banks/families.",
+              "title": "Family"
+            },
+            "description": "A family key from GET /api/banks/families."
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(finance|profit_share)$",
+              "default": "finance",
+              "title": "Category"
+            }
+          },
+          {
+            "name": "banks",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Limit to these banks. Omitted, every bank that sells it is asked.",
+              "title": "Banks"
+            },
+            "description": "Limit to these banks. Omitted, every bank that sells it is asked."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConstraintsOut"
                 }
               }
             }
@@ -1518,6 +1720,83 @@
         "title": "AskRequest",
         "description": "A question. `session_id` omitted starts a new conversation."
       },
+      "BankLimitsOut": {
+        "properties": {
+          "bank": {
+            "type": "string",
+            "title": "Bank"
+          },
+          "product": {
+            "type": "string",
+            "title": "Product",
+            "description": "The product, or the family stem when the bank bands it."
+          },
+          "products_matched": {
+            "type": "integer",
+            "title": "Products Matched",
+            "description": "Above 1 the bank splits this into term/amount bands and picks one at quote time; the range below is the envelope of all of them.",
+            "default": 1
+          },
+          "min_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Amount"
+          },
+          "max_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Amount"
+          },
+          "min_term": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Term"
+          },
+          "max_term": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Term"
+          },
+          "currencies": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Currencies"
+          }
+        },
+        "type": "object",
+        "required": [
+          "bank",
+          "product"
+        ],
+        "title": "BankLimitsOut",
+        "description": "What one bank will accept for a family, read from its own catalogue."
+      },
       "BankOut": {
         "properties": {
           "name": {
@@ -1558,6 +1837,48 @@
         ],
         "title": "BankOut",
         "description": "One bank, what it publishes, and what is currently down.\n\n`publishes` and `maintenance` are different absences and are reported\nseparately: a bank that does not sell car finance and a bank whose car\nfinance endpoint is broken this morning must never look alike in the UI."
+      },
+      "CardInstallmentQuoteOut": {
+        "properties": {
+          "bank": {
+            "type": "string",
+            "title": "Bank"
+          },
+          "card": {
+            "$ref": "#/components/schemas/ProductOut"
+          },
+          "amount": {
+            "type": "number",
+            "title": "Amount"
+          },
+          "installments": {
+            "type": "integer",
+            "title": "Installments"
+          },
+          "installment": {
+            "type": "number",
+            "title": "Installment"
+          },
+          "total": {
+            "type": "number",
+            "title": "Total"
+          },
+          "profit_rate": {
+            "type": "number",
+            "title": "Profit Rate"
+          }
+        },
+        "type": "object",
+        "required": [
+          "bank",
+          "card",
+          "amount",
+          "installments",
+          "installment",
+          "total",
+          "profit_rate"
+        ],
+        "title": "CardInstallmentQuoteOut"
       },
       "CategoryOut": {
         "properties": {
@@ -1861,6 +2182,42 @@
         "title": "ComponentsResponse",
         "description": "Everything a topic page needs to render, in one response.\n\n`components` is ordered, and the order is meaningful -- it is the producer's\nargument, not an arbitrary set. The frontend preserves it and computes\nwidths itself."
       },
+      "ConstraintsOut": {
+        "properties": {
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "family": {
+            "type": "string",
+            "title": "Family"
+          },
+          "banks": {
+            "items": {
+              "$ref": "#/components/schemas/BankLimitsOut"
+            },
+            "type": "array",
+            "title": "Banks"
+          },
+          "unavailable": {
+            "items": {
+              "$ref": "#/components/schemas/UnavailableOut"
+            },
+            "type": "array",
+            "title": "Unavailable"
+          },
+          "intersection": {
+            "$ref": "#/components/schemas/IntersectionOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "category",
+          "family",
+          "intersection"
+        ],
+        "title": "ConstraintsOut"
+      },
       "ConversionOut": {
         "properties": {
           "bank": {
@@ -1980,11 +2337,26 @@
             "title": "Term"
           },
           "installment": {
-            "type": "number",
-            "title": "Installment"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Installment",
+            "description": "Monthly payment, or null where the bank publishes only a rate."
           },
           "total": {
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Total"
           },
           "profit_rate": {
@@ -2009,6 +2381,17 @@
             "type": "object",
             "title": "Fees"
           },
+          "variant": {
+            "type": "string",
+            "title": "Variant",
+            "description": "e.g. \"sigortali\" / \"sigortasiz\". Empty where the bank does not split.",
+            "default": ""
+          },
+          "general": {
+            "type": "boolean",
+            "title": "General",
+            "default": false
+          },
           "schedule": {
             "items": {
               "$ref": "#/components/schemas/PaymentRowOut"
@@ -2023,8 +2406,6 @@
           "product",
           "amount",
           "term",
-          "installment",
-          "total",
           "profit_rate"
         ],
         "title": "FinanceQuoteOut"
@@ -2060,6 +2441,74 @@
         ],
         "title": "HealthOut"
       },
+      "IntersectionOut": {
+        "properties": {
+          "min_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Amount"
+          },
+          "max_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Amount"
+          },
+          "min_term": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Term"
+          },
+          "max_term": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Term"
+          },
+          "currencies": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Currencies"
+          },
+          "limited_by": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Limited By"
+          }
+        },
+        "type": "object",
+        "title": "IntersectionOut",
+        "description": "The range every bank in the run will accept.\n\n`limited_by` names the bank behind each bound, and only when one bank is\nactually the reason -- a bound every bank shares is the product's shape, not\nsomebody's restriction."
+      },
       "LoginRequest": {
         "properties": {
           "email": {
@@ -2079,6 +2528,35 @@
           "password"
         ],
         "title": "LoginRequest"
+      },
+      "MileRateOut": {
+        "properties": {
+          "card": {
+            "type": "string",
+            "title": "Card"
+          },
+          "tier": {
+            "type": "string",
+            "title": "Tier"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "per_lira": {
+            "type": "number",
+            "title": "Per Lira"
+          }
+        },
+        "type": "object",
+        "required": [
+          "card",
+          "tier",
+          "category",
+          "per_lira"
+        ],
+        "title": "MileRateOut",
+        "description": "One reward rate: miles earned per lira, for one card/tier/category.\n\nKuveyt Türk's table is 567 rows -- card x tier x category -- so the\nfrontend filters this client-side rather than the route taking three query\nparameters that would each need their own \"list the valid ones\" endpoint."
       },
       "PaymentRowOut": {
         "properties": {
@@ -2429,6 +2907,16 @@
               }
             ],
             "title": "Net Annual Rate"
+          },
+          "variant": {
+            "type": "string",
+            "title": "Variant",
+            "default": ""
+          },
+          "general": {
+            "type": "boolean",
+            "title": "General",
+            "default": false
           }
         },
         "type": "object",
@@ -2470,6 +2958,18 @@
           "as_of": {
             "type": "string",
             "title": "As Of",
+            "default": ""
+          },
+          "derived": {
+            "type": "boolean",
+            "title": "Derived",
+            "description": "True when the pair was worked out from the bank's own converter rather than read off a published feed. The UI must label these: the numbers are the bank's, the inversion is ours.",
+            "default": false
+          },
+          "canonical": {
+            "type": "string",
+            "title": "Canonical",
+            "description": "The shared symbol for this instrument -- XAU for gold whether the bank calls it XAU or 'ALT (gr)'. Cross-bank grouping keys on (canonical, unit); without it the frontend would have to duplicate the alias table and drift when a bank renames a code.",
             "default": ""
           }
         },

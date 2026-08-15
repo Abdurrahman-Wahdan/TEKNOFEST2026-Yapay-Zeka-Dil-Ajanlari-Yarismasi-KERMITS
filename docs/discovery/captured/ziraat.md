@@ -21,7 +21,37 @@ The `/ajax/*` routes answer plain `httpx` happily. The Drupal *form* endpoint
 answers `493` to every non-browser client, `curl_cffi` impersonation included,
 and there is no `/ajax/` route for kâr payı or leasing — every plausible name
 (`karpayihesapla`, `kar-payi-hesapla`, `leasinghesapla`, …) returns a Drupal
-`"No route found"`. So **kâr payı and leasing are browser-only for this bank**.
+`"No route found"`.
+
+**Corrected 2026-08-15 — kâr payı is NOT browser-only.** The `493` comes from
+the `ajax_form=1` parameter, not from the endpoint. Drop it and the same URL
+answers normally:
+
+    POST /anasayfa?_wrapper_format=drupal_ajax          -> 200, processes the form
+    POST /anasayfa?ajax_form=1&_wrapper_format=...      -> 493
+
+The form is `kari_payi_hesapla_form` (Ziraat's own id carries the typo "kari",
+which is why every guessed `/ajax/` name missed). Its real fields, read from the
+homepage rather than guessed:
+
+| field | values |
+|---|---|
+| `kar_payi_hesap_type` | `5` KATILMA HESABI · `2` ARA DÖNEM ÖDEMELİ |
+| `kar_payi_currency` | `TRY` `EUR` `USD` `XAU` |
+| `kar_payi_maturity_type` | `2` 1 ay · `8` 3 ay · `11` 6 ay · `5` 1 yıl · `14` esnek |
+| `kar_payi_ana_para`, `kar_payi_vade` | amount, term in days |
+
+Posted correctly it echoes the input back and returns the four result fields —
+**and every one of them is zero**. Swept all 5 maturities × TRY/USD/XAU: `Net
+Getiri 0`, `Brüt Getiri 0`, `Net Oran 0%`, `Brüt Oran 0%`, each with the bank's
+own message *"Girişi yapılan değerler için henüz kâr payı dağıtımı yapılmamış
+olduğundan, hesaplama yapılamamaktadır."*
+
+The tool is **retrospective**: it reports rates already distributed to accounts
+that have matured, not a forward quote. So `profit_share` stays off Ziraat's
+capabilities — not because the endpoint is unreachable, but because it publishes
+no figure. A bank wired in on this basis would decline every comparison it
+entered while looking like an outage.
 
 ## Endpoints that work headlessly
 

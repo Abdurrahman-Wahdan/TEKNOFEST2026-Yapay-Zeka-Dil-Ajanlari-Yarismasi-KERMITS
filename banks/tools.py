@@ -107,6 +107,14 @@ def _finance(quote: FinanceQuote, schedule: bool = False) -> dict:
         "annual_cost_rate": quote.annual_cost_rate,
         "fees": quote.fees,
         "schedule_rows": len(quote.schedule),
+        # Only present when they say something, so a row from a bank that does
+        # not split its products carries no empty keys.
+        **({"variant": quote.variant} if quote.variant else {}),
+        **({"covers_whole_family": True} if quote.general else {}),
+        **(
+            {"note": "this bank publishes a rate but states no instalment"}
+            if not quote.priced else {}
+        ),
         **rows,
     }
 
@@ -393,8 +401,16 @@ def _ranked(comparison, row, key, best_label: str) -> dict:
     `key` sorts the rows and decides the winner. Keys identical on every row are
     hoisted out of the rows, because eight copies of the same amount is prompt
     weight that buys nothing.
+
+    A row whose sort key is None sinks to the bottom and can never win. Türkiye
+    Finans publishes a rate but no instalment, and treating a missing payment
+    as zero would crown the one bank that did not quote a payment at all.
     """
-    rows = sorted((row(q) for q in comparison.quotes), key=key)
+    def ordered(r):
+        value = key(r)
+        return (value is None, value if value is not None else 0)
+
+    rows = sorted((row(q) for q in comparison.quotes), key=ordered)
     shared = {}
     for field in ("amount", "term_months", "term", "term_unit", "currency"):
         values = {r.get(field) for r in rows}
@@ -406,11 +422,16 @@ def _ranked(comparison, row, key, best_label: str) -> dict:
     answer = {
         "family": comparison.family,
         **shared,
-        "compared": comparison.in_scope,
+        # Banks, not rows: a bank can produce two rows (Türkiye Finans prices
+        # sigortalı and sigortasız), and "compared 9 banks" when nine banks do
+        # not exist reads as a bug.
+        "compared": len(comparison.banks_covered),
         "ranked": rows,
     }
-    if rows:
-        answer[best_label] = rows[0]["bank"]
+    # Only a row that actually carries the winning figure can be the winner.
+    winners = [r for r in rows if key(r) is not None]
+    if winners:
+        answer[best_label] = winners[0]["bank"]
     if comparison.unavailable:
         answer["not_compared"] = [
             {"bank": u.bank, "why": u.why, "detail": u.detail}

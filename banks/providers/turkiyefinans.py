@@ -19,8 +19,9 @@ verify_turkiyefinans.py.
 """
 
 import logging
+import re
 
-from ..models import Product
+from ..models import FinanceQuote, Product, Rate
 from ..parse import money, rate
 from .base import BaseBank, UnsupportedProduct, refusal
 
@@ -32,6 +33,19 @@ PAGE = f"{HOST}/tr-tr/hesaplama-araclari/Sayfalar/hesaplama-araclari.aspx"
 
 HEADERS = {"accept": "application/json", "referer": PAGE}
 
+# The board quotes gold and silver twice: an ounce price in dollars and a gram
+# price in lira. Only the gram rows line up with what the other banks publish.
+_GRAM_CODES = {"YAU": "ALT (gr)", "YAG": "GMS (gr)"}
+
+
+def _ms_date(value) -> str:
+    """`/Date(1786798759996+0300)/` -> an ISO stamp, or "" if it is not one."""
+    match = re.search(r"/Date\((\d+)", str(value or ""))
+    if not match:
+        return ""
+    from datetime import datetime, timezone
+    return datetime.fromtimestamp(int(match.group(1)) / 1000, timezone.utc).isoformat()
+
 # Rate tables are published per account group and customer type. Group 4 is the
 # short-term band and group 1 the standard one; group 2 publishes nothing on
 # either side, and group 4 Ticari publishes nothing either.
@@ -41,15 +55,18 @@ RATE_TABLES = ((4, "Bireysel"), (1, "Bireysel"), (1, "Ticari"))
 class TurkiyeFinans(BaseBank):
     name = "turkiyefinans"
     display_name = "Türkiye Finans Katılım Bankası"
-    # Products and rates only. There is deliberately no "finance" or
-    # "profit_share" here: this bank states rates but computes nothing, and
-    # inventing the instalment ourselves is the one thing the rules forbid.
-    capabilities = frozenset({"products"})
+    # "finance" is here because the bank does publish a per-term profit rate,
+    # annual cost rate and fees for all 18 products -- enough to rank it beside
+    # everyone else. What it never publishes is the instalment, so the quote
+    # comes back with installment=None rather than a figure we invented.
+    # "profit_share" stays out: there the bank states only a ratio, and a
+    # profit amount is nothing but arithmetic on the amount asked for.
+    capabilities = frozenset({"products", "finance", "rates"})
     notes = (
-        "It publishes rate and fee tables but no calculated figures: its own "
-        "calculator does the arithmetic in the browser, so there is no "
-        "instalment or profit amount to read back. Use list_products for the "
-        "rates, fees and term bands it does state."
+        "It publishes rate and fee tables but computes nothing: its own "
+        "calculator does the arithmetic in the browser. Financing comes back "
+        "with the bank's published rate and no instalment. Participation "
+        "accounts come back as a ratio only, through list_products."
     )
 
     def _service(self, method: str, result_key: str) -> list[dict]:
@@ -140,29 +157,90 @@ class TurkiyeFinans(BaseBank):
                 )
         return built
 
-    # ----- what it will not answer, and why -----
+    # ----- rates -----
 
-    @refusal
-    def finance_quote(self, product: str, amount: float, term: int):
-        """Refuse, naming the rate the bank publishes for this term.
+    def rates(self) -> list[Rate]:
+        """The bank's FX and metal board, from its own service.
 
-        The rate is read straight off the bank's table; only the instalment,
-        which the bank never states, is missing.
+        `GetExchangeRates` on the same SharePoint service the catalogues come
+        from. Twenty instruments with a quote time, and it was reachable all
+        along -- the bank was recorded as publishing no rates because nobody had
+        asked the service what else it served.
+
+        Gold and silver arrive twice: an ounce price in USD (XAU/XAG) and a gram
+        price in lira (YAU/YAG). Only the gram rows are comparable with the
+        other banks, so the ounce rows keep their own codes and a "1" unit
+        rather than being mixed into the gram board.
+        """
+        payload = self._service("GetExchangeRates", "GetExchangeRatesResult")
+        built: list[Rate] = []
+        for row in payload:
+            code = (row.get("CurrencyCode") or "").strip()
+            buy, sell = money(row.get("BuyPrice")), money(row.get("SellPrice"))
+            if not code or buy <= 0 or sell <= 0:
+                continue
+            built.append(Rate(
+                code=_GRAM_CODES.get(code, code),
+                name=(row.get("Title") or code).strip(),
+                buy=buy,
+                sell=sell,
+                unit="gram" if code in _GRAM_CODES else "1",
+                as_of=_ms_date(row.get("Date")),
+            ))
+        return built
+
+    # ----- a rate, but never a payment -----
+
+    def finance_quote(self, product: str, amount: float, term: int) -> FinanceQuote:
+        """The rate this bank publishes for the term, with no instalment.
+
+        Every figure here is read straight off the bank's own table: the
+        monthly profit rate for the band covering `term`, its annual cost rate,
+        the allocation fee and BSMV. `installment` and `total` stay None
+        because the bank never states them -- its calculator runs the annuity
+        in the browser -- and working them out here is the one thing the
+        project rules forbid.
+
+        Returning the row rather than refusing is what puts the bank in the
+        comparison at all. It ranks on rate beside everyone else and its
+        payment column is visibly empty, which is the truth; refusing dropped
+        an entire bank's published pricing off the page.
         """
         chosen = self.find_product("finance", product)
-        band = _band_for(chosen.raw.get("FinanceCalculatorCreditList") or [], term)
-        detail = ""
-        if band:
-            detail = (
-                f" For {term} months it publishes a monthly profit rate of "
-                f"{rate(band.get('Value'))}% and an annual cost rate of "
-                f"{rate(band.get('Cost'))}%, plus an allocation fee of "
-                f"{rate(chosen.raw.get('AllocationFee')) * 100:.3f}%."
+        bands = chosen.raw.get("FinanceCalculatorCreditList") or []
+        band = _band_for(bands, term)
+        if band is None:
+            covered = sorted(
+                (int(b.get("Min") or 0), int(b.get("Max") or 0)) for b in bands
             )
-        raise UnsupportedProduct(
-            f"{self.display_name} publishes no instalment figure for "
-            f"{chosen.name}: its calculator works the payment out in the browser "
-            f"from the rate table, so there is nothing to read back." + detail
+            spans = ", ".join(f"{lo}-{hi}" for lo, hi in covered) or "none"
+            raise UnsupportedProduct(
+                f"{self.display_name} publishes no rate for {chosen.name} over "
+                f"{term} months. Its bands cover {spans} months."
+            )
+
+        # Both are shares in the payload (0.00575, 0.15), stated as percentages
+        # everywhere else in this codebase.
+        fees = {}
+        allocation = rate(chosen.raw.get("AllocationFee"))
+        if allocation:
+            fees["allocation_rate"] = round(allocation * 100, 4)
+        bsmv = rate(chosen.raw.get("Bitt"))
+        if bsmv:
+            fees["bsmv_rate"] = round(bsmv * 100, 4)
+
+        return FinanceQuote(
+            bank=self.name,
+            product=chosen,
+            amount=amount,
+            term=term,
+            installment=None,
+            total=None,
+            profit_rate=rate(band.get("Value")),
+            annual_cost_rate=rate(band.get("Cost")),
+            fees=fees,
+            schedule=[],
+            raw={"band": band, "product": chosen.raw},
         )
 
     @refusal

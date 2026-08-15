@@ -163,9 +163,14 @@ def plan(bank, capabilities: list[str] | None = None) -> list[Unit]:
 
     if not wanted or FAMILIES in wanted:
         for category, table in families.BY_CATEGORY.items():
-            for family, entries in table.items():
-                if bank.name in entries:
-                    units.append(Unit(bank.name, FAMILIES, f"{category}/{family}"))
+            for family, members in table.items():
+                # One unit per entry, not per family: a bank listed twice has
+                # two codes to resolve and either can rot on its own.
+                for member in members:
+                    if member.bank == bank.name:
+                        units.append(Unit(
+                            bank.name, FAMILIES, f"{category}/{family}/{member.query}"
+                        ))
     return units
 
 
@@ -177,8 +182,7 @@ def _check(bank, unit: Unit) -> str:
         return CHECKS[unit.capability](bank)
 
     if unit.capability == FAMILIES:
-        category, family = unit.product.split("/", 1)
-        query = families.entries(category, family)[bank.name]
+        category, family, query = unit.product.split("/", 2)
         product = bank.resolve(category, query, DEFAULT_AMOUNT, DEFAULT_TERM)
         return f"{family} -> {product.name[:40]}"
 
@@ -187,6 +191,13 @@ def _check(bank, unit: Unit) -> str:
 
     if unit.capability == "finance":
         quote = bank.finance_quote(unit.product, amount, term)
+        # Türkiye Finans states a rate and no payment, by its own design. The
+        # check is that it still states the rate; demanding an instalment would
+        # report a working endpoint as broken every morning.
+        if not quote.priced:
+            if not quote.profit_rate:
+                raise AssertionError("neither an instalment nor a rate")
+            return f"{amount:,.0f}/{term}ay -> {quote.profit_rate}% (rate only)"
         if quote.installment <= 0 or quote.total <= quote.amount:
             raise AssertionError(f"instalment {quote.installment} on {quote.amount}")
         return f"{amount:,.0f}/{term}ay -> {quote.installment:,.2f}"

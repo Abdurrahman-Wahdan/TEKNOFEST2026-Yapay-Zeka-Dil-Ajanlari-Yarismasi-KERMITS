@@ -132,6 +132,14 @@ def _check_products(bank) -> str:
 def _check_finance(bank) -> str:
     product, amount, months = probes.FINANCE[bank.name]
     quote = bank.finance_quote(product, amount, months)
+    # Türkiye Finans states a rate and never an instalment -- its calculator
+    # runs the annuity in the browser. That is the contract it is meant to
+    # satisfy, so the check is that the rate is still there. Demanding a
+    # payment reported a working endpoint as down every morning.
+    if not quote.priced:
+        if not quote.profit_rate:
+            raise AssertionError("neither an instalment nor a rate")
+        return f"{product[:22]} {amount:,.0f}/{months}ay -> {quote.profit_rate}% (rate only)"
     if quote.installment <= 0 or quote.total <= quote.amount:
         raise AssertionError(
             f"instalment {quote.installment} / total {quote.total} on {quote.amount}"

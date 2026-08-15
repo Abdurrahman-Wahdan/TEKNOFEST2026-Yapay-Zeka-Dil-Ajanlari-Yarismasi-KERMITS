@@ -13,17 +13,22 @@ exactly right here.
 
 import logging
 
-from fastapi import APIRouter, HTTPException, Path, Query, status
+from fastapi import APIRouter, HTTPException, Path, Query, WebSocket, WebSocketDisconnect, status
 
 from banks import get_bank, list_banks
+
+from .. import cache
+from ..rates_stream import hub
 from banks.providers import UnsupportedProduct
 from banks.providers.base import TemporarilyUnavailable
 
 from ..converters import (
-    family_list, finance_quote_out, product_out, profit_share_quote_out, rate_out,
+    card_quote_out, family_list, finance_quote_out, mile_rate_out, product_out,
+    profit_share_quote_out, rate_out,
 )
 from ..schemas.banks import (
-    BankOut, FamilyOut, FinanceQuoteOut, ProductOut, ProfitShareQuoteOut, RateOut,
+    BankOut, CardInstallmentQuoteOut, FamilyOut, FinanceQuoteOut, MileRateOut,
+    ProductOut, ProfitShareQuoteOut, RateOut,
 )
 
 logger = logging.getLogger(__name__)
@@ -158,9 +163,83 @@ def bank_profit_share_quote(
 
 @router.get("/{bank}/rates", response_model=list[RateOut])
 def bank_rates(bank: str = BankName) -> list[RateOut]:
-    """A bank's FX and gold table, with the timestamp it was quoted at."""
+    """A bank's FX and gold table, with the timestamp it was quoted at.
+
+    Cached for a few seconds, and only here. The board is a live page: it polls,
+    and without this every tab refreshing would be its own request to the bank.
+    Two of these boards are page reads and one bank fingerprints TLS, so the
+    browser polls freely and the banks see one request per TTL.
+    """
     provider = _bank(bank)
     try:
-        return [rate_out(r) for r in provider.rates()]
+        return cache.rates.get(provider.name, lambda: [rate_out(r) for r in provider.rates()])
     except UnsupportedProduct as exc:
         raise _handle(exc) from exc
+
+
+@router.get("/{bank}/card", response_model=CardInstallmentQuoteOut)
+def bank_card_quote(
+    bank: str = BankName,
+    card: str = Query(description="A card code from GET /{bank}/products?category=card."),
+    amount: float = Query(gt=0),
+    installments: int = Query(gt=0),
+) -> CardInstallmentQuoteOut:
+    """An instalment plan for a credit-card purchase.
+
+    Only two banks publish this (Kuveyt Türk, Vakıf). Kuveyt Türk's own card
+    catalogue has a duplicate code -- `BP` names two different cards -- so a
+    caller quoting `BP` gets whichever the catalogue lists first; this is a
+    known gap in the bank's own data, not something resolved here.
+    """
+    provider = _bank(bank)
+    try:
+        return card_quote_out(provider.card_installment_quote(card, amount, installments))
+    except UnsupportedProduct as exc:
+        raise _handle(exc) from exc
+
+
+@router.get("/{bank}/miles", response_model=list[MileRateOut])
+def bank_mile_rates(bank: str = BankName) -> list[MileRateOut]:
+    """Miles earned per lira, by card, tier and spending category.
+
+    Kuveyt Türk is the only publisher, and its table is 567 rows -- every
+    combination of card, membership tier and category. Filtering by card or
+    category happens in the frontend rather than as query parameters here,
+    which would need their own "list the valid values" endpoints to be usable.
+    """
+    provider = _bank(bank)
+    try:
+        return [mile_rate_out(r) for r in provider.mile_rates()]
+    except UnsupportedProduct as exc:
+        raise _handle(exc) from exc
+
+
+@router.websocket("/rates/stream")
+async def rates_stream(socket: WebSocket) -> None:
+    """Every bank's board, pushed as soon as it changes.
+
+    The polling endpoint above is still the source of truth for a one-off
+    request. This is for the live board, where the browser wants a new price
+    within a second or two and the banks must not be asked at that rate: one
+    poller serves every viewer, so ten tabs cost the banks exactly what one
+    does.
+
+    The first message is the current snapshot, so a viewer arriving mid-cycle
+    draws a full board immediately instead of an empty one until the next poll.
+    """
+    await socket.accept()
+    try:
+        async with hub.subscribe() as queue:
+            # Only if there is one. On a cold start the first poll is still in
+            # flight, and an empty snapshot would draw a board with no rows in
+            # it for the second before the real one lands.
+            current = hub.snapshot()
+            if current["banks"]:
+                await socket.send_json(current)
+            while True:
+                await socket.send_json(await queue.get())
+    except WebSocketDisconnect:
+        return
+    except Exception:  # noqa: BLE001 - a dropped viewer is not a server error
+        logger.debug("Rates stream closed", exc_info=True)
+        return

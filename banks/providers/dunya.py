@@ -13,18 +13,24 @@ Contract in docs/discovery/captured/dunya.md, exercised by verify_dunya.py.
 
 import html as htmlmod
 import json
+import html
 import logging
 import re
 from decimal import Decimal
 
-from ..models import Conversion, FinanceQuote, ProfitShareQuote, Product
-from ..parse import money, rate
+from ..models import Conversion, FinanceQuote, ProfitShareQuote, Product, Rate
+from ..parse import money, money_en, rate
 from ..parse import term_unit as unit
 from .base import BaseBank, UnsupportedProduct
 
 logger = logging.getLogger(__name__)
 
 HOST = "https://dunyakatilim.com.tr"
+
+# Quoted per gram, all four. Listing only gold and silver left platinum and
+# palladium as unit "1", so they never grouped with the same metal at another
+# bank -- the board showed two XPT rows, each with one bank in it.
+_METALS = {"XAU", "XAG", "XPT", "XPD"}
 HOME = f"{HOST}/"
 
 HEADERS = {
@@ -44,10 +50,13 @@ _DIVIDEND = re.compile(r"""<option[^>]*value=["'](\{&quot;id&quot;.*?\})["']""",
 class Dunya(BaseBank):
     name = "dunya"
     display_name = "Dünya Katılım Bankası"
-    capabilities = frozenset({"products", "finance", "profit_share", "convert"})
+    capabilities = frozenset(
+        {"products", "finance", "profit_share", "convert", "rates"}
+    )
     notes = (
         "It converts currency and precious metals server-side but publishes no "
-        "buy/sell rate feed, and has no card calculator."
+        "buy/sell rate feed, so its board is derived from its own converter. "
+        "It has no card calculator."
     )
     # Plain httpx plus the homepage's anti-forgery token on every call.
     transport = "csrf"
@@ -262,6 +271,55 @@ class Dunya(BaseBank):
         ))
 
     # ----- conversion -----
+
+    def rates(self) -> list[Rate]:
+        """The bank's own published board, off its daily-rates page.
+
+        `/gunluk-kurlar` renders `Döviz Cinsi | Banka Alış | Banka Satış |
+        Değişim` server-side; there is no JSON route behind it (`/CurrencyList`,
+        `/CurrencyRates`, `/GetCurrency` all answer HTML, and `/CurrencyHistory`
+        answers `{"data": []}`). So the page is the endpoint.
+
+        Read, never computed. An earlier version inverted the converter to get a
+        sell price; it agreed with the published figure, but the bank states
+        these itself and a figure we worked out is not the same claim.
+
+        Numbers here are en-US formatted on a Turkish page -- `6,662.6542` is
+        six thousand -- hence `money_en`. The Turkish reader turns that into
+        6,66, which looks like a plausible gold price and is not one.
+        """
+        page = self._text(f"{HOST}/gunluk-kurlar")
+        built: list[Rate] = []
+        for table in re.findall(r"<table[^>]*>.*?</table>", page, re.S):
+            for row in re.findall(r"<tr[^>]*>(.*?)</tr>", table, re.S):
+                cells = [
+                    html.unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", c))).strip()
+                    for c in re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", row, re.S)
+                ]
+                cells = [c for c in cells if c]
+                if len(cells) < 3:
+                    continue
+                # "Amerikan doları (USD)" -- the code is what everything else keys on.
+                match = re.search(r"\(([A-Z]{3})\)", cells[0])
+                if not match:
+                    continue
+                code = match.group(1)
+                buy, sell = money_en(cells[1]), money_en(cells[2])
+                if buy <= 0 or sell <= 0:
+                    continue
+                built.append(Rate(
+                    code=code,
+                    name=re.sub(r"\s*\([A-Z]{3}\)", "", cells[0]).strip(),
+                    buy=buy,
+                    sell=sell,
+                    unit="gram" if code in _METALS else "1",
+                ))
+        if not built:
+            raise UnsupportedProduct(
+                f"{self.display_name} published no rate rows. The board is parsed "
+                f"out of /gunluk-kurlar, so this usually means the page changed."
+            )
+        return built
 
     def convert(self, source: str, target: str, amount: float) -> Conversion:
         """Dünya converts server-side, precious metals included."""

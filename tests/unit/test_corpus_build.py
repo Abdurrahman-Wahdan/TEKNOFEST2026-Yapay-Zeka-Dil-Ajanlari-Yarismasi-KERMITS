@@ -250,13 +250,19 @@ def test_the_pdf_pass_ocrs_the_queue_and_merges_in(monkeypatch):
     _serve_page_and_pdf(monkeypatch)
     build.run(sites=["kuveytturk"], pages_only=True)
 
-    # stub extraction so the test does not need poppler or a live model
-    from corpus.models import Block, Page
+    # stub extraction so the test does not need poppler or a live model. A page
+    # is markdown plus items now, and a table arrives as an item whose marker
+    # sits in the markdown.
+    from corpus.models import Item, Page
     fake = pdf_extract.Extraction(
-        pages=(Page(number=1, blocks=(Block("table", "| Ücret | 5 TL |", 0),),
+        pages=(Page(number=1,
+                    markdown="## Ücretler\n\n<table_1>",
                     cite_url="https://www.kuveytturk.com.tr/documents/ucretler.pdf#page=1",
-                    text_hash="abc", has_tables=True),),
-        text="Ürün ve Hizmet Ücretleri tablosu " * 20, engine="pdftotext+vision",
+                    text_hash="abc",
+                    items=(Item("table_1", "<table_1>", "ücret tablosu",
+                                "| Ücret | 5 TL |", "iki sütun"),),
+                    has_tables=True),),
+        text="Ürün ve Hizmet Ücretleri tablosu " * 20, engine="ocr",
         page_count=1)
     monkeypatch.setattr(build.pdf_extract, "extract", lambda *a, **k: fake)
 
@@ -275,11 +281,11 @@ def test_a_second_pages_pass_does_not_wipe_the_pdf_documents(monkeypatch):
     """A nightly website refresh must not delete the PDFs the slow pass produced."""
     _serve_page_and_pdf(monkeypatch)
     build.run(sites=["kuveytturk"], pages_only=True)
-    from corpus.models import Block, Page
+    from corpus.models import Page
     fake = pdf_extract.Extraction(
-        pages=(Page(1, (Block("paragraph", "ücret bilgisi " * 30, 0),),
+        pages=(Page(1, "ücret bilgisi " * 30,
                     "https://www.kuveytturk.com.tr/documents/ucretler.pdf#page=1", "h"),),
-        text="ücret bilgisi " * 30, engine="pdftotext+vision", page_count=1)
+        text="ücret bilgisi " * 30, engine="ocr", page_count=1)
     monkeypatch.setattr(build.pdf_extract, "extract", lambda *a, **k: fake)
     build.process_pdfs()
 
@@ -309,11 +315,14 @@ def _queue_one_pdf(monkeypatch, content_hash="pdfhash1"):
 
 def test_an_ocr_result_is_cached_to_disk(monkeypatch):
     _queue_one_pdf(monkeypatch)
-    from corpus.models import Block, Page
+    from corpus.models import Item, Page
     fake = pdf_extract.Extraction(
-        pages=(Page(1, (Block("table", "| Ücret | 5 TL |", 0),),
-                    "https://x.com.tr/documents/ucretler.pdf#page=1", "h", has_tables=True),),
-        text="Ücret tarifesi tablosu " * 20, engine="pdftotext+vision", page_count=1)
+        pages=(Page(1, "## Ücretler\n\n<table_1>",
+                    "https://x.com.tr/documents/ucretler.pdf#page=1", "h",
+                    items=(Item("table_1", "<table_1>", "ücret tablosu",
+                                "| Ücret | 5 TL |", "iki sütun"),),
+                    has_tables=True),),
+        text="Ücret tarifesi tablosu " * 20, engine="ocr", page_count=1)
     monkeypatch.setattr(build.pdf_extract, "extract", lambda *a, **k: fake)
 
     build.process_pdfs()
@@ -386,9 +395,9 @@ def test_the_deferred_list_is_cleared_once_the_pdf_reads(monkeypatch):
     build.process_pdfs()
     assert (store.root() / build.PDF_DEFERRED).read_text("utf-8").strip()
 
-    from corpus.models import Block, Page
+    from corpus.models import Page
     fake = pdf_extract.Extraction(
-        pages=(Page(1, (Block("paragraph", "ücret bilgisi " * 30, 0),),
+        pages=(Page(1, "ücret bilgisi " * 30,
                     "https://x.com.tr/documents/ucretler.pdf#page=1", "h"),),
         text="ücret bilgisi " * 30, engine="ocr", page_count=1)
     monkeypatch.setattr(build.pdf_extract, "extract", lambda *a, **k: fake)
@@ -408,10 +417,13 @@ def test_a_deferred_pdf_is_retried_on_the_next_run(monkeypatch):
     monkeypatch.setattr(build.pdf_extract, "extract", unreachable)
     build.process_pdfs()
 
-    from corpus.models import Block, Page
+    from corpus.models import Item, Page
     fake = pdf_extract.Extraction(
-        pages=(Page(1, (Block("table", "| Ücret | 5 TL |", 0),),
-                    "https://x.com.tr/documents/ucretler.pdf#page=1", "h", has_tables=True),),
+        pages=(Page(1, "## Ücretler\n\n<table_1>",
+                    "https://x.com.tr/documents/ucretler.pdf#page=1", "h",
+                    items=(Item("table_1", "<table_1>", "ücret tablosu",
+                                "| Ücret | 5 TL |", "iki sütun"),),
+                    has_tables=True),),
         text="Ücret tarifesi tablosu " * 20, engine="ocr", page_count=1)
     monkeypatch.setattr(build.pdf_extract, "extract", lambda *a, **k: fake)
     build.process_pdfs()

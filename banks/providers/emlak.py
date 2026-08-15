@@ -16,7 +16,7 @@ import logging
 import re
 
 from ..models import FinanceQuote, PaymentRow, ProfitShareQuote, Product
-from ..parse import money, rate
+from ..parse import canonical_currency, money, rate
 from ..parse import term_unit as unit
 from .base import BaseBank, UnsupportedProduct
 
@@ -142,7 +142,13 @@ class Emlak(BaseBank):
         selects rather than assumed.
         """
         page = self._page()
-        currencies = tuple(label for _, label in _select(page, "Fec"))
+        # Canonicalised on the way out: the page labels these "TL" and
+        # "ALT (gr)", and a catalogue that says TL cannot be intersected with
+        # one that says TRY. `_fec` maps the symbol back to the label when the
+        # request is actually built, so nothing downstream needs the raw text.
+        currencies = tuple(
+            canonical_currency(label) for _, label in _select(page, "Fec")
+        )
         terms = self._terms()
         return [
             Product(
@@ -151,7 +157,7 @@ class Emlak(BaseBank):
                 category="profit_share",
                 min_term=terms[0] if terms else None,
                 max_term=terms[-1] if terms else None,
-                currencies=currencies or ("TL",),
+                currencies=currencies or ("TRY",),
                 raw={"fec": dict(_select(page, "Fec")), "terms": terms},
             )
         ]

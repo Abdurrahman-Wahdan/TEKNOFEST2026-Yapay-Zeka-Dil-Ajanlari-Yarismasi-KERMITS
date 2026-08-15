@@ -55,13 +55,42 @@ class FinanceQuote:
     product: Product
     amount: float
     term: int
-    installment: float
-    total: float
+
+    # None where the bank publishes a rate but never states a payment. Türkiye
+    # Finans is the case: its calculator does the annuity in the browser, so
+    # there is no instalment to read back, and computing one ourselves is the
+    # one thing the rules forbid. A rate-only row is a real answer -- the rate
+    # is the bank's own -- and it must stay distinguishable from a bank that
+    # answered with a payment, which is why this is None and not 0.0.
+    installment: float | None
+    total: float | None
+
     profit_rate: float
     annual_cost_rate: float | None
     fees: dict[str, float]
     schedule: list[PaymentRow]
     raw: dict
+
+    # Set by banks/compare.py from the family table, not by the provider: they
+    # describe this product's relationship to the family it was asked about,
+    # which a single-bank quote has no opinion on.
+    #
+    # `variant` is non-empty where a bank prices one product several ways --
+    # Türkiye Finans quotes everything sigortalı and sigortasız -- so two rows
+    # from one bank explain themselves instead of looking like a duplicate.
+    variant: str = ""
+
+    # True when this bank sells one product covering the whole axis the family
+    # splits on: Ziraat has a single taşıt product, so the same row answers the
+    # 0 km and the second-hand comparison. The number is real; the row just is
+    # not specific to the family it appears in, and saying so is the difference
+    # between an honest ranking and a misleading one.
+    general: bool = False
+
+    @property
+    def priced(self) -> bool:
+        """True when the bank stated a payment, not only a rate."""
+        return self.installment is not None
 
 
 @dataclass(frozen=True)
@@ -87,6 +116,15 @@ class ProfitShareQuote:
     net_annual_rate: float | None
     raw: dict
 
+    # Set by banks/compare.py from the family table, exactly as on FinanceQuote.
+    # `general` is what a gold comparison needs to stay honest: Kuveyt Türk and
+    # Dünya sell a dedicated gold account, while Emlak, Albaraka and Vakıf take
+    # gold as a currency on their ordinary one. Both are real answers, and they
+    # are not the same product -- Kuveyt Türk's gold account pays a 40% ratio
+    # where its ordinary account pays 95%.
+    variant: str = ""
+    general: bool = False
+
 
 @dataclass(frozen=True)
 class Rate:
@@ -99,6 +137,17 @@ class Rate:
     # When the bank says it quoted these. FX moves intraday, and without it the
     # agent cannot say how fresh a rate is. Empty where the feed omits it.
     as_of: str = ""
+
+    # True when the pair was worked out from the bank's own converter rather
+    # than read off a published feed. Dünya and Vakıf run a server-side
+    # converter and publish no rate table, so their board columns come from
+    # asking the converter what one unit is worth in each direction.
+    #
+    # The arithmetic is the bank's, not ours -- both legs are its own answers --
+    # but it is still a step we took, so it is labelled. Validated against the
+    # three banks that publish both: derived buy matched published buy to
+    # 0.00% and sell to within 0.14% at worst.
+    derived: bool = False
 
 
 @dataclass(frozen=True)

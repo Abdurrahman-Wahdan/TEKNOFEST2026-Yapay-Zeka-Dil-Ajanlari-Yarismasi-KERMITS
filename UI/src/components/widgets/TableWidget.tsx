@@ -28,6 +28,7 @@ import { TableFilters } from "./TableFilters";
  */
 export function TableWidget(props: TableProps) {
   const t = useTranslations("components");
+  const tw = useTranslations("components.warning");
   const locale = useLocale() as "tr" | "en";
 
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
@@ -114,9 +115,13 @@ export function TableWidget(props: TableProps) {
       {table.warnings.length > 0 && (
         <VuiBox mt={1} component="ul" pl={2} sx={{ listStyle: "disc" }}>
           {table.warnings.map((warning) => (
-            <VuiBox key={warning} component="li">
+            <VuiBox key={JSON.stringify(warning)} component="li">
               <VuiTypography variant="caption" color="text" opacity={0.7}>
-                {warning}
+                {warning.code === "truncated"
+                  ? tw("truncated", { total: warning.total, shown: warning.shown })
+                  : warning.code === "unknownColumnType"
+                    ? tw("unknownColumnType", { column: warning.column, type: warning.type })
+                    : tw("emptyColumns", { columns: warning.columns.join(", ") })}
               </VuiTypography>
             </VuiBox>
           ))}

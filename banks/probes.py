@@ -35,6 +35,9 @@ FINANCE = {
     "dunya": ("Tüketici İhtiyaç", 100_000, 24),
     "ziraat": ("ARSA FINANSMANI", 100_000, 24),
     "tom": ("İhtiyaç Finansmanı", 10_000, 6),
+    # Answers with a rate and no instalment, so the health check asserts on the
+    # rate rather than the payment. 24 months sits inside its 19-24 band.
+    "turkiyefinans": ("İhtiyaç Finansmanı", 100_000, 24),
 }
 
 # product, amount, term in DAYS, currency. Days everywhere, because that is what

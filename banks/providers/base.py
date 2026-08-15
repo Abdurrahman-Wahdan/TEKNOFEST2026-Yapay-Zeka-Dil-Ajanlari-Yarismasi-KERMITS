@@ -73,6 +73,15 @@ FINANCE_PROFIT_FLOOR = 0.5
 # every one. So this catches an order-of-magnitude contradiction, not rounding.
 PROFIT_SHARE_TOLERANCE = 0.15
 
+# Banks publish both the profit and the annual rate rounded to two decimals, so
+# each is only known to within half of the last place. On a lira figure that is
+# noise; on a gold account it is the whole number -- Vakıf's 91-day profit on
+# 100 grams is 0,01 gram against an implied 0,0075, which is a **34% relative
+# error and a 0,0025 gram absolute one**. A purely relative tolerance called
+# that a contradiction and refused a correct quote, so the published precision
+# is modelled instead of being tuned around.
+PUBLISHED_PRECISION = 0.005
+
 # The standard codes a caller uses, mapped onto the names some banks give the
 # same thing in their rate feeds. Kuveyt Türk and Hayat quote gold as
 # "ALT (gr)"; Albaraka quotes it as "XAU". A caller should not have to know.
@@ -294,6 +303,44 @@ class BaseBank(ABC):
 
     # ----- shared helpers -----
 
+    def rates_from_converter(self, currencies=("USD", "EUR", "GBP", "XAU")) -> list[Rate]:
+        """A buy/sell board built from this bank's own converter.
+
+        For a bank that converts server-side but publishes no rate table. Both
+        legs are the bank's own answers:
+
+            buy  -- what it pays you for one unit      (CUR -> TRY)
+            sell -- what it charges you for one unit   (TRY -> CUR, inverted)
+
+        Every row is marked `derived`, because inverting the second leg is a
+        step we took even though both numbers came from the bank. A currency it
+        will not convert is skipped rather than guessed at.
+        """
+        built: list[Rate] = []
+        for code in currencies:
+            try:
+                buy = float(self.convert(code, "TRY", 1).rate)
+                # 100 000 rather than 1: the inverse leg is what sets the sell
+                # price, and a converter that rounds its rate to a few decimals
+                # turns a small probe into a visibly wrong spread -- Dünya's USD
+                # sell moved from 47,7783 to 47,7849 between a 1 000 and a
+                # 100 000 probe, and stopped moving there.
+                back = float(self.convert("TRY", code, 100_000).rate)
+            except (UnsupportedProduct, ValueError, ZeroDivisionError):
+                continue
+            if buy <= 0 or back <= 0:
+                continue
+            built.append(Rate(
+                code=code,
+                name=code,
+                buy=buy,
+                sell=1 / back,
+                unit="gram" if code in ("XAU", "XAG") else "1",
+                as_of="",
+                derived=True,
+            ))
+        return built
+
     def find_product(self, category: str, query: str) -> Product:
         """Resolve a product code or a Turkish product name to a Product.
 
@@ -427,7 +474,7 @@ class BaseBank(ABC):
         annual = quote.net_annual_rate or 0
         days = quote.term * 30 if quote.term_unit == "month" else quote.term
         implied = quote.amount * (annual / 100) * (days / 365)
-        if implied and abs(quote.net_profit - implied) / implied > PROFIT_SHARE_TOLERANCE:
+        if implied and not self._agrees(quote.net_profit, implied, quote, days):
             raise UnsupportedProduct(
                 f"{self.display_name} returned {quote.net_profit:,.2f} for "
                 f"{quote.product.name} over {days} days, which does not follow "
@@ -435,6 +482,32 @@ class BaseBank(ABC):
                 f"not answer the term that was asked about."
             )
         return quote
+
+    @staticmethod
+    def _agrees(reported: float, implied: float, quote: ProfitShareQuote, days: int) -> bool:
+        """Does the bank's profit follow from its own rate, allowing for rounding?
+
+        Two independent ways to agree, and either is enough:
+
+        1. **Within the published precision.** The rate is stated to two
+           decimals, so the true rate lies within half a place either side; that
+           band gives a range of possible profits, and the profit is itself
+           rounded to two decimals. If those two intervals touch, the figures
+           agree as closely as the bank has told us anything.
+        2. **Within the relative tolerance**, which is what carries large
+           figures where day-count conventions differ by a fraction.
+
+        Hayat's daily account is unmoved by either: it reports one day's profit
+        whatever term is sent -- 68,55 against an implied 2.193,67, and
+        2.193,67 / 32 is exactly 68,55 -- which is the contradiction this whole
+        check exists to catch.
+        """
+        annual = quote.net_annual_rate or 0
+        span = quote.amount * (PUBLISHED_PRECISION / 100) * (days / 365)
+        low, high = implied - span, implied + span
+        if low - PUBLISHED_PRECISION <= reported <= high + PUBLISHED_PRECISION:
+            return True
+        return abs(reported - implied) / implied <= PROFIT_SHARE_TOLERANCE
 
     def _check_limits(
         self,

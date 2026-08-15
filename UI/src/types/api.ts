@@ -339,8 +339,63 @@ export interface paths {
         /**
          * Bank Rates
          * @description A bank's FX and gold table, with the timestamp it was quoted at.
+         *
+         *     Cached for a few seconds, and only here. The board is a live page: it polls,
+         *     and without this every tab refreshing would be its own request to the bank.
+         *     Two of these boards are page reads and one bank fingerprints TLS, so the
+         *     browser polls freely and the banks see one request per TTL.
          */
         get: operations["bank_rates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/banks/{bank}/card": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bank Card Quote
+         * @description An instalment plan for a credit-card purchase.
+         *
+         *     Only two banks publish this (Kuveyt Türk, Vakıf). Kuveyt Türk's own card
+         *     catalogue has a duplicate code -- `BP` names two different cards -- so a
+         *     caller quoting `BP` gets whichever the catalogue lists first; this is a
+         *     known gap in the bank's own data, not something resolved here.
+         */
+        get: operations["bank_card_quote"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/banks/{bank}/miles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bank Mile Rates
+         * @description Miles earned per lira, by card, tier and spending category.
+         *
+         *     Kuveyt Türk is the only publisher, and its table is 567 rows -- every
+         *     combination of card, membership tier and category. Filtering by card or
+         *     category happens in the frontend rather than as query parameters here,
+         *     which would need their own "list the valid values" endpoints to be usable.
+         */
+        get: operations["bank_mile_rates"];
         put?: never;
         post?: never;
         delete?: never;
@@ -409,6 +464,34 @@ export interface paths {
          *     a derived figure -- it is our arithmetic, not the bank's answer.
          */
         get: operations["compare_exchange"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/compare/constraints": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Compare Constraints
+         * @description What the selected banks will accept, before anyone is asked.
+         *
+         *     Read from the catalogues, which the provider layer caches, so a form can
+         *     call this on every change without touching a bank endpoint each time.
+         *
+         *     The value is `intersection`: Dünya's konut product stops at 84 months while
+         *     the other five reach 120, so a run including Dünya can only ask for 84.
+         *     Showing that as a ceiling -- with the bank that set it -- beats letting
+         *     someone submit 360 and watch every bank decline.
+         */
+        get: operations["compare_constraints"];
         put?: never;
         post?: never;
         delete?: never;
@@ -606,6 +689,35 @@ export interface components {
             session_id?: string | null;
         };
         /**
+         * BankLimitsOut
+         * @description What one bank will accept for a family, read from its own catalogue.
+         */
+        BankLimitsOut: {
+            /** Bank */
+            bank: string;
+            /**
+             * Product
+             * @description The product, or the family stem when the bank bands it.
+             */
+            product: string;
+            /**
+             * Products Matched
+             * @description Above 1 the bank splits this into term/amount bands and picks one at quote time; the range below is the envelope of all of them.
+             * @default 1
+             */
+            products_matched: number;
+            /** Min Amount */
+            min_amount?: number | null;
+            /** Max Amount */
+            max_amount?: number | null;
+            /** Min Term */
+            min_term?: number | null;
+            /** Max Term */
+            max_term?: number | null;
+            /** Currencies */
+            currencies?: string[];
+        };
+        /**
          * BankOut
          * @description One bank, what it publishes, and what is currently down.
          *
@@ -633,6 +745,22 @@ export interface components {
              * @default
              */
             notes: string;
+        };
+        /** CardInstallmentQuoteOut */
+        CardInstallmentQuoteOut: {
+            /** Bank */
+            bank: string;
+            card: components["schemas"]["ProductOut"];
+            /** Amount */
+            amount: number;
+            /** Installments */
+            installments: number;
+            /** Installment */
+            installment: number;
+            /** Total */
+            total: number;
+            /** Profit Rate */
+            profit_rate: number;
         };
         /**
          * CategoryOut
@@ -819,6 +947,18 @@ export interface components {
             /** Components */
             components?: components["schemas"]["Component"][];
         };
+        /** ConstraintsOut */
+        ConstraintsOut: {
+            /** Category */
+            category: string;
+            /** Family */
+            family: string;
+            /** Banks */
+            banks?: components["schemas"]["BankLimitsOut"][];
+            /** Unavailable */
+            unavailable?: components["schemas"]["UnavailableOut"][];
+            intersection: components["schemas"]["IntersectionOut"];
+        };
         /** ConversionOut */
         ConversionOut: {
             /** Bank */
@@ -880,10 +1020,13 @@ export interface components {
             amount: number;
             /** Term */
             term: number;
-            /** Installment */
-            installment: number;
+            /**
+             * Installment
+             * @description Monthly payment, or null where the bank publishes only a rate.
+             */
+            installment?: number | null;
             /** Total */
-            total: number;
+            total?: number | null;
             /** Profit Rate */
             profit_rate: number;
             /** Annual Cost Rate */
@@ -892,6 +1035,17 @@ export interface components {
             fees?: {
                 [key: string]: number;
             };
+            /**
+             * Variant
+             * @description e.g. "sigortali" / "sigortasiz". Empty where the bank does not split.
+             * @default
+             */
+            variant: string;
+            /**
+             * General
+             * @default false
+             */
+            general: boolean;
             /** Schedule */
             schedule?: components["schemas"]["PaymentRowOut"][];
         };
@@ -910,6 +1064,30 @@ export interface components {
             /** Environment */
             environment: string;
         };
+        /**
+         * IntersectionOut
+         * @description The range every bank in the run will accept.
+         *
+         *     `limited_by` names the bank behind each bound, and only when one bank is
+         *     actually the reason -- a bound every bank shares is the product's shape, not
+         *     somebody's restriction.
+         */
+        IntersectionOut: {
+            /** Min Amount */
+            min_amount?: number | null;
+            /** Max Amount */
+            max_amount?: number | null;
+            /** Min Term */
+            min_term?: number | null;
+            /** Max Term */
+            max_term?: number | null;
+            /** Currencies */
+            currencies?: string[];
+            /** Limited By */
+            limited_by?: {
+                [key: string]: string[];
+            };
+        };
         /** LoginRequest */
         LoginRequest: {
             /**
@@ -919,6 +1097,24 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+        };
+        /**
+         * MileRateOut
+         * @description One reward rate: miles earned per lira, for one card/tier/category.
+         *
+         *     Kuveyt Türk's table is 567 rows -- card x tier x category -- so the
+         *     frontend filters this client-side rather than the route taking three query
+         *     parameters that would each need their own "list the valid ones" endpoint.
+         */
+        MileRateOut: {
+            /** Card */
+            card: string;
+            /** Tier */
+            tier: string;
+            /** Category */
+            category: string;
+            /** Per Lira */
+            per_lira: number;
         };
         /** PaymentRowOut */
         PaymentRowOut: {
@@ -1028,6 +1224,16 @@ export interface components {
             gross_annual_rate?: number | null;
             /** Net Annual Rate */
             net_annual_rate?: number | null;
+            /**
+             * Variant
+             * @default
+             */
+            variant: string;
+            /**
+             * General
+             * @default false
+             */
+            general: boolean;
         };
         /** RateOut */
         RateOut: {
@@ -1049,6 +1255,18 @@ export interface components {
              * @default
              */
             as_of: string;
+            /**
+             * Derived
+             * @description True when the pair was worked out from the bank's own converter rather than read off a published feed. The UI must label these: the numbers are the bank's, the inversion is ours.
+             * @default false
+             */
+            derived: boolean;
+            /**
+             * Canonical
+             * @description The shared symbol for this instrument -- XAU for gold whether the bank calls it XAU or 'ALT (gr)'. Cross-bank grouping keys on (canonical, unit); without it the frontend would have to duplicate the alias table and drift when a bank renames a code.
+             * @default
+             */
+            canonical: string;
         };
         /** ReadyOut */
         ReadyOut: {
@@ -1774,6 +1992,75 @@ export interface operations {
             };
         };
     };
+    bank_card_quote: {
+        parameters: {
+            query: {
+                /** @description A card code from GET /{bank}/products?category=card. */
+                card: string;
+                amount: number;
+                installments: number;
+            };
+            header?: never;
+            path: {
+                /** @description A bank key from GET /api/banks. */
+                bank: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardInstallmentQuoteOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bank_mile_rates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A bank key from GET /api/banks. */
+                bank: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MileRateOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     compare_finance: {
         parameters: {
             query: {
@@ -1870,6 +2157,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ComparisonOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    compare_constraints: {
+        parameters: {
+            query: {
+                /** @description A family key from GET /api/banks/families. */
+                family: string;
+                category?: string;
+                /** @description Limit to these banks. Omitted, every bank that sells it is asked. */
+                banks?: string[] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConstraintsOut"];
                 };
             };
             /** @description Validation Error */

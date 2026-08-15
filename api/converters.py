@@ -10,14 +10,16 @@ rather than a `raw` leaking through the one router nobody checked.
 """
 
 from banks import families as families_mod
+from banks.parse import canonical_currency
 from banks.models import (
-    CardInstallmentQuote, Conversion, FinanceQuote, PaymentRow, ProfitShareQuote, Rate,
+    CardInstallmentQuote, Conversion, FinanceQuote, MileRate, PaymentRow, ProfitShareQuote, Rate,
 )
 from index.models import RetrievedChunk
 
 from .schemas.banks import (
-    ChunkOut, ComparisonOut, ConversionOut, FamilyOut, FinanceQuoteOut, PaymentRowOut,
-    ProductOut, ProfitShareQuoteOut, RateOut, UnavailableOut,
+    CardInstallmentQuoteOut, ChunkOut, ComparisonOut, ConversionOut, FamilyOut,
+    FinanceQuoteOut, MileRateOut, PaymentRowOut, ProductOut, ProfitShareQuoteOut,
+    RateOut, UnavailableOut,
 )
 
 
@@ -64,6 +66,8 @@ def finance_quote_out(quote: FinanceQuote, *, schedule: bool = True) -> FinanceQ
         profit_rate=quote.profit_rate,
         annual_cost_rate=quote.annual_cost_rate,
         fees=dict(quote.fees),
+        variant=quote.variant,
+        general=quote.general,
         schedule=[payment_row_out(r) for r in quote.schedule] if schedule else [],
     )
 
@@ -81,6 +85,8 @@ def profit_share_quote_out(quote: ProfitShareQuote) -> ProfitShareQuoteOut:
         net_profit=quote.net_profit,
         gross_annual_rate=quote.gross_annual_rate,
         net_annual_rate=quote.net_annual_rate,
+        variant=quote.variant,
+        general=quote.general,
     )
 
 
@@ -101,10 +107,40 @@ def conversion_out(conversion: Conversion) -> ConversionOut:
     )
 
 
+def canonical_code(code: str) -> str:
+    """The shared symbol for a bank's own rate code.
+
+    Albaraka calls gold XAU while Kuveyt Türk and Hayat call it "ALT (gr)", so
+    nothing can be compared across banks without this -- and duplicating the
+    table in TypeScript would drift the first time a bank renames a code.
+
+    Delegates to `banks.parse` rather than keeping a second reversed copy of
+    RATE_ALIASES: the catalogue path needs exactly the same mapping, and two
+    tables that must agree eventually do not.
+    """
+    return canonical_currency(code)
+
+
 def rate_out(rate: Rate) -> RateOut:
     return RateOut(
         code=rate.code, name=rate.name, buy=rate.buy,
         sell=rate.sell, unit=rate.unit, as_of=rate.as_of,
+        derived=rate.derived,
+        canonical=canonical_code(rate.code),
+    )
+
+
+def card_quote_out(quote: CardInstallmentQuote) -> CardInstallmentQuoteOut:
+    return CardInstallmentQuoteOut(
+        bank=quote.bank, card=product_out(quote.card), amount=quote.amount,
+        installments=quote.installments, installment=quote.installment,
+        total=quote.total, profit_rate=quote.profit_rate,
+    )
+
+
+def mile_rate_out(rate: MileRate) -> MileRateOut:
+    return MileRateOut(
+        card=rate.card, tier=rate.tier, category=rate.category, per_lira=rate.per_lira,
     )
 
 
@@ -158,7 +194,10 @@ def family_list() -> list[FamilyOut]:
             key=key,
             label=families_mod.label(key),
             category=category,
-            banks=sorted(table[key]),
+            # Distinct banks, not entries: Türkiye Finans holds two entries in
+            # most finance families and "sold by 6 banks" must not count it
+            # twice on the picker.
+            banks=families_mod.banks_in(category, key),
         )
         for category, table in families_mod.BY_CATEGORY.items()
         for key in sorted(table)

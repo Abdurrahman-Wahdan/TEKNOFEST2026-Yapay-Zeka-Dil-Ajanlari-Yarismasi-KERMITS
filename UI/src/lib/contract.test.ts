@@ -100,7 +100,11 @@ describe("resolveTable", () => {
     // column still right-aligns and sorts numerically.
     assert.equal(resolved.columns[0].type, "number");
     assert.equal(resolved.columns[0].inferred, true);
-    assert.match(resolved.warnings.join(" "), /currency/);
+    // Structured, not a sentence: contract.ts has no locale, so the UI
+    // translates these through components.warning.*.
+    assert.deepEqual(resolved.warnings, [
+      { code: "unknownColumnType", column: "Tutar", type: "currency" },
+    ]);
   });
 
   it("truncates a runaway table instead of freezing the tab", () => {
@@ -109,7 +113,9 @@ describe("resolveTable", () => {
     });
     const resolved = resolveTable(parsed);
     assert.equal(resolved.rows.length, MAX_ROWS);
-    assert.match(resolved.warnings.join(" "), new RegExp(String(MAX_ROWS)));
+    assert.deepEqual(resolved.warnings, [
+      { code: "truncated", total: MAX_ROWS + 25, shown: MAX_ROWS },
+    ]);
   });
 
   it("flags a column that no row fills", () => {
@@ -117,7 +123,9 @@ describe("resolveTable", () => {
       columns: [{ key: "banka" }, { key: "tahsis", label: "Tahsis" }],
       rows: [{ cells: { banka: "vakif" } }],
     });
-    assert.match(resolveTable(parsed).warnings.join(" "), /Tahsis/);
+    assert.deepEqual(resolveTable(parsed).warnings, [
+      { code: "emptyColumns", columns: ["Tahsis"] },
+    ]);
   });
 
   it("reports whether anything is citable", () => {

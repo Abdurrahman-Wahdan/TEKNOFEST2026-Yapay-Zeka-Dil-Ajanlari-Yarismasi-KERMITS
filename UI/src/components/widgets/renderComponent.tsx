@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Component as ReactComponent, type ComponentType, type ReactNode } from "react";
 
 import { VuiBox, VuiTypography } from "@/components/vision";
@@ -17,17 +18,21 @@ import { CATALOG, knownWidgetTypes } from "./catalog";
  * that silently vanished would leave the producer's page looking merely short,
  * and nobody — not the user, not us, not whoever is debugging the producer —
  * would know a component had been dropped.
+ *
+ * A component, not a bare function, so it can translate: these messages are
+ * read by people, and both locales carry them under `components.widget.*`.
  */
-export function renderComponent(spec: ComponentSpec, index: number): ReactNode {
+export function RenderComponent({ spec }: { spec: ComponentSpec }) {
+  const t = useTranslations("components.widget");
   const entry = CATALOG[spec.type];
 
   if (!entry) {
     return (
-      <Problem tone="warning" title={`Bilinmeyen bileşen: ${spec.type}`}>
+      <Problem tone="warning" title={t("unknownTitle", { type: spec.type })}>
         <VuiTypography variant="caption" color="text">
-          Tanımlı bileşenler: {knownWidgetTypes().join(", ")}.
+          {t("knownTypes", { types: knownWidgetTypes().join(", ") })}
         </VuiTypography>
-        <RawProps props={spec.props} />
+        <RawProps props={spec.props} label={t("rawData")} />
       </Problem>
     );
   }
@@ -35,10 +40,10 @@ export function renderComponent(spec: ComponentSpec, index: number): ReactNode {
   const parsed = entry.props.safeParse(spec.props);
   if (!parsed.success) {
     return (
-      <Problem tone="error" title={`${spec.type} beklenen veriyi almadı`}>
+      <Problem tone="error" title={t("badPropsTitle", { type: spec.type })}>
         <VuiBox component="ul" pl={2} sx={{ listStyle: "disc" }}>
           {parsed.error.issues.map((issue) => {
-            const path = issue.path.length > 0 ? issue.path.join(".") : "(kök)";
+            const path = issue.path.length > 0 ? issue.path.join(".") : t("rootPath");
             return (
               <VuiBox component="li" key={`${path}-${issue.message}`}>
                 <VuiTypography variant="caption" color="text">
@@ -48,14 +53,14 @@ export function renderComponent(spec: ComponentSpec, index: number): ReactNode {
             );
           })}
         </VuiBox>
-        <RawProps props={spec.props} />
+        <RawProps props={spec.props} label={t("rawData")} />
       </Problem>
     );
   }
 
   const Widget = entry.component as ComponentType<Record<string, unknown>>;
   return (
-    <WidgetBoundary type={spec.type} key={`${spec.type}-${index}`}>
+    <WidgetBoundary type={spec.type} title={t("threwTitle", { type: spec.type })}>
       <Widget {...(parsed.data as Record<string, unknown>)} />
     </WidgetBoundary>
   );
@@ -80,7 +85,7 @@ function Problem({
       p={2}
       borderRadius="lg"
       sx={{
-        border: `1px dashed`,
+        border: "1px dashed",
         borderColor: accent,
         background: "rgba(255, 255, 255, 0.03)",
         display: "flex",
@@ -97,12 +102,12 @@ function Problem({
 }
 
 /** The payload, one disclosure away. Debugging the producer needs the real thing. */
-function RawProps({ props }: { props: unknown }) {
+function RawProps({ props, label }: { props: unknown; label: string }) {
   return (
     <VuiBox component="details">
       <VuiBox component="summary" sx={{ cursor: "pointer" }}>
         <VuiTypography variant="caption" color="text">
-          Gelen veri
+          {label}
         </VuiTypography>
       </VuiBox>
       <VuiBox
@@ -116,7 +121,7 @@ function RawProps({ props }: { props: unknown }) {
           overflow: "auto",
           fontSize: "11px",
           lineHeight: 1.5,
-          color: "#cbd5f5",
+          color: "text.main",
         }}
       >
         {safeStringify(props)}
@@ -140,10 +145,11 @@ function safeStringify(value: unknown): string {
  * Keeps one misbehaving widget from taking the page with it.
  *
  * Error boundaries still have to be class components in React 19 — there is no
- * hook equivalent.
+ * hook equivalent, which is why the translated title is handed in as a prop
+ * rather than looked up here.
  */
 class WidgetBoundary extends ReactComponent<
-  { type: string; children: ReactNode },
+  { type: string; title: string; children: ReactNode },
   { error: Error | null }
 > {
   state: { error: Error | null } = { error: null };
@@ -159,7 +165,7 @@ class WidgetBoundary extends ReactComponent<
   render() {
     if (this.state.error) {
       return (
-        <Problem tone="error" title={`${this.props.type} gösterilirken hata oluştu`}>
+        <Problem tone="error" title={this.props.title}>
           <VuiTypography variant="caption" color="text">
             {this.state.error.message}
           </VuiTypography>

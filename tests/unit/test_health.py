@@ -5,6 +5,7 @@ through, so the real runner and the real gate execute against recorded payloads.
 """
 
 import json
+import time
 
 import pytest
 
@@ -267,3 +268,117 @@ def test_check_bank_health_is_bound_and_returns_json(monkeypatch):
     answer = json.loads(tool.invoke({"bank": "kuveytturk"}))
     assert answer["healthy"] is True
     assert any(r["capability"] == "rates" for r in answer["results"])
+
+
+def _finance_quote(installment, total, profit_rate):
+    """A finance quote shaped like a provider's, for the contract checks."""
+    from banks.models import FinanceQuote, Product
+
+    return FinanceQuote(
+        bank="turkiyefinans",
+        product=Product(code="1", name="İhtiyaç Finansmanı", category="finance"),
+        amount=100_000, term=24,
+        installment=installment, total=total,
+        profit_rate=profit_rate, annual_cost_rate=None,
+        fees={}, schedule=[], raw={},
+    )
+
+
+def test_a_bank_that_publishes_only_a_rate_is_healthy(monkeypatch):
+    """A rate-only quote is the contract, not a failure.
+
+    Türkiye Finans never states an instalment -- its calculator runs the
+    annuity in the browser. When `installment` became nullable, this check
+    still compared it against zero and reported a working endpoint as DOWN
+    with a TypeError. The morning report is only useful if "down" means down.
+    """
+    bank = get_bank("turkiyefinans")
+    monkeypatch.setattr(
+        type(bank), "finance_quote",
+        lambda self, *a, **k: _finance_quote(None, None, 4.05),
+    )
+    result = health.CHECKS["finance"](bank)
+    assert "rate only" in result
+    assert "4.05" in result
+
+
+def test_a_bank_that_publishes_neither_is_still_down(monkeypatch):
+    """The rate-only path must not become a way for a real failure to pass."""
+    bank = get_bank("turkiyefinans")
+    monkeypatch.setattr(
+        type(bank), "finance_quote",
+        lambda self, *a, **k: _finance_quote(None, None, 0),
+    )
+    with pytest.raises(AssertionError):
+        health.CHECKS["finance"](bank)
+
+
+def test_a_zero_instalment_is_still_down(monkeypatch):
+    """A bank that does quote a payment is held to the old contract."""
+    bank = get_bank("vakif")
+    monkeypatch.setattr(
+        type(bank), "finance_quote",
+        lambda self, *a, **k: _finance_quote(0.0, 0.0, 3.85),
+    )
+    with pytest.raises(AssertionError):
+        health.CHECKS["finance"](bank)
+
+
+# ----- the cache in front of the banks -----
+
+
+def test_the_rate_cache_collapses_a_burst_into_one_fetch():
+    """Twenty tabs polling together must be one request to the bank.
+
+    Memoising alone would not do it: on a cold key every one of the twenty
+    would miss and fan out at the same moment. The per-key lock is what makes
+    the first caller fetch and the rest wait for its answer.
+    """
+    import threading
+    from api import cache
+
+    cache.clear_all()
+    calls, ready = [], threading.Barrier(20)
+
+    def build():
+        calls.append(1)
+        time.sleep(0.05)          # long enough for the others to pile up
+        return ["rows"]
+
+    def poll():
+        ready.wait()
+        return cache.rates.get("kuveytturk", build)
+
+    threads = [threading.Thread(target=poll) for _ in range(20)]
+    for t in threads: t.start()
+    for t in threads: t.join()
+
+    assert len(calls) == 1, f"{len(calls)} fetches for one key"
+
+
+def test_a_failing_bank_is_not_retried_on_every_poll():
+    """Otherwise a broken bank makes the page slower the more broken it is."""
+    from api import cache
+
+    cache.clear_all()
+    calls = []
+
+    def build():
+        calls.append(1)
+        raise RuntimeError("bank is down")
+
+    for _ in range(5):
+        with pytest.raises(RuntimeError):
+            cache.rates.get("dunya", build)
+    assert len(calls) == 1, "the failure should be cached for the TTL too"
+
+
+def test_the_cache_refetches_once_it_is_stale():
+    from api import cache
+
+    fresh = cache.TTLCache(ttl=0.01)
+    calls = []
+    fresh.get("k", lambda: calls.append(1))
+    time.sleep(0.02)
+    fresh.get("k", lambda: calls.append(1))
+    assert len(calls) == 2

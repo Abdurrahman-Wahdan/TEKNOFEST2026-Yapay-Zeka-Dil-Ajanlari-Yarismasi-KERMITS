@@ -21,7 +21,7 @@ from ..models import (
     FinanceQuote,
     PaymentRow,
     ProfitShareQuote,
-    Product,
+    Product, Rate,
 )
 from ..parse import money, rate
 from ..parse import term_unit as unit
@@ -62,6 +62,10 @@ CARD = Product(
 
 # The converter names its currencies its own way; these are the standard codes
 # a caller would use for the same thing.
+# The rate feed names gold and silver "ALT"/"GMS"; the converter page and every
+# other bank spell them with the gram unit attached. One spelling downstream.
+_RATE_CODES = {"ALT": "ALT (gr)", "GMS": "GMS (gr)", "PLT": "PLT (gr)"}
+
 CONVERTER_ALIASES = {
     "TRY": "TL",
     "XAU": "ALT (gr)",
@@ -93,11 +97,11 @@ class Vakif(BaseBank):
     name = "vakif"
     display_name = "Vakıf Katılım Bankası"
     capabilities = frozenset(
-        {"products", "finance", "profit_share", "card", "convert"}
+        {"products", "finance", "profit_share", "card", "convert", "rates"}
     )
     notes = (
         "It converts currency but publishes no buy/sell rate feed: its only "
-        "currency service is the converter and a list of currency names."
+        "currency service is the converter, so its board is derived from that."
     )
     # Plain httpx, plus a per-page anti-forgery token on every plugin call.
     transport = "csrf"
@@ -360,6 +364,79 @@ class Vakif(BaseBank):
         )
 
     # ----- rates and conversion -----
+
+    def rates(self) -> list[Rate]:
+        """The bank's own published board: 4 rows by endpoint, the rest by page.
+
+        Two sources, because the bank splits it that way and neither alone is
+        the whole answer:
+
+        - `plugins/HomePageCurrencyData` returns USD, EUR, gold and silver as
+          JSON, and is the only place carrying the quote time ("15/08/2026
+          15:49 İnternet Şube kurlarımızdır").
+        - The converter page renders the full sixteen -- AUD, CHF, JPY, SAR,
+          QAR, platinum and the rest -- server-side, with no endpoint behind it.
+
+        The endpoint wins where the two overlap, and its timestamp stamps every
+        row. Nothing here is derived: an earlier version inverted the converter
+        to get a sell price, which matched the published figure exactly but
+        produced only four instruments and no quote time.
+        """
+        feed = self._json(
+            "GET",
+            f"{HOST}/plugins/HomePageCurrencyData",
+            headers={**HEADERS, "referer": FX_PAGE},
+            params={"langId": LANG_ID, "language": "tr"},
+        ) or {}
+        as_of = (feed.get("description") or "").strip()
+
+        found: dict[str, Rate] = {}
+        for row in feed.get("homeExchange") or []:
+            code = (row.get("currencyCode") or "").strip()
+            buy, sell = money(row.get("buyRate")), money(row.get("sellRate"))
+            if not code or buy <= 0 or sell <= 0:
+                continue
+            found[_RATE_CODES.get(code, code)] = Rate(
+                code=_RATE_CODES.get(code, code),
+                name=(row.get("currencyName") or code).strip(),
+                buy=buy, sell=sell,
+                unit="gram" if code in _RATE_CODES else "1",
+                as_of=as_of,
+            )
+
+        for code, name, buy, sell in self._page_rates():
+            if code in found:
+                continue
+            found[code] = Rate(code=code, name=name, buy=buy, sell=sell,
+                               unit="gram" if "(gr)" in code else "1", as_of=as_of)
+        return list(found.values())
+
+    def _page_rates(self) -> list[tuple[str, str, float, float]]:
+        """The full board, read off the converter page's own tables.
+
+        Server-rendered with no endpoint behind it, so this is the only way to
+        reach the twelve instruments the JSON feed leaves out.
+        """
+        page = self._text(FX_PAGE)
+        out: list[tuple[str, str, float, float]] = []
+        for table in re.findall(r"<table[^>]*>.*?</table>", page, re.S):
+            for row in re.findall(r"<tr[^>]*>(.*?)</tr>", table, re.S):
+                cells = [
+                    htmlmod.unescape(re.sub(r"<[^>]+>", "", c)).strip()
+                    for c in re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", row, re.S)
+                ]
+                cells = [c for c in cells if c]
+                if len(cells) < 3:
+                    continue
+                # "USD\n - \n Amerikan Doları" in one cell.
+                parts = [p.strip() for p in re.split(r"\s*-\s*", cells[0], maxsplit=1)]
+                code = parts[0]
+                if not code or code.lower() in ("sembol",):
+                    continue
+                buy, sell = money(cells[1]), money(cells[2])
+                if buy > 0 and sell > 0:
+                    out.append((code, parts[-1] if len(parts) > 1 else code, buy, sell))
+        return out
 
     def convert(self, source: str, target: str, amount: float) -> Conversion:
         """Vakıf converts server-side, so nothing is computed here."""

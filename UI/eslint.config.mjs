@@ -19,6 +19,18 @@ const eslintConfig = defineConfig([
     // Our own code is still linted — keep it that way.
     "src/vision/**",
   ]),
+
+  {
+    // `no-page-custom-font` is a Pages Router rule: it wants font <link>s in
+    // `pages/_document.js`, which does not exist in an App Router project. The
+    // root layout's <head> is exactly where they belong here, so the rule can
+    // only ever be wrong in this file.
+    //
+    // Scoped to the one file rather than switched off globally, so a stray font
+    // link anywhere else is still reported.
+    files: ["src/app/**/layout.tsx"],
+    rules: { "@next/next/no-page-custom-font": "off" },
+  },
 ]);
 
 export default eslintConfig;

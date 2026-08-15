@@ -243,18 +243,41 @@ def test_albaraka_prices_the_accounts_it_offers(albaraka):
 
 
 @pytest.mark.parametrize(
-    "account,currency,unit",
+    "account,currency,unit,amount,expected",
     [
         # Confirmed against Albaraka's own page, not merely from our calls
-        # failing: all three answer 200 with zeros.
-        ("KTLMHSP", "XAU", "month"),
-        ("KTLARDM", "TRY", "day"),
-        ("KURKTLMHSP", "TRY", "month"),
+        # failing: all three answer with zeros. They are told apart by whether
+        # the endpoint accepted the request at all -- an accepted call
+        # returning 0,00 means the account exists and the bank is currently
+        # distributing nothing on it, which is its own answer and not the same
+        # as "not offered".
+        ("KTLMHSP", "XAU", "month", 200, "0% rate"),
+        ("KTLARDM", "TRY", "day", 1000, "no profit-share rate"),
+        ("KURKTLMHSP", "TRY", "month", 1000, "0% rate"),
     ],
 )
-def test_albaraka_refuses_what_it_does_not_price(albaraka, account, currency, unit):
-    with pytest.raises(UnsupportedProduct, match="no profit-share rate"):
-        albaraka.profit_share_quote(account, 100, 6, currency, unit)
+def test_albaraka_refuses_what_it_does_not_price(
+    albaraka, account, currency, unit, amount, expected
+):
+    # Above the bank's own per-currency minimum (150 grams, 250 lira), so the
+    # request really reaches the endpoint. Below it the honest refusal is the
+    # minimum itself, which is a different assertion -- the one below.
+    with pytest.raises(UnsupportedProduct, match=expected):
+        albaraka.profit_share_quote(account, amount, 6, currency, unit)
+
+
+def test_albaraka_states_its_minimum_instead_of_blaming_the_rate(albaraka):
+    """Below the minimum, the answer is the minimum.
+
+    The bank publishes a different floor per currency -- 150 grams of gold
+    against 250 lira -- inside the currency select on its own page. Without
+    reading them the endpoint just answers zeros and the refusal blamed the
+    rate, which sent someone looking for a missing product that was there.
+    """
+    with pytest.raises(UnsupportedProduct, match="at least 150"):
+        albaraka.profit_share_quote("KTLMHSP", 100, 92, "XAU", "day")
+    with pytest.raises(UnsupportedProduct, match="at least 250"):
+        albaraka.profit_share_quote("KTLMHSP", 100, 92, "TRY", "day")
 
 
 def test_albaraka_publishes_fx_and_gold_rates(albaraka):
@@ -400,11 +423,22 @@ def test_ziraat_never_calls_its_browser_only_calculator(bank):
 
 @pytest.mark.parametrize("bank", ["turkiyefinans"], indirect=True)
 def test_turkiyefinans_gives_rates_but_not_payments(bank):
+    """It publishes a rate for every product and an instalment for none.
+
+    The quote used to be refused outright, which dropped eighteen products'
+    published pricing off the page. It now returns the bank's own rate with
+    `installment` left None -- computing the payment here is the one thing the
+    rules forbid, and None keeps a rate-only row from ever being sorted as the
+    cheapest.
+    """
     rows = bank.products("profit_share")
     assert rows and all(r.rate and r.rate > 0 for r in rows)
 
-    with pytest.raises(UnsupportedProduct, match="no instalment figure"):
-        bank.finance_quote(bank.products("finance")[0].code, 100_000, 24)
+    quote = bank.finance_quote(bank.products("finance")[0].code, 100_000, 24)
+    assert quote.installment is None
+    assert quote.total is None
+    assert quote.priced is False
+    assert quote.profit_rate > 0
 
 
 @pytest.mark.parametrize("bank", ["hayat"], indirect=True)
@@ -558,11 +592,19 @@ def test_comparing_is_faster_than_asking_each_bank(live):
 
 
 def test_a_comparison_never_loses_a_bank(live):
+    """The invariant is over banks, not rows.
+
+    A bank can produce more than one row -- Türkiye Finans prices every product
+    sigortalı and sigortasız, and Ziraat lists a campaign package beside its
+    standard konut product -- so counting rows would make this pass or fail for
+    reasons that have nothing to do with a bank going missing, which is the one
+    thing it exists to catch.
+    """
     from banks import compare
 
     result = compare.finance("konut-yeni", 1_000_000, 120)
-    assert result.in_scope == 6
-    assert len(result.quotes) + len(result.unavailable) == result.in_scope
+    expected = {b.name for b in compare._scope("finance", None)}
+    assert result.banks_covered == expected
     assert result.quotes, "no bank quoted a 1m konut over 120 months"
 
 

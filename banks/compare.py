@@ -20,7 +20,7 @@ import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, wait
 from functools import partial
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Callable
 
 from config.settings import settings
@@ -58,8 +58,22 @@ class Comparison:
 
     @property
     def in_scope(self) -> int:
-        """Banks asked about. Ranked plus unavailable must equal this."""
+        """Rows produced. Not a bank count — see `banks_covered`."""
         return len(self.quotes) + len(self.unavailable)
+
+    @property
+    def banks_covered(self) -> set[str]:
+        """Every bank this comparison accounted for, ranked or not.
+
+        This is the invariant worth checking, not the row count. A bank can
+        produce more than one row: Türkiye Finans prices each product sigortalı
+        and sigortasız and both belong in the ranking. What must never happen
+        is a bank in scope appearing in neither list -- that is a bank silently
+        dropped, which is the failure this whole module exists to prevent.
+        """
+        return {getattr(q, "bank", "") for q in self.quotes} | {
+            u.bank for u in self.unavailable
+        }
 
 
 def _scope(capability: str, banks: list[str] | None) -> list[BaseBank]:
@@ -130,8 +144,15 @@ def _fan_out(work: list[tuple[BaseBank, Callable[[BaseBank], object]]]) -> tuple
 
 
 def _prepare(category: str, capability: str, family: str, banks: list[str] | None):
-    """Split the banks in scope into ones to ask and ones that do not sell it."""
-    table = families.entries(category, family)
+    """Split the banks in scope into ones to ask and ones that do not sell it.
+
+    A bank can be asked more than once. Türkiye Finans prices every product
+    both sigortalı and sigortasız, and those are two real answers to the same
+    question -- collapsing them to one would hide a rate the bank publishes.
+    Each entry carries the family membership that produced it, so the row can
+    say which variant it is and whether the product is specific to this family.
+    """
+    members = families.members(category, family)
     scope = _scope(capability, banks)
     if not scope:
         # Nothing to compare and nothing to report against, so an empty ranking
@@ -139,9 +160,16 @@ def _prepare(category: str, capability: str, family: str, banks: list[str] | Non
         raise UnsupportedProduct(
             f"None of the banks named can be compared on "
             f"{families.label(family)}. It is sold by: "
-            f"{', '.join(sorted(table))}."
+            f"{', '.join(families.banks_in(category, family))}."
         )
-    asking = [(bank, table[bank.name]) for bank in scope if bank.name in table]
+    by_bank: dict[str, list] = {}
+    for member in members:
+        by_bank.setdefault(member.bank, []).append(member)
+    asking = [
+        (bank, member)
+        for bank in scope
+        for member in by_bank.get(bank.name, ())
+    ]
     # The label is not lowercased: "İhtiyaç".lower() leaves a combining dot and
     # renders as "i̇htiyaç". The sentence is worded so it can stay as written.
     missing = [
@@ -149,7 +177,7 @@ def _prepare(category: str, capability: str, family: str, banks: list[str] | Non
             bank.name, NOT_OFFERED,
             f"{bank.display_name} does not offer {families.label(family)}.",
         )
-        for bank in scope if bank.name not in table
+        for bank in scope if bank.name not in by_bank
     ]
     return asking, missing
 
@@ -160,8 +188,8 @@ def finance(family: str, amount: float, term_months: int,
     started = time.monotonic()
     asking, missing = _prepare("finance", "finance", family, banks)
     work = [
-        (bank, partial(_quote_finance, product=product, amount=amount, term=term_months))
-        for bank, product in asking
+        (bank, partial(_quote_finance, member=member, amount=amount, term=term_months))
+        for bank, member in asking
     ]
     quotes, problems = _fan_out(work)
     return Comparison("finance", family, quotes, missing + problems,
@@ -174,9 +202,9 @@ def profit_share(family: str, amount: float, term: int, unit: str,
     started = time.monotonic()
     asking, missing = _prepare("profit_share", "profit_share", family, banks)
     work = [
-        (bank, partial(_quote_profit_share, product=product, amount=amount,
+        (bank, partial(_quote_profit_share, member=member, amount=amount,
                        term=term, currency=currency, unit=unit))
-        for bank, product in asking
+        for bank, member in asking
     ]
     quotes, problems = _fan_out(work)
     return Comparison("profit_share", family, quotes, missing + problems,
@@ -212,12 +240,26 @@ def exchange(source: str, target: str, amount: float,
 # Named rather than lambdas so a traceback says which call failed, and so the
 # loop cannot accidentally close over the last product it saw.
 
-def _quote_finance(bank, *, product, amount, term):
-    return bank.finance_quote(product, amount, term)
+def _quote_finance(bank, *, member, amount, term):
+    """Quote one family member, stamping the row with how it got here.
+
+    The provider knows the product; only the family table knows that this row
+    is Türkiye Finans' uninsured variant, or that Ziraat's single taşıt product
+    is answering a question about 0 km cars. Attached after the fact so no
+    provider has to carry a concept that belongs to the comparison.
+    """
+    quote = bank.finance_quote(member.query, amount, term)
+    if not member.variant and not member.general:
+        return quote
+    return replace(quote, variant=member.variant, general=member.general)
 
 
-def _quote_profit_share(bank, *, product, amount, term, currency, unit):
-    return bank.profit_share_quote(product, amount, term, currency, unit)
+def _quote_profit_share(bank, *, member, amount, term, currency, unit):
+    """Same stamping as finance: the family knows what the provider cannot."""
+    quote = bank.profit_share_quote(member.query, amount, term, currency, unit)
+    if not member.variant and not member.general:
+        return quote
+    return replace(quote, variant=member.variant, general=member.general)
 
 
 def _convert(bank, *, source, target, amount):

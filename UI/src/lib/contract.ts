@@ -206,7 +206,26 @@ export interface ResolvedColumn {
   filterable: boolean;
   /** True when we guessed the type rather than being told it. */
   inferred: boolean;
+  /**
+   * Decimal places for a `number` column, when the default whole number would
+   * throw information away. An FX rate is the case: banks quote to four or
+   * five places and the difference between two banks lives there, so rounding
+   * 47,4487 to 47 does not just look wrong, it erases the comparison.
+   */
+  decimals?: { min: number; max: number };
 }
+
+/**
+ * Something worth telling the user about the data — not an error.
+ *
+ * A code and its numbers, never a sentence: this module is pure and has no
+ * locale, so a message built here could only ever be in one language. The UI
+ * translates these through `components.warning.*` in both message files.
+ */
+export type TableWarning =
+  | { code: "truncated"; total: number; shown: number }
+  | { code: "unknownColumnType"; column: string; type: string }
+  | { code: "emptyColumns"; columns: string[] };
 
 export interface ResolvedTable {
   id: string;
@@ -215,8 +234,7 @@ export interface ResolvedTable {
   notes: string;
   columns: ResolvedColumn[];
   rows: Row[];
-  /** Things worth telling the user about the data, not errors. */
-  warnings: string[];
+  warnings: TableWarning[];
   /** True when no row carried a citation — dev-visible, see DataTable. */
   uncited: boolean;
 }
@@ -243,13 +261,11 @@ export function resolveTable(
   props: TableProps,
   knownBanks: ReadonlySet<string> = KNOWN_BANKS,
 ): ResolvedTable {
-  const warnings: string[] = [];
+  const warnings: TableWarning[] = [];
 
   let rows = props.rows;
   if (rows.length > MAX_ROWS) {
-    warnings.push(
-      `${rows.length} satırın ilk ${MAX_ROWS} tanesi gösteriliyor.`,
-    );
+    warnings.push({ code: "truncated", total: rows.length, shown: MAX_ROWS });
     rows = rows.slice(0, MAX_ROWS);
   }
 
@@ -261,9 +277,11 @@ export function resolveTable(
     const declaredType = column.type;
     const known = declaredType !== undefined && isColumnType(declaredType);
     if (declaredType !== undefined && !known) {
-      warnings.push(
-        `"${column.label ?? column.key}" sütunu bilinmeyen "${declaredType}" tipinde; tip verilerden çıkarıldı.`,
-      );
+      warnings.push({
+        code: "unknownColumnType",
+        column: column.label ?? column.key,
+        type: declaredType,
+      });
     }
 
     const type: ColumnType = known
@@ -300,11 +318,7 @@ export function resolveTable(
     (c) => !rows.some((r) => r.cells[c.key] !== undefined && r.cells[c.key] !== null),
   );
   if (empty.length > 0 && rows.length > 0) {
-    warnings.push(
-      `Hiç veri içermeyen sütun${empty.length > 1 ? "lar" : ""}: ${empty
-        .map((c) => c.label)
-        .join(", ")}.`,
-    );
+    warnings.push({ code: "emptyColumns", columns: empty.map((c) => c.label) });
   }
 
   return {

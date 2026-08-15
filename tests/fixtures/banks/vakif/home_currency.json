@@ -1,0 +1,33 @@
+{
+ "homeExchange": [
+  {
+   "currencyName": "Amerikan Doları",
+   "currencyCode": "USD",
+   "rate": "test",
+   "buyRate": "47,4487",
+   "sellRate": "48,0518"
+  },
+  {
+   "currencyName": "Euro",
+   "currencyCode": "EUR",
+   "rate": "test",
+   "buyRate": "54,8591",
+   "sellRate": "55,5253"
+  },
+  {
+   "currencyName": "Altın",
+   "currencyCode": "ALT",
+   "rate": "test",
+   "buyRate": "6603,9227",
+   "sellRate": "6764,3419"
+  },
+  {
+   "currencyName": "Gümüş",
+   "currencyCode": "GMS",
+   "rate": "test",
+   "buyRate": "97,1056",
+   "sellRate": "101,0694"
+  }
+ ],
+ "description": "15/08/2026 16:05 İnternet Şube kurlarımızdır."
+}

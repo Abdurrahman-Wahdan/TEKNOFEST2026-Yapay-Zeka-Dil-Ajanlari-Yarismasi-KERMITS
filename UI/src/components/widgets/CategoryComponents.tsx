@@ -16,7 +16,7 @@ import {
 import { layout } from "@/lib/layout";
 
 import { spanRuleFor } from "./catalog";
-import { renderComponent } from "./renderComponent";
+import { RenderComponent } from "./renderComponent";
 
 /**
  * Everything a producer made for one topic page.
@@ -139,7 +139,7 @@ export function CategoryComponents({ category }: { category: string }) {
           {/* Keyed so switching tables remounts: filter state from a table with
               a bank column must not silently hide rows in one without. */}
           <VuiBox key={tableKey(active, safeIndex)}>
-            {renderComponent(active, safeIndex)}
+            <RenderComponent spec={active} />
           </VuiBox>
         </Card>
       )}
@@ -148,7 +148,7 @@ export function CategoryComponents({ category }: { category: string }) {
         <Grid container spacing={3}>
           {others.map((component, index) => (
             <Grid key={`${component.type}-${index}`} item xs={12} xl={(spans[index]?.span ?? 2) * 3}>
-              <Card sx={{ height: "100%" }}>{renderComponent(component, index)}</Card>
+              <Card sx={{ height: "100%" }}><RenderComponent spec={component} /></Card>
             </Grid>
           ))}
         </Grid>

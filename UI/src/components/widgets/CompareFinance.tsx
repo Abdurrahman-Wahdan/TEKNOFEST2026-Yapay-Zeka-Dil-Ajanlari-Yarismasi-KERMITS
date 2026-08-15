@@ -126,13 +126,26 @@ export function CompareFinance() {
                   {/* Cheapest instalment first. The API returns the banks in
                       whatever order they answered, which is arrival order, not
                       an answer to "which is best". */}
+                  {/* A bank can publish a rate and no payment at all (Türkiye
+                      Finans works its instalments out in the browser), so a
+                      missing figure sinks to the bottom instead of sorting as
+                      zero and being crowned the cheapest. */}
                   {[...quotes]
-                    .sort((a, b) => a.installment - b.installment)
+                    .sort((a, b) =>
+                      (a.installment ?? Infinity) - (b.installment ?? Infinity))
                     .map((quote) => (
-                      <tr key={quote.bank}>
+                      <tr key={`${quote.bank}-${quote.variant}`}>
                         <th scope="row">{quote.bank}</th>
-                        <td>{formatMoney(quote.installment, locale)}</td>
-                        <td>{formatMoney(quote.total, locale)}</td>
+                        <td>
+                          {quote.installment == null
+                            ? "—"
+                            : formatMoney(quote.installment, locale)}
+                        </td>
+                        <td>
+                          {quote.total == null
+                            ? "—"
+                            : formatMoney(quote.total, locale)}
+                        </td>
                         <td>{formatRate(quote.profit_rate, locale)}</td>
                         <td>
                           {/* A bank that publishes no annual cost rate shows a

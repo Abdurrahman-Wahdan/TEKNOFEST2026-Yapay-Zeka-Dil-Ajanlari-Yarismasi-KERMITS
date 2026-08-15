@@ -1,0 +1,188 @@
+{
+ "GetExchangeRatesResult": {
+  "Data": [
+   {
+    "BuyPrice": "47,3153",
+    "CurrencyCode": "USD",
+    "Date": "/Date(1786799159331+0300)/",
+    "ID": 0,
+    "SellPrice": "48,1886",
+    "Timeout": false,
+    "Title": "Amerikan Doları"
+   },
+   {
+    "BuyPrice": "33,5264",
+    "CurrencyCode": "AUD",
+    "Date": "/Date(1786799159331+0300)/",
+    "ID": 0,
+    "SellPrice": "34,1310",
+    "Timeout": false,
+    "Title": "Avustralya Doları"
+   },
+   {
+    "BuyPrice": "7,3288",
+    "CurrencyCode": "DKK",
+    "Date": "/Date(1786799159331+0300)/",
+    "ID": 0,
+    "SellPrice": "7,4506",
+    "Timeout": false,
+    "Title": "Danimarka Kronu"
+   },
+   {
+    "BuyPrice": "4,9485",
+    "CurrencyCode": "SEK",
+    "Date": "/Date(1786799159331+0300)/",
+    "ID": 0,
+    "SellPrice": "5,0748",
+    "Timeout": false,
+    "Title": "İsveç Kronu"
+   },
+   {
+    "BuyPrice": "58,1638",
+    "CurrencyCode": "CHF",
+    "Date": "/Date(1786799159331+0300)/",
+    "ID": 0,
+    "SellPrice": "59,2215",
+    "Timeout": false,
+    "Title": "İsviçre Frangı"
+   },
+   {
+    "BuyPrice": "34,0836",
+    "CurrencyCode": "CAD",
+    "Date": "/Date(1786799159331+0300)/",
+    "ID": 0,
+    "SellPrice": "34,7404",
+    "Timeout": false,
+    "Title": "Kanada Doları"
+   },
+   {
+    "BuyPrice": "153,0589",
+    "CurrencyCode": "KWD",
+    "Date": "/Date(1786799159331+0300)/",
+    "ID": 0,
+    "SellPrice": "156,3316",
+    "Timeout": false,
+    "Title": "Kuveyt Dinarı"
+   },
+   {
+    "BuyPrice": "4,9929",
+    "CurrencyCode": "NOK",
+    "Date": "/Date(1786799159331+0300)/",
+    "ID": 0,
+    "SellPrice": "5,1186",
+    "Timeout": false,
+    "Title": "Norveç Kronu"
+   },
+   {
+    "BuyPrice": "64,0169",
+    "CurrencyCode": "GBP",
+    "Date": "/Date(1786799159331+0300)/",
+    "ID": 0,
+    "SellPrice": "65,2452",
+    "Timeout": false,
+    "Title": "İngiliz Sterlini"
+   },
+   {
+    "BuyPrice": "12,6111",
+    "CurrencyCode": "SAR",
+    "Date": "/Date(1786799159331+0300)/",
+    "ID": 0,
+    "SellPrice": "12,8257",
+    "Timeout": false,
+    "Title": "Suudi Arabistan Riyali"
+   },
+   {
+    "BuyPrice": "0,2967",
+    "CurrencyCode": "JPY",
+    "Date": "/Date(1786799159331+0300)/",
+    "ID": 0,
+    "SellPrice": "0,3024",
+    "Timeout": false,
+    "Title": "Japon Yeni (100)"
+   },
+   {
+    "BuyPrice": "54,7687",
+    "CurrencyCode": "EUR",
+    "Date": "/Date(1786799159331+0300)/",
+    "ID": 0,
+    "SellPrice": "55,7141",
+    "Timeout": false,
+    "Title": "Avrupa Para Birimi"
+   },
+   {
+    "BuyPrice": "0,5144",
+    "CurrencyCode": "RUB",
+    "Date": "/Date(1786799159331+0300)/",
+    "ID": 0,
+    "SellPrice": "0,6148",
+    "Timeout": false,
+    "Title": "Rus Rublesi"
+   },
+   {
+    "BuyPrice": "4362,3340",
+    "CurrencyCode": "XAU",
+    "Date": "/Date(1786799159331+0300)/",
+    "ID": 0,
+    "SellPrice": "4400,2330",
+    "Timeout": false,
+    "Title": "Altın-Ons (USD)"
+   },
+   {
+    "BuyPrice": "6614,2472",
+    "CurrencyCode": "YAU",
+    "Date": "/Date(1786799159331+0300)/",
+    "ID": 0,
+    "SellPrice": "6823,0344",
+    "Timeout": false,
+    "Title": "Altın-Gr"
+   },
+   {
+    "BuyPrice": "64,4380",
+    "CurrencyCode": "XAG",
+    "Date": "/Date(1786799159331+0300)/",
+    "ID": 0,
+    "SellPrice": "67,6730",
+    "Timeout": false,
+    "Title": "Gümüş-Ons (USD)"
+   },
+   {
+    "BuyPrice": "98,3195",
+    "CurrencyCode": "YAG",
+    "Date": "/Date(1786799159331+0300)/",
+    "ID": 0,
+    "SellPrice": "110,3126",
+    "Timeout": false,
+    "Title": "Gümüş-Gr"
+   },
+   {
+    "BuyPrice": "12,8946",
+    "CurrencyCode": "AED",
+    "Date": "/Date(1786799159331+0300)/",
+    "ID": 0,
+    "SellPrice": "13,1076",
+    "Timeout": false,
+    "Title": "Arap Emirlikleri Dirhemi"
+   },
+   {
+    "BuyPrice": "12,9767",
+    "CurrencyCode": "QAR",
+    "Date": "/Date(1786799159331+0300)/",
+    "ID": 0,
+    "SellPrice": "13,2203",
+    "Timeout": false,
+    "Title": "Katar Riyali"
+   },
+   {
+    "BuyPrice": "7,0042",
+    "CurrencyCode": "CNY",
+    "Date": "/Date(1786799159331+0300)/",
+    "ID": 0,
+    "SellPrice": "7,1525",
+    "Timeout": false,
+    "Title": "Çin Yuanı"
+   }
+  ],
+  "Message": null,
+  "Result": 1
+ }
+}

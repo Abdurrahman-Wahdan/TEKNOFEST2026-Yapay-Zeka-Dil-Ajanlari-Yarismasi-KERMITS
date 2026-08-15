@@ -110,7 +110,11 @@ def test_capabilities_are_honest():
     assert set(listed) == set(ALL_BANKS)
     assert "card" in listed["kuveytturk"]["publishes"]
     assert "card" not in listed["albaraka"]["publishes"]
-    assert listed["turkiyefinans"]["publishes"] == ["products"]
+    # It publishes a per-term profit rate for every finance product, so it is
+    # in scope for financing, and `GetExchangeRates` on the same service gives
+    # a full FX board. It never publishes a profit amount, so profit_share
+    # stays out.
+    assert listed["turkiyefinans"]["publishes"] == ["finance", "products", "rates"]
 
 
 def test_every_capability_is_really_implemented():
@@ -428,15 +432,68 @@ def test_albaraka_finance_quote_maps_onto_the_dataclass(monkeypatch):
     assert first.taxes == pytest.approx(first.amount - first.principal - first.profit)
 
 
-def test_albaraka_all_zero_profit_share_raises(monkeypatch):
-    """Zeros mean "not offered" here too, and arrive with Result: true."""
+def test_albaraka_a_zero_rate_is_reported_as_a_zero_rate(monkeypatch):
+    """An accepted request answering 0% is not the same as "not offered".
+
+    The endpoint returns `Result: true` and echoes `CurrencyCode`, which means
+    it understood the request and the bank is simply distributing nothing on
+    that account right now. Calling that "not offered" was false, and it read
+    on the page as a gap at the bank rather than as its published position —
+    which is exactly how Albaraka's gold account looked missing when the bank
+    does offer it and pays 0% on it.
+    """
     bank = get_bank("albaraka")
     serve(monkeypatch, [load("albaraka", "profit_share_zeros.json")],
+          text=load("albaraka", "profit_share_page_select.html"))
+    with pytest.raises(UnsupportedProduct, match="0% rate"):
+        bank.profit_share_quote(
+            "Kur Korumalı Katılma Hesabı (Bireysel)", 100000, 6, "TRY", "month"
+        )
+
+
+def test_albaraka_a_rejected_request_still_reads_as_not_offered(monkeypatch):
+    """The other branch: the endpoint refusing the call outright."""
+    bank = get_bank("albaraka")
+    rejected = {"Result": False, "Error": None, "Data": {}}
+    serve(monkeypatch, [rejected],
           text=load("albaraka", "profit_share_page_select.html"))
     with pytest.raises(UnsupportedProduct, match="no profit-share rate"):
         bank.profit_share_quote(
             "Kur Korumalı Katılma Hesabı (Bireysel)", 100000, 6, "TRY", "month"
         )
+
+
+def test_albaraka_reads_its_per_currency_limits_off_the_page(monkeypatch):
+    """The bank states a different minimum for gold, and we used to invent them.
+
+    `ACCOUNT_CURRENCIES` was a hardcoded table: right about which currencies
+    exist, silent about their limits. So gold appeared to have no minimum when
+    the bank states **150 grams against 250 for every other currency**, and the
+    32-1095 day band was missing from the constraints entirely.
+    """
+    bank = get_bank("albaraka")
+    serve(monkeypatch, [], text=load("albaraka", "profit_share_page_select.html"))
+    accounts = {p.code: p for p in bank.products("profit_share")}
+
+    katilma = accounts["KTLMHSP"]
+    assert katilma.currencies == ("TRY", "USD", "EUR", "XAU")
+    assert (katilma.min_term, katilma.max_term) == (32, 1095)
+    limits = katilma.raw["limits"]
+    assert limits["XAU"]["min_amount"] == 150
+    assert limits["TRY"]["min_amount"] == 250
+
+    # An option carrying no limits at all must still count as an offered
+    # currency: Kur Korumalı lists GBP and XAU with no jsonData, and dropping
+    # them narrowed the currency list the bank actually publishes.
+    assert accounts["KURKTLMHSP"].currencies == ("TRY", "USD", "EUR", "GBP", "XAU")
+
+
+def test_albaraka_refuses_below_the_currency_minimum_without_asking(monkeypatch):
+    """Below the minimum the answer is the minimum, not a blamed rate."""
+    bank = get_bank("albaraka")
+    serve(monkeypatch, [], text=load("albaraka", "profit_share_page_select.html"))
+    with pytest.raises(UnsupportedProduct, match="at least 150"):
+        bank.profit_share_quote("Katılma Hesabı", 100, 92, "XAU", "day")
 
 
 def test_albaraka_profit_share_quote_maps_onto_the_dataclass(monkeypatch):
@@ -625,7 +682,13 @@ def test_emlak_reads_its_selects_rather_than_assuming(monkeypatch):
     assert "ARACBINEK2EL" in products
     assert products["ARACBINEK2EL"].name == "2. El Taşıt Finansmanı"
     account = bank.products("profit_share")[0]
-    assert account.currencies == ("TL", "USD", "EUR", "ALT (gr)", "GMS (gr)")
+    # The page labels these "TL", "ALT (gr)" and "GMS (gr)"; the catalogue
+    # reports the symbols every other bank uses. Emlak's own labels made the
+    # currency intersection in banks/limits.py empty for every participation
+    # family, so the picker fell back to TRY and no gold or foreign-currency
+    # comparison could be selected at all. `_fec` maps them back when the
+    # request is built, so nothing is lost by normalising here.
+    assert account.currencies == ("TRY", "USD", "EUR", "XAU", "XAG")
     assert (account.min_term, account.max_term) == (31, 366)
 
 
@@ -773,14 +836,34 @@ def test_turkiyefinans_rate_table_becomes_products(monkeypatch):
     assert all(r.min_amount for r in rows)
 
 
-def test_turkiyefinans_refusal_still_names_the_rate(monkeypatch):
-    """It cannot give a payment, but it can give what it does publish."""
+def test_turkiyefinans_quotes_a_rate_and_no_payment(monkeypatch):
+    """It cannot give a payment, but everything it does publish is a real row.
+
+    The bank used to be refused outright, which dropped eighteen products'
+    published pricing off the page. It now ranks on rate like everyone else
+    with an empty payment column -- and `installment` must stay None rather
+    than 0.0, or a sort by payment crowns the one bank that never quoted one.
+    """
+    serve(monkeypatch, [load("turkiyefinans", "credit_types.json")])
+    quote = get_bank("turkiyefinans").finance_quote("1", 100000, 24)
+
+    assert quote.installment is None
+    assert quote.total is None
+    assert quote.priced is False
+    assert quote.profit_rate > 0
+    assert quote.annual_cost_rate > 0
+    # Read off the bank's own table as percentages, not the shares it sends.
+    assert quote.fees["allocation_rate"] == pytest.approx(0.575)
+    assert quote.fees["bsmv_rate"] == pytest.approx(15.0)
+
+
+def test_turkiyefinans_refuses_a_term_it_publishes_no_rate_for(monkeypatch):
+    """Outside its bands there is no rate either, and that is a refusal."""
     serve(monkeypatch, [load("turkiyefinans", "credit_types.json")])
     with pytest.raises(UnsupportedProduct) as exc:
-        get_bank("turkiyefinans").finance_quote("1", 100000, 24)
-    message = str(exc.value)
-    assert "no instalment figure" in message
-    assert "monthly profit rate" in message
+        get_bank("turkiyefinans").finance_quote("1", 100000, 240)
+    # The refusal names the bands, so the caller can ask an answerable question.
+    assert "bands cover" in str(exc.value)
 
 
 # ----- Hayat -----
@@ -1326,6 +1409,52 @@ def test_a_profit_that_ignores_the_term_is_refused():
         get_bank("hayat")._check_profit_share(_profit_quote(net_profit=79.95))
 
 
+def test_a_gold_profit_is_not_refused_for_being_rounded():
+    """The check is about contradiction, not about arithmetic on small numbers.
+
+    Banks publish the profit and the annual rate to two decimals each. On a
+    lira figure that is noise; on a gold account it is the whole number.
+    Vakıf's real 91-day profit on 100 grams is **0,01 gram against an implied
+    0,0075** -- a 34% relative error and a 0,0025 gram absolute one, which is
+    exactly one rounding step. A purely relative tolerance refused it, so the
+    gold participation comparison quietly lost banks that were answering
+    correctly.
+    """
+    bank = get_bank("vakif")
+    for amount, net, implied_rate in ((100, 0.01, 0.03), (500, 0.04, 0.03), (1000, 0.09, 0.03)):
+        quote = _profit_quote(
+            amount=float(amount), net_profit=net, gross_profit=net,
+            net_annual_rate=implied_rate, currency="XAU", term=91,
+        )
+        assert bank._check_profit_share(quote) is not None, (
+            f"{amount} grams returning {net} was refused"
+        )
+
+
+def test_rounding_slack_does_not_let_a_wrong_term_through():
+    """The slack must not become a hole the original bug fits through.
+
+    Hayat's daily account is off by a factor of the term, not by a rounding
+    step, so no amount of published-precision allowance may rescue it.
+    """
+    bank = get_bank("hayat")
+    # One day's profit on a 32-day term: the exact shape of the real bug.
+    daily = _profit_quote(
+        amount=100_000.0, term=32, net_profit=68.55, gross_profit=68.55,
+        net_annual_rate=25.02,
+    )
+    with pytest.raises(UnsupportedProduct, match="does not follow"):
+        bank._check_profit_share(daily)
+
+    # And the same shape scaled down to gold, where the slack is widest.
+    tiny = _profit_quote(
+        amount=100.0, term=91, net_profit=0.0003, gross_profit=0.0003,
+        net_annual_rate=30.0, currency="XAU",
+    )
+    with pytest.raises(UnsupportedProduct, match="does not follow"):
+        bank._check_profit_share(tiny)
+
+
 def test_a_net_above_the_gross_is_refused():
     with pytest.raises(UnsupportedProduct, match="net profit above the gross"):
         get_bank("kuveytturk")._check_profit_share(
@@ -1368,3 +1497,102 @@ def test_rates_carry_the_moment_they_were_quoted(monkeypatch):
     tool = next(t for t in build_tools() if t.name == "exchange_rates")
     rows = json.loads(tool.invoke({"bank": "kuveytturk", "codes": ["USD"]}))
     assert "as_of" not in rows[0]
+
+
+# ----- the FX board: four banks whose rates we were not reading -----
+
+
+def test_turkiyefinans_publishes_a_full_fx_board(monkeypatch):
+    """It was recorded as publishing no rates at all.
+
+    `GetExchangeRates` sits on the same SharePoint service the catalogues come
+    from -- two methods of which were already in use -- and returns twenty
+    instruments with a quote time. Nobody had asked the service what else it
+    served.
+    """
+    serve(monkeypatch, [load("turkiyefinans", "exchange_rates.json")])
+    rates = {r.code: r for r in get_bank("turkiyefinans").rates()}
+
+    assert len(rates) >= 20
+    assert rates["USD"].buy > 0 and rates["USD"].sell >= rates["USD"].buy
+    # Gold and silver arrive twice: an ounce price in dollars and a gram price
+    # in lira. Only the gram rows compare with the other banks, so they take
+    # the shared code and the ounce rows keep their own.
+    assert rates["ALT (gr)"].unit == "gram"
+    assert rates["GMS (gr)"].unit == "gram"
+    assert rates["XAU"].unit == "1", "the ounce-in-USD row must not join the gram board"
+    # /Date(1786798759996+0300)/ is not a timestamp anyone can read.
+    assert rates["USD"].as_of.startswith("20")
+
+
+def test_vakif_reads_its_feed_and_its_page(monkeypatch):
+    """Four instruments by endpoint, the rest off the page, one timestamp.
+
+    `HomePageCurrencyData` carries USD, EUR, gold and silver and is the only
+    source with the quote time on it; the converter page renders all sixteen.
+    Using either alone loses something -- the endpoint loses twelve
+    instruments, the page loses the time.
+    """
+    serve(monkeypatch, [load("vakif", "home_currency.json")],
+          text=load("vakif", "rates_page_tables.html"))
+    rates = {r.code: r for r in get_bank("vakif").rates()}
+
+    assert len(rates) >= 16
+    for code in ("USD", "EUR", "GBP", "CHF", "JPY", "SAR", "QAR", "AED"):
+        assert code in rates, code
+    assert rates["ALT (gr)"].unit == "gram"
+    # The feed spells gold "ALT"; everything downstream keys on "ALT (gr)".
+    assert "ALT" not in rates
+    assert all(r.as_of for r in rates.values()), "the feed's time stamps every row"
+    assert not any(r.derived for r in rates.values())
+
+
+def test_dunya_reads_its_daily_rates_page(monkeypatch):
+    """Read, not derived -- and read with the right number format.
+
+    The page is Turkish and its numbers are en-US: `6,662.6542` is six
+    thousand. The Turkish reader turns that into 6,66, which looks like a
+    plausible gold price and is not one.
+    """
+    serve(monkeypatch, [], text=load("dunya", "rates_page_tables.html"))
+    rates = {r.code: r for r in get_bank("dunya").rates()}
+
+    assert len(rates) >= 14
+    assert 1_000 < rates["XAU"].buy < 100_000, f"gold read as {rates['XAU'].buy}"
+    assert 10 < rates["USD"].buy < 1_000, f"dollar read as {rates['USD'].buy}"
+    assert rates["XAU"].unit == "gram" and rates["XAG"].unit == "gram"
+    assert not any(r.derived for r in rates.values())
+
+
+def test_albaraka_takes_the_page_beyond_what_its_plugin_returns(monkeypatch):
+    """The plugin is the homepage widget: four rows, whatever page it is called
+    from. The bank's own rates page carries twenty-three."""
+    serve(monkeypatch, [load("albaraka", "rates.json")],
+          text=load("albaraka", "rates_page_tables.html"))
+    rates = {r.code: r for r in get_bank("albaraka").rates()}
+
+    assert len(rates) >= 20, f"only {len(rates)} — the page rows were dropped"
+    # From the plugin, so they keep its quote time.
+    for code in ("USD", "EUR", "GBP", "XAU"):
+        assert rates[code].as_of, f"{code} lost its timestamp"
+    # From the page only.
+    for code in ("XAG", "XPT", "XPD", "KWD", "BHD", "IQD"):
+        assert code in rates, code
+    assert rates["XPT"].unit == "gram" and rates["XAG"].unit == "gram"
+
+
+def test_no_bank_serves_a_derived_rate_any_more():
+    """A rate we worked out is not the same claim as one the bank published.
+
+    Dünya and Vakıf were both being served by inverting their converters. The
+    arithmetic was exact -- 0,00% against the three banks that publish both --
+    and it was still ours, and it capped each bank at four instruments.
+    """
+    from banks.providers import BANKS
+
+    for bank in BANKS:
+        if "rates" not in bank.capabilities:
+            continue
+        source = type(bank).rates.__doc__ or ""
+        assert "derived" not in source.lower() or "not" in source.lower() or \
+            "never" in source.lower(), f"{bank.name} still documents deriving"

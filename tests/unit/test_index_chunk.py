@@ -38,14 +38,20 @@ def _pdf_doc(**over):
         "site": "turkiyefinans", "bank": "Türkiye Finans Katılım Bankası",
         "source_type": "pdf", "doc_kind": "fees", "title": "Ücret Tarifesi",
         "audience": "", "lang": "tr", "text_hash": "doc", "campaign_end": "",
+        # A PDF page is markdown plus items, not typed blocks. The item's
+        # marker appears verbatim in the markdown, which is what pins it to its
+        # place on the page; chunk._page_text appends what the item says.
         "pages": [
             {"number": 1, "cite_url": "https://x.com.tr/documents/ucretler.pdf#page=1",
-             "text_hash": "pg1", "from_vision": False, "blocks": [
-                 {"kind": "heading", "text": "Ücret Tarifesi", "order": 0},
-                 {"kind": "table", "text": "| Ücret | Tutar |\n|---|---|\n| EFT | 5 TL |", "order": 1}]},
+             "text_hash": "pg1", "from_vision": False,
+             "markdown": "## Ücret Tarifesi\n\n<table_1>",
+             "items": [{"id": "table_1", "marker": "<table_1>",
+                        "summary": "Ücret tarifesi tablosu",
+                        "visible_text": "| Ücret | Tutar |\n|---|---|\n| EFT | 5 TL |",
+                        "visual_representation": "iki sütunlu tablo"}]},
             {"number": 2, "cite_url": "https://x.com.tr/documents/ucretler.pdf#page=2",
-             "text_hash": "pg2", "from_vision": True, "blocks": [
-                 {"kind": "paragraph", "text": "İkinci sayfa içeriği burada.", "order": 0}]},
+             "text_hash": "pg2", "from_vision": True,
+             "markdown": "İkinci sayfa içeriği burada.", "items": []},
         ],
     }
     doc.update(over)
@@ -83,6 +89,12 @@ def test_each_pdf_page_is_a_chunk_with_a_page_citation():
 
 
 def test_a_pdf_table_survives_as_markdown_in_its_chunk():
+    """The table lives in the item, and the chunk has to carry it.
+
+    The markdown holds only the `<table_1>` marker, so a chunk built from the
+    markdown alone would embed a page that mentions a table and contains none
+    of its numbers -- unfindable by every query about a fee.
+    """
     out = chunks(_pdf_doc())
     assert "| Ücret | Tutar |" in out[0].text
     assert "| EFT | 5 TL |" in out[0].text
@@ -93,15 +105,23 @@ def test_a_pdf_heading_becomes_a_markdown_heading():
     assert out[0].text.startswith("## Ücret Tarifesi")
 
 
+def test_an_items_summary_is_searchable_beside_its_text():
+    """What the item represents is part of the page, not metadata beside it."""
+    out = chunks(_pdf_doc())
+    assert "Ücret tarifesi tablosu" in out[0].text
+
+
 def test_a_scanned_page_is_flagged_from_vision_in_its_payload():
     out = chunks(_pdf_doc())
     assert out[0].payload["from_vision"] is False
     assert out[1].payload["from_vision"] is True
 
 
-def test_an_empty_image_block_is_dropped():
+def test_an_item_with_nothing_in_it_adds_nothing():
     doc = _pdf_doc()
-    doc["pages"][0]["blocks"].append({"kind": "image", "text": "", "order": 2})
+    doc["pages"][0]["items"].append({"id": "figure_9", "marker": "<figure_9>",
+                                     "summary": "", "visible_text": "",
+                                     "visual_representation": ""})
     out = chunks(doc)
     assert "\n\n\n" not in out[0].text          # no gap from the empty block
 

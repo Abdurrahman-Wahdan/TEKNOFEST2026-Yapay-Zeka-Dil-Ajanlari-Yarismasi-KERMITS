@@ -41,7 +41,7 @@ function Footer() {
           sx={{ textAlign: "center", fontWeight: "400 !important" }}
           color="white"
         >
-          Create by Kermits
+          Created by KERMİTS
         </VuiTypography>
       </VuiBox>
     </VuiBox>
