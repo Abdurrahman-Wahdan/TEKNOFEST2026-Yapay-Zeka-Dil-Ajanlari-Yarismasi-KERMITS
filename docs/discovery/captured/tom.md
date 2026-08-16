@@ -2,7 +2,14 @@
 
 Checked 2026-08-08. Host `www.tombank.com.tr`.
 
-**Result: no endpoints we can call. This is a finding, not a failure.**
+**Superseded 2026-08-13** — see `banks/providers/tom.py`'s module docstring.
+The "partner credential" below turned out not to be partner-only: it is a
+fixed HTTP Basic pair embedded in `/hesaplama-araclari.html`'s own JavaScript,
+served to anyone, so the loan API is public after all and financing is
+implemented. Left in place as the record of how the negative finding below was
+reached, not as the current state.
+
+**Original result: no endpoints we can call. This is a finding, not a failure.**
 
 ## Evidence
 
@@ -24,6 +31,14 @@ subdomains do not resolve.
 
 So the endpoint is **known but unusable**: it needs a partner credential we do
 not have and should not attempt to obtain.
+
+**Added 2026-08-16, now that the endpoint is called for real:**
+`GetLoanPayBackPlan`'s `Data` carries `MonthlyProfitRate` (the nominal rate),
+`MonthlyCostRate` (a fee-loaded monthly figure, materially higher than the
+nominal rate), and `TotalCost` — which is `(1 + MonthlyCostRate/100) ** 12 - 1`
+to five decimal places against a live quote (83.46148 vs 83.4614766). `TotalCost`
+*is* the annual cost rate, stated by the bank, not computed here — it went
+unread for a while on the mistaken belief that no such figure existed.
 
 ## What the tools must do
 

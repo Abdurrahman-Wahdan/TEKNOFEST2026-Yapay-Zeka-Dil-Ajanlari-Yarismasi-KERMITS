@@ -32,18 +32,30 @@ import breakpoints from "assets/theme/base/breakpoints";
 import VuiAvatar from "components/VuiAvatar";
 // Vision UI Dashboard React components
 import VuiBox from "components/VuiBox";
+import VuiButton from "components/VuiButton";
 import VuiTypography from "components/VuiTypography";
 // Vision UI Dashboard React icons
 import { IoCube } from "react-icons/io5";
 import { IoDocument } from "react-icons/io5";
 import { IoBuild } from "react-icons/io5";
+import { IoLogOut } from "react-icons/io5";
 // Vision UI Dashboard React example components
 import DashboardNavbar from "examples/Navbars/DashboardNavbar";
 import { useEffect, useState } from "react";
 
-function Header() {
+import { useRouter } from "@/i18n/navigation";
+import { useAuth } from "@/lib/auth";
+
+function Header({ name = "Mark Johnson", email = "mark@simmmple.com" }) {
   const [tabsOrientation, setTabsOrientation] = useState("horizontal");
   const [tabValue, setTabValue] = useState(0);
+  const { logout } = useAuth();
+  const router = useRouter();
+
+  const handleSignOut = () => {
+    logout();
+    router.replace("/login");
+  };
 
   useEffect(() => {
     // A function that sets the orientation state of the tabs.
@@ -130,14 +142,26 @@ function Header() {
               })}
             >
               <VuiTypography variant="lg" color="white" fontWeight="bold">
-                Mark Johnson
+                {name}
               </VuiTypography>
               <VuiTypography variant="button" color="text" fontWeight="regular">
-                mark@simmmple.com
+                {email}
               </VuiTypography>
             </VuiBox>
           </Grid>
-          <Grid item xs={12} md={6} lg={6.5} xl={6} xxl={4} sx={{ ml: "auto" }}>
+          <Grid
+            item
+            xs={12}
+            md={6}
+            lg={6.5}
+            xl={6}
+            xxl={4}
+            sx={{ ml: "auto" }}
+            display="flex"
+            alignItems="center"
+            justifyContent="flex-end"
+            gap={2}
+          >
             <AppBar position="static">
               <Tabs
                 orientation={tabsOrientation}
@@ -150,6 +174,19 @@ function Header() {
                 <Tab label="PROJECTS" icon={<IoBuild color="white" size="16px" />} />
               </Tabs>
             </AppBar>
+            {/* `variant="text" color="error"` matches the destructive action
+                already established on the billing screen (Bill's "DELETE"
+                button) — a plain text-and-icon button, not a bordered pill,
+                so it reads as part of this toolbar instead of fighting it. */}
+            <VuiButton
+              variant="text"
+              color="error"
+              onClick={handleSignOut}
+              sx={{ display: "flex", alignItems: "center", whiteSpace: "nowrap" }}
+            >
+              <IoLogOut size="16px" style={{ marginRight: "4px" }} />
+              Sign Out
+            </VuiButton>
           </Grid>
         </Grid>
       </Card>

@@ -15,10 +15,11 @@ import logging
 from fastapi import APIRouter, HTTPException, Query, status
 
 from banks import compare as compare_mod
+from banks import limits
 from banks.providers import UnsupportedProduct
 
 from ..converters import comparison_out
-from ..schemas.banks import ComparisonOut
+from ..schemas.banks import ComparisonOut, ConstraintsOut
 
 logger = logging.getLogger(__name__)
 
@@ -97,3 +98,46 @@ def compare_exchange(
     except (UnsupportedProduct, ValueError) as exc:
         raise _bad_family(exc) from exc
     return comparison_out(result)
+
+
+@router.get("/card", response_model=ComparisonOut)
+def compare_card(
+    amount: float = Query(gt=0),
+    installments: int = Query(gt=0, le=36),
+    banks: list[str] | None = BanksQuery,
+) -> ComparisonOut:
+    """Every card at every bank that publishes a card calculator, ranked.
+
+    Cards have no cross-bank family: each bank sells its own catalogue under
+    its own names, so this quotes every card every in-scope bank publishes
+    rather than one named product. A bank that states only a rate and no
+    instalment sinks to the bottom of the ranking rather than winning it.
+    """
+    try:
+        result = compare_mod.card(amount, installments, banks)
+    except (UnsupportedProduct, ValueError) as exc:
+        raise _bad_family(exc) from exc
+    return comparison_out(result)
+
+
+@router.get("/constraints", response_model=ConstraintsOut)
+def compare_constraints(
+    family: str = Query(description="A family key from GET /api/banks/families."),
+    category: str = Query(default="finance", pattern="^(finance|profit_share)$"),
+    banks: list[str] | None = BanksQuery,
+) -> ConstraintsOut:
+    """What the selected banks will accept, before anyone is asked.
+
+    Read from the catalogues, which the provider layer caches, so a form can
+    call this on every change without touching a bank endpoint each time.
+
+    The value is `intersection`: Dünya's konut product stops at 84 months while
+    the other five reach 120, so a run including Dünya can only ask for 84.
+    Showing that as a ceiling -- with the bank that set it -- beats letting
+    someone submit 360 and watch every bank decline.
+    """
+    try:
+        result = limits.for_family(category, family, banks)
+    except (UnsupportedProduct, ValueError) as exc:
+        raise _bad_family(exc) from exc
+    return ConstraintsOut(**result)

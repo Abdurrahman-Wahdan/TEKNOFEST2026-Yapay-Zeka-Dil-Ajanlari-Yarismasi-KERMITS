@@ -1,0 +1,710 @@
+{
+ "finance": {
+  "albaraka": [
+   {
+    "code": "KMPARAC",
+    "name": "SIFIR KM TAŞIT FİNANSMANI"
+   },
+   {
+    "code": "2.ELTŞT",
+    "name": "2. EL TAŞIT FİNANSMANI"
+   },
+   {
+    "code": "SBSZARC",
+    "name": "DİJİTAL ARAÇ FİNANSMANI"
+   },
+   {
+    "code": "ISYERII",
+    "name": "İŞYERİ FİNANSMANI"
+   },
+   {
+    "code": "ARSABIR",
+    "name": "ARSA FİNANSMANI"
+   },
+   {
+    "code": "EĞİTİM",
+    "name": "Eğitim Finansmanı"
+   },
+   {
+    "code": "KNTKIRA",
+    "name": "KONUT KİRA FİNANSMANI"
+   },
+   {
+    "code": "YURTH",
+    "name": "YURT HİZMETİ FİNANSMANI"
+   },
+   {
+    "code": "TEKNO",
+    "name": "DİĞER TEKNOLOJİ FİNANSMANI"
+   },
+   {
+    "code": "CEPFİN",
+    "name": "CEP TELEFONU FİNANSMANI"
+   },
+   {
+    "code": "ENGLFİN",
+    "name": "ENGELSİZ HAYAT FİNANSMANI"
+   },
+   {
+    "code": "PRFBFİN",
+    "name": "PREFABRİK FİNANSMANI"
+   },
+   {
+    "code": "MOTOFİN",
+    "name": "DİĞER TAŞIT FİNANSMANI (MOTOSİKLET)"
+   },
+   {
+    "code": "PRTKRT",
+    "name": "PRATİK FİNANSMAN KART"
+   },
+   {
+    "code": "YKKNT0B",
+    "name": "İLK EVİM KONUT FİNANSMANI"
+   },
+   {
+    "code": "VRKNT0B",
+    "name": "2. VE SONRAKİ KONUT FİNANSMANI"
+   }
+  ],
+  "dunya": [
+   {
+    "code": "ARACBINEK2ELTUKETICI",
+    "name": "Araç Binek 2.El"
+   },
+   {
+    "code": "ARACBINEKYENITUKETICI",
+    "name": "Araç Binek Yeni"
+   },
+   {
+    "code": "ARSATUKETICI",
+    "name": "Arsa"
+   },
+   {
+    "code": "2ELKONUTTUKETICI",
+    "name": "Konut 2.El"
+   },
+   {
+    "code": "KONUTTUKETICI",
+    "name": "Konut Yeni"
+   },
+   {
+    "code": "TUKETICIIHTIYAC",
+    "name": "Tüketici İhtiyaç Finansmanı"
+   }
+  ],
+  "emlak": [
+   {
+    "code": "ARACBINEK2EL",
+    "name": "2. El Taşıt Finansmanı"
+   },
+   {
+    "code": "ARACBINEKYENI",
+    "name": "0 Km Taşıt Finansmanı"
+   },
+   {
+    "code": "EVOFISGERECLERI",
+    "name": "İhtiyaç Finansmanı"
+   },
+   {
+    "code": "GMENKULKONUTYENI",
+    "name": "Yeni Konut Finansmanı"
+   }
+  ],
+  "kuveytturk": [
+   {
+    "code": "ECOMMERCE",
+    "name": "Alışveriş Finansmanı"
+   },
+   {
+    "code": "SAGLIKFINANSMANI",
+    "name": "İhtiyaç Finansmanı"
+   },
+   {
+    "code": "IHTIYACKART",
+    "name": "İhtiyaç Kart"
+   },
+   {
+    "code": "DIJITALARACBINEK",
+    "name": "Binek Dijital Araç Finansmanı"
+   },
+   {
+    "code": "DIJITALARACTICARI",
+    "name": "Ticari Dijital Araç Finansmanı"
+   },
+   {
+    "code": "ARACBINEKYENI",
+    "name": "Yeni Binek Araç Finansmanı"
+   },
+   {
+    "code": "ARACTICARIYENI",
+    "name": "Yeni Ticari Araç Finansmanı"
+   },
+   {
+    "code": "ARACBINEK2EL",
+    "name": "2. El Binek Araç Finansmanı"
+   },
+   {
+    "code": "ARACTICARI2EL",
+    "name": "2. El Ticari Araç Finansmanı"
+   },
+   {
+    "code": "GMENKULKONUTYENI",
+    "name": "Konut Finansmanı"
+   },
+   {
+    "code": "GMENKULARSA",
+    "name": "Arsa Finansmanı"
+   },
+   {
+    "code": "GMENKULISYERIYENI",
+    "name": "İş Yeri Finansmanı"
+   },
+   {
+    "code": "ELKTRARACSARJUNITE",
+    "name": "Bisiklet Finansmanı"
+   },
+   {
+    "code": "ELKTRARACSARJUNITE",
+    "name": "Elektrikli Araç Şarj Ünitesi Finansmanı"
+   },
+   {
+    "code": "EGITIMFINANSMANI",
+    "name": "Eğitim Finansmanı"
+   },
+   {
+    "code": "HACFINANSMANI",
+    "name": "Hac-Umre Finansmanı"
+   },
+   {
+    "code": "KIRAFINANSMANI",
+    "name": "Kira Finansmanı"
+   },
+   {
+    "code": "SEYAHATFINANSMANI",
+    "name": "Seyahat Finansmanı"
+   },
+   {
+    "code": "TEKNEFINANSMANI",
+    "name": "Tekne Tüketici Finansmanı"
+   }
+  ],
+  "tom": [
+   {
+    "code": "TKTCDGRFNS",
+    "name": "İhtiyaç Finansmanı"
+   }
+  ],
+  "turkiyefinans": [
+   {
+    "code": "1",
+    "name": "İhtiyaç Finansmanı"
+   },
+   {
+    "code": "999",
+    "name": "Sigortasız İhtiyaç Finansmanı"
+   },
+   {
+    "code": "14",
+    "name": "Sigortalı Taşıt Finansmanı 0 km"
+   },
+   {
+    "code": "120",
+    "name": "Sigortalı Taşıt Finansmanı 2. El"
+   },
+   {
+    "code": "121",
+    "name": "Sigortasız Taşıt Finansmanı 0 km"
+   },
+   {
+    "code": "122",
+    "name": "Sigortasız Taşıt Finansmanı 2. El"
+   },
+   {
+    "code": "1000",
+    "name": "Sigortalı Motosiklet Finansmanı"
+   },
+   {
+    "code": "1001",
+    "name": "Sigortasız Motosiklet Finansmanı"
+   },
+   {
+    "code": "16",
+    "name": "İlk Konutunu Alan / Sigortalı Konut Finansmanı"
+   },
+   {
+    "code": "116",
+    "name": "Mevcut Konutu Olan / Sigortalı Konut Finansmanı"
+   },
+   {
+    "code": "115",
+    "name": "İlk Konutunu Alan / Sigortasız Konut Finansmanı"
+   },
+   {
+    "code": "118",
+    "name": "Mevcut Konutu Olan / Sigortasız Konut Finansmanı"
+   },
+   {
+    "code": "17",
+    "name": "Arsa Finansmanı Sigortalı"
+   },
+   {
+    "code": "540",
+    "name": "Arsa Finansmanı Sigortasız"
+   },
+   {
+    "code": "18",
+    "name": "İşyeri Finansmanı Sigortalı"
+   },
+   {
+    "code": "550",
+    "name": "İşyeri Finansmanı Sigortasız"
+   },
+   {
+    "code": "102",
+    "name": "Bankamız Gayrimenkulleri Konut"
+   },
+   {
+    "code": "105",
+    "name": "Bankamız Gayrimenkulleri Ticari Mülk"
+   }
+  ],
+  "vakif": [
+   {
+    "code": "IF",
+    "name": "İhtiyaç Finansmanı"
+   },
+   {
+    "code": "K",
+    "name": "Sıfır Konut Finansmanı"
+   },
+   {
+    "code": "K2",
+    "name": "2. El Konut Finansmanı"
+   },
+   {
+    "code": "BO",
+    "name": "Taşıt Finansmanı 0 km"
+   },
+   {
+    "code": "BO2",
+    "name": "Taşıt Finansmanı 2.El"
+   },
+   {
+    "code": "I",
+    "name": "İşyeri Finansmanı"
+   },
+   {
+    "code": "A",
+    "name": "Arsa Finansmanı"
+   }
+  ],
+  "ziraat": [
+   {
+    "code": "48671069",
+    "name": "KONUT FINANSMANI KAMPANYA PAKETI"
+   },
+   {
+    "code": "25961206",
+    "name": "KONUT FINANSMANI (0-10.000.000 TL/1-120 AY))"
+   },
+   {
+    "code": "64445632",
+    "name": "İHTIYAÇ FINANSMANI HAC / UMRE (1-36 AY)"
+   },
+   {
+    "code": "64445635",
+    "name": "İHTIYAÇ FINANSMANI HAC / UMRE (1-24 AY)"
+   },
+   {
+    "code": "62744752",
+    "name": "İHTIYAÇ FINANSMANI HAC / UMRE (1-12 AY)"
+   },
+   {
+    "code": "64356289",
+    "name": "İHTIYAÇ FINANSMANI(1-12 AY)"
+   },
+   {
+    "code": "64356288",
+    "name": "İHTIYAÇ FINANSMANI (1-24 AY)"
+   },
+   {
+    "code": "64356287",
+    "name": "İHTIYAÇ FINANSMANI (1-36 AY)"
+   },
+   {
+    "code": "63871915",
+    "name": "KOLAY FON FINANSMANI KAMPANYA PAKETI(1-12 AY)"
+   },
+   {
+    "code": "63871914",
+    "name": "KOLAY FON FINANSMANI KAMPANYA PAKETI (13-24 AY)"
+   },
+   {
+    "code": "63871913",
+    "name": "KOLAY FON FINANSMANI KAMPANYA PAKETI(25-36 AY)"
+   },
+   {
+    "code": "59244341",
+    "name": "TAŞIT FINANSMANI(1-12 AY)"
+   },
+   {
+    "code": "65492134",
+    "name": "TAŞIT FINANSMANI(1-24 AY)"
+   },
+   {
+    "code": "64445628",
+    "name": "TAŞIT FINANSMANI (1-36 AY)"
+   },
+   {
+    "code": "64445629",
+    "name": "TAŞIT FINANSMANI(1-48 AY)"
+   },
+   {
+    "code": "20539018",
+    "name": "ARSA FINANSMANI"
+   },
+   {
+    "code": "20539017",
+    "name": "BIREYSEL İŞYERI FINANSMANI"
+   }
+  ]
+ },
+ "profit_share": {
+  "albaraka": [
+   {
+    "code": "KTLMHSP",
+    "name": "Katılma Hesabı"
+   },
+   {
+    "code": "KTLARDM",
+    "name": "Ara Dönem Kâr Payı Ödemeli"
+   },
+   {
+    "code": "KURKTLMHSP",
+    "name": "Kur Korumalı Katılma Hesabı (Bireysel)"
+   }
+  ],
+  "dunya": [
+   {
+    "code": "KTLMHSP",
+    "name": "Standart Katılma Hesabı"
+   },
+   {
+    "code": "GNSHSP",
+    "name": "Güneş Katılma Hesabı"
+   },
+   {
+    "code": "ALTKTLMHSP",
+    "name": "Altın Katılma Hesabı"
+   }
+  ],
+  "emlak": [
+   {
+    "code": "KATILMA",
+    "name": "Katılma Hesabı"
+   }
+  ],
+  "hayat": [
+   {
+    "code": "AVANTAJLIHESAP",
+    "name": "Avantajlı Hesap"
+   },
+   {
+    "code": "KATILMAHESABI",
+    "name": "Katılma Hesabı"
+   },
+   {
+    "code": "AVANTAJLIGUNLUKHESAP",
+    "name": "Avantajlı Günlük Hesap"
+   }
+  ],
+  "kuveytturk": [
+   {
+    "code": "KATILMAHESABI",
+    "name": "Katılma Hesabı"
+   },
+   {
+    "code": "KTDIJITALHESAP",
+    "name": "Dijital Katılma Hesabı"
+   },
+   {
+    "code": "HOSGELDIN",
+    "name": "Hoş Geldin Katılma Hesabı"
+   },
+   {
+    "code": "ALTINAALTINKATILMAHESABI",
+    "name": "Altına Altın Katılma Hesabı"
+   },
+   {
+    "code": "ARADONEMKARPAYIODEMELIKATILMAHESABI",
+    "name": "Ara Dönem Kar Payı Ödemeli Katılma Hesabı"
+   },
+   {
+    "code": "SEPET",
+    "name": "Sepet Hesap"
+   },
+   {
+    "code": "YUVAMKATILMA",
+    "name": "Yuvam TL Katılma Hesabı"
+   }
+  ],
+  "turkiyefinans": [
+   {
+    "code": "4-Bireysel-TL-0-31",
+    "name": "TL 0–31 gün, bireysel, en az 10,000 TL"
+   },
+   {
+    "code": "4-Bireysel-TL-32-91",
+    "name": "TL 32–91 gün, bireysel, en az 10,000 TL"
+   },
+   {
+    "code": "4-Bireysel-TL-92-180",
+    "name": "TL 92–180 gün, bireysel, en az 10,000 TL"
+   },
+   {
+    "code": "4-Bireysel-TL-181-364",
+    "name": "TL 181–364 gün, bireysel, en az 10,000 TL"
+   },
+   {
+    "code": "4-Bireysel-TL-365-450",
+    "name": "TL 365–450 gün, bireysel, en az 10,000 TL"
+   },
+   {
+    "code": "1-Bireysel-TL-32-91",
+    "name": "TL 32–91 gün, bireysel, en az 250 TL"
+   },
+   {
+    "code": "1-Bireysel-TL-92-180",
+    "name": "TL 92–180 gün, bireysel, en az 250 TL"
+   },
+   {
+    "code": "1-Bireysel-TL-181-364",
+    "name": "TL 181–364 gün, bireysel, en az 250 TL"
+   },
+   {
+    "code": "1-Bireysel-TL-365-450",
+    "name": "TL 365–450 gün, bireysel, en az 250 TL"
+   },
+   {
+    "code": "1-Bireysel-USD-0-31",
+    "name": "USD 0–31 gün, bireysel, en az 250 USD"
+   },
+   {
+    "code": "1-Bireysel-USD-32-91",
+    "name": "USD 32–91 gün, bireysel, en az 250 USD"
+   },
+   {
+    "code": "1-Bireysel-USD-92-180",
+    "name": "USD 92–180 gün, bireysel, en az 250 USD"
+   },
+   {
+    "code": "1-Bireysel-USD-181-364",
+    "name": "USD 181–364 gün, bireysel, en az 250 USD"
+   },
+   {
+    "code": "1-Bireysel-USD-365-450",
+    "name": "USD 365–450 gün, bireysel, en az 250 USD"
+   },
+   {
+    "code": "1-Bireysel-EUR-0-31",
+    "name": "EUR 0–31 gün, bireysel, en az 250 EUR"
+   },
+   {
+    "code": "1-Bireysel-EUR-32-91",
+    "name": "EUR 32–91 gün, bireysel, en az 250 EUR"
+   },
+   {
+    "code": "1-Bireysel-EUR-92-180",
+    "name": "EUR 92–180 gün, bireysel, en az 250 EUR"
+   },
+   {
+    "code": "1-Bireysel-EUR-181-364",
+    "name": "EUR 181–364 gün, bireysel, en az 250 EUR"
+   },
+   {
+    "code": "1-Bireysel-EUR-365-450",
+    "name": "EUR 365–450 gün, bireysel, en az 250 EUR"
+   },
+   {
+    "code": "1-Bireysel-YAU-0-31",
+    "name": "YAU 0–31 gün, bireysel, en az 50 YAU"
+   },
+   {
+    "code": "1-Bireysel-YAU-32-91",
+    "name": "YAU 32–91 gün, bireysel, en az 50 YAU"
+   },
+   {
+    "code": "1-Bireysel-YAU-92-180",
+    "name": "YAU 92–180 gün, bireysel, en az 50 YAU"
+   },
+   {
+    "code": "1-Bireysel-YAU-181-364",
+    "name": "YAU 181–364 gün, bireysel, en az 50 YAU"
+   },
+   {
+    "code": "1-Bireysel-YAU-365-450",
+    "name": "YAU 365–450 gün, bireysel, en az 50 YAU"
+   },
+   {
+    "code": "1-Bireysel-YAG-0-31",
+    "name": "YAG 0–31 gün, bireysel, en az 5,000 YAG"
+   },
+   {
+    "code": "1-Bireysel-YAG-32-91",
+    "name": "YAG 32–91 gün, bireysel, en az 5,000 YAG"
+   },
+   {
+    "code": "1-Bireysel-YAG-92-180",
+    "name": "YAG 92–180 gün, bireysel, en az 5,000 YAG"
+   },
+   {
+    "code": "1-Bireysel-YAG-181-364",
+    "name": "YAG 181–364 gün, bireysel, en az 5,000 YAG"
+   },
+   {
+    "code": "1-Bireysel-YAG-365-450",
+    "name": "YAG 365–450 gün, bireysel, en az 5,000 YAG"
+   },
+   {
+    "code": "1-Bireysel-TL-0-31",
+    "name": "TL 0–31 gün, bireysel, en az 250 TL"
+   },
+   {
+    "code": "1-Ticari-TL-0-31",
+    "name": "TL 0–31 gün, ticari, en az 250 TL"
+   },
+   {
+    "code": "1-Ticari-TL-32-91",
+    "name": "TL 32–91 gün, ticari, en az 250 TL"
+   },
+   {
+    "code": "1-Ticari-TL-92-180",
+    "name": "TL 92–180 gün, ticari, en az 250 TL"
+   },
+   {
+    "code": "1-Ticari-TL-181-364",
+    "name": "TL 181–364 gün, ticari, en az 250 TL"
+   },
+   {
+    "code": "1-Ticari-TL-365-450",
+    "name": "TL 365–450 gün, ticari, en az 250 TL"
+   },
+   {
+    "code": "1-Ticari-USD-0-31",
+    "name": "USD 0–31 gün, ticari, en az 250 USD"
+   },
+   {
+    "code": "1-Ticari-USD-32-91",
+    "name": "USD 32–91 gün, ticari, en az 250 USD"
+   },
+   {
+    "code": "1-Ticari-USD-92-180",
+    "name": "USD 92–180 gün, ticari, en az 250 USD"
+   },
+   {
+    "code": "1-Ticari-USD-181-364",
+    "name": "USD 181–364 gün, ticari, en az 250 USD"
+   },
+   {
+    "code": "1-Ticari-USD-365-450",
+    "name": "USD 365–450 gün, ticari, en az 250 USD"
+   },
+   {
+    "code": "1-Ticari-EUR-0-31",
+    "name": "EUR 0–31 gün, ticari, en az 250 EUR"
+   },
+   {
+    "code": "1-Ticari-EUR-32-91",
+    "name": "EUR 32–91 gün, ticari, en az 250 EUR"
+   },
+   {
+    "code": "1-Ticari-EUR-92-180",
+    "name": "EUR 92–180 gün, ticari, en az 250 EUR"
+   },
+   {
+    "code": "1-Ticari-EUR-181-364",
+    "name": "EUR 181–364 gün, ticari, en az 250 EUR"
+   },
+   {
+    "code": "1-Ticari-EUR-365-450",
+    "name": "EUR 365–450 gün, ticari, en az 250 EUR"
+   },
+   {
+    "code": "1-Ticari-YAU-0-31",
+    "name": "YAU 0–31 gün, ticari, en az 50 YAU"
+   },
+   {
+    "code": "1-Ticari-YAU-32-91",
+    "name": "YAU 32–91 gün, ticari, en az 50 YAU"
+   },
+   {
+    "code": "1-Ticari-YAU-92-180",
+    "name": "YAU 92–180 gün, ticari, en az 50 YAU"
+   },
+   {
+    "code": "1-Ticari-YAU-181-364",
+    "name": "YAU 181–364 gün, ticari, en az 50 YAU"
+   },
+   {
+    "code": "1-Ticari-YAU-365-450",
+    "name": "YAU 365–450 gün, ticari, en az 50 YAU"
+   },
+   {
+    "code": "1-Ticari-YAG-0-31",
+    "name": "YAG 0–31 gün, ticari, en az 5,000 YAG"
+   },
+   {
+    "code": "1-Ticari-YAG-32-91",
+    "name": "YAG 32–91 gün, ticari, en az 5,000 YAG"
+   },
+   {
+    "code": "1-Ticari-YAG-92-180",
+    "name": "YAG 92–180 gün, ticari, en az 5,000 YAG"
+   },
+   {
+    "code": "1-Ticari-YAG-181-364",
+    "name": "YAG 181–364 gün, ticari, en az 5,000 YAG"
+   },
+   {
+    "code": "1-Ticari-YAG-365-450",
+    "name": "YAG 365–450 gün, ticari, en az 5,000 YAG"
+   }
+  ],
+  "vakif": [
+   {
+    "code": "KAH",
+    "name": "Katılma Hesabı"
+   }
+  ]
+ },
+ "card": {
+  "kuveytturk": [
+   {
+    "code": "SK",
+    "name": "Sağlam Kart Troy"
+   },
+   {
+    "code": "BP",
+    "name": "Sağlam Business Kart"
+   },
+   {
+    "code": "TK",
+    "name": "Sağlam Tohum Kart"
+   },
+   {
+    "code": "BP",
+    "name": "Miles&Smiles Business Kredi Kartı"
+   },
+   {
+    "code": "KK",
+    "name": "Sağlam Business Finansman Kart"
+   }
+  ],
+  "vakif": [
+   {
+    "code": "FK",
+    "name": "Ferah Kart"
+   }
+  ]
+ }
+}

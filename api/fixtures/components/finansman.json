@@ -1,0 +1,120 @@
+{
+  "_note": "DEVELOPMENT FIXTURE — values are invented, not read from any bank. Serves as the worked example of the component contract until the RAG producer lands. The API reports source=fixture and the UI badges it.",
+  "generated_at": "2026-08-14T09:00:00Z",
+  "source": "fixture",
+  "components": [
+    {
+      "type": "table",
+      "props": {
+        "id": "konut-basvuru-kosullari",
+        "title": "Konut Finansmanı Başvuru Koşulları",
+        "subtitle": "Bankaların kendi sayfalarında yayımladığı koşullar",
+        "notes": "Ekspertiz ücretleri banka sayfalarında belirtilen tutarlardır; başvuru anında değişebilir.",
+        "columns": [
+          { "key": "banka", "label": "Banka", "type": "bank", "filterable": true },
+          { "key": "asgari_yas", "label": "Asgari Yaş", "type": "number", "sortable": true },
+          { "key": "gelir_belgesi", "label": "Gelir Belgesi", "type": "text" },
+          { "key": "ekspertiz", "label": "Ekspertiz Ücreti", "type": "money", "currency": "TRY", "sortable": true },
+          { "key": "azami_vade", "label": "Azami Vade (ay)", "type": "number", "sortable": true },
+          { "key": "sigorta", "label": "Sigorta", "type": "badge", "filterable": true },
+          { "key": "guncelleme", "label": "Güncelleme", "type": "date", "sortable": true },
+          { "key": "kaynak", "label": "Kaynak", "type": "link" }
+        ],
+        "rows": [
+          { "cells": { "banka": "kuveytturk", "asgari_yas": 18, "gelir_belgesi": "Son 3 ay bordro", "ekspertiz": 7500, "azami_vade": 120, "sigorta": "Zorunlu", "guncelleme": "2026-07-28", "kaynak": "https://www.kuveytturk.com.tr/bireysel/konut-finansmani" }, "cite_url": "https://www.kuveytturk.com.tr/bireysel/konut-finansmani" },
+          { "cells": { "banka": "albaraka", "asgari_yas": 18, "gelir_belgesi": "Bordro veya vergi levhası", "ekspertiz": 6900, "azami_vade": 120, "sigorta": "Zorunlu", "guncelleme": "2026-07-30", "kaynak": "https://www.albaraka.com.tr/bireysel/konut-finansmani" }, "cite_url": "https://www.albaraka.com.tr/bireysel/konut-finansmani" },
+          { "cells": { "banka": "vakif", "asgari_yas": 18, "gelir_belgesi": "Son 3 ay bordro", "ekspertiz": 7200, "azami_vade": 120, "sigorta": "Zorunlu", "guncelleme": "2026-08-02", "kaynak": "https://www.vakifkatilim.com.tr/bireysel/konut" }, "cite_url": "https://www.vakifkatilim.com.tr/bireysel/konut" },
+          { "cells": { "banka": "emlak", "asgari_yas": 18, "gelir_belgesi": "Bordro", "ekspertiz": 6500, "azami_vade": 120, "sigorta": "Zorunlu", "guncelleme": "2026-07-19", "kaynak": "https://www.emlakkatilim.com.tr/bireysel/konut-finansmani" }, "cite_url": "https://www.emlakkatilim.com.tr/bireysel/konut-finansmani" },
+          { "cells": { "banka": "dunya", "asgari_yas": 21, "gelir_belgesi": "Bordro veya SGK dökümü", "ekspertiz": 7000, "azami_vade": 120, "sigorta": "Zorunlu", "guncelleme": "2026-06-30", "kaynak": "https://www.dunyakatilim.com.tr/konut" }, "cite_url": "https://www.dunyakatilim.com.tr/konut" },
+          { "cells": { "banka": "ziraat", "asgari_yas": 18, "gelir_belgesi": "Bordro", "ekspertiz": 6800, "azami_vade": 120, "sigorta": "Zorunlu", "guncelleme": "2026-07-11", "kaynak": "https://www.ziraatkatilim.com.tr/bireysel/konut-finansmani" }, "cite_url": "https://www.ziraatkatilim.com.tr/bireysel/konut-finansmani" },
+          { "cells": { "banka": "turkiyefinans", "asgari_yas": 18, "gelir_belgesi": "Son 3 ay bordro", "ekspertiz": 7400, "azami_vade": 120, "sigorta": "Zorunlu", "guncelleme": "2026-08-05", "kaynak": "https://www.turkiyefinans.com.tr/bireysel/konut" }, "cite_url": "https://www.turkiyefinans.com.tr/bireysel/konut" },
+          { "cells": { "banka": "hayat", "asgari_yas": 18, "gelir_belgesi": "Dijital gelir doğrulama", "ekspertiz": 0, "azami_vade": 60, "sigorta": "İsteğe bağlı", "guncelleme": "2026-08-08", "kaynak": "https://www.hayatfinans.com.tr/finansman" }, "cite_url": "https://www.hayatfinans.com.tr/finansman" }
+        ]
+      }
+    },
+    {
+      "type": "table",
+      "props": {
+        "id": "ihtiyac-vade-secenekleri",
+        "title": "İhtiyaç Finansmanı Vade Seçenekleri",
+        "subtitle": "Banka sayfalarında listelenen vade aralıkları",
+        "columns": [
+          { "key": "banka", "label": "Banka", "type": "bank", "filterable": true },
+          { "key": "vade", "label": "Vade (ay)", "type": "number", "sortable": true },
+          { "key": "aciklama", "label": "Açıklama", "type": "text" }
+        ],
+        "rows": [
+          { "cells": { "banka": "kuveytturk", "vade": 3, "aciklama": "Asgari vade" } },
+          { "cells": { "banka": "kuveytturk", "vade": 6, "aciklama": "Standart" } },
+          { "cells": { "banka": "kuveytturk", "vade": 12, "aciklama": "Standart" } },
+          { "cells": { "banka": "kuveytturk", "vade": 24, "aciklama": "Standart" } },
+          { "cells": { "banka": "kuveytturk", "vade": 36, "aciklama": "Azami vade" } },
+          { "cells": { "banka": "albaraka", "vade": 3, "aciklama": "Asgari vade" } },
+          { "cells": { "banka": "albaraka", "vade": 6, "aciklama": "Standart" } },
+          { "cells": { "banka": "albaraka", "vade": 12, "aciklama": "Standart" } },
+          { "cells": { "banka": "albaraka", "vade": 24, "aciklama": "Standart" } },
+          { "cells": { "banka": "albaraka", "vade": 36, "aciklama": "Azami vade" } },
+          { "cells": { "banka": "vakif", "vade": 6, "aciklama": "Asgari vade" } },
+          { "cells": { "banka": "vakif", "vade": 12, "aciklama": "Standart" } },
+          { "cells": { "banka": "vakif", "vade": 24, "aciklama": "Standart" } },
+          { "cells": { "banka": "vakif", "vade": 36, "aciklama": "Azami vade" } },
+          { "cells": { "banka": "emlak", "vade": 6, "aciklama": "Asgari vade" } },
+          { "cells": { "banka": "emlak", "vade": 12, "aciklama": "Standart" } },
+          { "cells": { "banka": "emlak", "vade": 24, "aciklama": "Standart" } },
+          { "cells": { "banka": "emlak", "vade": 36, "aciklama": "Azami vade" } },
+          { "cells": { "banka": "dunya", "vade": 6, "aciklama": "Asgari vade" } },
+          { "cells": { "banka": "dunya", "vade": 12, "aciklama": "Standart" } },
+          { "cells": { "banka": "dunya", "vade": 24, "aciklama": "Azami vade" } },
+          { "cells": { "banka": "ziraat", "vade": 3, "aciklama": "Asgari vade" } },
+          { "cells": { "banka": "ziraat", "vade": 12, "aciklama": "Standart" } },
+          { "cells": { "banka": "ziraat", "vade": 24, "aciklama": "Standart" } },
+          { "cells": { "banka": "ziraat", "vade": 36, "aciklama": "Azami vade" } },
+          { "cells": { "banka": "turkiyefinans", "vade": 6, "aciklama": "Asgari vade" } },
+          { "cells": { "banka": "turkiyefinans", "vade": 12, "aciklama": "Standart" } },
+          { "cells": { "banka": "turkiyefinans", "vade": 24, "aciklama": "Standart" } },
+          { "cells": { "banka": "turkiyefinans", "vade": 36, "aciklama": "Azami vade" } },
+          { "cells": { "banka": "tom", "vade": 12, "aciklama": "Tek vade seçeneği" } }
+        ]
+      }
+    },
+    {
+      "type": "table",
+      "props": {
+        "id": "gerekli-belgeler",
+        "title": "Başvuru İçin Gerekli Belgeler",
+        "subtitle": "Bu tablo sütun tanımı olmadan geldi — sütunlar satırlardan çıkarıldı",
+        "rows": [
+          { "cells": { "belge": "Kimlik fotokopisi", "bireysel": true, "ticari": true, "aciklama": "Nüfus cüzdanı veya ehliyet" } },
+          { "cells": { "belge": "Gelir belgesi", "bireysel": true, "ticari": false, "aciklama": "Son 3 aya ait bordro" } },
+          { "cells": { "belge": "Vergi levhası", "bireysel": false, "ticari": true, "aciklama": "Güncel yıla ait" } },
+          { "cells": { "belge": "Tapu fotokopisi", "bireysel": true, "ticari": true, "aciklama": "Konut finansmanı için" } },
+          { "cells": { "belge": "İmza sirküleri", "bireysel": false, "ticari": true, "aciklama": "Noter onaylı" } },
+          { "cells": { "belge": "Faaliyet belgesi", "bireysel": false, "ticari": true, "aciklama": "Ticaret odasından" } }
+        ]
+      }
+    },
+    {
+      "type": "table",
+      "props": {
+        "id": "masraf-kalemleri",
+        "title": "Finansman Masraf Kalemleri",
+        "subtitle": "Eksik hücreler bilinçli — üretici her banka için her alanı bulamadı",
+        "notes": "Boş bırakılan alanlar, ilgili bankanın sayfasında bu bilginin bulunamadığı anlamına gelir; sıfır anlamına gelmez.",
+        "columns": [
+          { "key": "banka", "label": "Banka", "type": "bank", "filterable": true },
+          { "key": "dosya_masrafi", "label": "Dosya Masrafı", "type": "money", "currency": "TRY", "sortable": true },
+          { "key": "erken_kapama", "label": "Erken Kapama", "type": "percent", "sortable": true },
+          { "key": "tahsis", "label": "Tahsis Ücreti", "type": "text" },
+          { "key": "kaynak", "label": "Kaynak", "type": "link" }
+        ],
+        "rows": [
+          { "cells": { "banka": "kuveytturk", "dosya_masrafi": 1500, "erken_kapama": 2, "tahsis": "Alınmıyor", "kaynak": "https://www.kuveytturk.com.tr/urun-ve-hizmet-ucretleri" } },
+          { "cells": { "banka": "albaraka", "dosya_masrafi": 1250, "erken_kapama": 2, "kaynak": "https://www.albaraka.com.tr/ucretler" } },
+          { "cells": { "banka": "vakif", "erken_kapama": 2, "tahsis": "Tutarın %0,5'i" } },
+          { "cells": { "banka": "emlak", "dosya_masrafi": 1100, "tahsis": "Alınmıyor", "kaynak": "https://www.emlakkatilim.com.tr/ucretler" } },
+          { "cells": { "banka": "ziraat", "dosya_masrafi": 1000, "erken_kapama": 2 } }
+        ]
+      }
+    }
+  ]
+}

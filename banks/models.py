@@ -55,13 +55,56 @@ class FinanceQuote:
     product: Product
     amount: float
     term: int
-    installment: float
-    total: float
+
+    # None where the bank publishes a rate but never states a payment. A
+    # rate-only row is a real answer -- the rate is the bank's own -- and it
+    # must stay distinguishable from a bank that answered with a payment,
+    # which is why this is None and not 0.0.
+    #
+    # Türkiye Finans no longer lands here: its finance quotes carry a real
+    # figure, computed by porting `creditInstallmentResult` out of the bank's
+    # own client-side JS (`derived=True`, below) -- the same arithmetic its
+    # calculator runs in the browser, not one we invented. Its card quotes are
+    # still None: `installments.js` runs a date-dependent version of the same
+    # scheme and nothing here asks for a transaction date.
+    installment: float | None
+    total: float | None
+
     profit_rate: float
     annual_cost_rate: float | None
     fees: dict[str, float]
     schedule: list[PaymentRow]
     raw: dict
+
+    # Set by banks/compare.py from the family table, not by the provider: they
+    # describe this product's relationship to the family it was asked about,
+    # which a single-bank quote has no opinion on.
+    #
+    # `variant` is non-empty where a bank prices one product several ways --
+    # Türkiye Finans quotes everything sigortalı and sigortasız -- so two rows
+    # from one bank explain themselves instead of looking like a duplicate.
+    variant: str = ""
+
+    # True when this bank sells one product covering the whole axis the family
+    # splits on: Ziraat has a single taşıt product, so the same row answers the
+    # 0 km and the second-hand comparison. The number is real; the row just is
+    # not specific to the family it appears in, and saying so is the difference
+    # between an honest ranking and a misleading one.
+    general: bool = False
+
+    # True where `installment`/`total`/`schedule` were worked out by us rather
+    # than read off the wire. The single other place this happens is
+    # `Conversion.derived` -- a bank's own rate, multiplied by us -- and the
+    # same rule applies: every input (the profit rate, the KKDF and BSMV
+    # shares) is the bank's own published figure, only the arithmetic is
+    # ours, and callers must surface the distinction rather than render it
+    # next to a real payment with no mark.
+    derived: bool = False
+
+    @property
+    def priced(self) -> bool:
+        """True when the bank stated a payment, not only a rate."""
+        return self.installment is not None
 
 
 @dataclass(frozen=True)
@@ -87,6 +130,15 @@ class ProfitShareQuote:
     net_annual_rate: float | None
     raw: dict
 
+    # Set by banks/compare.py from the family table, exactly as on FinanceQuote.
+    # `general` is what a gold comparison needs to stay honest: Kuveyt Türk and
+    # Dünya sell a dedicated gold account, while Emlak, Albaraka and Vakıf take
+    # gold as a currency on their ordinary one. Both are real answers, and they
+    # are not the same product -- Kuveyt Türk's gold account pays a 40% ratio
+    # where its ordinary account pays 95%.
+    variant: str = ""
+    general: bool = False
+
 
 @dataclass(frozen=True)
 class Rate:
@@ -100,6 +152,17 @@ class Rate:
     # agent cannot say how fresh a rate is. Empty where the feed omits it.
     as_of: str = ""
 
+    # True when the pair was worked out from the bank's own converter rather
+    # than read off a published feed. Dünya and Vakıf run a server-side
+    # converter and publish no rate table, so their board columns come from
+    # asking the converter what one unit is worth in each direction.
+    #
+    # The arithmetic is the bank's, not ours -- both legs are its own answers --
+    # but it is still a step we took, so it is labelled. Validated against the
+    # three banks that publish both: derived buy matched published buy to
+    # 0.00% and sell to within 0.14% at worst.
+    derived: bool = False
+
 
 @dataclass(frozen=True)
 class CardInstallmentQuote:
@@ -107,10 +170,26 @@ class CardInstallmentQuote:
     card: Product
     amount: float
     installments: int
-    installment: float
-    total: float
+
+    # None where the bank publishes a rate but never states a payment. Türkiye
+    # Finans no longer lands here (see `derived`, below): its card calculator
+    # is date-dependent, but the date dependence turned out to wash out to
+    # nothing once the transaction is anchored to a statement date itself --
+    # see `turkiyefinans.py::_card_installment_plan`.
+    installment: float | None
+    total: float | None
+
     profit_rate: float
     raw: dict
+
+    # True where the payment was computed by us rather than read off the
+    # wire -- same contract as `FinanceQuote.derived`.
+    derived: bool = False
+
+    @property
+    def priced(self) -> bool:
+        """True when the bank stated a payment, not only a rate."""
+        return self.installment is not None
 
 
 @dataclass(frozen=True)

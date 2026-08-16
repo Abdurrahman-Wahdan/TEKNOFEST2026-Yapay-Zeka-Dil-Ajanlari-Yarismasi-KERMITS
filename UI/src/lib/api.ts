@@ -16,9 +16,15 @@ export type FinanceQuote = Schemas["FinanceQuoteOut"];
 export type ProfitShareQuote = Schemas["ProfitShareQuoteOut"];
 export type Conversion = Schemas["ConversionOut"];
 export type Rate = Schemas["RateOut"];
+export type CardInstallmentQuote = Schemas["CardInstallmentQuoteOut"];
+export type MileRate = Schemas["MileRateOut"];
 export type Comparison = Schemas["ComparisonOut"];
 export type Unavailable = Schemas["UnavailableOut"];
 export type Chunk = Schemas["ChunkOut"];
+export type Constraints = Schemas["ConstraintsOut"];
+export type BankLimits = Schemas["BankLimitsOut"];
+export type ProducedComponents = Schemas["ComponentsResponse"];
+export type ComponentCategory = Schemas["CategoryOut"];
 export type SearchResponse = Schemas["SearchResponse"];
 export type Profile = Schemas["ProfileOut"];
 export type SavedView = Schemas["SavedViewOut"];
@@ -28,6 +34,7 @@ export type ChatMessage = Schemas["ChatMessageOut"];
 export type StreamEvent = Schemas["StreamEvent"];
 export type TokenPair = Schemas["TokenPair"];
 export type User = Schemas["UserOut"];
+export type ResetPasswordResponse = Schemas["ResetPasswordResponse"];
 
 /**
  * Relative, so requests go through the Next rewrite to FastAPI and the browser
@@ -141,6 +148,11 @@ export const api = {
       body: JSON.stringify({ refresh_token }),
     }),
   me: () => request<User>("/auth/me"),
+  resetPassword: (body: Schemas["ResetPasswordRequest"]) =>
+    request<ResetPasswordResponse>("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 
   // ----- banks -----
   banks: () => request<Bank[]>("/banks"),
@@ -151,6 +163,11 @@ export const api = {
   bankRates: (bank: string) => request<Rate[]>(`/banks/${bank}/rates`),
   financeQuote: (bank: string, params: { product: string; amount: number; term: number }) =>
     request<FinanceQuote>(`/banks/${bank}/finance${queryString(params)}`),
+  cardQuote: (
+    bank: string,
+    params: { card: string; amount: number; installments: number },
+  ) => request<CardInstallmentQuote>(`/banks/${bank}/card${queryString(params)}`),
+  mileRates: (bank: string) => request<MileRate[]>(`/banks/${bank}/miles`),
 
   // ----- comparison -----
   compareFinance: (params: {
@@ -173,6 +190,11 @@ export const api = {
     amount: number;
     banks?: string[];
   }) => request<Comparison>(`/compare/exchange${queryString(params)}`),
+  compareCard: (params: {
+    amount: number;
+    installments: number;
+    banks?: string[];
+  }) => request<Comparison>(`/compare/card${queryString(params)}`),
 
   // ----- corpus -----
   search: (params: {
@@ -183,6 +205,27 @@ export const api = {
     active_only?: boolean;
     k?: number;
   }) => request<SearchResponse>(`/search${queryString(params)}`),
+
+  /**
+   * What the selected banks will accept, before anyone is asked.
+   *
+   * Read from cached catalogues, so a form can call this on every change
+   * without touching a bank endpoint.
+   */
+  constraints: (params: {
+    family: string;
+    category?: "finance" | "profit_share";
+    banks?: string[];
+  }) => request<Constraints>(`/compare/constraints${queryString(params)}`),
+
+  // ----- produced components -----
+  componentCategories: () => request<ComponentCategory[]>("/components"),
+  /**
+   * A topic page's RAG content. Served from fixtures until the producer lands;
+   * `source` on the response says which, and the UI badges it.
+   */
+  categoryComponents: (category: string) =>
+    request<ProducedComponents>(`/components/${category}`),
 
   // ----- profile -----
   profile: () => request<Profile>("/me/profile"),

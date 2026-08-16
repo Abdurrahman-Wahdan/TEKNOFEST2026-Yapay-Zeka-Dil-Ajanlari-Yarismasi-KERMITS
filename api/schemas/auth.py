@@ -8,10 +8,9 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 class SignupRequest(BaseModel):
     email: EmailStr
-    # A length floor and no composition rules. Measured advice (NIST 800-63B)
-    # is that mandatory symbol/digit mixes push users toward predictable
-    # substitutions; length is what actually helps.
-    password: str = Field(min_length=12, max_length=200)
+    # A short floor, by design: this is a local system with no external
+    # exposure, and a lower bar makes account creation faster to try out.
+    password: str = Field(min_length=5, max_length=200)
     display_name: str = Field(default="", max_length=120)
     locale: str = Field(default="tr", pattern="^(tr|en)$")
 
@@ -19,6 +18,17 @@ class SignupRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str = Field(max_length=200)
+
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    # Same floor as signup, so a password valid at signup is never rejected
+    # on reset.
+    new_password: str = Field(min_length=5, max_length=200)
+
+
+class ResetPasswordResponse(BaseModel):
+    detail: str
 
 
 class RefreshRequest(BaseModel):

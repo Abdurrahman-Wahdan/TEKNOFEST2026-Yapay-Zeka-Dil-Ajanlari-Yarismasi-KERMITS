@@ -15,15 +15,23 @@ import { api, setAccessToken, type TokenPair, type User } from "./api";
 /**
  * Where the tokens live, and why.
  *
- * The **access token is kept in memory only**. localStorage is readable by any
- * script on the page, so a single XSS hands over a working credential; a
- * variable in a module dies with the tab.
+ * The **access token is kept in memory only**. localStorage/sessionStorage are
+ * readable by any script on the page, so a single XSS hands over a working
+ * credential; a variable in a module dies with the tab.
  *
- * The **refresh token is in localStorage**, which is the deliberate trade-off:
- * without it, every page reload logs the user out. It buys reload survival at
- * the cost of being stealable, which is why the access token it mints is short
- * (30 minutes) and why moving both into httpOnly cookies is the next step when
- * this stops being a local system.
+ * The **refresh token goes in localStorage or sessionStorage, chosen by
+ * "Keep me signed in"**. Both buy reload survival at the cost of the token
+ * being stealable, which is why the access token it mints is short (30
+ * minutes) and why moving both into httpOnly cookies is the next step when
+ * this stops being a local system. The difference between the two is what the
+ * checkbox is actually for:
+ *   - checked   -> localStorage: survives closing the browser entirely, so
+ *                  coming back later (even on a phone that was left signed
+ *                  in) is still signed in.
+ *   - unchecked -> sessionStorage: survives a reload or navigating away and
+ *                  back, but is gone once the browser/tab is closed — so
+ *                  leaving it unchecked on a shared or borrowed device
+ *                  doesn't leave a session for the next person to find.
  */
 const REFRESH_KEY = "tf26.refresh";
 
@@ -31,7 +39,7 @@ type AuthState = {
   user: User | null;
   /** True until the initial refresh-from-storage settles. */
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, remember?: boolean) => Promise<void>;
   signup: (
     email: string,
     password: string,
@@ -44,10 +52,17 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | null>(null);
 
-function readRefresh(): string | null {
+/** Reads whichever storage has it, and says which one — `refresh` rotates the
+ *  token on every call, and the new one has to go back to the same storage
+ *  the user originally chose, not silently switch to the default. */
+function readRefresh(): { token: string; remember: boolean } | null {
   if (typeof window === "undefined") return null;
   try {
-    return window.localStorage.getItem(REFRESH_KEY);
+    const local = window.localStorage.getItem(REFRESH_KEY);
+    if (local) return { token: local, remember: true };
+    const session = window.sessionStorage.getItem(REFRESH_KEY);
+    if (session) return { token: session, remember: false };
+    return null;
   } catch {
     // Safari in private mode throws on localStorage. Losing session
     // persistence is acceptable; crashing the app is not.
@@ -55,11 +70,16 @@ function readRefresh(): string | null {
   }
 }
 
-function writeRefresh(token: string | null) {
+/** Writes to the storage `remember` selects and clears the other one, so a
+ *  session started with one choice can't linger in both. */
+function writeRefresh(token: string | null, remember: boolean) {
   if (typeof window === "undefined") return;
   try {
-    if (token) window.localStorage.setItem(REFRESH_KEY, token);
-    else window.localStorage.removeItem(REFRESH_KEY);
+    const store = remember ? window.localStorage : window.sessionStorage;
+    const other = remember ? window.sessionStorage : window.localStorage;
+    if (token) store.setItem(REFRESH_KEY, token);
+    else store.removeItem(REFRESH_KEY);
+    other.removeItem(REFRESH_KEY);
   } catch {
     /* see readRefresh */
   }
@@ -69,15 +89,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const apply = useCallback(async (tokens: TokenPair) => {
+  const apply = useCallback(async (tokens: TokenPair, remember: boolean) => {
     setAccessToken(tokens.access_token);
-    writeRefresh(tokens.refresh_token);
+    writeRefresh(tokens.refresh_token, remember);
     setUser(await api.me());
   }, []);
 
   const logout = useCallback(() => {
     setAccessToken(null);
-    writeRefresh(null);
+    writeRefresh(null, true);
     setUser(null);
   }, []);
 
@@ -97,8 +117,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       try {
-        const tokens = await api.refresh(stored);
-        if (!cancelled) await apply(tokens);
+        const tokens = await api.refresh(stored.token);
+        if (!cancelled) await apply(tokens, stored.remember);
       } catch {
         // Expired or tampered with. Clear it rather than retrying: a bad token
         // will not become good, and looping would hammer the endpoint.
@@ -118,8 +138,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user,
       loading,
-      login: async (email, password) => {
-        await apply(await api.login({ email, password }));
+      login: async (email, password, remember = true) => {
+        await apply(await api.login({ email, password }), remember);
       },
       // The locale comes from the page the user signed up on, rather than
       // being hardcoded — someone creating an account on /en was previously
@@ -132,6 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             display_name: displayName,
             locale,
           }),
+          true,
         );
       },
       logout,

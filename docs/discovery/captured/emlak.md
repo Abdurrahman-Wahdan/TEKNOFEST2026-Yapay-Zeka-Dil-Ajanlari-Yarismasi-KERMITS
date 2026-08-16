@@ -54,3 +54,25 @@ Kâr payı 100 000 TL 1 ay TL → net 2 163,34, yıllık %25,47.
 
 Gold (`Fec=24`) prices for 1 ay, 3 ay and 6 ay but returns zeros at 12 ay and
 12+ ay. Silver (`Fec=26`) prices across all terms.
+
+## Rates and conversion — found 2026-08-15
+
+Not in the original capture. `/tr/tum-kurlarimiz` (a page, not a plugin)
+server-renders a 23-instrument rates table: USD, EUR, gold/silver/platinum
+(gr), AED, RUB, CNY, QAR, CAG (gr, 22-carat coin), AUD, DKK, SEK, CHF, CAD,
+KWD, NOK, GBP, SAR, JPY, BHD, MYR, and Çeyrek Altın (quarter coin) — one
+`<table>`, three columns (`Döviz Cinsi`, `Banka Alış`, `Banka Satış`), no
+request behind it.
+
+A live JSON endpoint was searched for, since a table this size usually has
+one: `app.min.js` references `SERVICE_URL + "CurrencyTypes/GetFxRatesAll"`
+(`SERVICE_URL` resolves to `/services/api/`), but the call is wrapped in a
+commented-out block, and `GET /services/api/CurrencyTypes/GetFxRatesAll`
+answers a clean 404 — decommissioned, not merely unlinked. The table is the
+only way to reach these rates.
+
+No converter endpoint exists either (same search, same bundle, nothing
+found), so `convert` derives from the scraped table via
+`BaseBank.convert_from_rates` — the buy rate to sell the source, the sell rate
+to buy the target, both the bank's own published figures. Every conversion
+comes back `derived=True`.

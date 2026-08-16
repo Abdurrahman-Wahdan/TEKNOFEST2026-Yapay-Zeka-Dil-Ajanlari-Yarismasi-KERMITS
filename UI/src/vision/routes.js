@@ -44,10 +44,16 @@
 
 // Vision UI Dashboard React icons
 import { BsFillPersonFill } from "react-icons/bs";
-import { IoBuild } from "react-icons/io5";
 import { BsCreditCardFill } from "react-icons/bs";
 import { IoStatsChart } from "react-icons/io5";
 import { IoHome } from "react-icons/io5";
+// Filled variants, not the `*Outline` ones: every icon already in this Sidenav
+// is a solid glyph (IoHome, IoStatsChart, BsCreditCardFill), and an outline
+// icon sitting among them reads as a different weight rather than a different
+// page.
+import { IoDocumentText } from "react-icons/io5";
+import { IoBusiness } from "react-icons/io5";
+import { IoAlbums } from "react-icons/io5";
 
 const routes = [
   {
@@ -56,6 +62,30 @@ const routes = [
     key: "dashboard",
     route: "/dashboard",
     icon: <IoHome size="15px" color="inherit" />,
+    noCollapse: true,
+  },
+  {
+    type: "collapse",
+    name: "Finansman",
+    key: "finansman",
+    route: "/finansman",
+    icon: <IoDocumentText size="15px" color="inherit" />,
+    noCollapse: true,
+  },
+  {
+    type: "collapse",
+    name: "Karşılaştır",
+    key: "compare",
+    route: "/compare",
+    icon: <IoAlbums size="15px" color="inherit" />,
+    noCollapse: true,
+  },
+  {
+    type: "collapse",
+    name: "Bankalar",
+    key: "banks",
+    route: "/banks",
+    icon: <IoBusiness size="15px" color="inherit" />,
     noCollapse: true,
   },
   {
@@ -74,15 +104,13 @@ const routes = [
     icon: <BsCreditCardFill size="15px" color="inherit" />,
     noCollapse: true,
   },
-  {
-    type: "collapse",
-    name: "RTL",
-    key: "rtl",
-    route: "/rtl",
-    icon: <IoBuild size="15px" color="inherit" />,
-    noCollapse: true,
-  },
-  { type: "title", title: "Account Pages", key: "account-pages" },
+  // RTL is unmounted: no drawer entry and no route. The layout itself is kept
+  // at `layouts/rtl/` — it is the template's worked example of a right-to-left
+  // page, and the RTL machinery it demonstrates (theme-rtl, the stylis-plugin-rtl
+  // emotion cache in VisionApp) is still live for when the app needs it.
+  // No "Account Pages" heading: it grouped a section that has one item in it.
+  // A heading over a single entry is noise, so Profile sits in the flat list
+  // with everything else. Worth restoring only if the account section grows.
   {
     type: "collapse",
     name: "Profile",

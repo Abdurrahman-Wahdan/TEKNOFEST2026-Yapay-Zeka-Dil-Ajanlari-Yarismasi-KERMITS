@@ -71,11 +71,36 @@ class FinanceQuoteOut(BaseModel):
     product: ProductOut
     amount: float
     term: int
-    installment: float
-    total: float
+
+    # Null where the bank publishes a rate but never states a payment, and
+    # nothing here can reproduce one -- Türkiye Finans is no longer this case
+    # for financing (see `derived`), but stays here for any future bank whose
+    # calculator can't be ported either.
+    installment: float | None = Field(
+        default=None,
+        description="Monthly payment, or null where the bank publishes only a rate.",
+    )
+    total: float | None = None
+
     profit_rate: float
     annual_cost_rate: float | None = None
     fees: dict[str, float] = Field(default_factory=dict)
+
+    # Non-empty where a bank prices one product several ways, so two rows from
+    # one bank explain themselves instead of looking like a duplicate.
+    variant: str = Field(
+        default="",
+        description='e.g. "sigortali" / "sigortasiz". Empty where the bank does not split.',
+    )
+    # True when the bank sells one product covering the whole axis this family
+    # splits on, so the row answers the question without being specific to it.
+    general: bool = False
+    # True when `installment`/`total`/`schedule` were computed by us rather
+    # than read off the wire -- currently only Türkiye Finans, whose own
+    # calculator runs this exact arithmetic client-side. Same contract as
+    # `ConversionOut.derived`: the UI must label these.
+    derived: bool = False
+
     # Omitted from comparison responses, where ten full schedules would dwarf
     # the answer. The single-bank quote endpoint includes it.
     schedule: list[PaymentRowOut] = Field(default_factory=list)
@@ -94,6 +119,11 @@ class ProfitShareQuoteOut(BaseModel):
     gross_annual_rate: float | None = None
     net_annual_rate: float | None = None
 
+    # Same meaning as on FinanceQuoteOut. `general` marks a bank answering with
+    # its ordinary account where another bank sells a dedicated one.
+    variant: str = ""
+    general: bool = False
+
 
 class ConversionOut(BaseModel):
     bank: str
@@ -110,6 +140,40 @@ class ConversionOut(BaseModel):
     )
 
 
+class CardInstallmentQuoteOut(BaseModel):
+    bank: str
+    card: ProductOut
+    amount: float
+    installments: int
+
+    # Null where the bank publishes a rate but never states a payment, and
+    # nothing here can reproduce one -- same contract as FinanceQuoteOut.installment.
+    installment: float | None = Field(
+        default=None,
+        description="Monthly payment, or null where the bank publishes only a rate.",
+    )
+    total: float | None = None
+
+    profit_rate: float
+    # True when `installment`/`total` were computed by us rather than read off
+    # the wire -- same contract as `FinanceQuoteOut.derived`.
+    derived: bool = False
+
+
+class MileRateOut(BaseModel):
+    """One reward rate: miles earned per lira, for one card/tier/category.
+
+    Kuveyt Türk's table is 567 rows -- card x tier x category -- so the
+    frontend filters this client-side rather than the route taking three query
+    parameters that would each need their own "list the valid ones" endpoint.
+    """
+
+    card: str
+    tier: str
+    category: str
+    per_lira: float
+
+
 class RateOut(BaseModel):
     code: str
     name: str
@@ -117,6 +181,64 @@ class RateOut(BaseModel):
     sell: float
     unit: str = "1"
     as_of: str = ""
+    derived: bool = Field(
+        default=False,
+        description="True when the pair was worked out from the bank's own "
+        "converter rather than read off a published feed. The UI must label "
+        "these: the numbers are the bank's, the inversion is ours.",
+    )
+    canonical: str = Field(
+        default="",
+        description="The shared symbol for this instrument -- XAU for gold "
+        "whether the bank calls it XAU or 'ALT (gr)'. Cross-bank grouping keys "
+        "on (canonical, unit); without it the frontend would have to duplicate "
+        "the alias table and drift when a bank renames a code.",
+    )
+
+
+# ----- constraints -----
+
+class BankLimitsOut(BaseModel):
+    """What one bank will accept for a family, read from its own catalogue."""
+
+    bank: str
+    product: str = Field(
+        description="The product, or the family stem when the bank bands it."
+    )
+    products_matched: int = Field(
+        default=1,
+        description="Above 1 the bank splits this into term/amount bands and "
+        "picks one at quote time; the range below is the envelope of all of them.",
+    )
+    min_amount: float | None = None
+    max_amount: float | None = None
+    min_term: int | None = None
+    max_term: int | None = None
+    currencies: list[str] = Field(default_factory=list)
+
+
+class IntersectionOut(BaseModel):
+    """The range every bank in the run will accept.
+
+    `limited_by` names the bank behind each bound, and only when one bank is
+    actually the reason -- a bound every bank shares is the product's shape, not
+    somebody's restriction.
+    """
+
+    min_amount: float | None = None
+    max_amount: float | None = None
+    min_term: int | None = None
+    max_term: int | None = None
+    currencies: list[str] = Field(default_factory=list)
+    limited_by: dict[str, list[str]] = Field(default_factory=dict)
+
+
+class ConstraintsOut(BaseModel):
+    category: str
+    family: str
+    banks: list[BankLimitsOut] = Field(default_factory=list)
+    unavailable: list["UnavailableOut"] = Field(default_factory=list)
+    intersection: IntersectionOut
 
 
 # ----- comparison -----
@@ -140,6 +262,7 @@ class ComparisonOut(BaseModel):
     quotes: list[FinanceQuoteOut] = Field(default_factory=list)
     profit_share_quotes: list[ProfitShareQuoteOut] = Field(default_factory=list)
     conversions: list[ConversionOut] = Field(default_factory=list)
+    card_quotes: list[CardInstallmentQuoteOut] = Field(default_factory=list)
     unavailable: list[UnavailableOut] = Field(default_factory=list)
     seconds: float = Field(description="How long the fan-out took.")
 

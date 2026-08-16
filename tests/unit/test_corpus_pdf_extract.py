@@ -104,26 +104,28 @@ def test_a_page_with_no_url_cites_nothing_rather_than_a_bare_fragment():
     assert pdf_extract.cite_url("", 7) == ""
 
 
-# ----- tiling -----
-
-def test_tiles_cover_the_page_and_overlap():
-    boxes = pdf_extract._tiles(1000, 2000, 2)
-    assert len(boxes) == 2
-    assert boxes[0][1] == 0
-    # the second tile starts above where the first ended
-    assert boxes[1][1] < boxes[0][1] + boxes[0][3]
-    assert boxes[-1][1] + boxes[-1][3] == 2000
-
-
-def test_a_single_tile_means_no_cropping():
-    assert pdf_extract._tiles(1000, 2000, 1) == []
-
-
 # ----- extraction -----
+#
+# The page model is markdown plus items. It used to be a list of typed blocks,
+# and tiling used to cut each page into overlapping strips; both were removed
+# deliberately -- strips split tables across the seams and left rows without the
+# column header that gave them meaning. The tests for those two designs are gone
+# with them rather than kept passing against code that no longer exists.
+
 
 class _Out:
-    def __init__(self, blocks):
-        self.blocks = [type("B", (), {"kind": k, "text": t})() for k, t in blocks]
+    """What the structured model returns: one page as markdown, plus items."""
+
+    def __init__(self, markdown="", items=()):
+        self.markdown = markdown
+        self.items = list(items)
+
+
+def _item(item_id, marker, summary="özet", visible="metin", visual="düzen"):
+    return type("I", (), {
+        "id": item_id, "marker": marker, "summary": summary,
+        "visible_text": visible, "visual_representation": visual,
+    })()
 
 
 class _FakeLLM:
@@ -146,9 +148,6 @@ def fake_pdf(monkeypatch):
     monkeypatch.setattr(pdftools, "page_size", lambda *a, **k: (1000, 2000))
     monkeypatch.setattr(pdftools, "render", lambda *a, **k: b"\x89PNG")
     monkeypatch.setattr(settings, "CORPUS_PDF_RETRY_BACKOFF", 0.0)
-    # One request per page here, so a test counting calls is counting pages.
-    # The tiling tests set this themselves.
-    monkeypatch.setattr(settings, "CORPUS_PDF_TILES", 1)
 
 
 def _pages(monkeypatch, count):
@@ -161,6 +160,30 @@ def _install(monkeypatch, llm):
     monkeypatch.setattr(llm_module, "get_llm", lambda *a, **k: llm)
 
 
+def test_a_readable_pdf_comes_back_whole(monkeypatch, fake_pdf):
+    """The one that would have caught the outage.
+
+    `extract` had its body duplicated by a bad merge, and the first copy ended
+    in an unconditional `return Extraction(..., error=str(exc))` referencing a
+    name bound only inside an earlier `except`. So every call read every page
+    -- one model request each, paid for -- and then died with
+    UnboundLocalError, while the correct implementation sat below it as dead
+    code. Nothing asserted that a good PDF simply works, so nothing failed in a
+    way that named the cause.
+    """
+    _pages(monkeypatch, 2)
+    llm = _FakeLLM([_Out("## Ücret Tarifesi"), _Out("ikinci sayfa")])
+    _install(monkeypatch, llm)
+
+    result = extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
+
+    assert result.ok
+    assert result.error == ""
+    assert [p.number for p in result.pages] == [1, 2]
+    assert llm.calls == 2
+    assert "Ücret Tarifesi" in result.text and "ikinci sayfa" in result.text
+
+
 def test_the_text_layer_is_never_read(monkeypatch, fake_pdf):
     """The standard is one thing only: every page is read from its image. If
     anything ever calls pdftotext for content again, this fails."""
@@ -170,7 +193,7 @@ def test_the_text_layer_is_never_read(monkeypatch, fake_pdf):
         raise AssertionError("the text layer must never be read")
 
     monkeypatch.setattr(pdftools, "text_pages", forbidden)
-    _install(monkeypatch, _FakeLLM([_Out([("paragraph", "görüntüden okundu")])]))
+    _install(monkeypatch, _FakeLLM([_Out("görüntüden okundu")]))
     result = extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
     assert result.text == "görüntüden okundu"
 
@@ -179,115 +202,109 @@ def test_every_page_is_marked_from_vision(monkeypatch, fake_pdf):
     """One provenance for every PDF page, so a citation means the same thing
     everywhere."""
     _pages(monkeypatch, 2)
-    _install(monkeypatch, _FakeLLM([_Out([("paragraph", "bir")]),
-                                    _Out([("paragraph", "iki")])]))
+    _install(monkeypatch, _FakeLLM([_Out("bir"), _Out("iki")]))
     result = extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
     assert all(p.from_vision for p in result.pages)
     assert result.engine == "ocr"
     assert result.low_confidence
 
 
-def test_a_block_repeated_across_tiles_is_kept_once(monkeypatch, fake_pdf):
-    """Tiles overlap so a seam line survives, which makes the model return the
-    straddling block twice. Measured on a real bulletin: every paragraph on
-    page 2 doubled, and the document was wrongly flagged suspect."""
-    monkeypatch.setattr(settings, "CORPUS_PDF_TILES", 2)
-    _pages(monkeypatch, 1)
-    both = _Out([("paragraph", "Tapu Güvenilir Hesap uygulaması."),
-                 ("paragraph", "Taraflar tapu müdürlüklerine başvuruyor.")])
-    _install(monkeypatch, _FakeLLM([both, both]))
-    result = extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
-    texts = [b.text for b in result.pages[0].blocks]
-    assert len(texts) == len(set(texts)) == 2
-
-
 def test_a_page_carries_its_number_and_citation(monkeypatch, fake_pdf):
     _pages(monkeypatch, 2)
-    _install(monkeypatch, _FakeLLM([_Out([("paragraph", "içerik bir")]),
-                                    _Out([("paragraph", "içerik iki")])]))
+    _install(monkeypatch, _FakeLLM([_Out("içerik bir"), _Out("içerik iki")]))
     result = extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
     assert [p.number for p in result.pages] == [1, 2]
     assert result.pages[1].cite_url == "https://x.com.tr/a.pdf#page=2"
 
 
-def test_a_table_is_marked_as_a_table(monkeypatch, fake_pdf):
+def test_a_table_item_marks_the_page_as_having_tables(monkeypatch, fake_pdf):
+    """`has_tables` now comes from the items, not from a block kind."""
     _pages(monkeypatch, 1)
-    _install(monkeypatch, _FakeLLM([_Out([("table", "| Ücret | Tutar |\n|---|---|")])]))
+    _install(monkeypatch, _FakeLLM([
+        _Out("Ücretler <table_1>", [_item("table_1", "<table_1>")])]))
     result = extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
-    assert result.pages[0].has_tables
+    page = result.pages[0]
+    assert page.has_tables
+    assert not page.has_images
+    assert page.items[0].marker == "<table_1>"
+    # The marker stays in the markdown, which is what pins the item in place.
+    assert "<table_1>" in page.markdown
 
 
-def test_an_unknown_block_kind_becomes_a_paragraph(monkeypatch, fake_pdf):
-    """A model inventing a kind must not create an unbounded vocabulary that
-    later becomes chunk boundaries."""
+def test_a_figure_item_marks_images_not_tables(monkeypatch, fake_pdf):
     _pages(monkeypatch, 1)
-    _install(monkeypatch, _FakeLLM([_Out([("sidebar", "bir şey")])]))
-    result = extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
-    assert result.pages[0].blocks[0].kind == "paragraph"
+    _install(monkeypatch, _FakeLLM([
+        _Out("Şema <figure_1>", [_item("figure_1", "<figure_1>")])]))
+    page = extract(Path("x.pdf"), "https://x.com.tr/a.pdf").pages[0]
+    assert page.has_images and not page.has_tables
 
 
 def test_a_blind_model_fails_the_document_rather_than_emptying_it(monkeypatch, fake_pdf):
     """Continuing would write pages that look like a document with nothing in it."""
     _pages(monkeypatch, 1)
-    _install(monkeypatch, _FakeLLM([_Out([("paragraph", "I cannot see the image")])]))
+    _install(monkeypatch, _FakeLLM([_Out("I cannot see the image")]))
     result = extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
     assert not result.ok
     assert "could not see" in result.error
     assert result.pages == ()
 
 
-# ----- empty versus failed: the distinction the whole design turns on -----
+def test_a_blank_page_is_kept_so_page_numbers_keep_matching(monkeypatch, fake_pdf):
+    """Dropping a blank page silently renumbers every citation after it.
 
-def test_a_page_the_model_read_as_blank_is_dropped(monkeypatch, fake_pdf):
-    """The reading succeeded and found nothing, so the page really is blank --
-    a separator or a back cover. This is the only honest reason to drop one."""
+    The opposite of the old behaviour, and deliberately so: whether a document
+    is wanted is decided upstream by relevance, not by how much text happened
+    to land on one of its pages.
+    """
     _pages(monkeypatch, 2)
-    _install(monkeypatch, _FakeLLM([_Out([]), _Out([("paragraph", "ikinci sayfa")])]))
+    _install(monkeypatch, _FakeLLM([_Out(""), _Out("ikinci sayfa")]))
     result = extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
-    assert [p.number for p in result.pages] == [2]
-    assert result.empty_pages == 1
-
-
-def test_a_region_the_model_loops_on_is_split_and_retried(monkeypatch, fake_pdf):
-    """The model burns its whole budget on a region with too much text in it and
-    returns no tool call. Halving that region is what gets the text out, and it
-    is the difference between reading a dense contract page and losing it."""
-    monkeypatch.setattr(settings, "CORPUS_PDF_MAX_SPLIT_DEPTH", 2)
-    _pages(monkeypatch, 1)
-    calls = {"n": 0}
-
-    class _FailsUntilSplit(_FakeLLM):
-        def invoke(self, _messages):
-            calls["n"] += 1
-            # the whole tile fails; each half succeeds
-            return None if calls["n"] == 1 else _Out([("paragraph", f"parça {calls['n']}")])
-
-    _install(monkeypatch, _FailsUntilSplit([]))
-    result = extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
-    assert calls["n"] == 3                       # one failure, then two halves
-    assert len(result.pages[0].blocks) == 2      # both halves' text kept
-
-
-def test_a_region_still_failing_at_max_depth_gives_up(monkeypatch, fake_pdf):
-    """Splitting has to stop somewhere: a region that fails when it is tiny is
-    not failing because of its length, so more cuts would only burn tokens."""
-    monkeypatch.setattr(settings, "CORPUS_PDF_MAX_SPLIT_DEPTH", 1)
-    monkeypatch.setattr(settings, "CORPUS_PDF_PAGE_ATTEMPTS", 1)
-    _pages(monkeypatch, 1)
-    _install(monkeypatch, _FakeLLM([None]))
-    with pytest.raises(pdf_extract.TransientExtractionError):
-        extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
+    assert [p.number for p in result.pages] == [1, 2]
+    assert result.pages[0].markdown == ""
+    assert result.pages[1].cite_url.endswith("#page=2")
 
 
 def test_no_structured_output_is_a_failure_not_a_blank_page(monkeypatch, fake_pdf):
     """The subtlest form of the loss. The call returns None, which looks like a
-    page with no blocks on it -- and a real bilingual form was emptied that way
+    page with nothing on it -- and a real bilingual form was emptied that way
     before the image was capped."""
     monkeypatch.setattr(settings, "CORPUS_PDF_PAGE_ATTEMPTS", 2)
     _pages(monkeypatch, 1)
     _install(monkeypatch, _FakeLLM([None]))
     with pytest.raises(pdf_extract.TransientExtractionError):
         extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
+
+
+def test_a_page_that_fails_is_retried_before_anything_is_concluded(monkeypatch, fake_pdf):
+    """A dropped request says nothing about the document, so it must be retried
+    rather than persisted as a verdict."""
+    monkeypatch.setattr(settings, "CORPUS_PDF_PAGE_ATTEMPTS", 3)
+    _pages(monkeypatch, 1)
+    llm = _FakeLLM([None, None, _Out("sonunda okundu")])
+    _install(monkeypatch, llm)
+    result = extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
+    assert llm.calls == 3
+    assert result.pages[0].markdown == "sonunda okundu"
+
+
+def test_each_page_hashes_separately_for_surgical_re_embedding(monkeypatch, fake_pdf):
+    """A one-page change must re-embed one page, not the whole document."""
+    _pages(monkeypatch, 2)
+    _install(monkeypatch, _FakeLLM([_Out("sayfa bir"), _Out("sayfa iki")]))
+    result = extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
+    hashes = [p.text_hash for p in result.pages]
+    assert all(hashes) and len(set(hashes)) == 2
+
+
+def test_a_long_pdf_is_truncated_and_says_so(monkeypatch, fake_pdf):
+    """Truncation is reported, never silent: page_count stays the real total."""
+    monkeypatch.setattr(settings, "CORPUS_PDF_MAX_PAGES", 2)
+    _pages(monkeypatch, 40)
+    _install(monkeypatch, _FakeLLM([_Out("içerik")]))
+    result = extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
+    assert result.truncated
+    assert result.page_count == 40
+    assert len(result.pages) == 2
 
 
 def test_the_page_image_is_capped_in_size(monkeypatch, fake_pdf):
@@ -297,82 +314,33 @@ def test_the_page_image_is_capped_in_size(monkeypatch, fake_pdf):
     monkeypatch.setattr(pdftools, "render",
                         lambda *a, **k: seen.update(k) or b"\x89PNG")
     _pages(monkeypatch, 1)
-    _install(monkeypatch, _FakeLLM([_Out([("paragraph", "içerik")])]))
+    _install(monkeypatch, _FakeLLM([_Out("içerik")]))
     extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
-    assert seen["scale_to"] == settings.CORPUS_PDF_SCALE_TO
+    assert seen.get("scale_to") == settings.CORPUS_PDF_SCALE_TO
 
 
-def test_a_page_that_fails_is_retried_before_anything_is_concluded(monkeypatch, fake_pdf):
-    """A tunnel blip is not a verdict about the page."""
-    monkeypatch.setattr(settings, "CORPUS_PDF_PAGE_ATTEMPTS", 3)
-    _pages(monkeypatch, 1)
-    calls = {"n": 0}
+def test_a_missing_pdf_is_reported_not_raised(monkeypatch, fake_pdf):
+    """A file poppler cannot open is an answer about that file."""
+    def broken(_p):
+        raise pdftools.PdfToolError("cannot open")
 
-    class _Flaky(_FakeLLM):
-        def invoke(self, _messages):
-            calls["n"] += 1
-            if calls["n"] < 3:
-                raise RuntimeError("ngrok gateway error")
-            return _Out([("paragraph", "sonunda okundu")])
-
-    _install(monkeypatch, _Flaky([]))
-    result = extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
-    assert calls["n"] == 3
-    assert result.pages[0].blocks[0].text == "sonunda okundu"
-
-
-def test_a_page_that_never_reads_refuses_the_whole_pdf(monkeypatch, fake_pdf):
-    """The bug this replaces: the page was dropped and the document was still
-    written, so a 40-page contract silently became 39 pages and the cache made
-    that permanent. Refusing the file means the next run redoes it."""
-    monkeypatch.setattr(settings, "CORPUS_PDF_PAGE_ATTEMPTS", 2)
-    _pages(monkeypatch, 3)
-    _install(monkeypatch, _FakeLLM([], error=RuntimeError("ngrok gateway error")))
-    with pytest.raises(pdf_extract.TransientExtractionError):
-        extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
-
-
-def test_one_bad_page_among_good_ones_still_refuses_the_pdf(monkeypatch, fake_pdf):
-    """A document with a hole must never be written, however small the hole."""
-    monkeypatch.setattr(settings, "CORPUS_PDF_PAGE_ATTEMPTS", 2)
-    _pages(monkeypatch, 3)
-    calls = {"n": 0}
-
-    class _SecondPageDies(_FakeLLM):
-        def invoke(self, _messages):
-            calls["n"] += 1
-            if calls["n"] >= 2:
-                raise RuntimeError("ngrok gateway error")
-            return _Out([("paragraph", "ilk sayfa")])
-
-    _install(monkeypatch, _SecondPageDies([]))
-    with pytest.raises(pdf_extract.TransientExtractionError):
-        extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
-
-
-def test_a_long_pdf_is_truncated_and_says_so(monkeypatch, fake_pdf):
-    monkeypatch.setattr(settings, "CORPUS_PDF_MAX_PAGES", 3)
-    _pages(monkeypatch, 120)
-    _install(monkeypatch, _FakeLLM([_Out([("paragraph", "sayfa")])]))
-    result = extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
-    assert result.truncated
-    assert result.page_count == 120
-    assert len(result.pages) <= 3
-
-
-def test_an_unreadable_file_is_reported(monkeypatch):
-    def boom(_p):
-        raise pdftools.PdfToolError("not a PDF")
-
-    monkeypatch.setattr(pdftools, "page_count", boom)
+    monkeypatch.setattr(pdftools, "page_count", broken)
     result = extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
     assert not result.ok
-    assert "not a PDF" in result.error
+    assert "cannot open" in result.error
 
 
-def test_each_page_hashes_separately_for_surgical_re_embedding(monkeypatch, fake_pdf):
-    _pages(monkeypatch, 2)
-    _install(monkeypatch, _FakeLLM([_Out([("paragraph", "sayfa bir")]),
-                                    _Out([("paragraph", "sayfa iki")])]))
-    result = extract(Path("x.pdf"), "https://x.com.tr/a.pdf")
-    assert result.pages[0].text_hash != result.pages[1].text_hash
+def test_a_str_path_is_accepted_like_a_Path(monkeypatch, fake_pdf):
+    """Real callers pass both, and one of them used to crash mid-run.
+
+    `extract` is annotated `Path` but the corpus build and the live tests hand
+    it a `str`. Nothing failed until the per-page progress line read
+    `pdf.name`, by which point the extractor had already been built -- so the
+    failure landed deep in the loop as an AttributeError rather than at the
+    call.
+    """
+    _pages(monkeypatch, 1)
+    _install(monkeypatch, _FakeLLM([_Out("içerik")]))
+    result = extract("x.pdf", "https://x.com.tr/a.pdf")
+    assert result.ok
+    assert result.pages[0].cite_url.endswith("#page=1")

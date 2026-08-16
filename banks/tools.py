@@ -107,6 +107,14 @@ def _finance(quote: FinanceQuote, schedule: bool = False) -> dict:
         "annual_cost_rate": quote.annual_cost_rate,
         "fees": quote.fees,
         "schedule_rows": len(quote.schedule),
+        # Only present when they say something, so a row from a bank that does
+        # not split its products carries no empty keys.
+        **({"variant": quote.variant} if quote.variant else {}),
+        **({"covers_whole_family": True} if quote.general else {}),
+        **(
+            {"note": "this bank publishes a rate but states no instalment"}
+            if not quote.priced else {}
+        ),
         **rows,
     }
 
@@ -138,6 +146,13 @@ def _card(quote: CardInstallmentQuote) -> dict:
         "monthly_installment": quote.installment,
         "total_payable": quote.total,
         "profit_rate": quote.profit_rate,
+        # Only present when true, so a bank that states a real payment carries
+        # no empty key. Türkiye Finans runs its instalment schedule in the
+        # browser and publishes only the rate -- see _finance's same note.
+        **(
+            {"note": "this bank publishes a rate but states no instalment"}
+            if not quote.priced else {}
+        ),
     }
 
 
@@ -393,8 +408,16 @@ def _ranked(comparison, row, key, best_label: str) -> dict:
     `key` sorts the rows and decides the winner. Keys identical on every row are
     hoisted out of the rows, because eight copies of the same amount is prompt
     weight that buys nothing.
+
+    A row whose sort key is None sinks to the bottom and can never win. Türkiye
+    Finans publishes a rate but no instalment, and treating a missing payment
+    as zero would crown the one bank that did not quote a payment at all.
     """
-    rows = sorted((row(q) for q in comparison.quotes), key=key)
+    def ordered(r):
+        value = key(r)
+        return (value is None, value if value is not None else 0)
+
+    rows = sorted((row(q) for q in comparison.quotes), key=ordered)
     shared = {}
     for field in ("amount", "term_months", "term", "term_unit", "currency"):
         values = {r.get(field) for r in rows}
@@ -406,11 +429,16 @@ def _ranked(comparison, row, key, best_label: str) -> dict:
     answer = {
         "family": comparison.family,
         **shared,
-        "compared": comparison.in_scope,
+        # Banks, not rows: a bank can produce two rows (Türkiye Finans prices
+        # sigortalı and sigortasız), and "compared 9 banks" when nine banks do
+        # not exist reads as a bug.
+        "compared": len(comparison.banks_covered),
         "ranked": rows,
     }
-    if rows:
-        answer[best_label] = rows[0]["bank"]
+    # Only a row that actually carries the winning figure can be the winner.
+    winners = [r for r in rows if key(r) is not None]
+    if winners:
+        answer[best_label] = winners[0]["bank"]
     if comparison.unavailable:
         answer["not_compared"] = [
             {"bank": u.bank, "why": u.why, "detail": u.detail}
@@ -505,6 +533,32 @@ def compare_profit_share(
 
 
 @tool
+def compare_card(
+    amount: float, installments: int, banks: list[str] | None = None
+) -> str:
+    """Compare every credit card at every bank that publishes a card calculator.
+
+    Use for "hangi bankanin karti daha ucuz", "kart taksit karsilastir". Cards
+    have no shared family across banks -- each sells its own catalogue under
+    its own names -- so this asks every in-scope bank for its whole card
+    catalogue and quotes every one; there is nothing to narrow by product name.
+    `banks` optionally narrows which banks are asked.
+
+    Returns "ranked", cheapest monthly instalment first, and "cheapest" naming
+    that bank and card. A bank that publishes only a rate and no instalment
+    (its calculator runs the schedule in the browser) sinks to the bottom and
+    can never be "cheapest"; its rate still appears in the row. Banks not in
+    the ranking appear under "not_compared" with a reason.
+    """
+    return _answer(lambda: _ranked(
+        compare.card(amount, installments, banks),
+        lambda q: _card(q),
+        key=lambda r: r["monthly_installment"],
+        best_label="cheapest",
+    ))
+
+
+@tool
 def compare_exchange(
     source: str, target: str, amount: float, banks: list[str] | None = None
 ) -> str:
@@ -578,6 +632,7 @@ _TOOLS: list[BaseTool] = [
     compare_finance,
     compare_profit_share,
     compare_exchange,
+    compare_card,
     check_bank_health,
 ]
 

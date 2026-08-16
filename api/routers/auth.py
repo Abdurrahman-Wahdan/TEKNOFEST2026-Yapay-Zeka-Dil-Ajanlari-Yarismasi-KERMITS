@@ -16,7 +16,8 @@ from config.settings import settings
 from ..db.models import Profile, User
 from ..deps import CurrentUser, DbSession
 from ..schemas.auth import (
-    LoginRequest, RefreshRequest, SignupRequest, TokenPair, UserOut,
+    LoginRequest, RefreshRequest, ResetPasswordRequest, ResetPasswordResponse,
+    SignupRequest, TokenPair, UserOut,
 )
 from ..security import (
     create_token, decode_token, hash_password, needs_rehash, normalise_email,
@@ -107,6 +108,36 @@ def login(body: LoginRequest, session: DbSession) -> TokenPair:
         session.commit()
 
     return _tokens(user)
+
+
+@router.post("/reset-password", response_model=ResetPasswordResponse)
+def reset_password(body: ResetPasswordRequest, session: DbSession) -> ResetPasswordResponse:
+    """Set a new password directly from an email address — demo shortcut.
+
+    No emailed token, no proof the requester owns the inbox: whoever submits an
+    email gets to set that account's password. Fine for a local demo where
+    nobody else can reach this API; the moment this is reachable by anyone but
+    the account holder, this needs a time-limited emailed token in front of it.
+
+    The response is identical whether or not the email has an account, for the
+    same reason the module docstring gives for login: a reset endpoint that
+    answers differently for known/unknown emails is an account-enumeration
+    oracle.
+    """
+    user = session.scalar(
+        select(User).where(User.email_normalised == normalise_email(body.email))
+    )
+    if user is not None:
+        user.password_hash = hash_password(body.new_password)
+        session.commit()
+    else:
+        # Hash anyway, so a missing account doesn't respond measurably faster
+        # than one that exists — same reasoning as login's early-return case.
+        hash_password(body.new_password)
+
+    return ResetPasswordResponse(
+        detail="If that email has an account, its password has been reset."
+    )
 
 
 @router.post("/refresh", response_model=TokenPair)

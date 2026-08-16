@@ -14,11 +14,19 @@ function tag(locale: Locale) {
   return locale === "tr" ? "tr-TR" : "en-GB";
 }
 
+/**
+ * Precious metals are quoted per gram, and a gram is worth thousands of lira,
+ * so two decimals is not the same amount of information it is for a currency:
+ * Kuveyt Türk's gold profit of 0,0303 grams renders as "0,03" and loses most
+ * of the number. Four is enough to keep every figure the banks actually quote.
+ */
+const METAL_DIGITS: Record<string, number> = { XAU: 4, XAG: 4 };
+
 export function formatMoney(
   value: number,
   locale: Locale,
   currency = "TRY",
-  fractionDigits = 2,
+  fractionDigits = METAL_DIGITS[currency] ?? 2,
 ) {
   return new Intl.NumberFormat(tag(locale), {
     style: "currency",
@@ -43,10 +51,21 @@ export function formatRate(value: number, locale: Locale, fractionDigits = 2) {
   return `%${formatted}`;
 }
 
-export function formatNumber(value: number, locale: Locale, fractionDigits = 0) {
+export function formatNumber(
+  value: number,
+  locale: Locale,
+  fractionDigits: number | { min: number; max: number } = 0,
+) {
+  // A range, not a single figure, so a rate keeps the precision its bank
+  // published without padding every other number with dead zeros: 47,4487 and
+  // 0,03619 both survive, and 1,00 does not become 1,000000.
+  const { min, max } =
+    typeof fractionDigits === "number"
+      ? { min: fractionDigits, max: fractionDigits }
+      : fractionDigits;
   return new Intl.NumberFormat(tag(locale), {
-    minimumFractionDigits: fractionDigits,
-    maximumFractionDigits: fractionDigits,
+    minimumFractionDigits: min,
+    maximumFractionDigits: max,
   }).format(value);
 }
 

@@ -34,7 +34,7 @@ import LineChart from 'examples/Charts/LineCharts/LineChart';
 import { lineChartDataProfile1, lineChartDataProfile2 } from 'variables/charts';
 import { lineChartOptionsProfile2, lineChartOptionsProfile1 } from 'variables/charts';
 import CircularProgress from '@mui/material/CircularProgress';
-const CarInformations = () => {
+const CarInformations = ({ name = "Mark Johnson" }) => {
 	const { gradients, info } = useTheme().palette;
 	const { cardContent } = gradients;
 	return (
@@ -49,7 +49,7 @@ const CarInformations = () => {
 					Car Informations
 				</VuiTypography>
 				<VuiTypography variant='button' color='text' fontWeight='regular' mb='30px'>
-					Hello, Mark Johnson! Your Car is ready.
+					Hello, {name}! Your Car is ready.
 				</VuiTypography>
 				<Stack
 					spacing='24px'

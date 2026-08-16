@@ -15,19 +15,31 @@ import html as htmlmod
 import logging
 import re
 
-from ..models import FinanceQuote, PaymentRow, ProfitShareQuote, Product
-from ..parse import money, rate
+from ..models import Conversion, FinanceQuote, PaymentRow, ProfitShareQuote, Product, Rate
+from ..parse import canonical_currency, money, rate
 from ..parse import term_unit as unit
-from .base import BaseBank, UnsupportedProduct
+from .base import RATE_ALIASES, BaseBank, UnsupportedProduct
 
 logger = logging.getLogger(__name__)
 
 HOST = "https://www.emlakkatilim.com.tr"
 PAGE = f"{HOST}/tr/hesaplama-araclari"
+RATES_PAGE = f"{HOST}/tr/tum-kurlarimiz"
 
 HEADERS = {
     "x-requested-with": "XMLHttpRequest",
     "accept": "application/json, text/javascript, */*; q=0.01",
+}
+
+# The rates page's own labels for the three metals, mapped onto the spellings
+# Kuveyt Türk and Hayat already use so `canonical_currency` groups them with
+# everyone else's XAU/XAG/XPT rows. "CAG (gr)" (a 22-carat coin, not bullion)
+# and "Çeyrek Altın" (a quarter coin) are already the bank's own codes and
+# stay unmapped, same as every other bank's coin rows.
+_RATE_LABELS = {
+    "Altın (gr)": "ALT (gr)",
+    "Gümüş (gr)": "GMS (gr)",
+    "Platin (gr)": "PLT (gr)",
 }
 
 # Emlak's own currency codes, as its Fec select labels them. ALT and GMS are
@@ -60,13 +72,13 @@ def _select(page: str, name: str) -> list[tuple[str, str]]:
 class Emlak(BaseBank):
     name = "emlak"
     display_name = "Türkiye Emlak Katılım Bankası"
-    capabilities = frozenset({"products", "finance", "profit_share"})
+    capabilities = frozenset({"products", "finance", "profit_share", "rates", "convert"})
+    rate_aliases = RATE_ALIASES
     notes = (
-        "It publishes no exchange rates and no card or currency calculator; "
-        "its site offers finansman and kâr payı only. It also states no "
-        "maximum finance amount anywhere and its calculator never refuses one, "
-        "so a very large figure is arithmetic rather than an offer — check the "
-        "amount against the product before relying on it."
+        "It publishes no card calculator. It also states no maximum finance "
+        "amount anywhere and its calculator never refuses one, so a very "
+        "large figure is arithmetic rather than an offer — check the amount "
+        "against the product before relying on it."
     )
     # The same F5 WAF as Albaraka: it fingerprints the TLS handshake.
     transport = "impersonate"
@@ -142,7 +154,13 @@ class Emlak(BaseBank):
         selects rather than assumed.
         """
         page = self._page()
-        currencies = tuple(label for _, label in _select(page, "Fec"))
+        # Canonicalised on the way out: the page labels these "TL" and
+        # "ALT (gr)", and a catalogue that says TL cannot be intersected with
+        # one that says TRY. `_fec` maps the symbol back to the label when the
+        # request is actually built, so nothing downstream needs the raw text.
+        currencies = tuple(
+            canonical_currency(label) for _, label in _select(page, "Fec")
+        )
         terms = self._terms()
         return [
             Product(
@@ -151,7 +169,7 @@ class Emlak(BaseBank):
                 category="profit_share",
                 min_term=terms[0] if terms else None,
                 max_term=terms[-1] if terms else None,
-                currencies=currencies or ("TL",),
+                currencies=currencies or ("TRY",),
                 raw={"fec": dict(_select(page, "Fec")), "terms": terms},
             )
         ]
@@ -174,6 +192,57 @@ class Emlak(BaseBank):
             f"accounts. Available: "
             f"{', '.join(label for _, label in _select(self._page(), 'Fec'))}."
         )
+
+    # ----- rates and conversion -----
+
+    def rates(self) -> list[Rate]:
+        """The bank's own board, scraped off its rates page.
+
+        `/tr/tum-kurlarimiz` renders the full 23-instrument board server-side
+        with no endpoint behind it -- the same shape as Vakıf's converter
+        page. Its own JSON API, `services/api/CurrencyTypes/GetFxRatesAll`
+        -- found live inside the site's own bundle, `SERVICE_URL +
+        "CurrencyTypes/GetFxRatesAll"`, sitting in a commented-out block --
+        answers 404 when called directly: confirmed decommissioned, not
+        merely unlinked. Scraping this table is the only way to reach these
+        rates at all, which is also why there is no live converter and
+        `convert` derives instead.
+        """
+        page = self._text(RATES_PAGE)
+        table = re.search(r"<table[^>]*>.*?</table>", page, re.S)
+        if not table:
+            return []
+        built: list[Rate] = []
+        for row in re.findall(r"<tr[^>]*>(.*?)</tr>", table.group(0), re.S):
+            cells = [
+                htmlmod.unescape(re.sub(r"<[^>]+>", "", c)).strip()
+                for c in re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", row, re.S)
+            ]
+            cells = [c for c in cells if c]
+            if len(cells) != 3:
+                continue
+            label, buy_text, sell_text = cells
+            buy, sell = money(buy_text), money(sell_text)
+            # The header row's own cells ("Banka Alış", "Banka Satış") parse
+            # to 0 here and fall out along with any other row the bank has
+            # not priced -- no separate header check needed.
+            if buy <= 0 or sell <= 0:
+                continue
+            code = _RATE_LABELS.get(label, label)
+            built.append(Rate(
+                code=code, name=label, buy=buy, sell=sell,
+                unit="gram" if "(gr)" in code else "1",
+            ))
+        return built
+
+    def convert(self, source: str, target: str, amount: float) -> Conversion:
+        """Convert using the published rate.
+
+        No live converter exists (see `rates`), so the multiplication happens
+        in `BaseBank.convert_from_rates`, flagged as derived -- the same
+        agreed exception as Kuveyt Türk, Hayat and Türkiye Finans.
+        """
+        return self.convert_from_rates(source, target, amount)
 
     # ----- finance -----
 
@@ -268,6 +337,10 @@ class Emlak(BaseBank):
             term=band,
             currency=currency,
             term_unit="day",
+            # Checked 2026-08-16 against a live raw response and the
+            # calculator page's own HTML: "kâr paylaşım oranı" appears only in
+            # a disclaimer sentence ("rates vary by ratio, segment and term"),
+            # never as a queryable figure the endpoint returns per quote.
             ratio=None,
             gross_profit=money(data.get("GrossProfitShare")),
             net_profit=net,

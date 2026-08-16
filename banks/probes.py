@@ -35,6 +35,9 @@ FINANCE = {
     "dunya": ("Tüketici İhtiyaç", 100_000, 24),
     "ziraat": ("ARSA FINANSMANI", 100_000, 24),
     "tom": ("İhtiyaç Finansmanı", 10_000, 6),
+    # Answers with a rate and no instalment, so the health check asserts on the
+    # rate rather than the payment. 24 months sits inside its 19-24 band.
+    "turkiyefinans": ("İhtiyaç Finansmanı", 100_000, 24),
 }
 
 # product, amount, term in DAYS, currency. Days everywhere, because that is what
@@ -47,6 +50,7 @@ PROFIT_SHARE = {
     "dunya": ("Standart Katılma Hesabı", 100_000, 31, "TRY"),
     # 50 000 is Hayat's hard floor: below it the endpoint answers zeros.
     "hayat": ("Katılma Hesabı", 50_000, 32, "TRY"),
+    "ziraat": ("Katılma Hesabı", 100_000, 92, "TRY"),
 }
 
 # card, amount, instalments. Kept below every declared maximum, because two
@@ -54,6 +58,7 @@ PROFIT_SHARE = {
 CARD = {
     "kuveytturk": ("Sağlam Kart Troy", 10_000, 6),
     "vakif": ("Ferah Kart", 10_000, 3),
+    "turkiyefinans": ("Kredi Kartı Taksitle", 10_000, 6),
 }
 
 # source, target, amount.
@@ -63,6 +68,8 @@ CONVERT = {
     "vakif": ("USD", "TRY", 1_000),
     "dunya": ("USD", "TRY", 1_000),
     "hayat": ("USD", "TRY", 1_000),
+    "emlak": ("USD", "TRY", 1_000),
+    "turkiyefinans": ("USD", "TRY", 1_000),
 }
 
 # capability -> the table holding its probe.

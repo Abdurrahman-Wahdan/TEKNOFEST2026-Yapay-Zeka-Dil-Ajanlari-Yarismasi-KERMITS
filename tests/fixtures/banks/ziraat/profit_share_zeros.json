@@ -1,0 +1,8 @@
+[
+  {"command": "invoke", "selector": ".karpayi-hesaplama-form-description", "method": "removeClass", "args": ["d-none"]},
+  {"command": "insert", "method": "html", "selector": ".kar-payi-currency", "data": "TRY", "settings": null},
+  {"command": "insert", "method": "html", "selector": ".kar-payi-net-gelir", "data": "0,00", "settings": null},
+  {"command": "insert", "method": "html", "selector": ".kar-payi-brut-gelir", "data": "0,00", "settings": null},
+  {"command": "insert", "method": "html", "selector": ".kar-payi-net-oran", "data": "0,00", "settings": null},
+  {"command": "insert", "method": "html", "selector": ".kar-payi-brut-oran", "data": "0,00", "settings": null}
+]

@@ -168,7 +168,7 @@ def _read_page_retrying(pdf: Path, number: int, llm) -> tuple[str, list]:
     raise TransientExtractionError(f"page {number}: {last}")
 
 
-def extract(pdf: Path, url: str = "", model: str | None = None) -> Extraction:
+def extract(pdf: Path | str, url: str = "", model: str | None = None) -> Extraction:
     """Read a PDF into citable pages, every page from its image.
 
     The text layer is never consulted -- not for content, not as a hint, not as
@@ -177,65 +177,15 @@ def extract(pdf: Path, url: str = "", model: str | None = None) -> Extraction:
     Returns an Extraction. Failure is always reported, never returned as a
     short document that looks fine.
     """
+    # Callers pass a str as often as a Path -- the corpus build and the live
+    # tests both do -- and the progress line reads `pdf.name`, so a str got all
+    # the way to the per-page loop before failing with AttributeError. Coerced
+    # once here rather than guarded at each use.
+    pdf = Path(pdf)
     try:
         total = pdftools.page_count(pdf)
     except pdftools.PdfToolError as exc:
         return Extraction((), "", "ocr", 0, error=str(exc))
-    if not total:
-        return Extraction((), "", "ocr", 0, error="no pages")
-
-    limit = settings.CORPUS_PDF_MAX_PAGES
-    truncated = total > limit
-    numbers = list(range(1, min(total, limit) + 1))
-
-    from llm import get_llm
-
-    try:
-        # A ceiling high above any real page, rather than none at all. Both
-        # failures were measured on the same contract page: 2048 truncated the
-        # tool call mid-string, which arrives as no structured output and reads
-        # downstream as a blank page; removing the cap entirely let generation
-        # run against the model's full 65k context and a single page stopped
-        # returning inside seven minutes. A dense A4 page needs about 8k, so
-        # this is double the worst case and never binds in practice.
-        llm = get_llm(model or settings.CORPUS_PDF_MODEL,
-                      max_tokens=settings.CORPUS_PDF_MAX_TOKENS)
-        structured = llm.with_structured_output(_PageOut, method="function_calling")
-    except Exception as exc:  # noqa: BLE001 - an LLM outage is not a verdict
-        raise TransientExtractionError(f"extractor unavailable: {exc}") from exc
-
-    pages: list[Page] = []
-    whole: list[str] = []
-
-    for index in numbers:
-        # Per page, because a PDF writes nothing until its last page returns.
-        logger.info("  %s page %d/%d", pdf.name[:40], index, len(numbers))
-        markdown, items = _read_page_retrying(pdf, index, structured)
-
-        # Every page is kept, including one that comes back empty. A page that
-        # looks blank is still part of the document, and whether a file is
-        # wanted at all is decided by relevance, upstream -- not by how much
-        # text happens to be on one of its pages.
-        page_items = tuple(Item(
-            id=i.id, marker=i.marker, summary=i.summary,
-            visible_text=i.visible_text,
-            visual_representation=i.visual_representation) for i in items)
-        pages.append(Page(
-            number=index,
-            markdown=markdown,
-            cite_url=cite_url(url, index),
-            text_hash=text_hash(markdown),
-            items=page_items,
-            has_tables=any(i.id.startswith("table") for i in page_items),
-            has_images=bool(page_items) and any(
-                not i.id.startswith("table") for i in page_items),
-            from_vision=True,
-        ))
-        whole.append(markdown)
-
-    document_text = quality.normalise("\n\n".join(whole))
-
-    return Extraction((), "", "ocr", 0, error=str(exc))
     if not total:
         return Extraction((), "", "ocr", 0, error="no pages")
 

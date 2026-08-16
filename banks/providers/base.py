@@ -2,6 +2,7 @@
 
 import functools
 from abc import ABC
+from decimal import Decimal
 
 from .. import status
 from ..http import csrf_token, request_json, request_text
@@ -72,6 +73,15 @@ FINANCE_PROFIT_FLOOR = 0.5
 # implies over the term. Measured across all six banks that quote: 0.0% off,
 # every one. So this catches an order-of-magnitude contradiction, not rounding.
 PROFIT_SHARE_TOLERANCE = 0.15
+
+# Banks publish both the profit and the annual rate rounded to two decimals, so
+# each is only known to within half of the last place. On a lira figure that is
+# noise; on a gold account it is the whole number -- Vakıf's 91-day profit on
+# 100 grams is 0,01 gram against an implied 0,0075, which is a **34% relative
+# error and a 0,0025 gram absolute one**. A purely relative tolerance called
+# that a contradiction and refused a correct quote, so the published precision
+# is modelled instead of being tuned around.
+PUBLISHED_PRECISION = 0.005
 
 # The standard codes a caller uses, mapped onto the names some banks give the
 # same thing in their rate feeds. Kuveyt Türk and Hayat quote gold as
@@ -294,6 +304,113 @@ class BaseBank(ABC):
 
     # ----- shared helpers -----
 
+    def rates_from_converter(self, currencies=("USD", "EUR", "GBP", "XAU")) -> list[Rate]:
+        """A buy/sell board built from this bank's own converter.
+
+        For a bank that converts server-side but publishes no rate table. Both
+        legs are the bank's own answers:
+
+            buy  -- what it pays you for one unit      (CUR -> TRY)
+            sell -- what it charges you for one unit   (TRY -> CUR, inverted)
+
+        Every row is marked `derived`, because inverting the second leg is a
+        step we took even though both numbers came from the bank. A currency it
+        will not convert is skipped rather than guessed at.
+        """
+        built: list[Rate] = []
+        for code in currencies:
+            try:
+                buy = float(self.convert(code, "TRY", 1).rate)
+                # 100 000 rather than 1: the inverse leg is what sets the sell
+                # price, and a converter that rounds its rate to a few decimals
+                # turns a small probe into a visibly wrong spread -- Dünya's USD
+                # sell moved from 47,7783 to 47,7849 between a 1 000 and a
+                # 100 000 probe, and stopped moving there.
+                back = float(self.convert("TRY", code, 100_000).rate)
+            except (UnsupportedProduct, ValueError, ZeroDivisionError):
+                continue
+            if buy <= 0 or back <= 0:
+                continue
+            built.append(Rate(
+                code=code,
+                name=code,
+                buy=buy,
+                sell=1 / back,
+                unit="gram" if code in ("XAU", "XAG") else "1",
+                as_of="",
+                derived=True,
+            ))
+        return built
+
+    def convert_from_rates(self, source: str, target: str, amount: float) -> Conversion:
+        """`convert()` for a bank that publishes rates but has no converter.
+
+        The other direction from `rates_from_converter`: there a converter
+        stands in for a missing rate board, here a rate board stands in for a
+        missing converter. Kuveyt Türk and Hayat each wrote this multiplication
+        out independently, drifting on the same two edge cases -- how to match
+        a feed's own spelling of a code, and what to do when the feed does not
+        list TL itself -- until a third and fourth bank needed the identical
+        arithmetic. One copy, called from every `convert()` that has nothing
+        server-side to call.
+
+        Selling the source to the bank uses its buy rate; buying the target
+        from the bank uses its sell rate. Marked `derived`, because both
+        numbers are the bank's own even though the multiplication is not --
+        the single agreed exception to never computing a figure ourselves.
+        """
+        source, target = source.upper(), target.upper()
+        if self.rate_aliases.get(source, source) == self.rate_aliases.get(target, target):
+            # Otherwise the buy/sell spread applies to a currency against
+            # itself and 10 USD becomes 9,09 USD. Answered without a request:
+            # there is no rate to look up.
+            value = Decimal(str(amount))
+            return Conversion(
+                bank=self.name, source=source, target=target,
+                amount=value, result=value, rate=Decimal(1), derived=True,
+            )
+
+        by_code = {r.code: r for r in self.rates()}
+        # Every rate is quoted against the lira, which a feed may not list as
+        # a row of its own -- added only if the feed left it out.
+        by_code.setdefault("TL", Rate(code="TL", name="Türk Lirası", buy=1.0, sell=1.0))
+        src = self._resolve_rate_code(source, by_code)
+        dst = self._resolve_rate_code(target, by_code)
+
+        if not by_code[dst].sell:
+            raise UnsupportedProduct(
+                f"{self.display_name} quotes no sell rate for {target}, so the "
+                f"conversion cannot be worked out from its published rates."
+            )
+        value = Decimal(str(amount))
+        rate = Decimal(str(by_code[src].buy)) / Decimal(str(by_code[dst].sell))
+        return Conversion(
+            bank=self.name,
+            # The codes the caller asked about, not this bank's names for them.
+            source=source,
+            target=target,
+            amount=value,
+            result=value * rate,
+            rate=rate,
+            derived=True,
+        )
+
+    def _resolve_rate_code(self, code: str, by_code: dict[str, Rate]) -> str:
+        """The feed's own name for a currency, however the caller spelled it."""
+        wanted = code.upper()
+        resolved = self.rate_aliases.get(wanted, wanted)
+        if resolved in by_code:
+            return resolved
+        # A feed mixes cases of its own ("ALT (gr)", "ZCeyrek"), so match on the
+        # uppercased form rather than refusing "usd" with a list containing USD.
+        for known in by_code:
+            if known.upper() == resolved:
+                return known
+        raise UnsupportedProduct(
+            f"{self.display_name} does not quote {code!r}. "
+            f"Quoted: {', '.join(sorted(by_code))}."
+        )
+
     def find_product(self, category: str, query: str) -> Product:
         """Resolve a product code or a Turkish product name to a Product.
 
@@ -427,7 +544,7 @@ class BaseBank(ABC):
         annual = quote.net_annual_rate or 0
         days = quote.term * 30 if quote.term_unit == "month" else quote.term
         implied = quote.amount * (annual / 100) * (days / 365)
-        if implied and abs(quote.net_profit - implied) / implied > PROFIT_SHARE_TOLERANCE:
+        if implied and not self._agrees(quote.net_profit, implied, quote, days):
             raise UnsupportedProduct(
                 f"{self.display_name} returned {quote.net_profit:,.2f} for "
                 f"{quote.product.name} over {days} days, which does not follow "
@@ -435,6 +552,32 @@ class BaseBank(ABC):
                 f"not answer the term that was asked about."
             )
         return quote
+
+    @staticmethod
+    def _agrees(reported: float, implied: float, quote: ProfitShareQuote, days: int) -> bool:
+        """Does the bank's profit follow from its own rate, allowing for rounding?
+
+        Two independent ways to agree, and either is enough:
+
+        1. **Within the published precision.** The rate is stated to two
+           decimals, so the true rate lies within half a place either side; that
+           band gives a range of possible profits, and the profit is itself
+           rounded to two decimals. If those two intervals touch, the figures
+           agree as closely as the bank has told us anything.
+        2. **Within the relative tolerance**, which is what carries large
+           figures where day-count conventions differ by a fraction.
+
+        Hayat's daily account is unmoved by either: it reports one day's profit
+        whatever term is sent -- 68,55 against an implied 2.193,67, and
+        2.193,67 / 32 is exactly 68,55 -- which is the contradiction this whole
+        check exists to catch.
+        """
+        annual = quote.net_annual_rate or 0
+        span = quote.amount * (PUBLISHED_PRECISION / 100) * (days / 365)
+        low, high = implied - span, implied + span
+        if low - PUBLISHED_PRECISION <= reported <= high + PUBLISHED_PRECISION:
+            return True
+        return abs(reported - implied) / implied <= PROFIT_SHARE_TOLERANCE
 
     def _check_limits(
         self,

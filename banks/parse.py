@@ -101,3 +101,64 @@ def term_unit(value) -> str | None:
         f"term_unit must say days or months — day, days, gun, month, months or "
         f"ay. Got {value!r}."
     )
+
+
+# A bank's own currency label back to the symbol every other bank uses. The
+# forward direction lives in providers.base.RATE_ALIASES (symbol -> the label
+# that bank's page shows); this is the reverse, and it has to exist because a
+# catalogue that reports "TL" and "ALT (gr)" cannot be intersected with one that
+# reports "TRY" and "XAU".
+#
+# That intersection is not academic: banks/limits.py builds the currency picker
+# from it, and Emlak's labels made it empty for every participation family, so
+# the UI silently fell back to TRY and no gold or foreign-currency comparison
+# could be selected at all.
+_CANONICAL_CURRENCY = {
+    "TL": "TRY",
+    "ALT (GR)": "XAU",
+    "ALTIN": "XAU",
+    "GOLD": "XAU",
+    "GMS (GR)": "XAG",
+    "GUMUS": "XAG",
+    "SILVER": "XAG",
+    # Platinum and palladium split the board in half without these: Kuveyt Türk
+    # and Vakıf write "PLT (gr)" where Albaraka and Dünya write "XPT", so the
+    # same metal appeared as two rows of two banks each and neither looked
+    # comparable.
+    "PLT (GR)": "XPT",
+    "PLATIN": "XPT",
+    "PLD (GR)": "XPD",
+    "PALADYUM": "XPD",
+    # Deliberately not mapped: "CAG (gr)" is Cumhuriyet Altını, a 22-carat coin
+    # gold quoted per gram, and "ZCeyrek" is a quarter coin. Neither is bullion
+    # gold, so folding either into XAU would rank a different product against
+    # it. They stay as themselves, single-bank and clearly labelled.
+}
+
+
+def canonical_currency(code: str) -> str:
+    """The shared symbol for a bank's own currency label."""
+    key = (code or "").strip().upper()
+    return _CANONICAL_CURRENCY.get(key, key)
+
+
+def money_en(value) -> float:
+    """A number written the English way: comma thousands, dot decimal.
+
+    `money()` reads the Turkish convention (dot thousands, comma decimal) and is
+    right for almost every bank. Dünya is the exception: its daily-rates page is
+    in Turkish and its numbers are not, so `47.7023` is forty-seven and
+    `6,662.6542` is six thousand. Read with `money()` those become 477.023 and
+    6,66 -- both plausible-looking and both wrong, which is the reason this has
+    its own function instead of a flag.
+    """
+    if value is None:
+        return 0.0
+    if isinstance(value, (int, float)):
+        return float(value)
+    text = str(value).strip().replace("\xa0", " ")
+    text = re.sub(r"[^\d.,\-]", "", text).replace(",", "")
+    try:
+        return float(text)
+    except ValueError:
+        return 0.0

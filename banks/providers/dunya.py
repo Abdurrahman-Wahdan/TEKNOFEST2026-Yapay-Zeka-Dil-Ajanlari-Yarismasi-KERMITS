@@ -13,18 +13,24 @@ Contract in docs/discovery/captured/dunya.md, exercised by verify_dunya.py.
 
 import html as htmlmod
 import json
+import html
 import logging
 import re
 from decimal import Decimal
 
-from ..models import Conversion, FinanceQuote, ProfitShareQuote, Product
-from ..parse import money, rate
+from ..models import Conversion, FinanceQuote, PaymentRow, ProfitShareQuote, Product, Rate
+from ..parse import fold, money, money_en, rate
 from ..parse import term_unit as unit
 from .base import BaseBank, UnsupportedProduct
 
 logger = logging.getLogger(__name__)
 
 HOST = "https://dunyakatilim.com.tr"
+
+# Quoted per gram, all four. Listing only gold and silver left platinum and
+# palladium as unit "1", so they never grouped with the same metal at another
+# bank -- the board showed two XPT rows, each with one bank in it.
+_METALS = {"XAU", "XAG", "XPT", "XPD"}
 HOME = f"{HOST}/"
 
 HEADERS = {
@@ -44,10 +50,13 @@ _DIVIDEND = re.compile(r"""<option[^>]*value=["'](\{&quot;id&quot;.*?\})["']""",
 class Dunya(BaseBank):
     name = "dunya"
     display_name = "Dünya Katılım Bankası"
-    capabilities = frozenset({"products", "finance", "profit_share", "convert"})
+    capabilities = frozenset(
+        {"products", "finance", "profit_share", "convert", "rates"}
+    )
     notes = (
         "It converts currency and precious metals server-side but publishes no "
-        "buy/sell rate feed, and has no card calculator."
+        "buy/sell rate feed, so its board is derived from its own converter. "
+        "It has no card calculator."
     )
     # Plain httpx plus the homepage's anti-forgery token on every call.
     transport = "csrf"
@@ -187,6 +196,7 @@ class Dunya(BaseBank):
                 f"{chosen.name} at {amount:,.0f} TL over {term} months"
                 + (f": {payload['message']}" if payload.get("message") else ".")
             )
+        plan = payload.get("paymentPlanHTML") or ""
         return self._check_quote(FinanceQuote(
             bank=self.name,
             product=chosen,
@@ -195,11 +205,12 @@ class Dunya(BaseBank):
             installment=installment,
             total=money(payload.get("totalPayment")),
             profit_rate=rate(payload.get("rate")),
-            annual_cost_rate=None,
+            # "Yıllık kar oranı" -- read straight out of the same HTML plan the
+            # schedule below comes from, not computed. It was left null only
+            # because nothing here parsed that document; the bank states it.
+            annual_cost_rate=rate(_plan_detail(plan, "Yıllık kar oranı")) or None,
             fees={},
-            # The plan comes back as a whole HTML document; it stays in raw
-            # rather than being scraped for a question nobody has asked.
-            schedule=[],
+            schedule=_plan_schedule(plan),
             raw=payload,
         ))
 
@@ -253,6 +264,9 @@ class Dunya(BaseBank):
             term=int(maturity["maturityPeriodBeginValue"]),
             currency=currency,
             term_unit="day",
+            # Checked 2026-08-16 against a live raw response: `grossProfitRate`
+            # and `netProfitRate` (mapped below) are the only rates this
+            # endpoint states -- no distinct participation-ratio field.
             ratio=None,
             gross_profit=money(payload.get("grossProfitAmount")),
             net_profit=net,
@@ -262,6 +276,55 @@ class Dunya(BaseBank):
         ))
 
     # ----- conversion -----
+
+    def rates(self) -> list[Rate]:
+        """The bank's own published board, off its daily-rates page.
+
+        `/gunluk-kurlar` renders `Döviz Cinsi | Banka Alış | Banka Satış |
+        Değişim` server-side; there is no JSON route behind it (`/CurrencyList`,
+        `/CurrencyRates`, `/GetCurrency` all answer HTML, and `/CurrencyHistory`
+        answers `{"data": []}`). So the page is the endpoint.
+
+        Read, never computed. An earlier version inverted the converter to get a
+        sell price; it agreed with the published figure, but the bank states
+        these itself and a figure we worked out is not the same claim.
+
+        Numbers here are en-US formatted on a Turkish page -- `6,662.6542` is
+        six thousand -- hence `money_en`. The Turkish reader turns that into
+        6,66, which looks like a plausible gold price and is not one.
+        """
+        page = self._text(f"{HOST}/gunluk-kurlar")
+        built: list[Rate] = []
+        for table in re.findall(r"<table[^>]*>.*?</table>", page, re.S):
+            for row in re.findall(r"<tr[^>]*>(.*?)</tr>", table, re.S):
+                cells = [
+                    html.unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", c))).strip()
+                    for c in re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", row, re.S)
+                ]
+                cells = [c for c in cells if c]
+                if len(cells) < 3:
+                    continue
+                # "Amerikan doları (USD)" -- the code is what everything else keys on.
+                match = re.search(r"\(([A-Z]{3})\)", cells[0])
+                if not match:
+                    continue
+                code = match.group(1)
+                buy, sell = money_en(cells[1]), money_en(cells[2])
+                if buy <= 0 or sell <= 0:
+                    continue
+                built.append(Rate(
+                    code=code,
+                    name=re.sub(r"\s*\([A-Z]{3}\)", "", cells[0]).strip(),
+                    buy=buy,
+                    sell=sell,
+                    unit="gram" if code in _METALS else "1",
+                ))
+        if not built:
+            raise UnsupportedProduct(
+                f"{self.display_name} published no rate rows. The board is parsed "
+                f"out of /gunluk-kurlar, so this usually means the page changed."
+            )
+        return built
 
     def convert(self, source: str, target: str, amount: float) -> Conversion:
         """Dünya converts server-side, precious metals included."""
@@ -315,6 +378,83 @@ class Dunya(BaseBank):
             rate=got / given if given else Decimal(0),
             derived=False,
         )
+
+
+_PLAN_ROW = re.compile(r"<tr>(.*?)</tr>", re.S)
+_PLAN_CELL = re.compile(r"<t[dh][^>]*>(.*?)</t[dh]>", re.S)
+# `<div class="title">Yıllık kar oranı</div><div class="val">42,410</div>` --
+# the summary list above the schedule table, one label/value pair per line
+# item. The schedule's own column headers are read the same way `ziraat.py`
+# reads its Drupal table: by folded header text, not position, since a plan
+# without KKDF/BSMV (nothing charges here yet) still has to line up.
+_PLAN_DETAIL = re.compile(
+    r'<div class="title">\s*([^<]*?)\s*</div>\s*<div class="val">\s*([^<]*?)\s*</div>', re.S,
+)
+_PLAN_COLUMNS = {
+    "taksitno": "order",
+    "vadetarihi": "due_date",
+    "taksittutari": "amount",
+    "anapara": "principal",
+    "karpayi": "profit",
+    "bsmv": "bsmv",
+    "kkdf": "kkdf",
+    "kalananaparatutari": "remaining",
+}
+
+
+def _plan_text(markup: str) -> str:
+    return html.unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", markup))).strip()
+
+
+def _plan_detail(plan_html: str, label: str) -> str:
+    """One label/value pair out of the payment plan's summary list, by its
+    Turkish label -- the same document the schedule table comes from, read a
+    second way rather than a second request."""
+    target = fold(label)
+    for title, value in _PLAN_DETAIL.findall(plan_html):
+        if fold(_plan_text(title)) == target:
+            return _plan_text(value)
+    return ""
+
+
+def _plan_schedule(plan_html: str) -> list[PaymentRow]:
+    """The per-instalment table out of the bank's own payment-plan HTML.
+
+    The bank sends this on every `finance_quote` call; nothing here used to
+    read past the two totals at the top. It is the bank's own schedule, not
+    one built from its rate -- reading the rest of a document already fetched
+    is not the same claim as computing an annuity.
+    """
+    rows = _PLAN_ROW.findall(plan_html)
+    header_row = next((r for r in rows if "<th" in r), None)
+    if header_row is None:
+        return []
+    headers = [fold(_plan_text(cell)) for cell in _PLAN_CELL.findall(header_row)]
+    index = {_PLAN_COLUMNS[h]: i for i, h in enumerate(headers) if h in _PLAN_COLUMNS}
+    if "amount" not in index:
+        return []
+
+    def cell(cells: list[str], key: str) -> str:
+        position = index.get(key)
+        return _plan_text(cells[position]) if position is not None and position < len(cells) else ""
+
+    built = []
+    for row in rows:
+        if row is header_row or "<td" not in row:
+            continue
+        cells = _PLAN_CELL.findall(row)
+        if len(cells) < len(index):
+            continue
+        built.append(PaymentRow(
+            order=int(money(cell(cells, "order"))),
+            amount=money(cell(cells, "amount")),
+            principal=money(cell(cells, "principal")),
+            profit=money(cell(cells, "profit")),
+            taxes=money(cell(cells, "bsmv")) + money(cell(cells, "kkdf")),
+            remaining=money(cell(cells, "remaining")),
+            due_date=cell(cells, "due_date"),
+        ))
+    return built
 
 
 def _band_days(product: Product) -> list[int]:

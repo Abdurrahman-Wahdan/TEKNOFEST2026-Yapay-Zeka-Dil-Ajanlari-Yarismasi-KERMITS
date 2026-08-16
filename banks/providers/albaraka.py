@@ -42,20 +42,35 @@ FINANCE_PAGE = f"{HOST}/tr/hesaplama-araclari/finansman-hesaplama/ihtiyac-finans
 PROFIT_PAGE = f"{HOST}/tr/hesaplama-araclari/kar-payi-hesaplama"
 FX_PAGE = f"{HOST}/tr/hesaplama-araclari/doviz-cevirici"
 
+# Quoted per gram on the board, so they must not share a row with a unit price.
+_METALS = {"XAU", "XAG", "XPT", "XPD"}
+
 HEADERS = {
     "accept": "application/json, text/javascript, */*; q=0.01",
     "x-requested-with": "XMLHttpRequest",
     "adrum": "isAjax:true",
 }
 
-# The account-type select gives codes and Turkish names but pairs its currency
-# lists positionally, which is too fragile to read. These are from the verified
-# contract doc and match the page's own selects.
-ACCOUNT_CURRENCIES = {
-    "KTLMHSP": ("TRY", "USD", "EUR", "XAU"),
-    "KTLARDM": ("TRY", "USD", "EUR"),
-    "KURKTLMHSP": ("TRY", "USD", "EUR", "GBP", "XAU"),
-}
+# Each account has its own currency select, tagged with the account code as a
+# CSS class, and every option carries the bank's own limits for that currency in
+# a `jsonData` attribute:
+#
+#     <select class="select2 karPayiCurrency radioKarpayiKatilma KTLMHSP">
+#       <option value="XAU" jsonData='{"MinAmount":150,"MinDate":32,"MaxDate":1095}'>
+#
+# This used to be a hardcoded table copied from the contract doc, which was
+# right about *which* currencies exist and silent about their limits -- so gold
+# looked like it had no minimum when the bank states 150 grams against 250 for
+# every other currency, and the term band 32-1095 days was missing entirely.
+# Read from the page instead: a currency the bank drops disappears on its own.
+_CURRENCY_SELECT = re.compile(
+    r'<select[^>]*class="[^"]*karPayiCurrency[^"]*?(\w+)"[^>]*>(.*?)</select>', re.S
+)
+# jsonData is optional: Kur Korumalı lists GBP and XAU with no limits attached,
+# and dropping them would narrow the currency list the bank actually offers.
+_CURRENCY_OPTION = re.compile(
+    r"<option[^>]*value=\"([^\"]+)\"(?:[^>]*jsonData='([^']*)')?[^>]*>", re.S
+)
 
 # The attribute is single-quoted and the JSON inside is HTML-escaped, so the
 # obvious double-quote pattern matches nothing and reads as "no products here".
@@ -150,8 +165,31 @@ class Albaraka(BaseBank):
             )
         return built
 
+    def _currency_limits(self, page: str) -> dict[str, dict[str, dict]]:
+        """{account code: {currency: {min_amount, min_term, max_term}}}.
+
+        The bank states these per currency, not per account, and gold differs
+        from the rest -- 150 grams against 250 units everywhere else.
+        """
+        found: dict[str, dict[str, dict]] = {}
+        for match in _CURRENCY_SELECT.finditer(page):
+            code, inner = match.group(1), match.group(2)
+            for currency, blob in _CURRENCY_OPTION.findall(inner):
+                try:
+                    data = json.loads(html.unescape(blob)) if blob else {}
+                except ValueError:
+                    data = {}
+                found.setdefault(code, {})[currency] = {
+                    "min_amount": money(data.get("MinAmount")) or None,
+                    "max_amount": money(data.get("MaxAmount")) or None,
+                    "min_term": int(data["MinDate"]) if data.get("MinDate") else None,
+                    "max_term": int(data["MaxDate"]) if data.get("MaxDate") else None,
+                }
+        return found
+
     def _profit_share_products(self) -> list[Product]:
         page = self._text(PROFIT_PAGE)
+        limits = self._currency_limits(page)
         select = _ACCOUNT_SELECT.search(page)
         if not select:
             raise UnsupportedProduct(
@@ -164,13 +202,24 @@ class Albaraka(BaseBank):
             if not code or code in seen:
                 continue
             seen.add(code)
+            per_currency = limits.get(code, {})
+            bands = [b for b in per_currency.values() if b.get("min_term")]
             built.append(
                 Product(
                     code=code,
                     name=html.unescape(label).strip(),
                     category="profit_share",
-                    currencies=ACCOUNT_CURRENCIES.get(code, ("TRY",)),
-                    raw={"Type": code},
+                    currencies=tuple(per_currency) or ("TRY",),
+                    # The lowest minimum across currencies, so the product-level
+                    # bound never refuses something a currency actually allows;
+                    # the exact per-currency figure is checked at quote time.
+                    min_amount=min(
+                        (b["min_amount"] for b in per_currency.values() if b["min_amount"]),
+                        default=None,
+                    ),
+                    min_term=min((b["min_term"] for b in bands), default=None),
+                    max_term=max((b["max_term"] for b in bands if b["max_term"]), default=None),
+                    raw={"Type": code, "limits": per_currency},
                 )
             )
         return built
@@ -247,6 +296,17 @@ class Albaraka(BaseBank):
                 f"Available: {', '.join(chosen.currencies)}."
             )
 
+        # The bank states a different minimum per currency -- 150 grams of gold
+        # against 250 lira -- so it is checked against the one being asked for.
+        # Without this the endpoint answers zeros and the refusal blames the
+        # rate, when the real answer is "that is below the minimum".
+        band = (chosen.raw.get("limits") or {}).get(currency) or {}
+        if band.get("min_amount") and amount < band["min_amount"]:
+            raise UnsupportedProduct(
+                f"{chosen.name} needs at least {band['min_amount']:,.0f} "
+                f"{currency} at {self.display_name}; {amount:,.0f} is below it."
+            )
+
         for unit in _units(self._require_unit(term, term_unit)):
             payload = self._plugin(
                 "getProfitShareCalculate",
@@ -271,7 +331,9 @@ class Albaraka(BaseBank):
                     currency=data.get("CurrencyCode") or currency,
                     term_unit=unit,
                     # Albaraka publishes no participation ratio, only the
-                    # resulting rates.
+                    # resulting rates. Reconfirmed 2026-08-16 against a live
+                    # raw response: `GrossRate`/`NetRate` (mapped below) are
+                    # the whole of what this endpoint states.
                     ratio=None,
                     gross_profit=money(data.get("GrossProfit")),
                     net_profit=net,
@@ -280,6 +342,20 @@ class Albaraka(BaseBank):
                     raw=payload,
                 ))
 
+        # Two different silences, told apart by whether the endpoint accepted
+        # the request at all. A rejected call means the combination is not
+        # offered; an accepted one returning 0,00 means the account exists and
+        # the bank is currently distributing nothing on it -- which is its own
+        # answer, and reporting it as "not offered" would be false.
+        accepted = bool((payload or {}).get("Result")) and (
+            ((payload or {}).get("Data") or {}).get("CurrencyCode")
+        )
+        if accepted:
+            raise UnsupportedProduct(
+                f"{self.display_name} offers {chosen.name} in {currency} but is "
+                f"currently publishing a 0% rate on it over {term} "
+                f"{term_unit or 'month/day'}, so there is no return to compare."
+            )
         raise UnsupportedProduct(
             f"{self.display_name} published no profit-share rate for "
             f"{chosen.name} at {amount:,.0f} {currency} over {term} "
@@ -290,20 +366,63 @@ class Albaraka(BaseBank):
     # ----- rates and conversion -----
 
     def rates(self) -> list[Rate]:
+        """The full board: four by endpoint, the rest off the bank's own page.
+
+        `getExchangeRatesService` returns USD, EUR, GBP and gold whatever page
+        it is called from -- it is the homepage widget's feed, and it is the
+        only place carrying the quote time. `/tr/doviz-kurlari` renders all
+        twenty-two server-side, silver, platinum, palladium, the Gulf and Nordic
+        currencies included.
+
+        Using only the plugin left this bank looking like it published four
+        instruments. The endpoint still wins where the two overlap; the page
+        fills in what it does not carry.
+        """
         payload = self._plugin("getExchangeRatesService", FX_PAGE)
         data = ((payload or {}).get("ExchangeRate") or {}).get("Data") or {}
         as_of = data.get("TranDate") or ""
-        return [
-            Rate(
-                code=row["CurrencyName"],
+
+        found: dict[str, Rate] = {}
+        for row in data.get("CurrencyPrices") or []:
+            code = row["CurrencyName"]
+            found[code] = Rate(
+                code=code,
                 name=row.get("CurrencyCodeName") or "",
                 buy=float(row.get("Bid") or 0),
                 sell=float(row.get("Ask") or 0),
-                unit="gram" if row["CurrencyName"] in ("XAU", "XAG") else "1",
+                unit="gram" if code in _METALS else "1",
                 as_of=as_of,
             )
-            for row in data.get("CurrencyPrices") or []
-        ]
+        for code, name, buy, sell in self._page_rates():
+            if code not in found:
+                found[code] = Rate(code=code, name=name, buy=buy, sell=sell,
+                                   unit="gram" if code in _METALS else "1",
+                                   as_of=as_of)
+        return list(found.values())
+
+    def _page_rates(self) -> list[tuple[str, str, float, float]]:
+        """Every row of `/tr/doviz-kurlari`, which has no endpoint behind it."""
+        page = self._text(f"{HOST}/tr/doviz-kurlari")
+        out: list[tuple[str, str, float, float]] = []
+        for table in re.findall(r"<table[^>]*>.*?</table>", page, re.S):
+            for row in re.findall(r"<tr[^>]*>(.*?)</tr>", table, re.S):
+                cells = [
+                    html.unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", c))).strip()
+                    for c in re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", row, re.S)
+                ]
+                cells = [c for c in cells if c]
+                if len(cells) < 3:
+                    continue
+                # "Amerikan Doları(USD)" -- the parenthesised code is the key.
+                match = re.search(r"\(([A-Z]{3})\)\s*$", cells[0])
+                if not match:
+                    continue
+                buy, sell = money(cells[1]), money(cells[2])
+                if buy > 0 and sell > 0:
+                    out.append((match.group(1),
+                                re.sub(r"\([A-Z]{3}\)\s*$", "", cells[0]).strip(),
+                                buy, sell))
+        return out
 
     def convert(self, source: str, target: str, amount: float) -> Conversion:
         """Convert using the bank's own converter.

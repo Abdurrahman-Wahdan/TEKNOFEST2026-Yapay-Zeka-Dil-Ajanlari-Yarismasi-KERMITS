@@ -1,8 +1,9 @@
+import Card from "@mui/material/Card";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
+import { AppPage } from "@/components/layout/AppPage";
+import { VuiBox, VuiTypography } from "@/components/vision";
 import { BankRegistry } from "@/components/widgets/BankRegistry";
-import { Card, CardGrid } from "@/components/ui/Card";
-import { PageHeader } from "@/components/ui/PageHeader";
 
 export default async function BanksPage({
   params,
@@ -14,13 +15,15 @@ export default async function BanksPage({
   const t = await getTranslations("banks");
 
   return (
-    <>
-      <PageHeader title={t("title")} />
-      <CardGrid>
-        <Card span={4}>
-          <BankRegistry />
-        </Card>
-      </CardGrid>
-    </>
+    <AppPage>
+      <Card>
+        <VuiBox mb="22px">
+          <VuiTypography variant="lg" color="white">
+            {t("title")}
+          </VuiTypography>
+        </VuiBox>
+        <BankRegistry />
+      </Card>
+    </AppPage>
   );
 }

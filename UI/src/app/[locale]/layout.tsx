@@ -96,9 +96,16 @@ export default async function LocaleLayout({
           rel="stylesheet"
           href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap"
         />
+        {/* `block` rather than the rule's suggested `optional`, because this is
+            an icon font. With `swap` the ligature name shows as literal text
+            ("settings", "menu") until the font lands — the exact failure the
+            note above describes — and with `optional` a slow connection can
+            drop the font for the whole page load, leaving no icons at all.
+            `block` costs a brief invisible period and then draws the glyph. */}
+        {/* eslint-disable-next-line @next/next/google-font-display */}
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css?family=Material+Icons|Material+Icons+Outlined|Material+Icons+Two+Tone|Material+Icons+Round|Material+Icons+Sharp"
+          href="https://fonts.googleapis.com/css?family=Material+Icons|Material+Icons+Outlined|Material+Icons+Two+Tone|Material+Icons+Round|Material+Icons+Sharp&display=block"
         />
       </head>
       <body>
