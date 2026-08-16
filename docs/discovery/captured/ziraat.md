@@ -48,10 +48,42 @@ own message *"Girişi yapılan değerler için henüz kâr payı dağıtımı ya
 olduğundan, hesaplama yapılamamaktadır."*
 
 The tool is **retrospective**: it reports rates already distributed to accounts
-that have matured, not a forward quote. So `profit_share` stays off Ziraat's
-capabilities — not because the endpoint is unreachable, but because it publishes
-no figure. A bank wired in on this basis would decline every comparison it
-entered while looking like an outage.
+that have matured, not a forward quote.
+
+**Wrong conclusion, corrected 2026-08-16 — this was the wrong endpoint, not
+proof kâr payı has none.** `/anasayfa?_wrapper_format=drupal_ajax` (above) is
+one calculator on the homepage; it is not the one the kâr payı *widget* itself
+calls. Guessing at `/ajax/` names from the form's own id (`kari_payi_hesapla_form`,
+the bank's typo) never found the real one because the real one does not share
+that name. Driving the actual widget in a live browser (Playwright, watching
+network traffic rather than guessing at it) and clicking through its dropdowns
+shows it firing:
+
+```
+POST /ajax/karpayi-products?_wrapper_format=drupal_ajax
+karpayi_hesap_type=5&karpayi_hesap_currency=TRY&karpayi_hesap_anapara=100000
+&karpayi_hesap_vade=92&karpayi_maturity_type=14&_drupal_ajax=1
+→ [{"command":"insert",...,"selector":".kar-payi-net-gelir","data":"5.987,20",...},
+   ...".kar-payi-brut-gelir":"7.257,22", ".kar-payi-net-oran":"23,75",
+   ".kar-payi-brut-oran":"28,79"]
+```
+
+Answers plain `curl`, no cookie, no browser fingerprint, exactly like
+`/ajax/finansmanhesapla` — and it is a genuine forward quote, not the
+retrospective one: the gross rate above (28,79% for a 92-day TRY deposit)
+matches `kar-payilari`'s own published `ThreeMountsOfYear` rate for the same
+pool, and the figure scales correctly with amount and day count from 1 to
+800+ days tried live. `karpayi_hesap_type=2` (ARA DÖNEM ÖDEMELİ) and currency
+`XAU` were swept the same way and answered zero at every combination tried —
+those two are excluded in code, everything else (`TRY`/`USD`/`EUR` ×
+`KATILMA HESABI`) is not.
+
+`profit_share` is a real Ziraat capability now (`banks/providers/ziraat.py`).
+The retrospective tool at `/anasayfa` above is still real and still always
+zero for a forward question — it is just not the calculator this project
+uses, and the record of it stays as a warning against guessing a name that
+looks obviously right (`kar_payi_hesap_type` matching the widget's own field
+names) without checking what the widget itself actually calls.
 
 ## Endpoints that work headlessly
 

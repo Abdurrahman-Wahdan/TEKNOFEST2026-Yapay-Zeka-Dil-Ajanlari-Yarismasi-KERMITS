@@ -180,6 +180,9 @@ class Hayat(BaseBank):
             term=int(days),
             currency=CURRENCY,
             term_unit="day",
+            # Checked 2026-08-16 against a live raw response: `grossProfitShareYearly`
+            # and `netProfitShareYearly` (mapped below) are the only rates
+            # this endpoint states -- no distinct participation-ratio field.
             ratio=None,
             gross_profit=money(data.get("grossProfitShare")),
             net_profit=net,

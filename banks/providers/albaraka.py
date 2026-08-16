@@ -331,7 +331,9 @@ class Albaraka(BaseBank):
                     currency=data.get("CurrencyCode") or currency,
                     term_unit=unit,
                     # Albaraka publishes no participation ratio, only the
-                    # resulting rates.
+                    # resulting rates. Reconfirmed 2026-08-16 against a live
+                    # raw response: `GrossRate`/`NetRate` (mapped below) are
+                    # the whole of what this endpoint states.
                     ratio=None,
                     gross_profit=money(data.get("GrossProfit")),
                     net_profit=net,

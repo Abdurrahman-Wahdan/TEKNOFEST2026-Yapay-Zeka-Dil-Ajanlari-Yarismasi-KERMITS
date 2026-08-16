@@ -50,6 +50,7 @@ PROFIT_SHARE = {
     "dunya": ("Standart Katılma Hesabı", 100_000, 31, "TRY"),
     # 50 000 is Hayat's hard floor: below it the endpoint answers zeros.
     "hayat": ("Katılma Hesabı", 50_000, 32, "TRY"),
+    "ziraat": ("Katılma Hesabı", 100_000, 92, "TRY"),
 }
 
 # card, amount, instalments. Kept below every declared maximum, because two

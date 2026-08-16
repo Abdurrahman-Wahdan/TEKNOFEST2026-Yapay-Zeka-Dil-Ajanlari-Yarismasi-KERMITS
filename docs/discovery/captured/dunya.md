@@ -68,7 +68,12 @@ FX pairs: USD, EUR, GBP, AUD, CAD, CNY, JPY, SAR, CHF; metals XAU, XAG, XPT, XPD
 JSON numbers, `result: "SUCCESS"` on the happy path.
 
 Finance → `monthlyInterest` (the instalment, despite the name), `totalPayment`,
-`rate`, `paymentPlanHTML`.
+`rate`, `paymentPlanHTML`. That last field is a full HTML document, not a
+throwaway — added 2026-08-16: it states "Yıllık kar oranı" (the annual cost
+rate) in a `title`/`val` pair and carries the entire 24-row instalment
+schedule (principal, profit, BSMV, KKDF, remaining balance) in a table below
+it. `finance_quote` now parses both out of that same response instead of
+requesting it and reading only the two totals at the top.
 Kâr payı → `grossProfitAmount`, `grossProfitRate`, `netProfitAmount`.
 Döviz → `sourceAmount`, `destinationAmount` (**converted server-side**).
 

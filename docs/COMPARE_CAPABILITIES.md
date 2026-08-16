@@ -20,7 +20,7 @@ learns nothing.
 | vakif | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | emlak | ✓ | ✓ | ✓ | ✓² | ✓² | — | — |
 | dunya | ✓ | ✓ | ✓ | ✓ | ✓ | — | — |
-| ziraat | ✓ | ✓ | — | — | — | — | — |
+| ziraat | ✓ | ✓ | ✓⁴ | — | — | — | — |
 | tom | ✓ | ✓ | — | — | — | — | — |
 | hayat | ✓ | — | ✓ | ✓ | ✓ | — | — |
 | turkiyefinans | ✓ | ✓¹ | — | ✓ | ✓² | ✓³ | — |
@@ -202,6 +202,10 @@ conversion. They must be labelled — see the `derived` contract on `ConversionO
 capability. `card_installment_quote` returns `installment=None` and the
 published rate.
 
+⁴ **A capability found by driving the widget, not guessing at names (added
+2026-08-16).** See "Ziraat is reachable after all — and, corrected again
+2026-08-16, actually priced" below.
+
 ### Card — auditing the remaining banks (2026-08-15)
 
 Only kuveytturk and vakif were wired up; the other eight were re-checked by
@@ -267,6 +271,28 @@ sinking to the bottom of the ranking as expected.
    called the same product. Both Albaraka products price identically today, which is why
    it was invisible. Now four families: `konut-yeni`/`konut-2el` (property condition) and
    `konut-ilk`/`konut-sonraki` (buyer's ownership).
+6. ~~**`dunya` finance quotes left `annual_cost_rate` null and `schedule` empty**~~ —
+   **fixed 2026-08-16.** Neither was missing from the bank; both were sitting unparsed
+   in `paymentPlanHTML`, the same document `LoanCheckRate` already returns for the
+   instalment and total. "Yıllık kar oranı" and a full 24-row instalment table were in
+   that HTML the whole time — this was a parsing gap, not a data gap, and needed no
+   computation to close. Found during an audit of every `None`/empty output field across
+   all ten banks (prompted by the Türkiye Finans fix, ¹ above) for the same class of bug.
+7. ~~**`tom` finance quotes left `annual_cost_rate` null on a wrong assumption**~~ —
+   **fixed 2026-08-16.** The code claimed T.O.M. "publishes no annual cost rate" and that
+   `MonthlyCostRate` was "a total over the term, not an APR." Both were wrong: a live quote
+   carries `TotalCost` (83.4614766) alongside `MonthlyCostRate` (5.187...), and
+   `(1 + MonthlyCostRate/100) ** 12 - 1 = 83.46148` — `TotalCost` *is* the bank's own
+   annualisation of `MonthlyCostRate`, sitting in the same response, unread. Found in the
+   same audit as #6.
+8. **Every other `None`/empty output field, checked and closed out.** The same audit
+   covered `annual_cost_rate` at Vakıf and Ziraat and `ratio` on every profit-share bank
+   (Albaraka, Dünya, Emlak, Hayat, Vakıf). All five were checked against a **live** full
+   response dump (not the cached fixtures) — Vakıf's finance calculator was checked
+   against its complete AJAX plugin registry (`config.min.js`, every endpoint the site's
+   own widgets can call), and Ziraat's against the full text of a live payment-plan
+   response. None of the seven carries the missing figure anywhere: no APR field, no
+   distinct participation-ratio field, no undiscovered endpoint. Left `None`, correctly.
 
 ---
 
@@ -372,28 +398,40 @@ If those intervals touch, the figures agree. Hayat's account is unmoved —
 Effect: Vakıf gold and Emlak silver went from refused to quoting, and
 `katilma-altin` gained the banks it had been silently losing.
 
-### Ziraat is reachable after all — and still correctly excluded
+### Ziraat is reachable after all — and, corrected again 2026-08-16, actually priced
 
 `docs/discovery/captured/ziraat.md` recorded kâr payı as browser-only behind a
-`493`. That is wrong, and now corrected there: the `493` comes from the
+`493`. That was wrong, corrected 2026-08-15: the `493` comes from the
 `ajax_form=1` parameter, not the endpoint. Without it the form processes, and
 the field values were readable from the homepage rather than guessable (the form
 id carries Ziraat's own typo, `kari_payi_hesapla_form`, which is why every
 guessed `/ajax/` route missed).
 
-Posted correctly it returns its four result fields and **every one is zero**,
-across all 5 maturities × TRY/USD/XAU, each with the bank's own message that no
-profit share has been distributed for those values. The tool is retrospective —
-it reports what matured accounts were paid, not a forward quote. So Ziraat stays
-out of `profit_share`: not unreachable, but publishing no figure.
+Posted correctly, that endpoint (`/anasayfa?_wrapper_format=drupal_ajax`)
+returns its four result fields and **every one is zero**, across all 5
+maturities × TRY/USD/XAU, with the bank's own message that no profit share has
+been distributed for those values — genuinely retrospective, reporting what
+matured accounts were paid, not a forward quote. That conclusion stood until
+2026-08-16 and was itself the mistake: **that endpoint is not the one the kâr
+payı widget calls.** Driving the actual widget with Playwright — clicking
+through it in a live browser and watching the network traffic fire, rather
+than guessing at `/ajax/` names the way the first pass did — surfaced
+`POST /ajax/karpayi-products`, a genuinely separate, genuinely forward-looking
+endpoint that answers plain `curl` with real, amount- and day-scaled figures
+(cross-checked against `kar-payilari`'s own published rate table and against
+itself from 1 to 800+ days). `profit_share` is a real Ziraat capability now —
+see `docs/discovery/captured/ziraat.md` for the full evidence and
+`banks/providers/ziraat.py`. `karpayi_hesap_type=2` (ARA DÖNEM ÖDEMELİ) and
+currency `XAU` were swept the same way and answered zero at every combination
+tried, so those two stay excluded; `TRY`/`USD`/`EUR` × `KATILMA HESABI` do not.
 
 `tom` publishes no participation calculator, `turkiyefinans` states a ratio only,
 `adil` publishes nothing at all.
 
 ### Comparison types
 
-Two families, and the count is right: `katilma` (6 banks) and `katilma-altin`
-(2 dedicated accounts + 3 general). `katilma-aradonem` is sold by two banks and
+Two families, and the count is right: `katilma` (7 banks, `ziraat` added
+2026-08-16) and `katilma-altin` (2 dedicated accounts + 3 general). `katilma-aradonem` is sold by two banks and
 priced by neither, so it stays in `NOT_PRICED`. The other eight accounts are
 single-bank and listed in `SINGLE_BANK_PROFIT_SHARE`.
 

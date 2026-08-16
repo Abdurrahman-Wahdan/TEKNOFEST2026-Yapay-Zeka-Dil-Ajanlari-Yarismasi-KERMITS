@@ -233,6 +233,12 @@ class Vakif(BaseBank):
             installment=installment,
             total=money(payload.get("totalAmount")),
             profit_rate=rate(payload.get("profitRate")),
+            # Checked 2026-08-16, not assumed: dumped this endpoint's full raw
+            # response (no APR field beyond what is mapped) and pulled every
+            # plugin URL this bank's calculator widgets can call out of its
+            # own `config.min.js` (the site's complete AJAX registry) -- no
+            # annual-cost endpoint exists anywhere in it. The bank states a
+            # monthly rate and totals, and nothing that annualises them.
             annual_cost_rate=None,
             fees={
                 "appraisement": money(payload.get("appraisementFee")),
@@ -319,6 +325,10 @@ class Vakif(BaseBank):
             term=expiry,
             currency=currency,
             term_unit="day",
+            # Checked 2026-08-16 against a live raw response: this endpoint
+            # states `grossRate`/`netRate` (mapped below) and nothing else --
+            # no distinct participation-ratio field the way Kuveyt Türk's
+            # `ProfitShareRatio` is. Not in this bank's plugin registry either.
             ratio=None,
             gross_profit=money(payload.get("grossProfit")),
             net_profit=net,

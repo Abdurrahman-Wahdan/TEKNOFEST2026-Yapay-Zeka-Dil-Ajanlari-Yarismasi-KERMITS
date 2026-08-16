@@ -3,10 +3,12 @@
 Drupal, and the calculators live on the homepage with no dedicated URL, so
 URL-based discovery is structurally blind to this bank.
 
-Only finansman is reachable without a browser. Kâr payı and leasing submit the
-Drupal form itself, which answers 493 to every non-browser client — curl_cffi
-impersonation included — and no /ajax/ route exists for them. That is declared
-in `capabilities` rather than worked around, so the refusal costs no request.
+Leasing is genuinely browser-only: it submits the Drupal form itself, no
+`/ajax/` route exists behind it, and that stays a `capabilities` refusal.
+Kâr payı is not, despite this file having claimed so until 2026-08-16 --
+`/ajax/karpayi-products` answers plain `curl` with no cookie, no token and no
+browser fingerprint, exactly like `/ajax/finansmanhesapla` already does for
+financing. The claim was never re-checked after it was written; it was wrong.
 
 The answer comes back as HTML inside a Drupal command array. The numbers are the
 bank's; we only pull them out of the markup. Contract in
@@ -17,8 +19,9 @@ import html as htmlmod
 import logging
 import re
 
-from ..models import FinanceQuote, PaymentRow, Product
+from ..models import FinanceQuote, PaymentRow, ProfitShareQuote, Product
 from ..parse import fold, money, rate
+from ..parse import term_unit as unit
 from .base import BaseBank, UnsupportedProduct
 
 logger = logging.getLogger(__name__)
@@ -62,15 +65,39 @@ def _text_of(markup: str) -> str:
 class Ziraat(BaseBank):
     name = "ziraat"
     display_name = "Ziraat Katılım Bankası"
-    # Finansman only. Kâr payı and leasing exist on the site but are reachable
-    # only by submitting the Drupal form, which refuses every non-browser
-    # client; declaring that here means we never spend a request finding out.
-    capabilities = frozenset({"products", "finance"})
+    # Leasing exists on the site but is reachable only by submitting the
+    # Drupal form, which refuses every non-browser client; declaring that here
+    # means we never spend a request finding out. Kâr payı used to be listed
+    # alongside it on the same claim -- disproved 2026-08-16, see the module
+    # docstring -- and is a real capability now.
+    capabilities = frozenset({"products", "finance", "profit_share"})
     notes = (
-        "Its kâr payı and leasing calculators are browser-only: they submit a "
-        "Drupal form that answers 493 to any non-browser client, and no JSON "
-        "route exists for them."
+        "Its leasing calculator is browser-only: it submits a Drupal form "
+        "that answers 493 to any non-browser client, and no JSON route "
+        "exists for it. Kâr payı and finansman both have one."
     )
+
+    # The only account kâr payı actually prices right now. "ARA DÖNEM ÖDEMELİ
+    # KATILMA HESABI" (code 2) sits in the same dropdown but answered zero for
+    # every currency, maturity and amount tried live on 2026-08-16 -- fixed
+    # bands and the flexible one alike -- so it is not offered here rather
+    # than kept as a choice that can only ever refuse.
+    _PROFIT_SHARE_PRODUCT = Product(
+        code="5",
+        name="Katılma Hesabı",
+        category="profit_share",
+        # XAU sits in the same currency dropdown and, like account type 2,
+        # answered zero at every amount and maturity tried live -- excluded
+        # for the same reason.
+        currencies=("TRY", "USD", "EUR"),
+        raw={},
+    )
+    # "Esnek Vadeli" (flexible) -- the one maturity type in the dropdown that
+    # takes an exact day count instead of snapping to one of the other four
+    # fixed bands (1/3/6/12 months). Verified live from 1 to 800+ days: it
+    # answers a real, self-consistent rate across that whole range, so every
+    # quote goes through it rather than picking the nearest fixed band.
+    _FLEXIBLE_MATURITY = "14"
 
     def _ajax(self, path: str, **fields):
         return self._json("POST", f"{HOST}/ajax/{path}", headers=HEADERS, data=fields)
@@ -78,6 +105,12 @@ class Ziraat(BaseBank):
     # ----- catalogue -----
 
     def products(self, category: str) -> list[Product]:
+        if category == "profit_share":
+            # A single, fixed product rather than a live catalogue call: there
+            # is no endpoint that lists which account types/currencies work,
+            # only one that answers zero for the ones that do not. Discovered
+            # live, not parsed off a page -- see the class-level comment.
+            return [self._PROFIT_SHARE_PRODUCT]
         if category != "finance":
             raise UnsupportedProduct(
                 f"{self.display_name} publishes no {category} catalogue. "
@@ -244,11 +277,103 @@ class Ziraat(BaseBank):
             installment=figures[1],
             total=figures[2],
             profit_rate=chosen.rate or 0.0,
+            # Checked 2026-08-16 against the full text of a live payment-plan
+            # response and the bank's homepage: the summary row states
+            # "Finansman Tutarı / Taksit Tutarı / Vade / Kâr Oranı / Toplam
+            # Geri Ödenen Tutar" -- the monthly rate and two totals, nothing
+            # that annualises them, on this response or anywhere on the site.
             annual_cost_rate=None,
+            # Every schedule row already carries its own KDV/KKDF/BSMV split
+            # (in `schedule[i].taxes`); this product's happens to be all
+            # zeros. No separate one-time fee (allocation, appraisal) appears
+            # anywhere in the markup for `fees` to hold.
             fees={},
             schedule=schedule,
             raw={"summary": figures, "rows": len(schedule)},
         ))
+
+    # ----- profit share -----
+
+    def profit_share_quote(
+        self,
+        product: str,
+        amount: float,
+        term: int,
+        currency: str = "TRY",
+        term_unit: str | None = None,
+    ) -> ProfitShareQuote:
+        """A kâr payı quote, computed by the bank's own `/ajax/karpayi-products`.
+
+        Read `/ajax/finansmanhesapla`'s sibling, not something this project
+        invented: same Drupal AJAX shape, same "no browser required" answer,
+        found by driving the actual calculator widget and watching what it
+        called. Every figure below -- net/gross profit, net/gross annual rate
+        -- is the bank's own; nothing here does arithmetic on them.
+        """
+        chosen = self.find_product("profit_share", product)
+        currency = currency.upper()
+        if currency not in chosen.currencies:
+            raise UnsupportedProduct(
+                f"{chosen.name} is not offered in {currency} at "
+                f"{self.display_name}. Available: {', '.join(chosen.currencies)}."
+            )
+        self._check_limits(chosen, amount=amount)
+        days = term * 30 if unit(term_unit) == "month" else term
+
+        payload = self._json(
+            "POST",
+            f"{HOST}/ajax/karpayi-products?_wrapper_format=drupal_ajax",
+            headers=HEADERS,
+            data={
+                "karpayi_hesap_type": chosen.code,
+                "karpayi_hesap_currency": currency,
+                "karpayi_hesap_anapara": str(int(amount)),
+                "karpayi_hesap_vade": str(int(days)),
+                "karpayi_maturity_type": self._FLEXIBLE_MATURITY,
+                "_drupal_ajax": "1",
+            },
+        )
+        fields = _karpayi_fields(payload)
+        net = money(fields.get("kar-payi-net-gelir"))
+        # Zeros mean "not offered" here exactly as at every other bank that
+        # answers this way (Albaraka, Emlak) -- a combination the calculator
+        # does not price, not a request that failed.
+        if net <= 0:
+            raise self._no_rate(chosen, amount, currency, f"{days} days")
+
+        return self._check_profit_share(ProfitShareQuote(
+            bank=self.name,
+            product=chosen,
+            amount=float(amount),
+            term=int(days),
+            currency=currency,
+            term_unit="day",
+            # Not published: this endpoint states the same net/gross rates
+            # mapped below and nothing that splits them into a ratio, the same
+            # gap as every other profit-share bank here.
+            ratio=None,
+            gross_profit=money(fields.get("kar-payi-brut-gelir")),
+            net_profit=net,
+            gross_annual_rate=rate(fields.get("kar-payi-brut-oran")),
+            net_annual_rate=rate(fields.get("kar-payi-net-oran")),
+            raw=payload,
+        ))
+
+
+def _karpayi_fields(payload) -> dict[str, str]:
+    """The kâr payı calculator's answer, keyed by the CSS class it fills.
+
+    The same Drupal command-array shape `_plan_markup` reads for financing,
+    except this response fills five named slots (`.kar-payi-net-gelir` and
+    friends) instead of one document -- each command's own `selector` is the
+    field name, so there is nothing to search markup text for here.
+    """
+    fields: dict[str, str] = {}
+    for command in payload or []:
+        selector = (command.get("selector") or "").lstrip(".")
+        if command.get("command") == "insert" and selector:
+            fields[selector] = command.get("data") or ""
+    return fields
 
 
 def _stem(name: str) -> str:

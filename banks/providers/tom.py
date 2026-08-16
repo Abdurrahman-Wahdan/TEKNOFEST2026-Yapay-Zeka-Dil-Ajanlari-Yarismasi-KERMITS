@@ -161,9 +161,14 @@ class Tom(BaseBank):
             installment=installment,
             total=money(data.get("TotalAmount")),
             profit_rate=rate(data.get("MonthlyProfitRate")),
-            # T.O.M. publishes no annual cost rate; MonthlyCostRate is a total
-            # over the term, not an APR, so annual is left unstated.
-            annual_cost_rate=None,
+            # `TotalCost` is the annual cost rate, stated plainly: it is
+            # `(1 + MonthlyCostRate/100) ** 12 - 1`, verified against a live
+            # quote to five decimal places (83.46148 vs 83.4614766). Left null
+            # before on the mistaken belief that `MonthlyCostRate` -- a
+            # fee-loaded monthly figure well above the nominal profit rate --
+            # was itself the only cost figure on offer and not an APR; the
+            # whole point of reading `TotalCost` instead is that it already is one.
+            annual_cost_rate=rate(data.get("TotalCost")) or None,
             fees={
                 "commission": float(data.get("CommisionAmount") or 0.0),
                 "insurance": float(data.get("InsuranceAmount") or 0.0),

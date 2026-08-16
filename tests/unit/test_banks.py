@@ -172,6 +172,26 @@ def test_tom_publishes_its_public_financing_calculator():
     assert get_bank("adil").capabilities == frozenset()
 
 
+def test_tom_finance_quote_reads_its_own_annual_cost_rate(monkeypatch):
+    """`TotalCost` was left unread on the mistaken belief T.O.M. states no APR.
+
+    It does: `TotalCost` is `(1 + MonthlyCostRate/100) ** 12 - 1`, the bank's
+    own annualisation of its fee-loaded monthly cost figure, not a number
+    worked out here. Verified against this exact fixture to five decimals
+    (83.46148 vs 83.4614766) before trusting the field.
+    """
+    serve(monkeypatch, [{}], routes={
+        "LoanRateList": load("tom", "rate_list.json"),
+        "GetLoanPayBackPlan": load("tom", "finance_quote.json"),
+    })
+    quote = get_bank("tom").finance_quote("TKTCDGRFNS", 100000, 24)
+
+    assert quote.installment == pytest.approx(7379.48)
+    assert quote.profit_rate == pytest.approx(3.99)
+    assert quote.annual_cost_rate == pytest.approx(83.4614766)
+    assert len(quote.schedule) == 24
+
+
 def test_a_bank_without_a_card_calculator_refuses():
     with pytest.raises(UnsupportedProduct, match="does not publish"):
         get_bank("albaraka").card_installment_quote("any", 1000, 3)
@@ -762,6 +782,15 @@ def test_dunya_finance_quote_maps_onto_the_dataclass(monkeypatch):
     # "monthlyInterest" is the instalment, despite the name.
     assert quote.installment == 5898.38
     assert quote.profit_rate == 2.99
+    # Both of these used to come back empty even though the bank's own
+    # `paymentPlanHTML` -- fetched on every call, not a second request --
+    # states them in plain text: "Yıllık kar oranı" for the rate, and a full
+    # instalment-by-instalment table for the schedule. Read, not computed.
+    assert quote.annual_cost_rate == pytest.approx(42.41)
+    assert len(quote.schedule) == 24
+    assert quote.schedule[0].due_date == "2026-09-08"
+    assert quote.schedule[-1].remaining == 0
+    assert sum(row.principal for row in quote.schedule) == pytest.approx(100000)
 
 
 def test_dunya_explains_its_own_refusal(monkeypatch):
@@ -813,11 +842,57 @@ def test_ziraat_will_not_swap_one_product_for_another(monkeypatch):
         get_bank("ziraat").finance_quote("konut", 100000, 24)
 
 
-def test_ziraat_refuses_its_browser_only_calculators(monkeypatch):
-    """Kâr payı answers 493 to any non-browser client, so it is never called."""
-    no_network(monkeypatch)
-    with pytest.raises(UnsupportedProduct, match="browser-only"):
-        get_bank("ziraat").profit_share_quote("any", 100000, 31)
+def test_ziraat_refuses_its_browser_only_leasing():
+    """Leasing answers 493 to any non-browser client, so it is never called.
+
+    Kâr payı used to be refused by this same claim -- it no longer is, see
+    below -- so this only checks the capability is absent, not a live refusal
+    message, the same way `test_a_bank_without_a_category_refuses` does for
+    every other bank/category pair with nothing to call.
+    """
+    assert "leasing" not in get_bank("ziraat").capabilities
+
+
+def test_ziraat_profit_share_reads_a_live_computed_quote(monkeypatch):
+    """`/ajax/karpayi-products` answers plain `curl`, contradicting the old
+    claim that kâr payı needs a browser. Every figure is the bank's own; nothing
+    here computes a rate from a day count the way the old, wrong justification
+    for refusing this would have required.
+    """
+    serve(monkeypatch, [load("ziraat", "profit_share_quote.json")])
+    quote = get_bank("ziraat").profit_share_quote("5", 100000, 92, "TRY", "day")
+
+    assert quote.net_profit == pytest.approx(5987.20)
+    assert quote.gross_profit == pytest.approx(7257.22)
+    assert quote.net_annual_rate == pytest.approx(23.75)
+    assert quote.gross_annual_rate == pytest.approx(28.79)
+    assert quote.term == 92 and quote.term_unit == "day"
+    assert quote.ratio is None
+
+
+def test_ziraat_profit_share_converts_months_to_days(monkeypatch):
+    sent = []
+    serve(monkeypatch, [load("ziraat", "profit_share_quote.json")], spy=sent)
+    get_bank("ziraat").profit_share_quote("5", 100000, 3, "TRY", "month")
+
+    assert sent[-1]["data"]["karpayi_hesap_vade"] == "90"
+
+
+def test_ziraat_profit_share_refuses_a_currency_not_offered():
+    """XAU and USD sit in the same dropdown kâr payı's amount/currency form
+    offers, but XAU answered zero at every amount and maturity tried live --
+    refused before a request is ever made, the same way an unsupported
+    currency is refused everywhere else in this file."""
+    with pytest.raises(UnsupportedProduct, match="XAU"):
+        get_bank("ziraat").profit_share_quote("5", 100000, 92, "XAU", "day")
+
+
+def test_ziraat_profit_share_treats_zeros_as_not_offered(monkeypatch):
+    """The bank answers a combination it does not price with zeros, not an
+    error -- the same convention Albaraka and Emlak's endpoints use."""
+    serve(monkeypatch, [load("ziraat", "profit_share_zeros.json")])
+    with pytest.raises(UnsupportedProduct, match="published no profit-share rate"):
+        get_bank("ziraat").profit_share_quote("5", 100000, 92, "EUR", "day")
 
 
 # ----- Türkiye Finans -----

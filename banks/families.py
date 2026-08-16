@@ -211,6 +211,12 @@ PROFIT_SHARE: dict[str, tuple[Member, ...]] = {
         _m("emlak", "KATILMA"),
         _m("dunya", "KTLMHSP"),
         _m("hayat", "Katılma Hesabı"),
+        # Added 2026-08-16: kâr payı turned out not to be browser-only after
+        # all (see banks/providers/ziraat.py). Its one product takes TRY, USD
+        # and EUR but not gold -- unlike Kuveyt Türk and the `general=True`
+        # banks below, it never spans the `katilma-altin` axis, so it is a
+        # plain member here and nowhere else.
+        _m("ziraat", "Katılma Hesabı"),
     ),
     # Gold is its own product, not a currency option on the ordinary account.
     # Kuveyt Türk's dedicated account pays a 40% ratio where its ordinary one

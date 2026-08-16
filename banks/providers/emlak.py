@@ -337,6 +337,10 @@ class Emlak(BaseBank):
             term=band,
             currency=currency,
             term_unit="day",
+            # Checked 2026-08-16 against a live raw response and the
+            # calculator page's own HTML: "kâr paylaşım oranı" appears only in
+            # a disclaimer sentence ("rates vary by ratio, segment and term"),
+            # never as a queryable figure the endpoint returns per quote.
             ratio=None,
             gross_profit=money(data.get("GrossProfitShare")),
             net_profit=net,
