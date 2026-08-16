@@ -1,9 +1,13 @@
-"""Live check of the local embedding model.
+"""Live check of the embedding model (local sentence-transformers or the
+remote vLLM-hosted endpoint, whichever EMBEDDING_PROVIDER selects).
 
-Skipped unless the model is already in the HuggingFace cache — no test should
-trigger a multi-GB download. Warm the cache first:
+With the local provider, skipped unless the model is already in the
+HuggingFace cache — no test should trigger a multi-GB download. Warm the
+cache first:
 
     python -c "from embeddings import get_embedding; get_embedding()"
+
+With the remote provider, skipped if the endpoint isn't reachable.
 """
 
 import pytest
@@ -24,9 +28,15 @@ def _model_is_cached(model: str) -> bool:
 
 @pytest.fixture(scope="module")
 def embedding():
-    if not _model_is_cached(settings.EMBEDDING_MODEL):
+    if settings.EMBEDDING_PROVIDER == "local" and not _model_is_cached(settings.EMBEDDING_MODEL):
         pytest.skip(f"{settings.EMBEDDING_MODEL} is not downloaded yet")
-    return get_embedding()
+    emb = get_embedding()
+    if settings.EMBEDDING_PROVIDER == "remote":
+        try:
+            emb.embed_query("ping")
+        except Exception as exc:
+            pytest.skip(f"remote embedding endpoint unreachable: {exc}")
+    return emb
 
 
 def test_query_vector_matches_configured_dimensions(embedding):

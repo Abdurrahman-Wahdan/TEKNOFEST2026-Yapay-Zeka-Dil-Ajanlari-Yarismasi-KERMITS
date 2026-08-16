@@ -6,9 +6,13 @@ instance BEFORE LocalProvider, which matches everything as a fallback.
 
 from .base import BaseEmbeddingProvider
 from .local_provider import LocalProvider, clear_local_cache
+from .remote_provider import RemoteProvider, clear_remote_cache
 
 # Order matters: the first provider whose matches() returns True wins.
+# RemoteProvider never matches on its own (opt-in only, via EMBEDDING_PROVIDER
+# ="remote" or provider="remote"); LocalProvider is the auto-detect fallback.
 PROVIDERS: list[BaseEmbeddingProvider] = [
+    RemoteProvider(),
     LocalProvider(),
 ]
 
@@ -42,6 +46,8 @@ __all__ = [
     "PROVIDERS",
     "BaseEmbeddingProvider",
     "LocalProvider",
+    "RemoteProvider",
     "clear_local_cache",
+    "clear_remote_cache",
     "get_provider",
 ]

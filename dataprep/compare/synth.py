@@ -7,6 +7,8 @@ yok; model kendi kararını verir.
                     uyuyor (match_table yanılmış olabilir)?
   synthesize_table: banka-raporlarından (bank_agent.research_bank çıktıları) nihai
                     tabloyu (sütun+satır+docstring+kategori+alt-kategori) kurar.
+  merge_tables    : mükerrer bulunan İKİ tabloyu tek tabloda birleştirir (gerekirse
+                    ek sütun ekleyerek) — dedup.py bakım ajanı tarafından kullanılır.
 """
 from __future__ import annotations
 
@@ -36,56 +38,10 @@ def _compact_reports(reports: list[dict]) -> list[dict]:
                 s.pop("note", None)
     return reports
 
-_COMPARABLE_Q = (
-    "Bir KATILIM BANKASI sayfasına bakıyorsun. Soru: bu sayfa, BAŞKA bankalarla "
-    "KIYASLANABİLİR SOMUT bir KAMPANYA ya da ÜRÜN mü tarif ediyor — yoksa genel/"
-    "kurumsal/yardım/nav içerikli, kıyaslanamayan bir sayfa mı? Karar tamamen sana "
-    "ait.\n\n"
-    "Konuyu bu sayfanın ASIL ANLATTIĞI somut ürün/kampanya TÜRÜ düzeyinde tut — ne "
-    "kategori şemsiyesi (ör. 'kredi kartı', 'mobil bankacılık' gibi bankanın "
-    "onlarca farklı ürününü içine alan genel başlık) ne de sayfadaki dar bir "
-    "alt-detay (bir sertifika şartı, tek bir ücret kalemi). ÖNEMLİ: topic bankanın "
-    "kendi verdiği MARKA/ÜRÜN ADINI içermesin (ör. 'Sağlam Kart', 'Hadi Kart', "
-    "'Paraf' gibi — bunlar banka-özel isimlerdir, başka bankada aynı isim "
-    "aranmaz, her banka kendi markasını kullanır). Bunun yerine ürünün ne TÜRDE/"
-    "hangi SEGMENTTE olduğunu tanımla (ör. 'gençlere özel kredi kartı', 'TROY "
-    "altyapılı kredi kartı', 'ticari/iş amaçlı kredi kartı', belirli bir hesap "
-    "türü, belirli bir kampanya konusu). Sayfa kendisi birçok farklı ürünü "
-    "listeleyen bir MENÜ/genel-bakış sayfasıysa (tek bir ürünü değil, kategorinin "
-    "tamamını anlatıyorsa) comparable=false de — "
-    "o ürünlerin her biri kendi sayfasında ayrıca karşına çıkacak.\n\n"
-    "URL: {url}\n\nMetin:\n\"\"\"{body}\"\"\"\n\n"
-    'SADECE JSON: {{"comparable": true|false, "topic": "<bu sayfanın anlattığı '
-    'SOMUT ürünün/kampanyanın adı, kısa — banka adı geçmesin>"}}')
-
-
-def is_comparable(body: str, url: str = "") -> dict | None:
-    d = vlm.call_json(vlm.txt_msg(_COMPARABLE_Q.format(url=url or "-", body=body[:8000])),
-                       max_tokens=300)
-    if not d:
-        return None
-    return {"comparable": bool(d.get("comparable")), "topic": (d.get("topic") or "").strip()}
-
-
-_MATCH_Q = (
-    "Elindeki bir konu var: {topic!r}. Aşağıda ŞU AN VAR OLAN karşılaştırma "
-    "tablolarının listesi (id + kısa açıklama). Bu konu bunlardan BİRİYLE aynı şey "
-    "mi (aynı ürün/kampanya ailesi, sadece başka bir bankadan görülmüş olabilir), "
-    "yoksa GERÇEKTEN yeni bir konu mu? Kararını açıklamaların anlamına göre ver, "
-    "kelime benzerliğine değil.\n\nMevcut tablolar:\n{tables}\n\n"
-    'SADECE JSON: {{"match_id": "<eşleşen tablo id\'si ya da boş>"}}')
-
-
-def match_table(topic: str, registry: list[dict]) -> str:
-    """registry: [{"id","docstring"}...]. Dönen: eşleşen id ya da ''."""
-    if not registry:
-        return ""
-    listing = "\n".join(f"- {r['id']}: {r['docstring']}" for r in registry)
-    d = vlm.call_json(vlm.txt_msg(_MATCH_Q.format(topic=topic, tables=listing)), max_tokens=300)
-    if not d:
-        return ""
-    mid = (d.get("match_id") or "").strip()
-    return mid if any(r["id"] == mid for r in registry) else ""
+# classify_page (kıyaslanabilir mi + mevcut tablo havuzunda eşleşen var mı) artık
+# BURADA değil, classify_agent.py'de — tablo havuzu büyüdükçe (yüzlerce olabilir)
+# TÜMÜNÜ tek prompt'a sığdırmak mümkün değil; o yüzden sabit-listeli tek çağrı
+# yerine, search_tables (embedding bazlı arama) aracına sahip bir Gemma ajanı var.
 
 
 _FITS_Q = (
@@ -109,6 +65,12 @@ def fits_table(table_docstring: str, bank: str, report: dict) -> bool:
 
 
 _SYNTH_Q = (
+    "ÖNEMLİ — TERMİNOLOJİ: bunlar KATILIM BANKASI (faizsiz/İslami bankacılık) "
+    "verileri. ÜRETECEĞİN HER METİNDE (docstring, sütun adları, alt kategori, "
+    "değerler) 'kredi'/'faiz' değil 'finansman'/'kâr payı'/'kâr oranı' kullan; "
+    "raporda konvansiyonel terim geçse bile SEN katılım bankacılığı terimine "
+    "çevir. Tek istisna: 'kredi kartı' yerleşik bir ÜRÜN ADI olduğu için olduğu "
+    "gibi kalır.\n\n"
     "Aşağıda '{topic}' konusunda, katılım bankalarından toplanan araştırma raporları "
     "var (her biri bir bankanın kendi verisinden). Bunlardan bir KARŞILAŞTIRMA TABLOSU "
     "kur:\n"
@@ -116,8 +78,17 @@ _SYNTH_Q = (
     "birleştir/normalize et (aynı şeyi farklı isimle söyleyenler tek sütun olsun), "
     "en kapsamlı ve karşılaştırmaya en çok yarayacak alanları seç.\n"
     "- offers=false olan bankalar tabloda 'sunulmuyor' değeriyle yer alır (gizlenmez).\n"
-    "- Kısa bir docstring açıklaması yaz: bu tablo neyi kıyaslıyor (1-2 cümle, "
-    "ileride başka bir sayfanın bu tabloyla mı eşleştiğine karar verirken kullanılacak).\n"
+    "- Kısa bir docstring açıklaması yaz: bu tablo neyi kıyaslıyor (1-2 cümle). "
+    "Bu docstring İLERİDE EMBEDDING'E ÇIKARILIP ANLAM BAZLI ARAMADA kullanılacak — "
+    "başka bir sayfa aynı ürün/kampanyayla mı eşleşiyor diye bu metin üzerinden "
+    "karşılaştırılacak. Bu yüzden: (1) bu ürünün/kampanyanın NE OLDUĞUNU somut ve "
+    "KENDİNE ÖZGÜ kelimelerle anlat — 'katılım bankalarının sunduğu X ürünlerinin "
+    "karşılaştırmasıdır' gibi diğer tablolarla ORTAK, kalıplaşmış bir çerçeve "
+    "cümleye boğma; ayırt edici olan NE (ürünün/kampanyanın türü, konusu, kapsamı) "
+    "cümlenin başında ve belirgin olsun. (2) Aynı zamanda AÇIKLAYICI kal — okuyan "
+    "birinin bu tablonun ne olduğunu tam anlaması gerekiyor, sadece anahtar "
+    "kelime listesi olmasın. Hem özgün/ayırt edici hem açıklayıcı olan bir "
+    "denge kur.\n"
     "- Bu tabloya bir ANA KATEGORİ ata: 'kampanya' ya da 'ürün' (hangisiyse). Bir de "
     "bir ALT KATEGORİ ata (UI'da filtrelemek için) — daha önce kullanılmış alt "
     "kategoriler: {subcats}. Bunlardan biri gerçekten uyuyorsa AYNI ismi kullan "
@@ -134,6 +105,56 @@ def synthesize_table(topic: str, reports: list[dict], subcats: list[str] | None 
     subcat_list = ", ".join(subcats or []) or "(henüz yok)"
     d = vlm.call_json(vlm.txt_msg(_SYNTH_Q.format(topic=topic, reports=payload, subcats=subcat_list)),
                        max_tokens=4096)
+    if not d:
+        return None
+    return {"docstring": (d.get("docstring") or "").strip(),
+            "category": (d.get("category") or "").strip(),
+            "subcategory": (d.get("subcategory") or "").strip(),
+            "columns": d.get("columns") or [],
+            "rows": d.get("rows") or {}}
+
+
+_MERGE_Q = (
+    "ÖNEMLİ — TERMİNOLOJİ: bunlar KATILIM BANKASI (faizsiz/İslami bankacılık) "
+    "verileri. ÜRETECEĞİN HER METİNDE 'kredi'/'faiz' değil 'finansman'/'kâr "
+    "payı'/'kâr oranı' kullan. Tek istisna: 'kredi kartı' yerleşik bir ÜRÜN ADI "
+    "olduğu için olduğu gibi kalır.\n\n"
+    "İki karşılaştırma tablosu var, aynı ürün/kampanya TÜRÜNÜ kıyasladıkları "
+    "için birleştirilmeleri gerekiyor. Bunları TEK bir tabloda birleştir:\n"
+    "- SÜTUNLARI SEN belirle: iki tablonun sütunlarını anlamına göre birleştir/"
+    "normalize et (aynı şeyi ifade edenler tek sütun olsun). Eğer iki tablo "
+    "GERÇEKTEN farklı bir açıdan bakıyorsa (biri bir yöne, diğeri başka bir "
+    "yöne odaklanmışsa) o farkı temsil eden EK bir sütun ekle — hiçbir bilginin "
+    "kaybolmaması esas.\n"
+    "- Her banka için: o banka HER İKİ tabloda da satır sahibiyse bilgilerini "
+    "birleştir (çelişen değerler varsa daha somut/detaylı olanı tercih et); "
+    "sadece bir tabloda satırı varsa aynen koru.\n"
+    "- Kısa bir docstring yaz: bu birleşik tablo neyi kıyaslıyor (1-2 cümle). "
+    "Bu docstring ileride EMBEDDING'E ÇIKARILIP anlam bazlı aramada kullanılacak "
+    "— kalıplaşmış/diğer tablolarla ortak bir çerçeve cümleye boğma, ayırt edici "
+    "olan NE cümlenin başında ve belirgin olsun; aynı zamanda açıklayıcı kal.\n"
+    "- Bir ANA KATEGORİ ata: 'kampanya' ya da 'ürün'. Bir ALT KATEGORİ ata — "
+    "daha önce kullanılmış alt kategoriler: {subcats}. Uyan varsa AYNI ismi "
+    "kullan, uymuyorsa yeni kısa bir ad üret.\n\n"
+    "Tablo A ({a_id}) — {a_docstring}:\n\"\"\"{a}\"\"\"\n\n"
+    "Tablo B ({b_id}) — {b_docstring}:\n\"\"\"{b}\"\"\"\n\n"
+    'SADECE JSON: {{"docstring": "<1-2 cümle>", "category": "kampanya"|"ürün", '
+    '"subcategory": "<kısa alt kategori>", "columns": ["<sütun>", ...], '
+    '"rows": {{"<banka>": {{"<sütun>": "<değer ya da sunulmuyor>", ...}}}}}}')
+
+
+def merge_tables(a: dict, b: dict, subcats: list[str] | None = None) -> dict | None:
+    """İki tabloyu (store.load_table çıktısı) TEK tabloda birleştirir — gerekirse
+    EK SÜTUN ekleyerek, veri kaybetmeden. `dedup.py` bakım ajanı tarafından,
+    mükerrer bulunduktan SONRA çağrılır."""
+    import json
+    payload_a = json.dumps({"columns": a["columns"], "rows": a["rows"]}, ensure_ascii=False)
+    payload_b = json.dumps({"columns": b["columns"], "rows": b["rows"]}, ensure_ascii=False)
+    subcat_list = ", ".join(subcats or []) or "(henüz yok)"
+    d = vlm.call_json(vlm.txt_msg(_MERGE_Q.format(
+        a_id=a["id"], a_docstring=a["docstring"], a=payload_a,
+        b_id=b["id"], b_docstring=b["docstring"], b=payload_b,
+        subcats=subcat_list)), max_tokens=4096)
     if not d:
         return None
     return {"docstring": (d.get("docstring") or "").strip(),

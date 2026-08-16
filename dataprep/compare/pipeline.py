@@ -20,6 +20,8 @@ from dataprep.pages import _split_front, _url_of
 
 from . import store, synth
 from .bank_agent import research_bank
+from .classify_agent import classify_page
+from .retrieval import index_table
 
 log = logging.getLogger("dataprep.compare.pipeline")
 
@@ -94,7 +96,11 @@ def process_page(bank: str, url: str, body: str, banks: list[str]) -> None:
     if prior is not None:
         return                                    # zaten anchor olarak işlendi -> atla
 
-    d = synth.is_comparable(body, url)
+    # Kıyaslanabilir mi + (öyleyse) mevcut bir tabloya mı uyuyor yoksa yeni konu
+    # mu — ajan kendi search_tables aracıyla (embedding, Qdrant) tablo havuzunda
+    # arar; TÜM havuz tek prompt'a sığdırılmıyor, model kendi karar verene kadar
+    # özgürce arar (bank_agent'taki search_bank ile aynı desen).
+    d = classify_page(body, url)
     if d is None:
         return                                     # LLM ulaşılamadı -> retry (kaydetme)
     if not d["comparable"]:
@@ -102,31 +108,38 @@ def process_page(bank: str, url: str, body: str, banks: list[str]) -> None:
         return
 
     topic = d["topic"]
-    registry = store.load_registry()
-    match_id = synth.match_table(topic, registry)
+    match_id = d["fits_table"]
 
     if match_id:
         table = store.load_table(match_id)
-        already = table and table["rows"].get(bank)
-        if already:
-            store.record_verdict(url, True, topic, match_id)
+        if table is None:
+            # registry'de var ama dosyası yok (elle silme / kesintili yazma) —
+            # ÇÖKMEK yerine bunu "eşleşme yok" say, aşağıdaki YENİ KONU yoluna
+            # (tam 10-banka fan-out) düş. Bloktan çıkmak için if/else, match_id
+            # bilerek TEMİZLENMİYOR — aşağıdaki 'if match_id:' zaten atlanır.
+            log.warning("  [TUTARSIZ KAYIT] %s registry'de var ama dosyası yok — "
+                        "yeni tabloya düşülüyor", match_id)
+        else:
+            already = table["rows"].get(bank)
+            if already:
+                store.record_verdict(url, True, topic, match_id)
+                return
+            # GÜVENLİK AĞI: yalnız EKSİK bankanın subagent'ı — 10'u değil.
+            report = _fan_out_one(topic, bank)
+            # eşleşme YANLIŞ olabilir (match_table yanılmış) — veri gelmeden önce
+            # doğrula; uymuyorsa bu tabloya zorla eklemek yerine YENİ tabloya git.
+            fits = (not report["offers"]) or synth.fits_table(table["docstring"], bank, report)
+            if fits:
+                if report["offers"]:
+                    store.add_row(match_id, bank, report["attributes"], report["sources"])
+                store.record_verdict(url, True, topic, match_id)
+                _record_sources(match_id, [report])
+                log.info("  [satır eklendi] %s -> %s (%s)", bank, match_id, report["offers"])
+                return
+            log.info("  [YANLIŞ EŞLEŞME] %s / %r bu tabloya uymuyor -> yeni tablo için tam fan-out", bank, topic)
+            reports = _fan_out_all(topic, banks)
+            _finish_new_table(url, topic, reports, banks)
             return
-        # GÜVENLİK AĞI: yalnız EKSİK bankanın subagent'ı — 10'u değil.
-        report = _fan_out_one(topic, bank)
-        # eşleşme YANLIŞ olabilir (match_table yanılmış) — veri gelmeden önce
-        # doğrula; uymuyorsa bu tabloya zorla eklemek yerine YENİ tabloya git.
-        fits = (not report["offers"]) or synth.fits_table(table["docstring"], bank, report)
-        if fits:
-            if report["offers"]:
-                store.add_row(match_id, bank, report["attributes"], report["sources"])
-            store.record_verdict(url, True, topic, match_id)
-            _record_sources(match_id, [report])
-            log.info("  [satır eklendi] %s -> %s (%s)", bank, match_id, report["offers"])
-            return
-        log.info("  [YANLIŞ EŞLEŞME] %s / %r bu tabloya uymuyor -> yeni tablo için tam fan-out", bank, topic)
-        reports = _fan_out_all(topic, banks)
-        _finish_new_table(url, topic, reports, banks)
-        return
 
     # gerçekten YENİ konu -> 10 bankaya paralel fan-out (ASIL mekanizma)
     log.info("  [YENİ KONU] %r — 10 bankaya fan-out", topic)
@@ -143,6 +156,11 @@ def _finish_new_table(url: str, topic: str, reports: list[dict], banks: list[str
     table_id = store.create_table(topic, table_data["docstring"], table_data["columns"],
                                    table_data["rows"], sources,
                                    table_data["category"], table_data["subcategory"])
+    try:                          # arama indeksine yazma başarısız olsa bile tablo geçerli
+        index_table(table_id, topic, table_data["category"], table_data["subcategory"],
+                    table_data["docstring"])
+    except Exception as exc:
+        log.warning("  [İNDEKS HATASI] %s: %s: %s", table_id, type(exc).__name__, exc)
     store.record_verdict(url, True, topic, table_id)
     _record_sources(table_id, reports)
     n_offer = sum(1 for r in reports if r["offers"])
@@ -153,7 +171,15 @@ def _finish_new_table(url: str, topic: str, reports: list[dict], banks: list[str
 def process_bank(bank: str, banks: list[str], limit: int | None = None) -> None:
     n = 0
     for url, body in _pages(bank, limit):
-        process_page(bank, url, body, banks)
+        try:
+            process_page(bank, url, body, banks)
+        except Exception as exc:            # noqa: BLE001 — TEK sayfa TÜM koşuyu
+            # çökertmesin (research_bank katmanındaki aynı prensip bir üst
+            # seviyede de geçerli: beklenmedik bir hata bu sayfayı atlasın,
+            # kalan binlerce sayfa/banka etkilenmesin). own_verdict KAYDEDİLMEZ
+            # — bir sonraki koşuda bu sayfa tekrar denenir.
+            log.error("  [SAYFA HATASI] %s / %s: %s: %s", bank, url,
+                       type(exc).__name__, exc)
         n += 1
     log.info("%s: %d sayfa tarandı", bank, n)
 

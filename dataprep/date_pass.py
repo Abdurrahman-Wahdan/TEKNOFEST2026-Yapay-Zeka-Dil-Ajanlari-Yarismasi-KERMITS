@@ -18,6 +18,7 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+from corpus.dates import is_active
 from dataprep import vlm
 from dataprep.ledger import Ledger
 from dataprep.pages import _set_front_dates, _split_front, _url_of
@@ -34,9 +35,15 @@ _Q = (
     "Aşağıdaki KATILIM BANKASI sayfa/PDF metninde bir KAMPANYA veya teklifin GEÇERLİLİK "
     "/ BİTİŞ tarihi yazıyorsa bildir; başlangıç tarihi de yazıyorsa onu da ver. Aramak "
     "için uğraşma — açıkça yazıyorsa al, yoksa BOŞ bırak. Birden çok bitiş varsa EN GEÇ "
-    "olanı seç. Tarih UYDURMA.\n\nMetin:\n\"\"\"{body}\"\"\"\n\n"
+    "olanı seç. Tarih UYDURMA.\n\n"
+    "AYRICA — KAMPANYANIN DURUMU: tarih bulamadıysan bile, metnin kendi ifadesinden "
+    "(ör. açıkça sona erdiğini belirten bir ifade, geçmiş zaman kullanımı, arşiv/geçmiş "
+    "kampanya bağlamı) bu kampanyanın KESİN OLARAK sona erdiğinden GERÇEKTEN eminsen "
+    "durum='bitti' de. Emin değilsen, ya da hâlâ sürüyor gibi görünüyorsa (ki varsayılan "
+    "budur) durum='bitmedi' de — sadece gerçekten eminsen 'bitti' yaz, tahmin etme.\n\n"
+    "Metin:\n\"\"\"{body}\"\"\"\n\n"
     'SADECE JSON: {{"gecerlilik_baslangic": "<YYYY-MM-DD ya da boş>", '
-    '"gecerlilik_bitis": "<YYYY-MM-DD ya da boş>"}}')
+    '"gecerlilik_bitis": "<YYYY-MM-DD ya da boş>", "durum": "<bitti|bitmedi>"}}')
 
 
 def _windows(body: str) -> list[str]:
@@ -54,9 +61,13 @@ def _windows(body: str) -> list[str]:
 
 
 def _dates_of(body: str) -> dict | None:
-    """(start,end) ya da None (LLM ulaşılamadı). Uzun dokümanda her pencereyi sorar,
-    en GEÇ bitişi / en ERKEN başlangıcı toplar."""
+    """(start,end,ended_no_date) ya da None (LLM ulaşılamadı). Uzun dokümanda her
+    pencereyi sorar, en GEÇ bitişi / en ERKEN başlangıcı toplar. `ended_no_date`:
+    tarih bulunamayan bir pencerede model içerikten 'kesin bitti' dediyse True —
+    nihai durum kararı (process_bank/work) bunu SADECE hiç tarih bulunamadıysa
+    kullanır; tarih varsa durum tarihten deterministik hesaplanır."""
     start = end = ""
+    ended_no_date = False
     saw_answer = False
     for win in _windows(body):
         d = vlm.call_json(vlm.txt_msg(_Q.format(body=win)), max_tokens=200)
@@ -69,9 +80,11 @@ def _dates_of(body: str) -> dict | None:
         s = (d.get("gecerlilik_baslangic") or "").strip()
         if s and (not start or s < start):
             start = s
+        if not e and (d.get("durum") or "").strip().lower() == "bitti":
+            ended_no_date = True
     if not saw_answer:                             # hiçbir pencere yanıtlamadı -> LLM yok
         return None
-    return {"start": start, "end": end}
+    return {"start": start, "end": end, "ended_no_date": ended_no_date}
 
 
 def process_bank(slug: str, workers: int = WORKERS) -> None:
@@ -100,12 +113,18 @@ def process_bank(slug: str, workers: int = WORKERS) -> None:
         if dts is None:                         # LLM yok -> dokunma, retry
             ledger.record("date_pass", _url_of(front), decision="unreachable")
             return rel, None
-        if dts.get("start") or dts.get("end"):
-            new_front = _set_front_dates(front, dts)
+        end = dts.get("end") or ""
+        # NİHAİ DURUM: tarih varsa DETERMİNİSTİK hesapla (LLM'e sorulmaz, tarih
+        # matematiği — is_active zaten "computed, never stored" ilkesiyle var);
+        # tarih yoksa modelin içerikten çıkardığı sinyale güven (varsayılan bitmedi).
+        status = ("bitmedi" if is_active(end) else "bitti") if end else (
+            "bitti" if dts.get("ended_no_date") else "bitmedi")
+        new_front = _set_front_dates(front, {**dts, "status": status})
+        if new_front != front:
             p.write_text((new_front + "\n\n" + body).rstrip() + "\n", encoding="utf-8")
         ledger.record("date_pass", _url_of(front), decision="stamped",
-                      reason=f"end={dts.get('end') or '-'}")
-        return rel, (dts.get("end") or "")
+                      reason=f"end={end or '-'} durum={status}")
+        return rel, f"{end}|{status}"
 
     with ThreadPoolExecutor(max_workers=workers) as ex:
         for j, (rel, res) in enumerate(ex.map(work, todo), 1):
