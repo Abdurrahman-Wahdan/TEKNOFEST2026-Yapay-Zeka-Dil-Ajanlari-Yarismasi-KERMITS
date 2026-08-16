@@ -198,9 +198,13 @@ conversion. They must be labelled — see the `derived` contract on `ConversionO
 - **mile_rates** — kuveytturk only, **567 rows** (card × tier × category). Unusable as a
   flat table; needs filtering by card and category.
 
-³ **Rate, never a payment — card.** Same footnote as ¹, one bank, one more
-capability. `card_installment_quote` returns `installment=None` and the
-published rate.
+³ **Rate, plus a computed payment — card (updated 2026-08-16).** Same footnote
+as ¹, same bank, and the same resolution: `card_installment_quote` returns a
+real `installment`/`total` now. Its calculator (`installments.js`) is
+date-dependent in a way `finance_quote`'s is not, but anchoring the
+transaction to the statement date itself erases that dependence rather than
+working around it — every ordinary statement date then answers identically,
+confirmed live. See `_card_installment_plan` in `turkiyefinans.py`.
 
 ⁴ **A capability found by driving the widget, not guessing at names (added
 2026-08-16).** See "Ziraat is reachable after all — and, corrected again

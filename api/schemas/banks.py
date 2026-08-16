@@ -146,8 +146,8 @@ class CardInstallmentQuoteOut(BaseModel):
     amount: float
     installments: int
 
-    # Null where the bank publishes a rate but never states a payment -- the
-    # same contract as FinanceQuoteOut.installment, and the same bank.
+    # Null where the bank publishes a rate but never states a payment, and
+    # nothing here can reproduce one -- same contract as FinanceQuoteOut.installment.
     installment: float | None = Field(
         default=None,
         description="Monthly payment, or null where the bank publishes only a rate.",
@@ -155,6 +155,9 @@ class CardInstallmentQuoteOut(BaseModel):
     total: float | None = None
 
     profit_rate: float
+    # True when `installment`/`total` were computed by us rather than read off
+    # the wire -- same contract as `FinanceQuoteOut.derived`.
+    derived: bool = False
 
 
 class MileRateOut(BaseModel):

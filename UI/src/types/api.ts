@@ -789,6 +789,11 @@ export interface components {
             total?: number | null;
             /** Profit Rate */
             profit_rate: number;
+            /**
+             * Derived
+             * @default false
+             */
+            derived: boolean;
         };
         /**
          * CategoryOut

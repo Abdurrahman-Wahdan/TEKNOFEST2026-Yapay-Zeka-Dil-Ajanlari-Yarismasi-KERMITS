@@ -12,10 +12,15 @@ request. For financing, that arithmetic is ported rather than refused:
 deterministic annuity over the bank's own published rate, KKDF and BSMV
 shares, and is reproduced exactly in `_installment_plan` below -- the second
 agreed exception to "never compute a bank's figure ourselves", the same shape
-as `BaseBank.convert_from_rates`. Card instalments still refuse: their
-calculator (`installments.js`) schedules against a transaction date and a
-statement cut-off day, neither of which this project asks for, so there is
-nothing to port yet.
+as `BaseBank.convert_from_rates`.
+
+Card instalments are ported too, as of 2026-08-16. `installments.js` schedules
+against a real transaction date and a card's own statement cut-off day, which
+looked like a hard stop -- until anchoring the transaction to the statement
+date itself turned out to erase the dependency: it forces a full first
+billing cycle, and every one of the six ordinary cut-off days (3/5/7/10/17/25;
+the 29th alone differs, from landing on February) then gives the identical
+answer to the kuruş. See `_card_installment_plan` for the exact convention.
 
 Everything else it states is available through `products`: the finance
 products with their per-term profit rates, allocation fee and BSMV, and the
@@ -25,8 +30,10 @@ Contract in docs/discovery/captured/turkiyefinans.md, exercised by
 verify_turkiyefinans.py.
 """
 
+import calendar
 import logging
 import re
+from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 
 from ..models import CardInstallmentQuote, Conversion, FinanceQuote, PaymentRow, Product, Rate
@@ -94,12 +101,12 @@ class TurkiyeFinans(BaseBank):
     rate_aliases = RATE_ALIASES
     notes = (
         "It publishes rate and fee tables and computes nothing itself: its "
-        "own calculator does the arithmetic in the browser. Financing "
-        "instalments are computed here from that published rate, the same "
-        "arithmetic the bank's own calculator runs (flagged derived). Card "
-        "instalments still come back with the bank's published rate and no "
-        "instalment -- its calculator schedules against a transaction date "
-        "this project does not have. Participation accounts come back as a "
+        "own calculator does the arithmetic in the browser. Financing and "
+        "card instalments are both computed here from that published rate, "
+        "the same arithmetic the bank's own calculator runs (flagged "
+        "derived) -- card instalments by anchoring the transaction to the "
+        "statement date itself, which removes its date dependence rather "
+        "than working around it. Participation accounts come back as a "
         "ratio only, through list_products."
     )
 
@@ -296,20 +303,22 @@ class TurkiyeFinans(BaseBank):
             derived=True,
         ))
 
-    # ----- a rate, but not yet a payment -----
+    # ----- a rate, and now a payment computed the bank's own way -----
 
     def card_installment_quote(
         self, card: str, amount: float, installments: int
     ) -> CardInstallmentQuote:
-        """The published card instalment rate, with no instalment amount.
+        """The published card instalment rate, plus a computed payment.
 
-        `taksitle-hesaplama-araci.aspx` runs a client-side annuity too, but a
-        date-dependent one: `installments.js` schedules against a transaction
-        date and a statement cut-off day (`moment(...).diff(..., 'days')`
-        drives every period's discount factor), neither of which this project
-        asks for. `finance_quote`'s calculator has no such dependency and is
-        ported (see `_installment_plan`); this one is not, so the rate -- the
-        one figure the bank actually states here -- comes back alone.
+        `taksitle-hesaplama-araci.aspx` runs `installments.js`, a client-side
+        annuity that schedules against a real transaction date and a card's
+        own statement cut-off day. Neither is a figure this project has for a
+        generic quote -- but anchoring the transaction to the statement date
+        itself (see `_card_installment_plan`) removes the dependency rather
+        than working around it: every ordinary cut-off day then answers
+        identically, so the choice among them was never actually customer-
+        specific information, just an artifact of asking the question with a
+        real date filled in.
         """
         chosen = self.find_product("card", card)
         self._check_limits(chosen, amount=amount, term=installments,
@@ -325,15 +334,28 @@ class TurkiyeFinans(BaseBank):
             )
         profit_rate = float(value.group(1).replace(",", "."))
 
+        # `_service` unwraps to a list for every catalogue call; this endpoint
+        # answers one object instead of a table, and a truthy dict survives
+        # its `or []` fallback unchanged, so the same helper still applies.
+        fees_data = self._service("GetKKDFandBSMVRate", "GetKKDFandBSMVRateResult")
+        kkdf = rate(fees_data.get("KKDF")) if isinstance(fees_data, dict) else 0.0
+        bsmv = rate(fees_data.get("BSMV")) if isinstance(fees_data, dict) else 0.0
+
+        installment, total, schedule = _card_installment_plan(
+            amount=amount, count=int(installments),
+            monthly_rate=profit_rate / 100, kkdf=kkdf, bsmv=bsmv,
+        )
+
         return CardInstallmentQuote(
             bank=self.name,
             card=chosen,
             amount=float(amount),
             installments=int(installments),
-            installment=None,
-            total=None,
+            installment=installment,
+            total=total,
             profit_rate=profit_rate,
-            raw={"txtTaksitleKarPayi": value.group(1)},
+            raw={"txtTaksitleKarPayi": value.group(1), "fees": fees_data, "schedule": schedule},
+            derived=True,
         )
 
     @refusal
@@ -422,3 +444,117 @@ def _installment_plan(
         ))
 
     return installment, _round2(installment * term), schedule
+
+
+# Any of the six ordinary statement dates the card calculator's own dropdown
+# offers (3/5/7/10/17/25) gives the identical result once the transaction is
+# anchored to the statement date itself -- verified live across all six and
+# across every calendar month. Only the seventh, 29, differs, from landing on
+# February in eight years out of nine; 17 sits away from that edge with room
+# to spare on both sides.
+_CARD_STATEMENT_DAY = 17
+
+
+def _round4(value: float) -> float:
+    return float(Decimal(str(value)).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP))
+
+
+def _round6(value: float) -> float:
+    return float(Decimal(str(value)).quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP))
+
+
+def _add_months(base: date, months: int) -> date:
+    total = base.month - 1 + months
+    year = base.year + total // 12
+    month = total % 12 + 1
+    day = min(base.day, calendar.monthrange(year, month)[1])
+    return date(year, month, day)
+
+
+def _card_installment_plan(
+    *, amount: float, count: int, monthly_rate: float, kkdf: float, bsmv: float,
+) -> tuple[float, float, list[PaymentRow]]:
+    """Türkiye Finans's card instalment arithmetic, reproduced exactly.
+
+    A line-by-line port of `calculateInstallment` in
+    `/SiteAssets/js/jquery/taksitle/installments.js` (captured live
+    2026-08-16), the function `taksitle-hesaplama-araci.aspx` runs after
+    Hesapla. Unlike `_installment_plan` above, this one schedules against a
+    real transaction date and a card's own statement cut-off day -- a genuine
+    per-customer input this project has no value for.
+
+    The transaction date is anchored to the statement date itself
+    (`_CARD_STATEMENT_DAY`) rather than guessed: doing that forces a full
+    first billing cycle, which is what makes the cut-off day stop mattering --
+    confirmed live, not assumed, by running all six ordinary cut-off days
+    against the same transaction date and getting the identical answer to the
+    kuruş. What is left is the bank's own real calendar (today's date, and how
+    many real days sit in each month between now and each due date), which is
+    the same day-count sensitivity every other bank's own schedule already
+    carries in this codebase -- not something invented for this one.
+
+    The level payment is priced off the inflated rate
+    (`monthly_rate * (1 + kkdf + bsmv)`), same scheme as `_installment_plan`.
+    Where this diverges from it: each period's profit multiplier is
+    `(1 + monthly_rate) ** (funded_days / 30) - 1`, not a flat monthly rate,
+    because a card's funded days per period are real calendar gaps between
+    statement dates rather than a fixed 30; and the last instalment's own
+    amount is recomputed to close the balance exactly, so it is not always
+    equal to the level payment the way it is in `_installment_plan`.
+    """
+    transaction_date = date.today().replace(day=_CARD_STATEMENT_DAY)
+    if transaction_date.day >= _CARD_STATEMENT_DAY:
+        first_due = _add_months(transaction_date, 1).replace(day=_CARD_STATEMENT_DAY)
+    else:
+        first_due = transaction_date.replace(day=_CARD_STATEMENT_DAY)
+    due_dates = [_add_months(first_due, period) for period in range(count)]
+
+    effective_rate = monthly_rate * (1 + kkdf + bsmv)
+    discount_factors = [
+        _round6(1 / (1 + effective_rate) ** ((due - transaction_date).days / 30))
+        for due in due_dates
+    ]
+    level_installment = _round2(amount / sum(discount_factors))
+
+    schedule: list[PaymentRow] = []
+    balance = 0.0
+    total_payment = 0.0
+    for period, due in enumerate(due_dates):
+        funded_days = (
+            (due - transaction_date).days if period == 0
+            else (due - due_dates[period - 1]).days
+        )
+        multiplier = _round4(_round4((1 + monthly_rate) ** (funded_days / 30)) - 1)
+        profit = _round2(amount * multiplier) if period == 0 else _round2(balance * multiplier)
+        kkdf_amount = _round2(profit * kkdf)
+        bsmv_amount = _round2(profit * bsmv)
+        tax = _round2(kkdf_amount + bsmv_amount)
+
+        installment_amount = level_installment
+        principal = _round2(level_installment - profit - tax)
+        if period == 0:
+            balance = _round2(amount - principal)
+        elif period == count - 1:
+            # Closes the balance to exactly zero -- and, unlike the last
+            # period of `_installment_plan`, the JS recomputes this period's
+            # own instalment amount around that principal rather than leaving
+            # it at the level payment, so `installment_amount` here can be a
+            # few kuruş off the others.
+            principal = balance
+            installment_amount = _round2(principal + profit + tax)
+            balance = 0.0
+        else:
+            balance = _round2(balance - principal)
+
+        total_payment = _round2(total_payment + installment_amount)
+        schedule.append(PaymentRow(
+            order=period + 1,
+            amount=installment_amount,
+            principal=principal,
+            profit=profit,
+            taxes=tax,
+            remaining=balance,
+            due_date=due.isoformat(),
+        ))
+
+    return level_installment, total_payment, schedule

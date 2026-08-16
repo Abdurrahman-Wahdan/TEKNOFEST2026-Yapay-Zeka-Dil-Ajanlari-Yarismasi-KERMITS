@@ -171,17 +171,20 @@ class CardInstallmentQuote:
     amount: float
     installments: int
 
-    # None where the bank publishes a rate but never states a payment --
-    # Türkiye Finans, still, on cards specifically: its finance quotes now
-    # compute a real instalment (see `FinanceQuote.derived`), but the card
-    # calculator's `installments.js` runs a date-dependent version of the same
-    # scheme -- it schedules against a transaction date and a statement cut-off
-    # day, both unknown here -- so it stays unported and this stays None.
+    # None where the bank publishes a rate but never states a payment. Türkiye
+    # Finans no longer lands here (see `derived`, below): its card calculator
+    # is date-dependent, but the date dependence turned out to wash out to
+    # nothing once the transaction is anchored to a statement date itself --
+    # see `turkiyefinans.py::_card_installment_plan`.
     installment: float | None
     total: float | None
 
     profit_rate: float
     raw: dict
+
+    # True where the payment was computed by us rather than read off the
+    # wire -- same contract as `FinanceQuote.derived`.
+    derived: bool = False
 
     @property
     def priced(self) -> bool:

@@ -342,7 +342,11 @@ export function cardTable(c: Comparison, t: Labels) {
     cells: {
       bank: q.bank,
       card: q.card?.name ?? "",
-      basis: q.installment == null ? t.rateOnly : "",
+      // Same precedence as `quoteBasis`: a still-empty payment (a future
+      // bank whose card calculator cannot be ported) says so; a computed one
+      // (Türkiye Finans, since `_card_installment_plan`) says so instead --
+      // never both, and never neither once one of them is true.
+      basis: q.installment == null ? t.rateOnly : q.derived ? t.computed : "",
       installments: q.installments,
       // Null where the bank publishes a rate but never states a payment
       // (Türkiye Finans). The table renders an em dash and sorting sinks it,

@@ -958,23 +958,67 @@ def test_turkiyefinans_refuses_a_term_it_publishes_no_rate_for(monkeypatch):
     assert "bands cover" in str(exc.value)
 
 
-def test_turkiyefinans_card_quotes_a_rate_and_no_payment(monkeypatch):
-    """Its card calculator runs the same annuity in the browser as financing --
-    a published rate, read off the disabled form control, and no instalment.
+def test_turkiyefinans_card_quotes_a_rate_and_a_computed_payment(monkeypatch):
+    """Its card calculator runs a date-dependent annuity in the browser --
+    `installments.js` -- but anchoring the transaction to the statement date
+    itself (`_card_installment_plan`) erases the date dependence, so this now
+    computes a real payment instead of leaving it null.
+
+    The exact instalment amount moves with today's date (real calendar days
+    between now and each future due date), so this checks the structural
+    invariants rather than a fixed number: the schedule closes to zero, the
+    total exceeds the amount borrowed, and -- the property that justifies
+    doing this at all -- the answer does not depend on which of the ordinary
+    statement dates is picked.
     """
     html = (
         '<input type="text" class="rate" disabled="disabled" value="4.25" '
         'id="txtTaksitleKarPayi">'
     )
-    serve(monkeypatch, [{}], text=html)
+    serve(monkeypatch, [{}], text=html, routes={
+        "GetKKDFandBSMVRate": load("turkiyefinans", "kkdf_bsmv.json"),
+    })
     quote = get_bank("turkiyefinans").card_installment_quote(
         "Kredi Kartı Taksitle", 10000, 6
     )
 
-    assert quote.installment is None
-    assert quote.total is None
-    assert quote.priced is False
+    assert quote.priced is True
+    assert quote.derived is True
     assert quote.profit_rate == pytest.approx(4.25)
+    assert quote.installment > 0
+    assert quote.total > quote.amount
+    schedule = quote.raw["schedule"]
+    assert len(schedule) == 6
+    assert schedule[-1].remaining == 0
+    assert sum(row.principal for row in schedule) == pytest.approx(10000, abs=0.02)
+
+
+def test_turkiyefinans_card_installment_does_not_depend_on_statement_day(monkeypatch):
+    """The whole justification for computing this at all: pick any of the six
+    ordinary statement dates and the transaction-anchored schedule answers
+    identically, so the day the calculator's own dropdown asks for was never
+    actually customer-specific information for this quote."""
+    import banks.providers.turkiyefinans as tf_module
+
+    html = (
+        '<input type="text" class="rate" disabled="disabled" value="4.25" '
+        'id="txtTaksitleKarPayi">'
+    )
+    original_day = tf_module._CARD_STATEMENT_DAY
+    try:
+        results = []
+        for day in (3, 5, 7, 10, 17, 25):
+            tf_module._CARD_STATEMENT_DAY = day
+            serve(monkeypatch, [{}], text=html, routes={
+                "GetKKDFandBSMVRate": load("turkiyefinans", "kkdf_bsmv.json"),
+            })
+            quote = get_bank("turkiyefinans").card_installment_quote(
+                "Kredi Kartı Taksitle", 10000, 6
+            )
+            results.append((quote.installment, quote.total))
+        assert len(set(results)) == 1, f"statement day changed the answer: {results}"
+    finally:
+        tf_module._CARD_STATEMENT_DAY = original_day
 
 
 def test_turkiyefinans_card_refuses_outside_its_slider_range(monkeypatch):

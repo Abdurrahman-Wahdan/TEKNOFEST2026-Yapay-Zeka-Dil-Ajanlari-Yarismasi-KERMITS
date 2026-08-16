@@ -31,11 +31,19 @@ port of it, and `finance_quote` returns the result with `derived=True` — the
 second agreed exception to "never compute a bank's figure ourselves" (the
 first is `BaseBank.convert_from_rates`).
 
-This does **not** extend to card instalments. `taksitle-hesaplama-araci.aspx`
-runs a *different* client-side annuity (`installments.js`, under
-`/SiteAssets/js/jquery/taksitle/`) that schedules against a real transaction
-date and a statement cut-off day — `card_installment_quote` has no date input
-to feed it, so it still returns the published rate with `installment=None`.
+**Updated 2026-08-16 — card instalments are ported too.**
+`taksitle-hesaplama-araci.aspx` runs a *different* client-side annuity
+(`installments.js`, under `/SiteAssets/js/jquery/taksitle/`) that schedules
+against a real transaction date and a statement cut-off day. `card_installment_quote`
+has no date input to feed it — but anchoring the transaction to the statement
+date itself forces a full first billing cycle, and once that offset is gone
+the cut-off day stops mattering: all six ordinary dropdown values (3/5/7/10/17/25)
+answer identically, live, to the kuruş. Only 29 differs, from landing on
+February most years. `_card_installment_plan` in `turkiyefinans.py` is the
+port; `card_installment_quote` returns a real `installment`/`total`, flagged
+`derived=True`, using `GetKKDFandBSMVRate` (`{"BSMV":"0.05","KKDF":"0.15"}`,
+already found live but previously unread) the same way `finance_quote` uses
+the finance table's `Bitt`/`Rusf`.
 
 Everything else about the bank is easy: plain `GET`s, JSON, no token, no
 session, no WAF.

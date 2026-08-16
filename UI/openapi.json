@@ -1957,6 +1957,11 @@
           "profit_rate": {
             "type": "number",
             "title": "Profit Rate"
+          },
+          "derived": {
+            "type": "boolean",
+            "title": "Derived",
+            "default": false
           }
         },
         "type": "object",

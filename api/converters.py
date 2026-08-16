@@ -135,7 +135,7 @@ def card_quote_out(quote: CardInstallmentQuote) -> CardInstallmentQuoteOut:
     return CardInstallmentQuoteOut(
         bank=quote.bank, card=product_out(quote.card), amount=quote.amount,
         installments=quote.installments, installment=quote.installment,
-        total=quote.total, profit_rate=quote.profit_rate,
+        total=quote.total, profit_rate=quote.profit_rate, derived=quote.derived,
     )
 
 
