@@ -33,12 +33,20 @@ def all_banks() -> list[str]:
 
 
 def _fresh_enough(front: str) -> bool:
-    """Süresi geçmişse False (atla); tarihsiz ya da hâlâ geçerliyse True."""
+    """Süresi geçmişse False (atla); tarihsiz ya da hâlâ geçerliyse True.
+
+    Tarih varsa deterministik hesaplanır. Tarih yoksa date_pass'in metinden
+    çıkardığı campaign_status'a bakılır (bitti -> atla)."""
+    end = status = ""
     for line in front.splitlines():
-        if line.strip().startswith("campaign_end:"):
-            end = line.split(":", 1)[1].strip().strip('"')
-            return not end or _dates.is_active(end)
-    return True
+        s = line.strip()
+        if s.startswith("campaign_end:"):
+            end = s.split(":", 1)[1].strip().strip('"')
+        elif s.startswith("campaign_status:"):
+            status = s.split(":", 1)[1].strip().strip('"')
+    if end:
+        return _dates.is_active(end)
+    return status != "bitti"
 
 
 def _pages(bank: str, limit: int | None):
