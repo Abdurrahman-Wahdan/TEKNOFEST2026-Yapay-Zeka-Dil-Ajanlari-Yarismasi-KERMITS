@@ -211,6 +211,50 @@ def profit_share(family: str, amount: float, term: int, unit: str,
                       time.monotonic() - started)
 
 
+def card(amount: float, installments: int, banks: list[str] | None = None) -> Comparison:
+    """Every card at every bank that publishes a card calculator, ranked.
+
+    Cards have no cross-bank family the way finance products do -- each bank
+    sells its own catalogue under its own names -- so this asks every in-scope
+    bank for its whole card catalogue and quotes every one, the same "one row
+    per real thing sold" shape `finance` gets from the family table, built
+    here from each bank's own products() instead of a shared taxonomy.
+    """
+    started = time.monotonic()
+    scope = _scope("card", banks)
+    if not scope:
+        offering = sorted(b.name for b in BANKS if "card" in b.capabilities)
+        raise UnsupportedProduct(
+            f"None of the banks named publish a card calculator. These do: "
+            f"{', '.join(offering)}."
+        )
+    asking: list[tuple[BaseBank, object]] = []
+    missing: list[Unavailable] = []
+    for bank in scope:
+        try:
+            cards = bank.products("card")
+        except TemporarilyUnavailable as exc:
+            missing.append(Unavailable(bank.name, MAINTENANCE, str(exc)[:DETAIL_CHARS]))
+            continue
+        except UnsupportedProduct as exc:
+            missing.append(Unavailable(bank.name, NOT_OFFERED, str(exc)[:DETAIL_CHARS]))
+            continue
+        if not cards:
+            missing.append(Unavailable(
+                bank.name, NOT_OFFERED, f"{bank.display_name} publishes no cards.",
+            ))
+            continue
+        asking.extend((bank, card) for card in cards)
+
+    work = [
+        (bank, partial(_quote_card, card=product, amount=amount, installments=installments))
+        for bank, product in asking
+    ]
+    quotes, problems = _fan_out(work)
+    return Comparison("card", "card", quotes, missing + problems,
+                      time.monotonic() - started)
+
+
 def exchange(source: str, target: str, amount: float,
              banks: list[str] | None = None) -> Comparison:
     """The same conversion at every bank that converts.
@@ -264,3 +308,10 @@ def _quote_profit_share(bank, *, member, amount, term, currency, unit):
 
 def _convert(bank, *, source, target, amount):
     return bank.convert(source, target, amount)
+
+
+def _quote_card(bank, *, card, amount, installments):
+    # By name, not code: Kuveyt Türk's catalogue lists the code BP twice for
+    # two different cards, and the name is what find_product can resolve
+    # without raising "lists it more than once".
+    return bank.card_installment_quote(card.name, amount, installments)

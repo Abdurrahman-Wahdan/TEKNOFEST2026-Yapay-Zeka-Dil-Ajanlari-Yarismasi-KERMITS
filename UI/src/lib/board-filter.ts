@@ -15,19 +15,28 @@ export const SIDES = ["buy", "sell"];
 /**
  * The columns to hide, given what the user picked.
  *
- * Empty means everything, in both dimensions. That is what stops the two from
- * cancelling each other out: they used to be inferred from the hidden columns,
- * so clearing one made the other look cleared too and nothing could be
- * selected again.
+ * A key that was never touched means everything, in both dimensions -- that
+ * is what stops the two from cancelling each other out, the same way it did
+ * before this was split into two keys: they used to be inferred from the
+ * hidden columns, so clearing one made the other look cleared too and
+ * nothing could be selected again.
+ *
+ * Untouched is `undefined`, not `[]`. Collapsing "nobody's picked anything
+ * yet" and "the user picked nothing on purpose" onto the same empty array
+ * made the second one unreachable: toggling every bank off produced `[]`,
+ * which read back as "no filter" and every bank re-appeared, so the toggle
+ * looked stuck between all-on and all-on. `state.values[key]` is left as
+ * whatever was actually stored -- `undefined` until touched, a real array
+ * (possibly empty) after.
  */
 export function hiddenColumns(state: FilterState, banks: string[]): string[] {
-  const pickedBanks = state.values[BANK_KEY] ?? [];
-  const pickedSides = state.values[SIDE_KEY] ?? [];
+  const pickedBanks = state.values[BANK_KEY];
+  const pickedSides = state.values[SIDE_KEY];
   const hidden: string[] = [];
   for (const bank of banks) {
     for (const side of SIDES) {
-      const bankOn = pickedBanks.length === 0 || pickedBanks.includes(bank);
-      const sideOn = pickedSides.length === 0 || pickedSides.includes(side);
+      const bankOn = pickedBanks === undefined || pickedBanks.includes(bank);
+      const sideOn = pickedSides === undefined || pickedSides.includes(side);
       if (!bankOn || !sideOn) hidden.push(`${bank}__${side}`);
     }
   }

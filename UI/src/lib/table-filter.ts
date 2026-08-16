@@ -150,6 +150,13 @@ export function sortRows(
   sort: SortState | null,
   columns: readonly ResolvedColumn[],
   locale: Locale = "tr",
+  // A bank cell holds the provider's own key ("kuveytturk"), not the name on
+  // screen -- `Cell` in `ProducedTable` already looks it up there for
+  // display, and sorting has to look the same name up to match, or "sort
+  // alphabetically" would order by an internal key nobody sees and read as
+  // random. Optional and unused by every other caller, where there is no
+  // bank column to begin with.
+  bankLabels?: Record<string, string>,
 ): Row[] {
   if (!sort) return [...rows];
   const column = columns.find((c) => c.key === sort.key);
@@ -178,8 +185,13 @@ export function sortRows(
       return ((left === true ? 1 : 0) - (right === true ? 1 : 0)) * sign;
     }
 
+    const label = (value: CellValue | undefined) => {
+      const text = cellText(value);
+      return column.type === "bank" ? (bankLabels?.[text] ?? text) : text;
+    };
+
     // ISO dates sort correctly as strings, which is why the contract only ever
     // types a date column when the values are ISO.
-    return cellText(left).localeCompare(cellText(right), locale === "tr" ? "tr" : "en") * sign;
+    return label(left).localeCompare(label(right), locale === "tr" ? "tr" : "en") * sign;
   });
 }

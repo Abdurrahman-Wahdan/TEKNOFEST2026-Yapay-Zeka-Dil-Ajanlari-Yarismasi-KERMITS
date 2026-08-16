@@ -9,7 +9,7 @@ import json
 import pytest
 
 from banks import compare, families, get_bank, status
-from banks.models import FinanceQuote, Product
+from banks.models import CardInstallmentQuote, FinanceQuote, Product
 from banks.providers import BANKS
 from banks.providers.base import TemporarilyUnavailable, UnsupportedProduct
 from banks.tools import build_tools
@@ -186,6 +186,116 @@ def test_a_recorded_outage_surfaces_as_maintenance(monkeypatch):
     status.write({"vakif": {"finance": status.entry(status.DOWN, "could not be reached")}})
     result = answer(monkeypatch, {"kuveytturk": 900.0, "emlak": 800.0}, keep=("vakif",))
     assert {u.bank: u.why for u in result.unavailable}["vakif"] == compare.MAINTENANCE
+
+
+# ----- card -----
+
+CARD_BANKS = ("kuveytturk", "vakif", "turkiyefinans")
+
+
+def card_quote(bank: str, card: str, installment: float | None) -> CardInstallmentQuote:
+    return CardInstallmentQuote(
+        bank=bank,
+        card=Product(code=card, name=card, category="card"),
+        amount=10_000, installments=6,
+        installment=installment,
+        total=installment * 6 if installment is not None else None,
+        profit_rate=4.0,
+        raw={},
+    )
+
+
+def answer_card(monkeypatch, catalogue: dict, price: dict):
+    """Give each bank in CARD_BANKS a card catalogue and a price per card.
+
+    `catalogue` maps bank -> list of card names; `price` maps card name ->
+    installment (None for a rate-only row, an Exception to simulate a refusal).
+    Any bank in CARD_BANKS left out of `catalogue` gets no cards, exactly as
+    a real bank with an empty products("card") answer would.
+    """
+    for name in CARD_BANKS:
+        bank = get_bank(name)
+        cards = catalogue.get(name, [])
+
+        def products(self, category, _cards=cards):
+            assert category == "card"
+            return [Product(code=c, name=c, category="card") for c in _cards]
+
+        def quote(self, card, amount, installments, _name=name):
+            outcome = price[card]
+            if isinstance(outcome, Exception):
+                raise outcome
+            return card_quote(_name, card, outcome)
+
+        monkeypatch.setattr(type(bank), "products", products)
+        monkeypatch.setattr(type(bank), "card_installment_quote", quote)
+
+    from banks.providers import base as provider_base
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("a comparison test must not touch the network")
+
+    monkeypatch.setattr(provider_base, "request_json", forbidden)
+    monkeypatch.setattr(provider_base, "request_text", forbidden)
+    return compare.card(10_000, 6)
+
+
+def test_card_quotes_every_card_a_bank_publishes(monkeypatch):
+    """A bank with five cards contributes five rows, not one."""
+    result = answer_card(
+        monkeypatch,
+        {"kuveytturk": ["SK", "BP", "TK"], "vakif": ["FK"]},
+        {"SK": 900.0, "BP": 850.0, "TK": 950.0, "FK": 700.0},
+    )
+    assert len(result.quotes) == 4
+    assert {q.bank for q in result.quotes} == {"kuveytturk", "vakif"}
+    assert sorted(q.card.name for q in result.quotes if q.bank == "kuveytturk") == [
+        "BP", "SK", "TK",
+    ]
+
+
+def test_card_cheapest_across_banks_is_ranked_first(monkeypatch):
+    result = answer_card(
+        monkeypatch,
+        {"kuveytturk": ["SK"], "vakif": ["FK"]},
+        {"SK": 900.0, "FK": 700.0},
+    )
+    cheapest = min(result.quotes, key=lambda q: q.installment)
+    assert cheapest.bank == "vakif"
+
+
+def test_card_rate_only_row_can_never_win(monkeypatch):
+    """Türkiye Finans states a rate and no payment -- it must sink, not sort
+    as if a missing instalment were free."""
+    result = answer_card(
+        monkeypatch,
+        {"kuveytturk": ["SK"], "turkiyefinans": ["Kredi Kartı Taksitle"]},
+        {"SK": 900.0, "Kredi Kartı Taksitle": None},
+    )
+    priced = [q for q in result.quotes if q.priced]
+    unpriced = [q for q in result.quotes if not q.priced]
+    assert {q.bank for q in priced} == {"kuveytturk"}
+    assert {q.bank for q in unpriced} == {"turkiyefinans"}
+
+
+def test_card_bank_with_no_catalogue_is_reported_not_hidden(monkeypatch):
+    result = answer_card(monkeypatch, {"kuveytturk": ["SK"]}, {"SK": 900.0})
+    missing = {u.bank: u for u in result.unavailable}
+    assert missing["vakif"].why == compare.NOT_OFFERED
+    assert missing["turkiyefinans"].why == compare.NOT_OFFERED
+
+
+def test_compare_card_names_the_cheapest(monkeypatch):
+    answer_card(
+        monkeypatch,
+        {"kuveytturk": ["SK"], "vakif": ["FK"]},
+        {"SK": 900.0, "FK": 700.0},
+    )
+    tool = next(t for t in build_tools() if t.name == "compare_card")
+    payload = json.loads(tool.invoke({"amount": 10000, "installments": 6}))
+
+    assert payload["cheapest"] == "vakif"
+    assert payload["ranked"][0]["bank"] == "vakif"
 
 
 # ----- the tools -----

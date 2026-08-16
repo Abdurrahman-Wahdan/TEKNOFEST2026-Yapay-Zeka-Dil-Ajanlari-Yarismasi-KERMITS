@@ -1191,6 +1191,82 @@
         }
       }
     },
+    "/api/compare/card": {
+      "get": {
+        "tags": [
+          "compare"
+        ],
+        "summary": "Compare Card",
+        "description": "Every card at every bank that publishes a card calculator, ranked.\n\nCards have no cross-bank family: each bank sells its own catalogue under\nits own names, so this quotes every card every in-scope bank publishes\nrather than one named product. A bank that states only a rate and no\ninstalment sinks to the bottom of the ranking rather than winning it.",
+        "operationId": "compare_card",
+        "parameters": [
+          {
+            "name": "amount",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "title": "Amount"
+            }
+          },
+          {
+            "name": "installments",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 36,
+              "exclusiveMinimum": 0,
+              "title": "Installments"
+            }
+          },
+          {
+            "name": "banks",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Limit to these banks. Omitted, every bank that sells it is asked.",
+              "title": "Banks"
+            },
+            "description": "Limit to these banks. Omitted, every bank that sells it is asked."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparisonOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/compare/constraints": {
       "get": {
         "tags": [
@@ -1856,11 +1932,26 @@
             "title": "Installments"
           },
           "installment": {
-            "type": "number",
-            "title": "Installment"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Installment",
+            "description": "Monthly payment, or null where the bank publishes only a rate."
           },
           "total": {
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Total"
           },
           "profit_rate": {
@@ -1874,8 +1965,6 @@
           "card",
           "amount",
           "installments",
-          "installment",
-          "total",
           "profit_rate"
         ],
         "title": "CardInstallmentQuoteOut"
@@ -2106,6 +2195,13 @@
             },
             "type": "array",
             "title": "Conversions"
+          },
+          "card_quotes": {
+            "items": {
+              "$ref": "#/components/schemas/CardInstallmentQuoteOut"
+            },
+            "type": "array",
+            "title": "Card Quotes"
           },
           "unavailable": {
             "items": {
@@ -2390,6 +2486,11 @@
           "general": {
             "type": "boolean",
             "title": "General",
+            "default": false
+          },
+          "derived": {
+            "type": "boolean",
+            "title": "Derived",
             "default": false
           },
           "schedule": {

@@ -190,6 +190,11 @@ export const api = {
     amount: number;
     banks?: string[];
   }) => request<Comparison>(`/compare/exchange${queryString(params)}`),
+  compareCard: (params: {
+    amount: number;
+    installments: number;
+    banks?: string[];
+  }) => request<Comparison>(`/compare/card${queryString(params)}`),
 
   // ----- corpus -----
   search: (params: {

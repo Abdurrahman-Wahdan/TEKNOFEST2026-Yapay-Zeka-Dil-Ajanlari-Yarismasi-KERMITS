@@ -2,6 +2,7 @@
 
 import functools
 from abc import ABC
+from decimal import Decimal
 
 from .. import status
 from ..http import csrf_token, request_json, request_text
@@ -340,6 +341,75 @@ class BaseBank(ABC):
                 derived=True,
             ))
         return built
+
+    def convert_from_rates(self, source: str, target: str, amount: float) -> Conversion:
+        """`convert()` for a bank that publishes rates but has no converter.
+
+        The other direction from `rates_from_converter`: there a converter
+        stands in for a missing rate board, here a rate board stands in for a
+        missing converter. Kuveyt Türk and Hayat each wrote this multiplication
+        out independently, drifting on the same two edge cases -- how to match
+        a feed's own spelling of a code, and what to do when the feed does not
+        list TL itself -- until a third and fourth bank needed the identical
+        arithmetic. One copy, called from every `convert()` that has nothing
+        server-side to call.
+
+        Selling the source to the bank uses its buy rate; buying the target
+        from the bank uses its sell rate. Marked `derived`, because both
+        numbers are the bank's own even though the multiplication is not --
+        the single agreed exception to never computing a figure ourselves.
+        """
+        source, target = source.upper(), target.upper()
+        if self.rate_aliases.get(source, source) == self.rate_aliases.get(target, target):
+            # Otherwise the buy/sell spread applies to a currency against
+            # itself and 10 USD becomes 9,09 USD. Answered without a request:
+            # there is no rate to look up.
+            value = Decimal(str(amount))
+            return Conversion(
+                bank=self.name, source=source, target=target,
+                amount=value, result=value, rate=Decimal(1), derived=True,
+            )
+
+        by_code = {r.code: r for r in self.rates()}
+        # Every rate is quoted against the lira, which a feed may not list as
+        # a row of its own -- added only if the feed left it out.
+        by_code.setdefault("TL", Rate(code="TL", name="Türk Lirası", buy=1.0, sell=1.0))
+        src = self._resolve_rate_code(source, by_code)
+        dst = self._resolve_rate_code(target, by_code)
+
+        if not by_code[dst].sell:
+            raise UnsupportedProduct(
+                f"{self.display_name} quotes no sell rate for {target}, so the "
+                f"conversion cannot be worked out from its published rates."
+            )
+        value = Decimal(str(amount))
+        rate = Decimal(str(by_code[src].buy)) / Decimal(str(by_code[dst].sell))
+        return Conversion(
+            bank=self.name,
+            # The codes the caller asked about, not this bank's names for them.
+            source=source,
+            target=target,
+            amount=value,
+            result=value * rate,
+            rate=rate,
+            derived=True,
+        )
+
+    def _resolve_rate_code(self, code: str, by_code: dict[str, Rate]) -> str:
+        """The feed's own name for a currency, however the caller spelled it."""
+        wanted = code.upper()
+        resolved = self.rate_aliases.get(wanted, wanted)
+        if resolved in by_code:
+            return resolved
+        # A feed mixes cases of its own ("ALT (gr)", "ZCeyrek"), so match on the
+        # uppercased form rather than refusing "usd" with a list containing USD.
+        for known in by_code:
+            if known.upper() == resolved:
+                return known
+        raise UnsupportedProduct(
+            f"{self.display_name} does not quote {code!r}. "
+            f"Quoted: {', '.join(sorted(by_code))}."
+        )
 
     def find_product(self, category: str, query: str) -> Product:
         """Resolve a product code or a Turkish product name to a Product.

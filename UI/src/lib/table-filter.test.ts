@@ -162,4 +162,26 @@ describe("sortRows", () => {
     const same = sortRows(table.rows, { key: "yok", direction: "asc" }, table.columns);
     assert.deepEqual(banks(same), banks(table.rows));
   });
+
+  it("sorts a bank column by its provider key when no label map is given", () => {
+    const asc = sortRows(table.rows, { key: "banka", direction: "asc" }, table.columns, "tr");
+    assert.deepEqual(banks(asc), ["albaraka", "emlak", "kuveytturk", "vakif"]);
+  });
+
+  it("sorts a bank column by the name shown on screen, not the provider key", () => {
+    // The cell holds "kuveytturk"; the reader sees "Kuveyt Türk Katılım
+    // Bankası". Sorting on the raw key would put Emlak ahead of Kuveyt Türk
+    // and call it alphabetical -- correct for a string nobody reads, wrong
+    // for the column as displayed.
+    const labels: Record<string, string> = {
+      kuveytturk: "Kuveyt Türk Katılım Bankası",
+      albaraka: "Albaraka Türk Katılım Bankası",
+      vakif: "Vakıf Katılım Bankası",
+      emlak: "Türkiye Emlak Katılım Bankası",
+    };
+    const asc = sortRows(
+      table.rows, { key: "banka", direction: "asc" }, table.columns, "tr", labels,
+    );
+    assert.deepEqual(banks(asc), ["albaraka", "kuveytturk", "emlak", "vakif"]);
+  });
 });

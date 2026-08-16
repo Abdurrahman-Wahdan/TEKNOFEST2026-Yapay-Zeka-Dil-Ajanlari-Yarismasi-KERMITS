@@ -112,9 +112,12 @@ def test_capabilities_are_honest():
     assert "card" not in listed["albaraka"]["publishes"]
     # It publishes a per-term profit rate for every finance product, so it is
     # in scope for financing, and `GetExchangeRates` on the same service gives
-    # a full FX board. It never publishes a profit amount, so profit_share
-    # stays out.
-    assert listed["turkiyefinans"]["publishes"] == ["finance", "products", "rates"]
+    # a full FX board -- which is also the rate table `convert` derives from,
+    # since the bank has no converter endpoint of its own. It never publishes
+    # a profit amount, so profit_share stays out.
+    assert listed["turkiyefinans"]["publishes"] == [
+        "card", "convert", "finance", "products", "rates",
+    ]
 
 
 def test_every_capability_is_really_implemented():
@@ -553,6 +556,7 @@ def test_the_tool_set_is_fixed_and_names_a_bank_as_an_argument():
         "compare_finance",
         "compare_profit_share",
         "compare_exchange",
+        "compare_card",
         "check_bank_health",
     ]
     for tool in tools:
@@ -836,22 +840,35 @@ def test_turkiyefinans_rate_table_becomes_products(monkeypatch):
     assert all(r.min_amount for r in rows)
 
 
-def test_turkiyefinans_quotes_a_rate_and_no_payment(monkeypatch):
-    """It cannot give a payment, but everything it does publish is a real row.
+def test_turkiyefinans_quotes_a_rate_and_a_computed_payment(monkeypatch):
+    """It states no payment itself, so the payment is computed and flagged.
 
     The bank used to be refused outright, which dropped eighteen products'
-    published pricing off the page. It now ranks on rate like everyone else
-    with an empty payment column -- and `installment` must stay None rather
-    than 0.0, or a sort by payment crowns the one bank that never quoted one.
+    published pricing off the page; then it ranked on rate alone with an
+    empty payment column. Now `finance_quote` reproduces the bank's own
+    client-side annuity (`_installment_plan`, ported from
+    `creditInstallmentResult` in its own JS) instead of leaving the payment
+    blank -- `derived=True` is what tells a caller the figure is worked out
+    rather than read off the wire.
+
+    Expected numbers below are the 19-24 month band for product "1"
+    (Value=4.05, Cost=86.37, Bitt=Rusf=0.15) run through that same formula by
+    hand, independent of the implementation, as a cross-check.
     """
     serve(monkeypatch, [load("turkiyefinans", "credit_types.json")])
     quote = get_bank("turkiyefinans").finance_quote("1", 100000, 24)
 
-    assert quote.installment is None
-    assert quote.total is None
-    assert quote.priced is False
+    assert quote.installment == pytest.approx(7435.04)
+    assert quote.total == pytest.approx(178440.96)
+    assert quote.priced is True
+    assert quote.derived is True
     assert quote.profit_rate > 0
     assert quote.annual_cost_rate > 0
+    assert len(quote.schedule) == 24
+    # The schedule pays the loan off exactly -- no rounding residue left on
+    # the table, the same invariant `_check_quote` enforces for every bank.
+    assert quote.schedule[-1].remaining == 0
+    assert sum(row.principal for row in quote.schedule) == pytest.approx(100000)
     # Read off the bank's own table as percentages, not the shares it sends.
     assert quote.fees["allocation_rate"] == pytest.approx(0.575)
     assert quote.fees["bsmv_rate"] == pytest.approx(15.0)
@@ -864,6 +881,33 @@ def test_turkiyefinans_refuses_a_term_it_publishes_no_rate_for(monkeypatch):
         get_bank("turkiyefinans").finance_quote("1", 100000, 240)
     # The refusal names the bands, so the caller can ask an answerable question.
     assert "bands cover" in str(exc.value)
+
+
+def test_turkiyefinans_card_quotes_a_rate_and_no_payment(monkeypatch):
+    """Its card calculator runs the same annuity in the browser as financing --
+    a published rate, read off the disabled form control, and no instalment.
+    """
+    html = (
+        '<input type="text" class="rate" disabled="disabled" value="4.25" '
+        'id="txtTaksitleKarPayi">'
+    )
+    serve(monkeypatch, [{}], text=html)
+    quote = get_bank("turkiyefinans").card_installment_quote(
+        "Kredi Kartı Taksitle", 10000, 6
+    )
+
+    assert quote.installment is None
+    assert quote.total is None
+    assert quote.priced is False
+    assert quote.profit_rate == pytest.approx(4.25)
+
+
+def test_turkiyefinans_card_refuses_outside_its_slider_range(monkeypatch):
+    no_network(monkeypatch)
+    with pytest.raises(UnsupportedProduct):
+        get_bank("turkiyefinans").card_installment_quote(
+            "Kredi Kartı Taksitle", 10000, 24
+        )
 
 
 # ----- Hayat -----

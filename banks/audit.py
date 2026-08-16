@@ -212,6 +212,12 @@ def _check(bank, unit: Unit) -> str:
     if unit.capability == "card":
         count = max(int(product.min_term or 3), 3)
         quote = bank.card_installment_quote(unit.product, 10_000, count)
+        # Türkiye Finans states a rate and no payment, by its own design --
+        # see the same branch under "finance" above.
+        if not quote.priced:
+            if not quote.profit_rate:
+                raise AssertionError("neither an instalment nor a rate")
+            return f"10,000/{count}x -> {quote.profit_rate}% (rate only)"
         if quote.installment <= 0:
             raise AssertionError(f"instalment {quote.installment}")
         return f"10,000/{count}x -> {quote.installment:,.2f}"

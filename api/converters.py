@@ -68,6 +68,7 @@ def finance_quote_out(quote: FinanceQuote, *, schedule: bool = True) -> FinanceQ
         fees=dict(quote.fees),
         variant=quote.variant,
         general=quote.general,
+        derived=quote.derived,
         schedule=[payment_row_out(r) for r in quote.schedule] if schedule else [],
     )
 
@@ -168,6 +169,8 @@ def comparison_out(comparison) -> ComparisonOut:
             out.profit_share_quotes.append(profit_share_quote_out(quote))
         elif isinstance(quote, Conversion):
             out.conversions.append(conversion_out(quote))
+        elif isinstance(quote, CardInstallmentQuote):
+            out.card_quotes.append(card_quote_out(quote))
     return out
 
 

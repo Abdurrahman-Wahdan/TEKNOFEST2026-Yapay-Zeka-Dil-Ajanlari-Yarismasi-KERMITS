@@ -472,6 +472,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/compare/card": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Compare Card
+         * @description Every card at every bank that publishes a card calculator, ranked.
+         *
+         *     Cards have no cross-bank family: each bank sells its own catalogue under
+         *     its own names, so this quotes every card every in-scope bank publishes
+         *     rather than one named product. A bank that states only a rate and no
+         *     instalment sinks to the bottom of the ranking rather than winning it.
+         */
+        get: operations["compare_card"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/compare/constraints": {
         parameters: {
             query?: never;
@@ -755,10 +780,13 @@ export interface components {
             amount: number;
             /** Installments */
             installments: number;
-            /** Installment */
-            installment: number;
+            /**
+             * Installment
+             * @description Monthly payment, or null where the bank publishes only a rate.
+             */
+            installment?: number | null;
             /** Total */
-            total: number;
+            total?: number | null;
             /** Profit Rate */
             profit_rate: number;
         };
@@ -893,6 +921,8 @@ export interface components {
             profit_share_quotes?: components["schemas"]["ProfitShareQuoteOut"][];
             /** Conversions */
             conversions?: components["schemas"]["ConversionOut"][];
+            /** Card Quotes */
+            card_quotes?: components["schemas"]["CardInstallmentQuoteOut"][];
             /** Unavailable */
             unavailable?: components["schemas"]["UnavailableOut"][];
             /**
@@ -1046,6 +1076,11 @@ export interface components {
              * @default false
              */
             general: boolean;
+            /**
+             * Derived
+             * @default false
+             */
+            derived: boolean;
             /** Schedule */
             schedule?: components["schemas"]["PaymentRowOut"][];
         };
@@ -2141,6 +2176,40 @@ export interface operations {
                 source: string;
                 target: string;
                 amount: number;
+                /** @description Limit to these banks. Omitted, every bank that sells it is asked. */
+                banks?: string[] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComparisonOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    compare_card: {
+        parameters: {
+            query: {
+                amount: number;
+                installments: number;
                 /** @description Limit to these banks. Omitted, every bank that sells it is asked. */
                 banks?: string[] | null;
             };

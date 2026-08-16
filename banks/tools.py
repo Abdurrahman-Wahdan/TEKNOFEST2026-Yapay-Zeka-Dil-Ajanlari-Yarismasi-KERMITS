@@ -146,6 +146,13 @@ def _card(quote: CardInstallmentQuote) -> dict:
         "monthly_installment": quote.installment,
         "total_payable": quote.total,
         "profit_rate": quote.profit_rate,
+        # Only present when true, so a bank that states a real payment carries
+        # no empty key. Türkiye Finans runs its instalment schedule in the
+        # browser and publishes only the rate -- see _finance's same note.
+        **(
+            {"note": "this bank publishes a rate but states no instalment"}
+            if not quote.priced else {}
+        ),
     }
 
 
@@ -526,6 +533,32 @@ def compare_profit_share(
 
 
 @tool
+def compare_card(
+    amount: float, installments: int, banks: list[str] | None = None
+) -> str:
+    """Compare every credit card at every bank that publishes a card calculator.
+
+    Use for "hangi bankanin karti daha ucuz", "kart taksit karsilastir". Cards
+    have no shared family across banks -- each sells its own catalogue under
+    its own names -- so this asks every in-scope bank for its whole card
+    catalogue and quotes every one; there is nothing to narrow by product name.
+    `banks` optionally narrows which banks are asked.
+
+    Returns "ranked", cheapest monthly instalment first, and "cheapest" naming
+    that bank and card. A bank that publishes only a rate and no instalment
+    (its calculator runs the schedule in the browser) sinks to the bottom and
+    can never be "cheapest"; its rate still appears in the row. Banks not in
+    the ranking appear under "not_compared" with a reason.
+    """
+    return _answer(lambda: _ranked(
+        compare.card(amount, installments, banks),
+        lambda q: _card(q),
+        key=lambda r: r["monthly_installment"],
+        best_label="cheapest",
+    ))
+
+
+@tool
 def compare_exchange(
     source: str, target: str, amount: float, banks: list[str] | None = None
 ) -> str:
@@ -599,6 +632,7 @@ _TOOLS: list[BaseTool] = [
     compare_finance,
     compare_profit_share,
     compare_exchange,
+    compare_card,
     check_bank_health,
 ]
 

@@ -56,12 +56,17 @@ class FinanceQuote:
     amount: float
     term: int
 
-    # None where the bank publishes a rate but never states a payment. Türkiye
-    # Finans is the case: its calculator does the annuity in the browser, so
-    # there is no instalment to read back, and computing one ourselves is the
-    # one thing the rules forbid. A rate-only row is a real answer -- the rate
-    # is the bank's own -- and it must stay distinguishable from a bank that
-    # answered with a payment, which is why this is None and not 0.0.
+    # None where the bank publishes a rate but never states a payment. A
+    # rate-only row is a real answer -- the rate is the bank's own -- and it
+    # must stay distinguishable from a bank that answered with a payment,
+    # which is why this is None and not 0.0.
+    #
+    # Türkiye Finans no longer lands here: its finance quotes carry a real
+    # figure, computed by porting `creditInstallmentResult` out of the bank's
+    # own client-side JS (`derived=True`, below) -- the same arithmetic its
+    # calculator runs in the browser, not one we invented. Its card quotes are
+    # still None: `installments.js` runs a date-dependent version of the same
+    # scheme and nothing here asks for a transaction date.
     installment: float | None
     total: float | None
 
@@ -86,6 +91,15 @@ class FinanceQuote:
     # not specific to the family it appears in, and saying so is the difference
     # between an honest ranking and a misleading one.
     general: bool = False
+
+    # True where `installment`/`total`/`schedule` were worked out by us rather
+    # than read off the wire. The single other place this happens is
+    # `Conversion.derived` -- a bank's own rate, multiplied by us -- and the
+    # same rule applies: every input (the profit rate, the KKDF and BSMV
+    # shares) is the bank's own published figure, only the arithmetic is
+    # ours, and callers must surface the distinction rather than render it
+    # next to a real payment with no mark.
+    derived: bool = False
 
     @property
     def priced(self) -> bool:
@@ -156,10 +170,23 @@ class CardInstallmentQuote:
     card: Product
     amount: float
     installments: int
-    installment: float
-    total: float
+
+    # None where the bank publishes a rate but never states a payment --
+    # Türkiye Finans, still, on cards specifically: its finance quotes now
+    # compute a real instalment (see `FinanceQuote.derived`), but the card
+    # calculator's `installments.js` runs a date-dependent version of the same
+    # scheme -- it schedules against a transaction date and a statement cut-off
+    # day, both unknown here -- so it stays unported and this stays None.
+    installment: float | None
+    total: float | None
+
     profit_rate: float
     raw: dict
+
+    @property
+    def priced(self) -> bool:
+        """True when the bank stated a payment, not only a rate."""
+        return self.installment is not None
 
 
 @dataclass(frozen=True)

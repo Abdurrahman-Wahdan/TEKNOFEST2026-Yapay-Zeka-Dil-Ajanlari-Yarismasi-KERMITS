@@ -207,6 +207,13 @@ export function ProducedTable({
                   sx={{
                     whiteSpace: "nowrap",
                     px: GUTTER,
+                    // The cell's own invisible line-height strut sits below
+                    // its content and is not symmetric with the padding, so
+                    // `vertical-align: middle` centres against the strut, not
+                    // the visible content -- a pill ends up a couple of
+                    // pixels low. Zeroing it here lets the padding alone
+                    // decide the cell's height.
+                    lineHeight: 0,
                   }}
                 >
                   <Cell

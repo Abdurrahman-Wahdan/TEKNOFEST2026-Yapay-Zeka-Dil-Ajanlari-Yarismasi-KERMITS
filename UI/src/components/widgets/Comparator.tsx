@@ -1,15 +1,15 @@
 "use client";
 
 import Card from "@mui/material/Card";
-import { Checkbox, Divider, Menu, MenuItem } from "@mui/material";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
-import { useMemo, useState, type MouseEvent } from "react";
+import { useMemo, useState } from "react";
 
 import { ActionButton } from "@/components/ui/ActionButton";
+import { AmountField, IntegerField } from "@/components/ui/AmountField";
 import { Dropdown } from "@/components/ui/Dropdown";
+import { MultiSelect } from "@/components/ui/MultiSelect";
 import { Pill } from "@/components/ui/Pill";
-import { NumberField, TextField } from "@/components/ui/TextField";
 import { VuiBox, VuiTypography } from "@/components/vision";
 import { api, type Bank, type Comparison, type Rate } from "@/lib/api";
 import {
@@ -29,12 +29,13 @@ import {
 } from "@/lib/comparator";
 import type { Row } from "@/lib/contract";
 import type { FilterState, SortState } from "@/lib/table-filter";
-import { hiddenColumns } from "@/lib/board-filter";
+import { BANK_KEY, SIDE_KEY, hiddenColumns } from "@/lib/board-filter";
 import { useRatesStream, type StreamedBoard } from "@/lib/use-rates-stream";
 import { applyFilters, EMPTY_FILTERS, sortRows } from "@/lib/table-filter";
 
 import { ProducedTable } from "./ProducedTable";
 import { BoardFilters } from "./BoardFilters";
+import { TableFilters } from "./TableFilters";
 
 /**
  * How often the FX board refreshes.
@@ -51,10 +52,11 @@ type RunQuery =
   | { kind: "finance"; params: Parameters<typeof api.compareFinance>[0] }
   | { kind: "profit_share"; params: Parameters<typeof api.compareProfitShare>[0] }
   | { kind: "convert"; params: Parameters<typeof api.compareExchange>[0] }
-  | { kind: "card"; bank: string; params: Parameters<typeof api.cardQuote>[1] };
+  | { kind: "card"; params: Parameters<typeof api.compareCard>[0] };
 
-/** Categories priced per bank rather than ranked across a shared family. */
-const SINGLE_BANK_CATEGORIES: CategoryKey[] = ["card", "miles"];
+/** Categories priced per bank rather than ranked across banks -- miles is
+    reference data, one bank's whole reward table, nothing to compare. */
+const SINGLE_BANK_CATEGORIES: CategoryKey[] = ["miles"];
 
 /**
  * The live comparison tool.
@@ -84,17 +86,18 @@ export function Comparator() {
   const [category, setCategory] = useState<CategoryKey>("finance");
   const [selected, setSelected] = useState<string[] | null>(null);
   const [family, setFamily] = useState("konut-yeni");
-  const [amount, setAmount] = useState("1000000");
-  const [term, setTerm] = useState("120");
+  // Blank, not a figure nobody typed -- the field shows a "0" placeholder
+  // (AmountField's default) until the user enters their own amount and term.
+  const [amount, setAmount] = useState("");
+  const [term, setTerm] = useState("");
   const [currency, setCurrency] = useState("TRY");
   const [source, setSource] = useState("USD");
   const [target, setTarget] = useState("TRY");
-  // Card and miles are priced per bank -- each bank sells its own cards, so
-  // there is no shared family to rank the way finance and profit_share have.
-  // A dedicated single-bank selection, not the multi-bank picker used below.
+  // Miles is priced per bank -- its whole reward table, not a comparison --
+  // so it gets a dedicated single-bank selection, not the multi-bank picker
+  // the ranked categories (including card, now) share below.
   const [singleBank, setSingleBank] = useState<string | null>(null);
-  const [cardCode, setCardCode] = useState<string | null>(null);
-  const [installments, setInstallments] = useState("6");
+  const [installments, setInstallments] = useState("");
   const [sort, setSort] = useState<SortState | null>(null);
   // Free text plus per-column tick-lists. The board is 32 rows across six
   // banks, so "where is the Qatari riyal" is a search, not a scroll.
@@ -125,22 +128,12 @@ export function Comparator() {
     .map((b) => b.name)
     .filter((name) => activeBanks.includes(name));
 
-  // The one bank a card/miles selection resolves to. Not derived from
-  // `activeBanks`: those come from the multi-select picker used by the other
-  // four categories, and forcing card/miles through the same control would let
-  // someone "select" two banks for a quote that only ever prices one.
+  // The one bank a miles selection resolves to. Not derived from
+  // `activeBanks`: those come from the multi-select picker used by the ranked
+  // categories, and forcing miles through the same control would let someone
+  // "select" two banks for a table that only ever comes from one.
   const effectiveSingleBank =
     singleBank && eligibleKeys.includes(singleBank) ? singleBank : (eligibleKeys[0] ?? "");
-
-  const { data: cardCatalog } = useQuery({
-    queryKey: ["cardProducts", effectiveSingleBank],
-    queryFn: () => api.bankProducts(effectiveSingleBank, "card"),
-    enabled: category === "card" && Boolean(effectiveSingleBank),
-  });
-  const effectiveCardCode =
-    cardCode && cardCatalog?.some((p) => p.code === cardCode)
-      ? cardCode
-      : (cardCatalog?.[0]?.code ?? "");
 
   // The mile-rate table is read-only reference data, like the rates board —
   // it loads on selecting a bank rather than waiting for a submit, because
@@ -185,20 +178,10 @@ export function Comparator() {
       if (query.kind === "finance") return api.compareFinance(query.params);
       if (query.kind === "profit_share") return api.compareProfitShare(query.params);
       if (query.kind === "convert") return api.compareExchange(query.params);
-      throw new Error(`${query.kind} does not run through the fan-out endpoint.`);
+      if (query.kind === "card") return api.compareCard(query.params);
+      throw new Error("Unhandled comparison kind.");
     },
-    enabled: query !== null && (query.kind === "finance" || query.kind === "profit_share" || query.kind === "convert"),
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
-  });
-
-  const cardQuoteResult = useQuery({
-    queryKey: ["cardQuote", query],
-    queryFn: () => {
-      if (!query || query.kind !== "card") throw new Error("No query.");
-      return api.cardQuote(query.bank, query.params);
-    },
-    enabled: query !== null && query.kind === "card",
+    enabled: query !== null,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
   });
@@ -227,6 +210,34 @@ export function Comparator() {
     })),
   });
 
+  // What the converter's From/To fields may pick from -- every currency any
+  // convert-eligible bank quotes, not one bank's list. A single bank's board
+  // runs 14-27 rows and they do not agree with each other, so asking only
+  // Kuveyt Türk would silently hide a currency Dünya converts. No polling: an
+  // options list does not need to move every few seconds the way the live
+  // board does, so this fetches once and sits on `staleTime` rather than
+  // reusing the board's refetch interval.
+  const currencyQueries = useQueries({
+    queries: rateBanks.map((bank) => ({
+      queryKey: ["rates", bank],
+      queryFn: () => api.bankRates(bank),
+      enabled: category === "convert",
+      staleTime: RATES_POLL_MS,
+    })),
+  });
+  const convertCurrencyOptions = useMemo(() => {
+    if (category !== "convert") return [];
+    const codes = new Set<string>(["TRY"]);
+    for (const q of currencyQueries) {
+      for (const r of q.data ?? []) {
+        // A cross pair (EUR/USD) is not a single currency the field can send
+        // as `source` or `target`.
+        if (!r.code.includes("/")) codes.add(r.canonical || r.code);
+      }
+    }
+    return [...codes].sort((a, b) => (a === "TRY" ? -1 : b === "TRY" ? 1 : a.localeCompare(b)));
+  }, [category, currencyQueries]);
+
   // The currencies the chosen family can actually be priced in, and the one
   // that will be sent. Held separately from `currency` for the same reason as
   // `effectiveSingleBank`: the family can change under a selection that is no
@@ -237,6 +248,17 @@ export function Comparator() {
   const effectiveCurrency = currencyOptions.includes(currency)
     ? currency
     : currencyOptions[0];
+
+  // Same reasoning as `effectiveCurrency`: the options list arrives after the
+  // first render (it is a fetch), so the state a user picked before it loaded
+  // -- or the "USD"/"TRY" defaults, before anything has loaded at all -- has
+  // to be checked against what is actually offered rather than sent as-is.
+  const effectiveSource = convertCurrencyOptions.includes(source)
+    ? source
+    : (convertCurrencyOptions[0] ?? source);
+  const effectiveTarget = convertCurrencyOptions.includes(target)
+    ? target
+    : (convertCurrencyOptions.find((c) => c !== effectiveSource) ?? target);
 
   // Which stated bound the current inputs actually break.
   //
@@ -260,6 +282,16 @@ export function Comparator() {
     }
     return out;
   })();
+
+  // The amount and term/instalment fields start blank -- a "0" placeholder,
+  // not a figure nobody typed -- so Compare has to stay off until there is a
+  // real number in each one the category actually asks for, rather than
+  // quietly sending 0 and getting a decline from every bank.
+  const missingInput =
+    !(Number(amount) > 0) ||
+    (category === "card"
+      ? !(Number(installments) > 0)
+      : category !== "convert" && !(Number(term) > 0));
 
   const bankNames = Object.fromEntries(
     (banks ?? []).map((b) => [b.name, b.display_name]),
@@ -309,17 +341,14 @@ export function Comparator() {
     }
     if (category === "miles") {
       if (!mileRates) return null;
-      return mileRatesTable(mileRates, effectiveSingleBank, labels);
-    }
-    if (category === "card") {
-      if (!cardQuoteResult.data) return null;
-      return cardTable(cardQuoteResult.data, labels);
+      return mileRatesTable(mileRates, labels);
     }
     const c = result.data;
     if (!c) return null;
     if (category === "finance") return financeTable(c, labels);
     if (category === "profit_share") return profitShareTable(c, labels);
     if (category === "convert") return convertTable(c, labels);
+    if (category === "card") return cardTable(c, labels);
     return null;
   })();
 
@@ -398,12 +427,25 @@ export function Comparator() {
         .filter((g) => g.span > 0)
     : undefined;
 
+  // `__bank` and `__side` are reserved keys `hiddenColumns` reads to decide
+  // which *columns* to drop -- they steer `BoardFilters` above, not a real
+  // column any row has a cell for. `applyFilters` cannot tell a reserved key
+  // from a real one, so a selection there does not mean "no filter" the way
+  // an empty selection on a real column does; every row's `cellText(undefined)`
+  // fails to match every ticked bank name, and the board goes blank the
+  // moment a single bank or side is deselected. They drive `hiddenColumns`
+  // above and stop there.
+  const rowFilters =
+    category === "rates"
+      ? { ...filters, values: { ...filters.values, [BANK_KEY]: [], [SIDE_KEY]: [] } }
+      : filters;
   const rows = table
     ? sortRows(
-        applyFilters(table.rows, table.columns, filters, "tr"),
+        applyFilters(table.rows, table.columns, rowFilters, "tr"),
         effectiveSort,
         table.columns,
         "tr",
+        bankNames,
       )
     : [];
 
@@ -429,13 +471,17 @@ export function Comparator() {
     } else if (category === "convert") {
       setQuery({
         kind: "convert",
-        params: { source, target, amount: Number(amount), banks: activeBanks },
+        params: {
+          source: effectiveSource, target: effectiveTarget,
+          amount: Number(amount), banks: activeBanks,
+        },
       });
     } else if (category === "card") {
       setQuery({
         kind: "card",
-        bank: effectiveSingleBank,
-        params: { card: effectiveCardCode, amount: Number(amount), installments: Number(installments) },
+        params: {
+          amount: Number(amount), installments: Number(installments), banks: activeBanks,
+        },
       });
     }
   };
@@ -461,19 +507,31 @@ export function Comparator() {
             label: t(`category.${key}`),
           }))}
           onChange={(next) => {
-            setCategory(next as CategoryKey);
+            const nextCategory = next as CategoryKey;
+            setCategory(nextCategory);
+            // "konut-yeni" is a finance family and does not exist under
+            // profit_share -- left as-is, switching to Participation account
+            // and pressing Compare without touching the Product field sent
+            // that stale key straight to /compare/profit-share and every bank
+            // came back a 422. The two categories' pickers share this one
+            // piece of state, so switching between them has to reset it to a
+            // family the new category actually has.
+            setFamily(nextCategory === "profit_share" ? "katilma" : "konut-yeni");
             setSelected(null);
             setSingleBank(null);
-            setCardCode(null);
             setQuery(null);
             setSort(null);
+            // Rates and miles load without a Compare press, so a filter set
+            // on one and carried into the other would hide rows for a reason
+            // the new table gives no sign of -- run() already clears this for
+            // every category that goes through a submit.
+            setFilters(EMPTY_FILTERS);
           }}
         />
 
-        {/* 2. which banks. Card and miles are priced per bank -- each bank
-            sells its own cards, so there is no family to rank -- and get a
-            single-select instead of the multi-bank picker the other four
-            categories share. */}
+        {/* 2. which banks. Miles is priced per bank -- one bank's whole reward
+            table, nothing to rank -- and gets a single-select instead of the
+            multi-bank picker every other category shares, card included. */}
         {/* The board's own filters replace the shared bank picker here: both
             were choosing banks, one by fetching and one by hiding columns, and
             two controls for one question is how you end up unable to tell
@@ -490,19 +548,38 @@ export function Comparator() {
           )
         ) : SINGLE_BANK_CATEGORIES.includes(category) ? (
           eligible.length > 0 && (
-            <Dropdown
-              label={t("bank")}
-              value={effectiveSingleBank}
-              options={eligible.map((b) => ({ value: b.name, label: b.display_name }))}
-              onChange={(next) => { setSingleBank(next); setCardCode(null); setQuery(null); }}
-            />
+            <>
+              <Dropdown
+                label={t("bank")}
+                value={effectiveSingleBank}
+                options={eligible.map((b) => ({ value: b.name, label: b.display_name }))}
+                onChange={(next) => { setSingleBank(next); setQuery(null); }}
+              />
+              {/* Same component and same call as the FX board's filters, and
+                  the same spot -- directly under the bank dropdown, not down
+                  in the Results card where it used to sit, disconnected from
+                  the control it filters. */}
+              {table && (
+                <VuiBox mt={2}>
+                  <TableFilters
+                    columns={table.columns}
+                    rows={table.rows}
+                    state={filters}
+                    onChange={setFilters}
+                    matched={rows.length}
+                    total={table.rows.length}
+                  />
+                </VuiBox>
+              )}
+            </>
           )
         ) : (
-          <Field label={t("banks")}>
-            <BankPicker
-              eligible={eligible}
-              ineligible={ineligible}
-              chosen={activeBanks}
+          <VuiBox mb={2}>
+            <MultiSelect
+              label={t("banks")}
+              options={eligible.map((b) => ({ value: b.name, label: b.display_name }))}
+              disabledOptions={ineligible.map((b) => ({ value: b.name, label: b.display_name }))}
+              selected={activeBanks}
               onChange={(next) => {
                 setSelected(next);
                 setQuery(null);
@@ -510,7 +587,7 @@ export function Comparator() {
               allLabel={t("allBanks")}
               allSelectedLabel={t("allSelected")}
             />
-          </Field>
+          </VuiBox>
         )}
 
         {/* 3. inputs, bounded by the selection */}
@@ -531,12 +608,20 @@ export function Comparator() {
 
         {category === "convert" && (
           <VuiBox display="flex" gap="12px" flexWrap="wrap">
-            <TextField label={t("from")} value={source} fullWidth={false}
-              transform={(raw) => raw.toUpperCase()}
-              onChange={(next) => { setSource(next); setQuery(null); }} />
-            <TextField label={t("to")} value={target} fullWidth={false}
-              transform={(raw) => raw.toUpperCase()}
-              onChange={(next) => { setTarget(next); setQuery(null); }} />
+            <Dropdown
+              label={t("from")}
+              value={effectiveSource}
+              options={convertCurrencyOptions.map((c) => ({ value: c, label: c }))}
+              onChange={(next) => { setSource(next); setQuery(null); }}
+              fullWidth={false}
+            />
+            <Dropdown
+              label={t("to")}
+              value={effectiveTarget}
+              options={convertCurrencyOptions.map((c) => ({ value: c, label: c }))}
+              onChange={(next) => { setTarget(next); setQuery(null); }}
+              fullWidth={false}
+            />
           </VuiBox>
         )}
 
@@ -549,35 +634,16 @@ export function Comparator() {
           />
         )}
 
-        {category === "card" && (
+        {category !== "rates" && category !== "miles" && (
           <VuiBox display="flex" gap="12px" flexWrap="wrap" alignItems="flex-end">
-            {cardCatalog && cardCatalog.length > 0 && (
-              <Dropdown
-                label={t("card")}
-                value={effectiveCardCode}
-                options={cardCatalog.map((c) => ({ value: c.code, label: c.name }))}
-                onChange={(next) => { setCardCode(next); setQuery(null); }}
-                minWidth="16rem"
-                fullWidth={false}
-              />
-            )}
-            <NumberField label={t("amount")} value={amount} fullWidth={false}
-              onChange={(next) => { setAmount(next); setQuery(null); }} />
-            <NumberField label={t("installments")} value={installments} fullWidth={false}
-              onChange={(next) => { setInstallments(next); setQuery(null); }} />
-            <ActionButton onClick={run} disabled={!effectiveSingleBank || !effectiveCardCode}>
-              {t("run")}
-            </ActionButton>
-          </VuiBox>
-        )}
-
-        {category !== "rates" && category !== "miles" && category !== "card" && (
-          <VuiBox display="flex" gap="12px" flexWrap="wrap" alignItems="flex-end">
-            <NumberField label={t("amount")} value={amount} fullWidth={false}
+            <AmountField label={t("amount")} value={amount} fullWidth={false}
               onChange={(next) => { setAmount(next); setQuery(null); }} />
 
-            {category !== "convert" && (
-              <NumberField
+            {category === "card" ? (
+              <IntegerField label={t("installments")} value={installments} fullWidth={false}
+                onChange={(next) => { setInstallments(next); setQuery(null); }} />
+            ) : category !== "convert" && (
+              <IntegerField
                 label={category === "profit_share" ? t("termDays") : t("termMonths")}
                 value={term}
                 fullWidth={false}
@@ -586,15 +652,18 @@ export function Comparator() {
 
             <ActionButton
               onClick={run}
-              disabled={activeBanks.length === 0 || broken.size > 0}
+              disabled={activeBanks.length === 0 || broken.size > 0 || missingInput}
             >
               {t("run")}
             </ActionButton>
           </VuiBox>
         )}
 
-        {/* The ceiling, and who set it. */}
-        {needsConstraints && bounds && (
+        {/* The ceiling, and who set it -- only once the current input actually
+            breaks one. A rule nobody has broken is not information the form
+            needs to spend space on; it is only worth a pill the moment 120
+            months meets a bank whose maximum is 84. */}
+        {needsConstraints && bounds && broken.size > 0 && (
           <VuiBox mt={2}>
             <Bounds
               bounds={bounds}
@@ -609,22 +678,24 @@ export function Comparator() {
         )}
       </Card>
 
-      {/* results */}
-      {(table || result.isPending || cardQuoteResult.isPending) && (
+      {/* results -- mounted only once there is something to show: the rates
+          board and the mile table load on their own, everything else waits
+          for the user to press Compare. Without this, an empty "Results" card
+          sat under the form on every category before a single request had
+          been made. */}
+      {(category === "rates" || category === "miles" ? table : query !== null) && (
         <Card>
           <VuiBox mb="22px" display="flex" alignItems="center" gap="12px" flexWrap="wrap">
             <VuiTypography variant="lg" color="white">{t("results")}</VuiTypography>
-            {result.data?.seconds !== undefined && (
-              <Pill tone="neutral">
-                {t("took", {
-                  seconds: result.data.seconds.toFixed(2),
-                  count: activeBanks.length,
-                })}
-              </Pill>
-            )}
+            {/* Unmounted, not deleted: how long the round trip took is a
+                debugging fact, not something the end user needs to see on
+                every category -- the same call that dropped it for convert.
+                `result.data.seconds` still arrives on the wire and `t("took")`
+                is still a live translation; bringing the pill back is one
+                block, not a redesign. */}
           </VuiBox>
 
-          {result.isError || cardQuoteResult.isError ? (
+          {result.isError ? (
             <VuiTypography variant="button" color="text" fontWeight="regular">
               {tc("error")}
             </VuiTypography>
@@ -670,55 +741,46 @@ export function Comparator() {
         </Card>
       )}
 
-      {/* Always rendered once a run has happened, even when empty: the backend
-          guarantees ranked + unavailable equals the banks in scope, and showing
-          the arithmetic is what makes a short ranking trustworthy. */}
-      {query !== null && result.data && (
+      {/* Unmounted, not merely empty, once every active bank answered: a card
+          that only ever says "all N banks answered" is not information, it is
+          confirmation of the default case, on every single run. Shown only
+          when there is an actual gap to explain -- same rule anywhere else in
+          the app that lists what did not come back. */}
+      {query !== null && result.data && unavailable.length > 0 && (
         <Card>
           <VuiBox mb={2}>
             <VuiTypography variant="lg" color="white">{t("notRanked")}</VuiTypography>
           </VuiBox>
-          {unavailable.length === 0 ? (
-            <VuiTypography variant="button" color="text" fontWeight="regular">
-              {t("allAnswered", { count: activeBanks.length })}
-            </VuiTypography>
-          ) : (
-            <VuiBox display="flex" flexDirection="column" gap="10px">
-              {unavailable.map((u) => (
-                <VuiBox key={u.bank} display="flex" gap="10px" alignItems="flex-start" flexWrap="wrap">
-                  <VuiTypography variant="button" color="white" fontWeight="medium">
-                    {(banks ?? []).find((b) => b.name === u.bank)?.display_name ?? u.bank}
+          <VuiBox display="flex" flexDirection="column" gap="10px">
+            {unavailable.map((u, i) => (
+              // Not `u.bank` alone: card comparisons ask per card, not per
+              // bank, so one bank can decline several times over -- Kuveyt
+              // Türk's five cards each have their own instalment ceiling, and
+              // each refusal is its own row with its own detail sentence.
+              <VuiBox key={`${u.bank}-${i}`} display="flex" gap="10px" alignItems="flex-start" flexWrap="wrap">
+                <VuiTypography variant="button" color="white" fontWeight="medium">
+                  {(banks ?? []).find((b) => b.name === u.bank)?.display_name ?? u.bank}
+                </VuiTypography>
+                <Pill tone={u.why === "not_offered" ? "neutral" : "warn"}>
+                  {t(`why.${u.why}`)}
+                </Pill>
+                {u.detail && (
+                  <VuiTypography variant="caption" color="text" sx={{ flex: "1 1 16rem" }}>
+                    {u.detail}
                   </VuiTypography>
-                  <Pill tone={u.why === "not_offered" ? "neutral" : "warn"}>
-                    {t(`why.${u.why}`)}
-                  </Pill>
-                  {u.detail && (
-                    <VuiTypography variant="caption" color="text" sx={{ flex: "1 1 16rem" }}>
-                      {u.detail}
-                    </VuiTypography>
-                  )}
-                </VuiBox>
-              ))}
-            </VuiBox>
-          )}
+                )}
+              </VuiBox>
+            ))}
+          </VuiBox>
         </Card>
       )}
     </VuiBox>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <VuiBox mb={2}>
-      <VuiBox mb={0.75}>
-        <VuiTypography variant="caption" color="text">{label}</VuiTypography>
-      </VuiBox>
-      {children}
-    </VuiBox>
-  );
-}
 
-/** The bounds the selection allows, and the bank responsible for each. */
+/** The bounds the current input actually breaks, and the bank responsible.
+    Only ever renders a violation -- a limit nobody has hit is not shown. */
 function Bounds({
   bounds,
   banks,
@@ -791,12 +853,17 @@ function Bounds({
         : t("maxTerm", { term: bounds.max_term, unit }),
     ]);
   }
-  if (parts.length === 0) return null;
+  // Everything above is a fact about the selection, worth knowing at any time;
+  // only a fact the current amount or term actually contradicts is worth a
+  // pill. Filtered here rather than left to the caller, so every place this
+  // component is used gets the same "errors only" behaviour for free.
+  const violated = parts.filter(([key]) => broken.has(key));
+  if (violated.length === 0) return null;
 
   return (
     <VuiBox display="flex" flexWrap="wrap" gap="8px">
-      {parts.map(([key, text]) => (
-        <Pill key={key} tone={broken.has(key) ? "bad" : "warn"}>
+      {violated.map(([key, text]) => (
+        <Pill key={key} tone="bad">
           {text}
         </Pill>
       ))}
@@ -804,68 +871,3 @@ function Bounds({
   );
 }
 
-function BankPicker({
-  eligible,
-  ineligible,
-  chosen,
-  onChange,
-  allLabel,
-  allSelectedLabel,
-}: {
-  eligible: Bank[];
-  ineligible: Bank[];
-  chosen: string[];
-  onChange: (next: string[]) => void;
-  allLabel: string;
-  allSelectedLabel: string;
-}) {
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
-  const all = chosen.length === eligible.length;
-
-  return (
-    <>
-      {/* Sits in the same column as the dropdowns, so it takes the same
-          geometry rather than a button's own smaller one. */}
-      <ActionButton
-        variant="outlined"
-        color="white"
-        onClick={(e: MouseEvent<HTMLElement>) => setAnchor(e.currentTarget)}
-      >
-        {chosen.length === eligible.length
-          ? allSelectedLabel
-          : `${chosen.length} / ${eligible.length}`}
-      </ActionButton>
-
-      <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={() => setAnchor(null)}
-        slotProps={{ paper: { sx: { maxHeight: 360 } } }}>
-        <MenuItem dense onClick={() => onChange(all ? [] : eligible.map((b) => b.name))}>
-          <Checkbox checked={all} indeterminate={chosen.length > 0 && !all} size="small" sx={{ p: 0.5, mr: 1 }} />
-          <VuiTypography variant="button" color="white" fontWeight="medium">{allLabel}</VuiTypography>
-        </MenuItem>
-        <Divider sx={{ my: 0.5 }} />
-
-        {eligible.map((b) => (
-          <MenuItem key={b.name} dense
-            onClick={() =>
-              onChange(chosen.includes(b.name) ? chosen.filter((k) => k !== b.name) : [...chosen, b.name])
-            }>
-            <Checkbox checked={chosen.includes(b.name)} size="small" sx={{ p: 0.5, mr: 1 }} />
-            <VuiTypography variant="button" color="white" fontWeight="regular">{b.display_name}</VuiTypography>
-          </MenuItem>
-        ))}
-
-        {/* Shown, not hidden: a bank missing from the list looks like an
-            omission, while a disabled one with its own note is an answer. */}
-        {ineligible.length > 0 && <Divider sx={{ my: 0.5 }} />}
-        {ineligible.map((b) => (
-          <MenuItem key={b.name} dense disabled sx={{ opacity: 0.5 }}>
-            <VuiBox sx={{ width: 30 }} />
-            <VuiTypography variant="button" color="text" fontWeight="regular">
-              {b.display_name}
-            </VuiTypography>
-          </MenuItem>
-        ))}
-      </Menu>
-    </>
-  );
-}

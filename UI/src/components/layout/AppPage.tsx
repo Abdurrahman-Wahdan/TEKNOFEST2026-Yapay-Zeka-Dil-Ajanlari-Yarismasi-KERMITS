@@ -24,9 +24,17 @@ import {
 export function AppPage({ children }: { children: ReactNode }) {
   return (
     <DashboardLayout>
-      <DashboardNavbar />
-      <VuiBox py={3}>{children}</VuiBox>
-      <Footer />
+      {/* `DashboardLayout` is a plain padded box with no height of its own, so
+          a short page (nothing to compare yet, an empty table) left the
+          footer sitting right under the content instead of at the bottom of
+          the screen. This wrapper is the sticky-footer pattern: fill at least
+          the viewport, let the content grow, and the footer lands at the
+          bottom whether it is pushed there by content or by the space below it. */}
+      <VuiBox display="flex" flexDirection="column" minHeight="100vh">
+        <DashboardNavbar />
+        <VuiBox py={3} flexGrow={1}>{children}</VuiBox>
+        <Footer />
+      </VuiBox>
     </DashboardLayout>
   );
 }

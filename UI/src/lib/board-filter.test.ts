@@ -36,22 +36,42 @@ describe("board filters", () => {
     assert.ok(hidden.includes("kuveytturk__sell"));
   });
 
-  it("recovers from clearing every side", () => {
-    // The bug this exists for: the two were inferred from the hidden columns,
-    // so turning off both sides hid every column, which made every bank read
-    // as off too — and picking a bank re-applied an empty side list and hid
-    // everything again. There was no way back short of reloading.
+  it("hides everything once every side is explicitly cleared", () => {
+    // `[]` here is a real "the user unticked both" -- not the same value as
+    // never having touched the filter, which is `undefined` (see below).
+    // Deliberately excluding everyone is exactly what a cleared filter
+    // should do: `BankPicker` on every other page in this app disables its
+    // own "Compare" button on the same zero-selected state rather than
+    // silently treating it as "all".
     const cleared = pick({ [SIDE_KEY]: [] });
-    assert.deepEqual(hiddenColumns(cleared, BANKS), [], "empty must mean all");
-
-    const thenABank = pick({ [SIDE_KEY]: [], [BANK_KEY]: ["vakif"] });
-    const hidden = hiddenColumns(thenABank, BANKS);
-    assert.ok(!hidden.includes("vakif__buy"), "the picked bank must come back");
-    assert.ok(!hidden.includes("vakif__sell"));
+    assert.deepEqual(
+      hiddenColumns(cleared, BANKS).sort(),
+      BANKS.flatMap((b) => [`${b}__buy`, `${b}__sell`]).sort(),
+    );
   });
 
-  it("recovers from clearing every bank", () => {
+  it("a bank pick does not resurrect a side that is still explicitly empty", () => {
+    // The two dimensions still cannot erase each other's *values* -- a bank
+    // pick is respected -- but an explicitly empty side stays empty until the
+    // user picks a side again. It does not get reinterpreted as "all" just
+    // because a different dimension changed.
+    const thenABank = pick({ [SIDE_KEY]: [], [BANK_KEY]: ["vakif"] });
+    const hidden = hiddenColumns(thenABank, BANKS);
+    assert.ok(hidden.includes("vakif__buy"));
+    assert.ok(hidden.includes("vakif__sell"));
+  });
+
+  it("hides everything once every bank is explicitly cleared", () => {
     const cleared = pick({ [BANK_KEY]: [] });
-    assert.deepEqual(hiddenColumns(cleared, BANKS), []);
+    assert.deepEqual(
+      hiddenColumns(cleared, BANKS).sort(),
+      BANKS.flatMap((b) => [`${b}__buy`, `${b}__sell`]).sort(),
+    );
+  });
+
+  it("an untouched key (not stored at all) still means everything", () => {
+    // `undefined` -- the key was never written -- is the only value that
+    // means "all". A real, even empty, array is a decision and is respected.
+    assert.deepEqual(hiddenColumns(pick({}), BANKS), []);
   });
 });

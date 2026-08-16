@@ -57,6 +57,7 @@ PROFIT_SHARE = {
 CARD = {
     "kuveytturk": ("Sağlam Kart Troy", 10_000, 6),
     "vakif": ("Ferah Kart", 10_000, 3),
+    "turkiyefinans": ("Kredi Kartı Taksitle", 10_000, 6),
 }
 
 # source, target, amount.
@@ -66,6 +67,8 @@ CONVERT = {
     "vakif": ("USD", "TRY", 1_000),
     "dunya": ("USD", "TRY", 1_000),
     "hayat": ("USD", "TRY", 1_000),
+    "emlak": ("USD", "TRY", 1_000),
+    "turkiyefinans": ("USD", "TRY", 1_000),
 }
 
 # capability -> the table holding its probe.

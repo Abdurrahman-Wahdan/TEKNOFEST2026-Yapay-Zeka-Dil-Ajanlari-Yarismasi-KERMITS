@@ -20,6 +20,10 @@
 import VuiBox from "components/VuiBox";
 import VuiTypography from "components/VuiTypography";
 
+// Same mark and file the sidenav header pairs with "KERMİTS" -- one logo, one
+// place it is defined, so the two never end up showing different marks.
+const kermitsLogo = "/vision/images/kermits-logo.png";
+
 // `item` removed from the VuiBox tags below: it is a Grid prop, and VuiBox is a
 // Box, so it fell through to the DOM and React warned
 // "Received `true` for a non-boolean attribute `item`". Box ignores it for
@@ -35,7 +39,19 @@ function Footer() {
       py={2}
       pb={0}
     >
-      <VuiBox xs={12} sx={{ textAlign: "center" }}>
+      <VuiBox
+        xs={12}
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+        gap="8px"
+        sx={{ width: "100%" }}
+      >
+        <img
+          src={kermitsLogo}
+          alt=""
+          style={{ display: "block", height: "40px", width: "auto" }}
+        />
         <VuiTypography
           variant="button"
           sx={{ textAlign: "center", fontWeight: "400 !important" }}

@@ -11,7 +11,6 @@ referer pointing at the matching calculator page.
 
 import collections
 import logging
-from decimal import Decimal
 
 from ..models import (
     CardInstallmentQuote,
@@ -370,43 +369,12 @@ class KuveytTurk(BaseBank):
         """Convert using the published rate.
 
         Kuveyt Türk has no converter endpoint — its own gold page multiplies the
-        quoted rate in the browser — so the multiplication happens here, in
-        Decimal, and the result is flagged as derived. This is the single agreed
-        exception to never computing a number ourselves.
+        quoted rate in the browser — so the multiplication happens in
+        `BaseBank.convert_from_rates`, and the result is flagged as derived.
+        This is the single agreed exception to never computing a number
+        ourselves.
         """
-        source, target = source.upper(), target.upper()
-        if RATE_ALIASES.get(source, source) == RATE_ALIASES.get(target, target):
-            # Otherwise the buy/sell spread is applied to the currency against
-            # itself and 10 USD becomes 9,09 USD. Answered without a request:
-            # there is no rate to look up.
-            value = Decimal(str(amount))
-            return Conversion(
-                bank=self.name, source=source, target=target,
-                amount=value, result=value, rate=Decimal(1), derived=True,
-            )
-        by_code = {r.code: r for r in self.rates()}
-        src = _resolve_rate_code(source, by_code)
-        dst = _resolve_rate_code(target, by_code)
-
-        if not by_code[dst].sell:
-            raise UnsupportedProduct(
-                f"{self.display_name} quotes no sell rate for {target}, so the "
-                f"conversion cannot be worked out from its published rates."
-            )
-        value = Decimal(str(amount))
-        # Selling the source to the bank uses its buy rate; buying the target
-        # from the bank uses its sell rate. Both are 1.0 for TL.
-        rate = Decimal(str(by_code[src].buy)) / Decimal(str(by_code[dst].sell))
-        return Conversion(
-            bank=self.name,
-            # The codes the caller asked about, not this bank's names for them.
-            source=source.upper(),
-            target=target.upper(),
-            amount=value,
-            result=value * rate,
-            rate=rate,
-            derived=True,
-        )
+        return self.convert_from_rates(source, target, amount)
 
     # ----- cards -----
 
@@ -509,23 +477,6 @@ def _rate_unit(code: str) -> str:
     if code.startswith("Z"):
         return "coin"
     return "1"
-
-
-def _resolve_rate_code(code: str, by_code: dict[str, Rate]) -> str:
-    """The feed's own name for a currency, however the caller spelled it."""
-    wanted = code.upper()
-    resolved = RATE_ALIASES.get(wanted, wanted)
-    if resolved in by_code:
-        return resolved
-    # The feed mixes cases of its own ("ALT (gr)", "ZCeyrek"), so match on the
-    # uppercased form rather than refusing "usd" with a list containing USD.
-    for known in by_code:
-        if known.upper() == resolved:
-            return known
-    raise UnsupportedProduct(
-        f"Kuveyt Türk does not quote {code!r}. "
-        f"Quoted: {', '.join(sorted(by_code))}."
-    )
 
 
 def _day_attempts(term: int, term_unit: str) -> list[int]:

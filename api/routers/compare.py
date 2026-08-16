@@ -100,6 +100,26 @@ def compare_exchange(
     return comparison_out(result)
 
 
+@router.get("/card", response_model=ComparisonOut)
+def compare_card(
+    amount: float = Query(gt=0),
+    installments: int = Query(gt=0, le=36),
+    banks: list[str] | None = BanksQuery,
+) -> ComparisonOut:
+    """Every card at every bank that publishes a card calculator, ranked.
+
+    Cards have no cross-bank family: each bank sells its own catalogue under
+    its own names, so this quotes every card every in-scope bank publishes
+    rather than one named product. A bank that states only a rate and no
+    instalment sinks to the bottom of the ranking rather than winning it.
+    """
+    try:
+        result = compare_mod.card(amount, installments, banks)
+    except (UnsupportedProduct, ValueError) as exc:
+        raise _bad_family(exc) from exc
+    return comparison_out(result)
+
+
 @router.get("/constraints", response_model=ConstraintsOut)
 def compare_constraints(
     family: str = Query(description="A family key from GET /api/banks/families."),

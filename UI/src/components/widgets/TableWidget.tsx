@@ -53,8 +53,8 @@ export function TableWidget(props: TableProps) {
 
   const rows = useMemo(() => {
     const matched = applyFilters(table.rows, table.columns, filters, locale);
-    return sortRows(matched, sort, table.columns, locale);
-  }, [table.rows, table.columns, filters, sort, locale]);
+    return sortRows(matched, sort, table.columns, locale, bankLabels);
+  }, [table.rows, table.columns, filters, sort, locale, bankLabels]);
 
   const toggleSort = (key: string) =>
     setSort((current) =>

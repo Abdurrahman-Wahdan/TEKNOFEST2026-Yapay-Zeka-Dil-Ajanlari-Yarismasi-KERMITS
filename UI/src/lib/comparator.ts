@@ -15,7 +15,7 @@
 import type { ResolvedColumn, Row } from "./contract.ts";
 import type { SortState } from "./table-filter.ts";
 import type {
-  CardInstallmentQuote, Comparison, FinanceQuote, MileRate, Rate,
+  Comparison, FinanceQuote, MileRate, Rate,
 } from "./api.ts";
 
 export type CategoryKey =
@@ -62,8 +62,15 @@ export const CATEGORIES: Record<CategoryKey, CategorySpec> = {
  * single "sort by the money column" rule would be wrong half the time.
  *
  * Null where no single column ranks the table: the FX board is one row per
- * instrument across many banks, and the mile table is reference data
- * (`CATEGORIES.miles.ranks === false`).
+ * instrument across many banks, the mile table is reference data
+ * (`CATEGORIES.miles.ranks === false`), and the converter -- the user's own
+ * call, against the same reasoning above -- starts unsorted so the sort
+ * arrow only ever appears because someone clicked a header, not because the
+ * table decided the highest result was the "best" one on their behalf. A
+ * conversion has no universally-best direction the way a lower instalment or
+ * a higher profit does: whether more or less of the target currency is the
+ * good outcome depends on which side of the trade the user is on, which this
+ * function has no way to know.
  *
  * Rows with a missing value sink either way -- `sortRows` guarantees it -- so
  * Türkiye Finans, which publishes a rate and no payment, can never be ranked
@@ -76,8 +83,6 @@ export function defaultSort(category: CategoryKey): SortState | null {
       return { key: "installment", direction: "asc" };
     case "profit_share":
       return { key: "net_profit", direction: "desc" };
-    case "convert":
-      return { key: "result", direction: "desc" };
     default:
       return null;
   }
@@ -97,7 +102,10 @@ function col(
     type,
     currency: extra.currency ?? "TRY",
     align: extra.align ?? (numeric ? "right" : type === "bool" ? "center" : "left"),
-    sortable: extra.sortable ?? (numeric || type === "date"),
+    // A bank column is alphabetical the same way the FX board's pair column
+    // is -- text, sortable by default -- so every comparison table gets it
+    // for free rather than each one asking for it individually.
+    sortable: extra.sortable ?? (numeric || type === "date" || type === "bank"),
     filterable: extra.filterable ?? (type === "bank" || type === "badge"),
     inferred: false,
     ...(decimals ? { decimals } : {}),
@@ -168,9 +176,11 @@ export function financeTable(c: Comparison, t: Labels) {
       bank: q.bank,
       product: q.product?.name ?? "",
       basis: quoteBasis(q, t),
-      // Null where the bank publishes a rate but never states a payment
-      // (Türkiye Finans). The table renders an em dash and sorting sinks it,
-      // so the one bank that quoted no payment can never be called cheapest.
+      // Null where the bank publishes a rate but never states a payment, and
+      // nothing here can reproduce one. Türkiye Finans's own instalment is no
+      // longer null -- `derived` on `basis` above says it was computed, not
+      // read off the wire -- but the column stays nullable for whichever bank
+      // is next to publish a rate with no payment and no formula to port.
       installment: q.installment ?? null,
       total: q.total ?? null,
       profit_rate: q.profit_rate,
@@ -186,10 +196,10 @@ export function financeTable(c: Comparison, t: Labels) {
 /**
  * Why this row is not a plain like-for-like match, in the user's words.
  *
- * Three independent facts, and Türkiye Finans carries two of them at once: its
- * rows are both a sigorta variant and payment-free. Joined rather than
- * prioritised, because dropping either one leaves a question the table cannot
- * otherwise answer — why this bank has two rows, and why its payment is empty.
+ * Four independent facts, and Türkiye Finans carries two of them at once: its
+ * rows are both a sigorta variant and a computed payment. Joined rather than
+ * prioritised, because dropping any one leaves a question the table cannot
+ * otherwise answer — why this bank has two rows, and why its payment is ours.
  */
 const VARIANT_LABEL: Record<string, keyof Labels> = {
   sigortali: "insured",
@@ -198,7 +208,12 @@ const VARIANT_LABEL: Record<string, keyof Labels> = {
 };
 
 export function quoteBasis(
-  q: Pick<FinanceQuote, "variant" | "general"> & { installment?: number | null },
+  q: Pick<FinanceQuote, "variant" | "general"> & {
+    installment?: number | null;
+    // Absent on `ProfitShareQuote`, the type's other caller — there is no
+    // computed figure to flag on a savings row.
+    derived?: boolean;
+  },
   t: Labels,
 ): string {
   const parts: string[] = [];
@@ -213,6 +228,11 @@ export function quoteBasis(
   // all, and treating absent as null would label every savings row "rate only".
   // Only a finance row that carries the key and left it null means it.
   if ("installment" in q && q.installment == null) parts.push(t.rateOnly);
+  // `derived` is the same claim `convertTable` labels with `computed` — the
+  // figure is the bank's own rate run through arithmetic that is ours, not a
+  // number the bank stated. Mutually exclusive with `rateOnly` above: a row
+  // is either payment-free or its payment is computed, never both.
+  else if (q.derived) parts.push(t.computed);
   return parts.join(" · ");
 }
 
@@ -262,23 +282,32 @@ export function profitShareTable(c: Comparison, t: Labels) {
 /**
  * Conversion.
  *
- * `derived` becomes a column because it changes what the number *is*: false
- * means the bank converted it, true means we multiplied its published rate.
- * Sorting by result without that visible would rank our own arithmetic against
- * the banks' answers silently.
+ * The "Bank's own" / "Computed from rate" column is unmounted, not deleted:
+ * `derived` still comes off the wire, `cells.source` below still turns it
+ * into the right label, and the `computed`/`source` (bankOwn) strings are
+ * still live translations. None of that needed to change to take the column
+ * off the page -- only `col("source", ...)` is missing from `columns`, so
+ * putting it back is the entire job of bringing it back.
  */
 export function convertTable(c: Comparison, t: Labels) {
   const columns = [
     col("bank", t.bank, "bank"),
-    col("result", t.result, "number"),
-    col("rate", t.rate, "number"),
-    col("source", t.source, "badge"),
+    // The same precision the FX board uses for a bank's own buy/sell rates,
+    // and for the same reason: a TRY->XAU rate is a fraction of a gram per
+    // lira, something like 0,0002, and the default whole-number formatting
+    // rounded it to a literal "0" -- not a small rate, no rate at all. The
+    // result carries the same risk once one side of the pair is a metal, so
+    // both columns get it rather than only the one that broke first.
+    col("result", t.result, "number", { decimals: RATE_DECIMALS }),
+    col("rate", t.rate, "number", { decimals: RATE_DECIMALS }),
   ];
   const rows: Row[] = (c.conversions ?? []).map((q) => ({
     cells: {
       bank: q.bank,
       // Strings on the wire carry Decimal; Number() here is for sorting and
-      // display only, and the source column keeps the provenance attached.
+      // display only. `source` keeps the provenance attached to the row even
+      // though no column currently renders it -- sorting or filtering logic
+      // added later can still read it, and the column is one line to restore.
       result: Number(q.result),
       rate: Number(q.rate),
       source: q.derived ? t.computed : t.source,
@@ -288,33 +317,41 @@ export function convertTable(c: Comparison, t: Labels) {
 }
 
 /**
- * A card instalment quote.
+ * Card instalments: the ranking table. Cheapest instalment first, same as
+ * `financeTable`.
  *
- * Only two banks publish this, and each sells its own cards -- there is no
- * shared family to rank the way `financeTable` does. One row is the honest
- * shape: the user already chose a bank and a card, this is that bank's answer.
+ * Cards have no cross-bank family -- each bank sells its own catalogue under
+ * its own names -- so every card every in-scope bank publishes is one row,
+ * rather than the user picking a single bank and a single card up front and
+ * getting one answer back with nothing to compare it against.
  */
-export function cardTable(quote: CardInstallmentQuote, t: Labels) {
+export function cardTable(c: Comparison, t: Labels) {
   const columns = [
     col("bank", t.bank, "bank"),
     col("card", t.card, "text"),
+    // Same column and the same reason as financeTable's: a bank that states
+    // only a rate (Türkiye Finans) needs to say so where the empty payment
+    // cells are, not just render two em dashes with no explanation.
+    col("basis", t.basis, "badge", { filterable: true }),
     col("installments", t.installments, "number"),
     col("installment", t.instalment, "money"),
     col("total", t.total, "money"),
     col("profit_rate", t.profitRate, "percent"),
   ];
-  const rows: Row[] = [
-    {
-      cells: {
-        bank: quote.bank,
-        card: quote.card?.name ?? "",
-        installments: quote.installments,
-        installment: quote.installment,
-        total: quote.total,
-        profit_rate: quote.profit_rate,
-      },
+  const rows: Row[] = (c.card_quotes ?? []).map((q) => ({
+    cells: {
+      bank: q.bank,
+      card: q.card?.name ?? "",
+      basis: q.installment == null ? t.rateOnly : "",
+      installments: q.installments,
+      // Null where the bank publishes a rate but never states a payment
+      // (Türkiye Finans). The table renders an em dash and sorting sinks it,
+      // exactly as financeTable's installment column does.
+      installment: q.installment ?? null,
+      total: q.total ?? null,
+      profit_rate: q.profit_rate,
     },
-  ];
+  }));
   return { columns, rows };
 }
 
@@ -322,20 +359,38 @@ export function cardTable(quote: CardInstallmentQuote, t: Labels) {
  * The mile earning-rate table.
  *
  * Kuveyt Türk's table is 567 rows -- every card, tier and spending category.
- * Nothing to rank here (`CATEGORIES.miles.ranks === false`); the whole table
- * is handed to `ProducedTable`, whose own filter bar already gives per-column
- * tick-lists on `card`, `tier` and `category` for free.
+ * Nothing to rank here (`CATEGORIES.miles.ranks === false`), and no bank
+ * column either: this whole category is single-bank by construction (the
+ * picker above it chooses the one bank), so repeating its name on all 567
+ * rows would be the only column that never varies. `TableFilters` gives the
+ * search box and the `card`/`tier`/`category` tick-lists the row count needs.
  */
-export function mileRatesTable(rates: MileRate[], bank: string, t: Labels) {
+export function mileRatesTable(rates: MileRate[], t: Labels) {
   const columns = [
-    col("bank", t.bank, "bank"),
-    col("card", t.card, "badge", { filterable: true }),
-    col("tier", t.tier, "badge", { filterable: true }),
-    col("category", t.category, "badge", { filterable: true }),
-    col("per_lira", t.perLira, "number"),
+    // Plain text, not a badge: a pill is for a state -- offered, declined,
+    // derived -- something the reader distinguishes at a glance across rows
+    // that otherwise look alike. Card, tier and category are just what the
+    // row is about, three plain labels on 567 rows of them, and a coloured
+    // chip on all three of every row is decoration doing no work.
+    col("card", t.card, "text", { filterable: true }),
+    col("tier", t.tier, "text", { filterable: true }),
+    col("category", t.category, "text", { filterable: true }),
+    // Real values run from 0,0015 to 1 mile per lira -- the default
+    // whole-number formatting rounded almost every row to a bare "0" or "1",
+    // the same class of bug the FX board and the converter already had fixed.
+    col("per_lira", t.perLira, "number", { decimals: RATE_DECIMALS }),
   ];
   const rows: Row[] = rates.map((r) => ({
-    cells: { bank, card: r.card, tier: r.tier, category: r.category, per_lira: r.per_lira },
+    cells: {
+      card: r.card,
+      tier: r.tier,
+      // The feed spells spending categories lowercase ("akaryakit",
+      // "yurtdisi") -- a sentence-case first letter is the one thing worth
+      // fixing on display without pretending to translate or correct spelling
+      // the bank did not publish.
+      category: r.category ? r.category[0].toUpperCase() + r.category.slice(1) : r.category,
+      per_lira: r.per_lira,
+    },
   }));
   return { columns, rows };
 }

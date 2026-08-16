@@ -158,6 +158,12 @@ def _check_profit_share(bank) -> str:
 def _check_card(bank) -> str:
     card, amount, installments = probes.CARD[bank.name]
     quote = bank.card_installment_quote(card, amount, installments)
+    # Türkiye Finans states a rate and never an instalment, the same contract
+    # as its finance calculator. See _check_finance.
+    if not quote.priced:
+        if not quote.profit_rate:
+            raise AssertionError("neither an instalment nor a rate")
+        return f"{card[:22]} {amount:,.0f}/{installments}x -> {quote.profit_rate}% (rate only)"
     if quote.installment <= 0:
         raise AssertionError(f"instalment came back {quote.installment}")
     return f"{card[:22]} {amount:,.0f}/{installments}x -> {quote.installment:,.2f}"

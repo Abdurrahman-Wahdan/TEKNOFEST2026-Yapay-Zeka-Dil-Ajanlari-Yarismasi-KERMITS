@@ -23,9 +23,11 @@ import type { FilterState } from "@/lib/table-filter";
  *   bank -> `hidden`, dropping that bank's two columns
  *   side -> `hidden`, dropping every buy or every sell column
  *
- * Empty means everything, in all three. A filter nobody has touched should not
- * be doing anything, and "no ticks" reading as "show nothing" is the way that
- * goes wrong.
+ * Untouched means everything, in all three -- a filter nobody has touched
+ * should not be doing anything. Untouched is the key being absent from
+ * `state.values`, not an empty array stored there: an empty array is a real
+ * selection (nothing ticked) and has to survive being read back, the same
+ * way `BankPicker`'s does on every other page in this app.
  */
 export function BoardFilters({
   pairs,
@@ -43,7 +45,14 @@ export function BoardFilters({
 }) {
   const t = useTranslations("comparator");
 
-  const chosenPairs = state.values.instrument ?? [];
+  // Same `undefined`-vs-`[]` distinction as bank and side, below -- collapsing
+  // a full re-selection back down to `[]` made this toggle stuck the same
+  // way. The row filter (`applyFilters`, shared with every AI-produced
+  // table) already treats an empty `instrument` as "no filter" regardless of
+  // how it got that way, so this only fixes the button's own round trip, not
+  // which rows show.
+  const chosenPairs = state.values.instrument;
+  const shownPairs = chosenPairs !== undefined ? chosenPairs : pairs;
 
   // Bank and side are stored, not read back out of `hidden`.
   //
@@ -52,19 +61,24 @@ export function BoardFilters({
   // every bank read as "off" too, and from there picking a bank re-applied an
   // empty side list and hid everything again. There was no way back.
   //
-  // Stored separately they cannot erase each other, and empty means "all" in
-  // both — a filter nobody has set should never be the one hiding everything.
-  const chosenBanks = state.values[BANK_KEY] ?? [];
-  const chosenSides = state.values[SIDE_KEY] ?? [];
-  const shownBanks = chosenBanks.length ? chosenBanks : banks;
-  const shownSides = chosenSides.length ? chosenSides : SIDES;
+  // Stored separately they cannot erase each other. Untouched (the key is
+  // missing) means "all" in both — a filter nobody has set should never be
+  // the one hiding everything. That has to be `undefined`, not `[]`: this
+  // used to collapse a full selection back down to `[]` on write, same value
+  // as "untouched", which made deselecting everything indistinguishable from
+  // never having chosen — the button read "All" again the instant it was
+  // cleared, so the select-all toggle that works everywhere else in the app
+  // read as stuck here. `state.values[key]` is now stored exactly as ticked,
+  // empty array included, so a real "nothing chosen" survives.
+  const chosenBanks = state.values[BANK_KEY];
+  const chosenSides = state.values[SIDE_KEY];
+  const shownBanks = chosenBanks !== undefined ? chosenBanks : banks;
+  const shownSides = chosenSides !== undefined ? chosenSides : SIDES;
 
-  const set = (key: string, next: string[], all: string[]) =>
+  const set = (key: string, next: string[]) =>
     onChange({
       ...state,
-      // Everything ticked is the same as no filter. Storing it as one keeps a
-      // bank that appears later from being silently excluded.
-      values: { ...state.values, [key]: next.length === all.length ? [] : next },
+      values: { ...state.values, [key]: next },
     });
 
   return (
@@ -72,17 +86,10 @@ export function BoardFilters({
       <MultiSelect
         label={t("instrument")}
         options={pairs.map((p) => ({ value: p, label: p }))}
-        selected={chosenPairs.length ? chosenPairs : pairs}
+        selected={shownPairs}
         allLabel={t("allPairs")}
         allSelectedLabel={t("allSelected")}
-        onChange={(next) =>
-          onChange({
-            ...state,
-            // Everything ticked is the same as no filter, and storing it as one
-            // keeps a pair that appears later from being silently excluded.
-            values: { ...state.values, instrument: next.length === pairs.length ? [] : next },
-          })
-        }
+        onChange={(next) => set("instrument", next)}
       />
 
       <MultiSelect
@@ -91,7 +98,7 @@ export function BoardFilters({
         selected={shownBanks}
         allLabel={t("allBanks")}
         allSelectedLabel={t("allSelected")}
-        onChange={(next) => set(BANK_KEY, next, banks)}
+        onChange={(next) => set(BANK_KEY, next)}
       />
 
       <MultiSelect
@@ -103,7 +110,7 @@ export function BoardFilters({
         selected={shownSides}
         allLabel={t("allSides")}
         allSelectedLabel={t("allSelected")}
-        onChange={(next) => set(SIDE_KEY, next, SIDES)}
+        onChange={(next) => set(SIDE_KEY, next)}
       />
     </VuiBox>
   );

@@ -17,21 +17,40 @@ learns nothing.
 |---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
 | kuveytturk | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | albaraka | ✓ | ✓ | ✓ | ✓ | ✓ | — | — |
-| vakif | ✓ | ✓ | ✓ | — | ✓ | ✓ | — |
-| emlak | ✓ | ✓ | ✓ | — | — | — | — |
-| dunya | ✓ | ✓ | ✓ | — | ✓ | — | — |
+| vakif | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| emlak | ✓ | ✓ | ✓ | ✓² | ✓² | — | — |
+| dunya | ✓ | ✓ | ✓ | ✓ | ✓ | — | — |
 | ziraat | ✓ | ✓ | — | — | — | — | — |
 | tom | ✓ | ✓ | — | — | — | — | — |
 | hayat | ✓ | — | ✓ | ✓ | ✓ | — | — |
-| turkiyefinans | ✓ | ✓¹ | — | — | — | — | — |
+| turkiyefinans | ✓ | ✓¹ | — | ✓ | ✓² | ✓³ | — |
 | adil | — | — | — | — | — | — | — |
 
-¹ **Rate, never a payment.** `turkiyefinans` publishes an 18-product finance catalogue
-with a real monthly profit rate per term band, an annual cost rate, an allocation fee and
-BSMV — but no instalment, because its calculator does the annuity in the browser. It is in
-scope for financing and ranks on rate like any other bank; `installment` and `total` come
-back **null**, and the UI shows an empty payment column rather than a number nobody
-published. Its 55-row profit-share table is a ratio only, so `profit_share` stays out.
+The `rates` and `convert` columns above are re-verified live as of **2026-08-15**
+(`python -m banks`, 39/40 ok — see "Emlak and Türkiye Finans, completed" below):
+`vakif` and `dunya` were shown as `rates: —` here from before the earlier
+FX-board session found them; that was already wrong and is corrected in place
+rather than left inconsistent with the rest of the table.
+
+¹ **Rate, plus a computed payment (updated 2026-08-16).** `turkiyefinans` publishes an
+18-product finance catalogue with a real monthly profit rate per term band, an annual
+cost rate, an allocation fee and BSMV. Its own calculator turns that rate into an
+instalment client-side (`creditInstallmentResult` in `turkiyefinans.modules.min.js`) and
+never sends the result back over the wire, so `finance_quote` now ports that exact
+function (`_installment_plan`) instead of leaving the payment null. `installment` and
+`total` come back real, `derived=True` marks them as computed rather than read off the
+wire, and the UI shows the same "computed" label `convert`'s derived rows already use.
+Card instalments are unaffected — a different, date-dependent calculator, still null.
+Its 55-row profit-share table is a ratio only, so `profit_share` stays out.
+
+² **Derived, not server-side.** `emlak`'s rates are scraped off its own
+`/tr/tum-kurlarimiz` page (23 instruments, server-rendered, no endpoint behind
+it — its one JSON candidate, `services/api/CurrencyTypes/GetFxRatesAll`, is
+commented out of the site's own bundle and answers 404 when called directly).
+`emlak convert` and `turkiyefinans convert` both derive from their own
+published rates through `BaseBank.convert_from_rates` — the same agreed
+exception already used by Kuveyt Türk and Hayat — because neither bank has a
+converter endpoint of its own. Every row from these two is marked `derived`.
 
 ---
 
@@ -166,11 +185,67 @@ conversion. They must be labelled — see the `derived` contract on `ConversionO
 ## 6. Card & miles
 
 - **kuveytturk** — 5 cards, quote works (10.000 TL / 6 ay → 1.900,64 ₺, 2,99%).
-  **Bug: the catalogue has a duplicate code.** `BP` is both "Sağlam Business Kart" and
-  "Miles&Smiles Business Kredi Kartı", so one of them is unreachable by code.
+  Reachable by name (see bug 2 below for the duplicate code).
 - **vakif** — 1 card `FK` (10.000 TL / 6 ay → 1.947,08 ₺, 4,30%).
+- **turkiyefinans** — found 2026-08-15, previously unread. One flat rate for
+  every TF card (Paraf, Happy Kart alike — the calculator has no card-type
+  selector). Same contract as its `finance_quote`: `installments.js` runs the
+  whole instalment annuity in the browser from a rate this page renders
+  server-side into a disabled `<input>` (`txtTaksitleKarPayi`, e.g. 4,25%,
+  2–12 instalments); there is no service call behind it, so the rate is
+  scraped off the HTML the same way Hayat's account types are, and
+  `installment`/`total` come back null rather than an invented figure.
 - **mile_rates** — kuveytturk only, **567 rows** (card × tier × category). Unusable as a
   flat table; needs filtering by card and category.
+
+³ **Rate, never a payment — card.** Same footnote as ¹, one bank, one more
+capability. `card_installment_quote` returns `installment=None` and the
+published rate.
+
+### Card — auditing the remaining banks (2026-08-15)
+
+Only kuveytturk and vakif were wired up; the other eight were re-checked by
+hand rather than trusted from an earlier pass, the same rigor as the FX audit:
+
+- **turkiyefinans** — a real gap, closed (above).
+- **albaraka, dunya, emlak, hayat, ziraat** — each has a "kartlar" product
+  page; none has a calculator, a form, or a JS-visible AJAX/service call for
+  instalments. Emlak's card page does carry a rate table, but it is the
+  BDDK-mandated *maximum late-payment penalty* disclosure (`Aylık Akdi Kar
+  Payı Oranı: %0`, then tiered penalty ceilings by outstanding balance) — not
+  an instalment rate, and not something a purchase is priced against.
+- **tom** — its calculator page (`hesaplama-araclari.html`) loads exactly the
+  two scripts already known (`calculation-tool-dynamic.js` for the loan,
+  `calculation-tool-kp.js` for kâr payı); no third script and no card link
+  anywhere on the site.
+- **adil** — not re-probed; already established as zero inputs, zero selects,
+  zero backend calls across the whole site, and a card calculator would be
+  none of those things either.
+
+Net: **one bank added (`turkiyefinans`, rate-only)**, five genuine "nothing
+published" findings each checked against the bank's own calculator page and
+scripts rather than assumed, and one dead end (Emlak's rate table) that reads
+like a match by name but is a different disclosure entirely.
+
+### Card — the comparison mechanism was never really comparing
+
+`GET /banks/{bank}/card` always existed as a single-bank, single-card quote,
+and the compare page's Card category called only that: pick one bank, pick
+one card, press Compare, get the one row back. There was no `banks/compare.py`
+function and no `/compare/card` route — every other category (`finance`,
+`profit_share`, `exchange`) has both. Cards have no cross-bank family the way
+finance products do (no shared taxonomy — each bank names its own catalogue),
+so `compare.card(amount, installments, banks=None)` asks every in-scope bank
+for its whole `products("card")` catalogue and quotes every card in it, the
+same "one row per real thing sold" shape `finance` gets from the family
+table, built from each bank's own catalogue instead. A rate-only row (now
+turkiyefinans) sorts and sinks exactly like a rate-only finance row — `_ranked`
+already handled a None sort key generically, from the finance work.
+
+Live proof, 10.000 TL / 6 taksit, no bank filter: **7 rows across 3 banks**,
+0 unavailable — kuveytturk's five cards (including both `BP`-coded ones,
+resolved by name), vakif's Ferah Kart, and turkiyefinans's rate-only row
+sinking to the bottom of the ranking as expected.
 
 ---
 
@@ -323,3 +398,54 @@ priced by neither, so it stays in `NOT_PRICED`. The other eight accounts are
 single-bank and listed in `SINGLE_BANK_PROFIT_SHARE`.
 
 **11/11 family entries resolve live.**
+
+## Converter — auditing the remaining banks (2026-08-15)
+
+The FX board reads six banks; the converter read only five of those six —
+`turkiyefinans` had `rates` but no `convert`. Four more banks (`adil`, `emlak`,
+`tom`, `ziraat`) were in neither. Checked each one properly rather than
+labelling it unreachable on the strength of an earlier pass:
+
+- **`turkiyefinans`** already had a full rate board (`GetExchangeRates`) with
+  nowhere to convert through — its own calculator does everything in the
+  browser. `convert` now derives from that board (see footnote ² above).
+- **`emlak` was a real gap.** Its site publishes a 23-instrument rates page,
+  `/tr/tum-kurlarimiz`, server-rendered with no endpoint behind it — never
+  read before this. Its own JavaScript bundle references a JSON endpoint,
+  `services/api/CurrencyTypes/GetFxRatesAll`, sitting in a commented-out code
+  path; called directly it answers a clean 404, confirming the route was
+  decommissioned rather than merely unlinked. `rates` now scrapes the page;
+  `convert` derives from it the same way as `turkiyefinans`.
+- **`tom`** — checked its two calculator scripts
+  (`calculation-tool-dynamic.js`, `calculation-tool-kp.js`) for any
+  currency-shaped endpoint, then probed the `webintegration.tombank.com.tr`
+  API namespace directly with its known working credential against plausible
+  route names (`CurrencyCalculation/GetCurrencyRates`, `ExchangeRate/GetAll`,
+  `GoldPrice/Get`, and near variants). Every one came back a clean 404 — not
+  the 401 a real-but-unauthorised route would give — so there is no currency
+  endpoint to find, authenticated or not.
+- **`ziraat`** — its homepage embeds only the already-documented kâr payı
+  calculator (currency is an *input* to that form, not a published board).
+  Checked `/bireysel/yatirim-urunleri/spot-doviz` and
+  `/bireysel/hesaplar/altin-hesaplar`, the two pages a "spot FX" and "gold
+  account" link would plausibly lead to: both are marketing copy with no
+  table, widget, or embedded rate data. No `drupalSettings` currency config
+  either. Genuinely nothing to read.
+- **`adil`** was not re-probed — `docs/discovery/captured/adil.md` already
+  confirmed zero inputs, zero selects and zero backend calls across the whole
+  site, checked with a real browser on the correct domain. Nothing about a
+  converter would change that finding.
+
+Net: **one bank added to `convert` by deriving instead of calling
+(`turkiyefinans`), one bank added to the app entirely (`emlak`, `rates` and
+`convert` both)**, and three genuine "nothing published" findings, each
+checked by reading the bank's own code or exhausting its plausible endpoint
+names rather than assumed from an earlier pass.
+
+Also refactored: `kuveytturk` and `hayat` had each independently written the
+"derive a conversion from published rates" arithmetic, drifting on the same
+two edge cases (matching a feed's own spelling of a code case-insensitively,
+and what to do when a feed does not list TL itself). A third and fourth bank
+needing the identical logic is what a shared helper is for —
+`BaseBank.convert_from_rates` now holds it once, and all four `convert()`
+methods are one line each.

@@ -72,10 +72,10 @@ class FinanceQuoteOut(BaseModel):
     amount: float
     term: int
 
-    # Null where the bank publishes a rate but never states a payment. Türkiye
-    # Finans is the case: its calculator runs the annuity in the browser, so
-    # there is nothing to read back and computing one here is forbidden. The
-    # row still ranks on rate; the payment column is visibly empty.
+    # Null where the bank publishes a rate but never states a payment, and
+    # nothing here can reproduce one -- Türkiye Finans is no longer this case
+    # for financing (see `derived`), but stays here for any future bank whose
+    # calculator can't be ported either.
     installment: float | None = Field(
         default=None,
         description="Monthly payment, or null where the bank publishes only a rate.",
@@ -95,6 +95,11 @@ class FinanceQuoteOut(BaseModel):
     # True when the bank sells one product covering the whole axis this family
     # splits on, so the row answers the question without being specific to it.
     general: bool = False
+    # True when `installment`/`total`/`schedule` were computed by us rather
+    # than read off the wire -- currently only Türkiye Finans, whose own
+    # calculator runs this exact arithmetic client-side. Same contract as
+    # `ConversionOut.derived`: the UI must label these.
+    derived: bool = False
 
     # Omitted from comparison responses, where ten full schedules would dwarf
     # the answer. The single-bank quote endpoint includes it.
@@ -140,8 +145,15 @@ class CardInstallmentQuoteOut(BaseModel):
     card: ProductOut
     amount: float
     installments: int
-    installment: float
-    total: float
+
+    # Null where the bank publishes a rate but never states a payment -- the
+    # same contract as FinanceQuoteOut.installment, and the same bank.
+    installment: float | None = Field(
+        default=None,
+        description="Monthly payment, or null where the bank publishes only a rate.",
+    )
+    total: float | None = None
+
     profit_rate: float
 
 
@@ -247,6 +259,7 @@ class ComparisonOut(BaseModel):
     quotes: list[FinanceQuoteOut] = Field(default_factory=list)
     profit_share_quotes: list[ProfitShareQuoteOut] = Field(default_factory=list)
     conversions: list[ConversionOut] = Field(default_factory=list)
+    card_quotes: list[CardInstallmentQuoteOut] = Field(default_factory=list)
     unavailable: list[UnavailableOut] = Field(default_factory=list)
     seconds: float = Field(description="How long the fan-out took.")
 

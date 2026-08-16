@@ -3,9 +3,11 @@ import { describe, it } from "node:test";
 
 import {
   bestRates,
+  cardTable,
   defaultSort,
   financeTable,
   isSelfQuote,
+  mileRatesTable,
   movements,
   orderByCoverage,
   pairLabel,
@@ -18,7 +20,7 @@ import {
   type BankRate,
   type Labels,
 } from "./comparator.ts";
-import type { Comparison, FinanceQuote, ProfitShareQuote } from "./api.ts";
+import type { CardInstallmentQuote, Comparison, FinanceQuote, MileRate, ProfitShareQuote } from "./api.ts";
 import type { Row } from "./contract.ts";
 
 const t = {
@@ -148,6 +150,7 @@ const financeLabels = {
   total: "Toplam", profitRate: "Kâr payı", annualCost: "Yıllık maliyet",
   insured: "Sigortalı", uninsured: "Sigortasız",
   coversAll: "Tüm ürünleri kapsıyor", rateOnly: "Sadece oran yayınlıyor",
+  computed: "Kurdan hesaplandı",
 } as unknown as Labels;
 
 const quote = (over: Partial<FinanceQuote>): FinanceQuote =>
@@ -156,7 +159,7 @@ const quote = (over: Partial<FinanceQuote>): FinanceQuote =>
     product: { code: "IF", name: "İhtiyaç Finansmanı", category: "finance" },
     amount: 100000, term: 24, installment: 5000, total: 120000,
     profit_rate: 3.19, annual_cost_rate: 55.6, fees: {},
-    variant: "", general: false, schedule: [],
+    variant: "", general: false, derived: false, schedule: [],
     ...over,
   }) as FinanceQuote;
 
@@ -193,15 +196,37 @@ describe("quoteBasis", () => {
   });
 
   it("keeps both facts when a row carries both", () => {
-    // Türkiye Finans is always this case: its rows are a sigorta variant AND
-    // payment-free. Dropping either leaves the table unable to say why the
-    // bank has two rows, or why its payment column is empty.
+    // Türkiye Finans's rows are always a sigorta variant; card comparisons
+    // still carry a payment-free bank too, so both facts must survive.
     assert.equal(
       quoteBasis(
         quote({ bank: "turkiyefinans", variant: "sigortasiz", installment: null }),
         financeLabels,
       ),
       "Sigortasız · Sadece oran yayınlıyor",
+    );
+  });
+
+  it("marks a payment that was computed rather than published", () => {
+    // Türkiye Finans's own instalment, since `_installment_plan`: a real
+    // number, worked out from the bank's own rate rather than read off the
+    // wire, and it must not be mistaken for a bank's own stated payment.
+    assert.equal(
+      quoteBasis(
+        quote({ bank: "turkiyefinans", variant: "sigortasiz", derived: true }),
+        financeLabels,
+      ),
+      "Sigortasız · Kurdan hesaplandı",
+    );
+  });
+
+  it("prefers rate-only over computed when a row somehow carries both", () => {
+    // Should never happen together in practice -- a null instalment and
+    // `derived: true` contradict each other -- but if it did, "no payment"
+    // is the more important fact to show, not "a payment, and it's ours".
+    assert.equal(
+      quoteBasis(quote({ installment: null, derived: true }), financeLabels),
+      "Sadece oran yayınlıyor",
     );
   });
 });
@@ -233,6 +258,107 @@ describe("financeTable", () => {
     const basis = columns.find((c) => c.key === "basis");
     assert.ok(basis, "the basis column is missing");
     assert.equal(basis.filterable, true);
+  });
+});
+
+const cardLabels = {
+  bank: "Banka", card: "Kart", basis: "Ürün farkı", installments: "Taksit sayısı",
+  instalment: "Taksit", total: "Toplam", profitRate: "Kâr payı",
+  rateOnly: "Sadece oran yayınlıyor",
+} as unknown as Labels;
+
+const cardQuote = (over: Partial<CardInstallmentQuote>): CardInstallmentQuote =>
+  ({
+    bank: "kuveytturk",
+    card: { code: "SK", name: "Sağlam Kart Troy", category: "card" },
+    amount: 10000, installments: 6, installment: 1900.64, total: 11403.84,
+    profit_rate: 2.99,
+    ...over,
+  }) as CardInstallmentQuote;
+
+describe("cardTable", () => {
+  const build = (card_quotes: CardInstallmentQuote[]) =>
+    cardTable({ card_quotes } as unknown as Comparison, cardLabels);
+
+  it("gives every card a row -- a bank with five cards is five rows", () => {
+    const { rows } = build([
+      cardQuote({ card: { code: "SK", name: "Sağlam Kart Troy", category: "card" } }),
+      cardQuote({ card: { code: "BP", name: "Sağlam Business Kart", category: "card" } }),
+      cardQuote({
+        bank: "vakif",
+        card: { code: "FK", name: "Ferah Kart", category: "card" },
+        installment: 1947.08,
+      }),
+    ]);
+    assert.equal(rows.length, 3);
+    assert.deepEqual(rows.map((r) => r.cells.bank), ["kuveytturk", "kuveytturk", "vakif"]);
+  });
+
+  it("keeps a missing payment null instead of zero", () => {
+    // Zero would sort to the top and crown the bank that never quoted a
+    // payment as the cheapest, the same trap financeTable guards against.
+    const { rows } = build([
+      cardQuote({ bank: "turkiyefinans", installment: null, total: null, profit_rate: 4.25 }),
+    ]);
+    assert.equal(rows[0].cells.installment, null);
+    assert.equal(rows[0].cells.total, null);
+    assert.equal(rows[0].cells.basis, "Sadece oran yayınlıyor");
+  });
+
+  it("leaves a real payment's basis blank", () => {
+    const { rows } = build([cardQuote({})]);
+    assert.equal(rows[0].cells.basis, "");
+  });
+});
+
+const mileLabels = {
+  card: "Kart", tier: "Seviye", category: "Tür", perLira: "TL başına mil",
+} as unknown as Labels;
+
+const mileRate = (over: Partial<MileRate>): MileRate =>
+  ({ card: "Sağlam Kart Troy", tier: "Platin", category: "market", per_lira: 1, ...over }) as MileRate;
+
+describe("mileRatesTable", () => {
+  it("carries no bank column -- the category is single-bank by construction", () => {
+    const { columns, rows } = mileRatesTable([mileRate({})], mileLabels);
+    assert.equal(columns.some((c) => c.key === "bank"), false);
+    assert.equal(rows[0].cells.bank, undefined);
+  });
+
+  it("keeps a fractional per-lira rate instead of rounding it to a bare 0 or 1", () => {
+    // Real rows run from 0,0015 to 1 -- the same rounding trap the FX board
+    // and the converter had before their columns carried `decimals`.
+    const { columns } = mileRatesTable([mileRate({ per_lira: 0.0015 })], mileLabels);
+    const perLira = columns.find((c) => c.key === "per_lira");
+    assert.ok(perLira?.decimals, "per_lira must declare a decimals option");
+  });
+
+  it("gives card, tier and category their own row", () => {
+    const { rows } = mileRatesTable(
+      [mileRate({ card: "Sağlam Kart Troy", tier: "Platin", category: "market", per_lira: 0.01 })],
+      mileLabels,
+    );
+    assert.deepEqual(rows[0].cells, {
+      // Capitalised on the way in -- see the next test.
+      card: "Sağlam Kart Troy", tier: "Platin", category: "Market", per_lira: 0.01,
+    });
+  });
+
+  it("capitalises the category the feed spells lowercase", () => {
+    // Kuveyt Türk's own feed spells these "akaryakit", "yurtdisi" -- a
+    // sentence-case first letter, not a translation or a spelling fix.
+    const { rows } = mileRatesTable([mileRate({ category: "akaryakit" })], mileLabels);
+    assert.equal(rows[0].cells.category, "Akaryakit");
+  });
+
+  it("renders card, tier and category as plain text, not a badge", () => {
+    // A pill is for a state a reader distinguishes at a glance -- offered,
+    // declined, derived. These three are just what the row is about, on 567
+    // rows of them, and a coloured chip everywhere is decoration, not signal.
+    const { columns } = mileRatesTable([mileRate({})], mileLabels);
+    for (const key of ["card", "tier", "category"]) {
+      assert.equal(columns.find((c) => c.key === key)?.type, "text");
+    }
   });
 });
 
@@ -300,14 +426,18 @@ describe("defaultSort", () => {
     // is the lowest and the best profit the highest, so one rule for "the money
     // column" would be wrong half the time.
     assert.deepEqual(defaultSort("profit_share"), { key: "net_profit", direction: "desc" });
-    assert.deepEqual(defaultSort("convert"), { key: "result", direction: "desc" });
   });
 
-  it("leaves a board and a reference table unranked", () => {
+  it("leaves a board, a reference table and the converter unranked", () => {
     // The FX board is one row per instrument across many banks, and the mile
-    // table is reference data — no single column orders either.
+    // table is reference data — no single column orders either. The converter
+    // has no universal "best" direction the way a lower instalment or a
+    // higher profit does: whether more or less of the target currency is the
+    // good outcome depends on which side of the trade the user is on, so it
+    // starts unsorted rather than guessing "highest result" on their behalf.
     assert.equal(defaultSort("rates"), null);
     assert.equal(defaultSort("miles"), null);
+    assert.equal(defaultSort("convert"), null);
   });
 
   it("names a column the table it ranks actually has", () => {

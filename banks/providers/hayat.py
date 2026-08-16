@@ -17,7 +17,6 @@ Contract in docs/discovery/captured/hayat.md, exercised by verify_hayat.py.
 import json
 import logging
 import re
-from decimal import Decimal
 
 from ..models import Conversion, ProfitShareQuote, Product, Rate
 from ..parse import fold, money, rate
@@ -210,45 +209,8 @@ class Hayat(BaseBank):
     def convert(self, source: str, target: str, amount: float) -> Conversion:
         """Convert using the published rate.
 
-        Hayat has no converter endpoint, so the multiplication happens here in
-        Decimal and the result is flagged as derived — the same agreed exception
-        as Kuveyt Türk.
+        Hayat has no converter endpoint, so the multiplication happens in
+        `BaseBank.convert_from_rates` and the result is flagged as derived —
+        the same agreed exception as Kuveyt Türk.
         """
-        source, target = source.upper(), target.upper()
-        if self.rate_aliases.get(source, source) == self.rate_aliases.get(target, target):
-            value = Decimal(str(amount))
-            return Conversion(
-                bank=self.name, source=source, target=target,
-                amount=value, result=value, rate=Decimal(1), derived=True,
-            )
-        quoted = {r.code.upper(): r for r in self.rates()}
-        source_code = self.rate_aliases.get(source, source).upper()
-        target_code = self.rate_aliases.get(target, target).upper()
-        # Every rate is quoted against the lira, which the feed does not list.
-        quoted.setdefault("TL", Rate(code="TL", name="Türk Lirası", buy=1.0, sell=1.0))
-        for code in (source_code, target_code):
-            if code not in quoted:
-                raise UnsupportedProduct(
-                    f"{self.display_name} does not quote {code!r}. "
-                    f"Quoted: {', '.join(sorted(quoted))}."
-                )
-        if not quoted[target_code].sell:
-            raise UnsupportedProduct(
-                f"{self.display_name} quotes no sell rate for {target}, so the "
-                f"conversion cannot be worked out from its published rates."
-            )
-        value = Decimal(str(amount))
-        # Selling the source to the bank uses its buy rate; buying the target
-        # uses its sell rate.
-        conversion = (
-            Decimal(str(quoted[source_code].buy)) / Decimal(str(quoted[target_code].sell))
-        )
-        return Conversion(
-            bank=self.name,
-            source=source,
-            target=target,
-            amount=value,
-            result=value * conversion,
-            rate=conversion,
-            derived=True,
-        )
+        return self.convert_from_rates(source, target, amount)
