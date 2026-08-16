@@ -111,6 +111,8 @@ def iter_docs(slug: str):
                 md["campaign_end"] = fm["campaign_end"]
             if fm.get("campaign_start"):
                 md["campaign_start"] = fm["campaign_start"]
+            if fm.get("campaign_status"):
+                md["campaign_status"] = fm["campaign_status"]
             yield Document(page_content=ch, metadata=md)
 
     # 2) PDF (pdf_text/*.md; relevant=false ELE)
@@ -127,6 +129,8 @@ def iter_docs(slug: str):
                 md["campaign_end"] = fm["campaign_end"]
             if fm.get("campaign_start"):
                 md["campaign_start"] = fm["campaign_start"]
+            if fm.get("campaign_status"):
+                md["campaign_status"] = fm["campaign_status"]
             yield Document(page_content=ch, metadata=md)
 
     # 3) GÖRSEL (image_text/*.md; her görsel bloğu ayrı, kendi URL'süyle)

@@ -81,6 +81,9 @@ def search_corpus(query: str, bank: str | None = None) -> str:
         if end and not _dates.is_active(end):
             dropped += 1
             continue
+        if not end and meta.get("campaign_status") == "bitti":
+            dropped += 1
+            continue
         url = meta.get("source_url") or meta.get("pdf_url") or meta.get("gorsel_url") or ""
         out.append({
             "text": text[:500], "bank": meta.get("bank", ""),

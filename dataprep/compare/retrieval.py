@@ -160,6 +160,8 @@ def make_bank_search_tool(bank: str, marked: set, discarded: set) -> StructuredT
             end = meta.get("campaign_end")
             if end and not dates.is_active(end):        # süresi geçmiş -> gösterme
                 continue
+            if not end and meta.get("campaign_status") == "bitti":  # tarihsiz ama bitmiş
+                continue
             url = meta.get("source_url") or meta.get("pdf_url") or meta.get("source_page") or ""
             out.append({
                 "point_id": str(h.id), "url": url, "type": meta.get("type", ""),
