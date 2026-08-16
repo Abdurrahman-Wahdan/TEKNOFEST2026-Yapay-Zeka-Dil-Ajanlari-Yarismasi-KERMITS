@@ -11,7 +11,7 @@ from langchain_core.embeddings import Embeddings
 
 from config.settings import settings
 
-from .providers import clear_local_cache, get_provider
+from .providers import clear_local_cache, clear_remote_cache, get_provider
 
 logger = logging.getLogger(__name__)
 
@@ -40,3 +40,4 @@ def get_embedding(
 def clear_embedding_cache() -> None:
     """Drop every cached embedding model."""
     clear_local_cache()
+    clear_remote_cache()

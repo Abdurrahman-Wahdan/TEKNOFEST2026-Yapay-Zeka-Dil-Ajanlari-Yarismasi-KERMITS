@@ -49,7 +49,18 @@ class Settings(BaseSettings):
     REASONER_MODEL: str = "gpt"
 
     # ===== Embeddings =====
-    EMBEDDING_PROVIDER: str = "local"
+    EMBEDDING_PROVIDER: str = Field(
+        default="remote",
+        description="'remote' calls the Qwen3 embedding server over the vLLM "
+        "host (EMBEDDING_ROUTE); 'local' runs sentence-transformers on-device. "
+        "Remote is the default: the embedding server already runs on the same "
+        "host as the chat models, so no local GPU/download is needed.",
+    )
+    EMBEDDING_ROUTE: str = Field(
+        default="/embed/v1",
+        description="Path on VLLM_BASE_URL serving the embedding model, same "
+        "pattern as the chat model routes in llm/providers/vllm_provider.py.",
+    )
     EMBEDDING_MODEL: str = Field(
         default="Qwen/Qwen3-Embedding-0.6B",
         description="Multilingual, strong on Turkish, 1024-dim, 32k context so "
@@ -58,9 +69,11 @@ class Settings(BaseSettings):
     )
     EMBEDDING_DEVICE: str = Field(
         default="mps",
-        description="Apple GPU. Measured on an M1 Max (32 GPU cores): 0.09s per "
-        "chunk against 3.61s on CPU -- 40x, turning a 20-hour index into 25 "
-        "minutes. Use 'cpu' on a machine without Metal, 'cuda' with an NVIDIA GPU.",
+        description="Only read by the 'local' provider (unused while "
+        "EMBEDDING_PROVIDER=remote). Apple GPU. Measured on an M1 Max (32 GPU "
+        "cores): 0.09s per chunk against 3.61s on CPU -- 40x, turning a 20-hour "
+        "index into 25 minutes. Use 'cpu' on a machine without Metal, 'cuda' "
+        "with an NVIDIA GPU.",
     )
     EMBEDDING_DIMENSIONS: int = Field(
         default=1024,
@@ -70,8 +83,10 @@ class Settings(BaseSettings):
     EMBEDDING_BATCH_SIZE: int = Field(
         default=32,
         gt=0,
-        description="Measured on an M1 Max: 32 is the fastest batch on MPS "
-        "(0.074s/chunk); 64 and 128 are slower, not faster.",
+        description="Only read by the 'local' provider (unused while "
+        "EMBEDDING_PROVIDER=remote, where OpenAIEmbeddings' own chunk_size "
+        "applies instead). Measured on an M1 Max: 32 is the fastest batch on "
+        "MPS (0.074s/chunk); 64 and 128 are slower, not faster.",
     )
 
     # ===== Vector store (local Qdrant) =====
