@@ -54,6 +54,8 @@ import { IoHome } from "react-icons/io5";
 import { IoDocumentText } from "react-icons/io5";
 import { IoBusiness } from "react-icons/io5";
 import { IoAlbums } from "react-icons/io5";
+import { IoPricetags } from "react-icons/io5";
+import { IoMegaphone } from "react-icons/io5";
 
 const routes = [
   {
@@ -78,6 +80,22 @@ const routes = [
     key: "compare",
     route: "/compare",
     icon: <IoAlbums size="15px" color="inherit" />,
+    noCollapse: true,
+  },
+  {
+    type: "collapse",
+    name: "Ürünler",
+    key: "urunler",
+    route: "/urunler",
+    icon: <IoPricetags size="15px" color="inherit" />,
+    noCollapse: true,
+  },
+  {
+    type: "collapse",
+    name: "Kampanyalar",
+    key: "kampanyalar",
+    route: "/kampanyalar",
+    icon: <IoMegaphone size="15px" color="inherit" />,
     noCollapse: true,
   },
   {

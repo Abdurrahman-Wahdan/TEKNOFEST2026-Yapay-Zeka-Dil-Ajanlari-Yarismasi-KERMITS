@@ -1415,6 +1415,96 @@
         }
       }
     },
+    "/api/compare-tables": {
+      "get": {
+        "tags": [
+          "compare-tables"
+        ],
+        "summary": "List Tables",
+        "description": "Every table in one category, for the browse-by-subcategory picker.",
+        "operationId": "list_tables",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "'ürün' or 'kampanya'.",
+              "title": "Category"
+            },
+            "description": "'ürün' or 'kampanya'."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableListOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/compare-tables/{table_id}": {
+      "get": {
+        "tags": [
+          "compare-tables"
+        ],
+        "summary": "Get Table",
+        "description": "One table, shaped for `<TableWidget />` -- a 'Banka' column first (bank\nkeys the frontend already knows how to render), then every column the\ntable itself declared, in the order the producer chose.",
+        "operationId": "get_table",
+        "parameters": [
+          {
+            "name": "table_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "An id from GET /api/compare-tables.",
+              "title": "Table Id"
+            },
+            "description": "An id from GET /api/compare-tables."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/search": {
       "get": {
         "tags": [
@@ -2169,6 +2259,35 @@
         ],
         "title": "ChunkOut",
         "description": "One retrieved passage, with the link that proves it."
+      },
+      "ColumnOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label"
+        ],
+        "title": "ColumnOut"
       },
       "ComparisonOut": {
         "properties": {
@@ -3157,6 +3276,58 @@
         ],
         "title": "ResetPasswordResponse"
       },
+      "RowOut": {
+        "properties": {
+          "cells": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Cells"
+          },
+          "cite_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cite Url"
+          },
+          "cite_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cite Note",
+            "description": "The pipeline's own note on why this source supports the row — shown as a hover title on the citation link, not a second dashboard."
+          }
+        },
+        "type": "object",
+        "required": [
+          "cells"
+        ],
+        "title": "RowOut"
+      },
       "SavedViewIn": {
         "properties": {
           "slug": {
@@ -3385,6 +3556,116 @@
         ],
         "title": "StreamEvent",
         "description": "One SSE frame. Only the fields belonging to `type` are populated.\n\nDeclared as a response model on the streaming endpoint purely so it lands in\nthe OpenAPI schema; the endpoint returns a stream, not this object."
+      },
+      "TableDetailOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "subtitle": {
+            "type": "string",
+            "title": "Subtitle",
+            "default": ""
+          },
+          "notes": {
+            "type": "string",
+            "title": "Notes",
+            "default": ""
+          },
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/ColumnOut"
+            },
+            "type": "array",
+            "title": "Columns"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/RowOut"
+            },
+            "type": "array",
+            "title": "Rows"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "columns",
+          "rows"
+        ],
+        "title": "TableDetailOut",
+        "description": "Shaped exactly like the frontend's `TableProps` (`UI/src/lib/contract.ts`)\nso it can be spread straight into `<TableWidget />` with no translation\nlayer on the client."
+      },
+      "TableListOut": {
+        "properties": {
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "subcategories": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Subcategories"
+          },
+          "tables": {
+            "items": {
+              "$ref": "#/components/schemas/TableSummaryOut"
+            },
+            "type": "array",
+            "title": "Tables"
+          }
+        },
+        "type": "object",
+        "required": [
+          "category",
+          "subcategories",
+          "tables"
+        ],
+        "title": "TableListOut",
+        "description": "Every table in one category, plus the subcategories present in it.\n\n`subcategories` is derived from the tables actually returned, not the\nglobal registry — a category-scoped dropdown should never offer a\nsubcategory that has zero tables under this category."
+      },
+      "TableSummaryOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "topic": {
+            "type": "string",
+            "title": "Topic"
+          },
+          "docstring": {
+            "type": "string",
+            "title": "Docstring"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category",
+            "description": "'ürün' or 'kampanya'."
+          },
+          "subcategory": {
+            "type": "string",
+            "title": "Subcategory"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "topic",
+          "docstring",
+          "category",
+          "subcategory"
+        ],
+        "title": "TableSummaryOut",
+        "description": "One table, without its rows — enough to list and pick from."
       },
       "TokenPair": {
         "properties": {

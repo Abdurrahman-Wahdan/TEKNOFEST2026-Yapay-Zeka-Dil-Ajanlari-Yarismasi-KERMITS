@@ -1,6 +1,6 @@
 "use client";
 
-import { Table as MuiTable, TableBody, TableContainer, TableRow } from "@mui/material";
+import { Table as MuiTable, TableBody, TableContainer, TableRow, Tooltip } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import type { Theme } from "@mui/material/styles";
 import { useLocale } from "next-intl";
@@ -8,7 +8,7 @@ import { useLocale } from "next-intl";
 import { Pill } from "@/components/ui/Pill";
 import { VuiBox, VuiTypography } from "@/components/vision";
 import type { CellValue, ResolvedColumn, Row } from "@/lib/contract";
-import { formatDate, formatMoney, formatNumber, formatRate } from "@/lib/format";
+import { formatDate, formatMoney, formatNumber, formatRate, hostOf } from "@/lib/format";
 import { sortHint } from "@/lib/sort-hint";
 import type { SortState } from "@/lib/table-filter";
 
@@ -223,6 +223,7 @@ export function ProducedTable({
                     bankLabels={bankLabels}
                     moved={moved}
                     best={isBest}
+                    title={row.cite_note}
                   />
                 </VuiBox>
                 );
@@ -242,6 +243,7 @@ function Cell({
   bankLabels,
   moved,
   best,
+  title,
 }: {
   value: CellValue | undefined;
   column: ResolvedColumn;
@@ -251,6 +253,9 @@ function Cell({
   moved?: "up" | "down";
   /** Set when this figure is the best on its row. */
   best?: boolean;
+  /** The row's own `cite_note`, if any — shown as a native hover title on a
+      `link`-type cell only; every other cell type ignores it. */
+  title?: string;
 }) {
   const base = {
     variant: "button" as const,
@@ -327,8 +332,13 @@ function Cell({
         </VuiTypography>
       );
 
-    case "link":
-      return (
+    case "link": {
+      // The native `title` attribute puts the browser's own hover delay in
+      // charge -- Chrome, Firefox and Safari each pick their own, and none
+      // of them can be told to show sooner. `Tooltip` with `enterDelay={0}`
+      // shows the instant the cursor lands, which a citation link needs: the
+      // note is the only thing that says *why* the source supports this row.
+      const link = (
         <VuiTypography
           {...base}
           component="a"
@@ -341,6 +351,14 @@ function Cell({
           {hostOf(String(value))}
         </VuiTypography>
       );
+      return title ? (
+        <Tooltip title={title} arrow enterDelay={0} enterNextDelay={0} leaveDelay={0}>
+          {link}
+        </Tooltip>
+      ) : (
+        link
+      );
+    }
 
     case "bool":
       // A definite "no" must not render as the same glyph as "we don't know" —
@@ -374,12 +392,3 @@ function Cell({
  * header on 24px ended up above a cell on 8px in the same column.
  */
 const GUTTER = 1.5;
-
-/** A link reads better as its host than as 90 characters of path. */
-function hostOf(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return url;
-  }
-}

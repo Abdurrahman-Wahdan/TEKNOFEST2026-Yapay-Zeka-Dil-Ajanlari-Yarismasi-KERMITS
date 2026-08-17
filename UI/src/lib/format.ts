@@ -117,3 +117,30 @@ export function daysUntil(isoDate: string): number {
 export function fold(value: string, locale: Locale) {
   return value.toLocaleLowerCase(tag(locale));
 }
+
+/**
+ * Capitalizes only the first letter, locale-aware.
+ *
+ * The offline table pipeline writes `topic`/`subcategory` all-lowercase —
+ * `"teverruk finansmanı"` — which reads as a slug, not a heading, on a banking
+ * site. `.toLocaleUpperCase("tr-TR")` on just the first character is enough to
+ * fix that without title-casing every word (Turkish does not capitalize
+ * conjunctions like "ve"/"ile" the way English titles do), and the locale tag
+ * matters: plain `.toUpperCase()` turns a leading "i" into ASCII "I" instead
+ * of the dotted "İ" Turkish needs.
+ */
+export function capitalize(value: string, locale: Locale) {
+  if (!value) return value;
+  return value.charAt(0).toLocaleUpperCase(tag(locale)) + value.slice(1);
+}
+
+/** A link reads better as its host than as 90 characters of path. Shared by
+    `ProducedTable`'s `link` cell type and anywhere else a citation URL is
+    shown, so both read the same host out of the same URL the same way. */
+export function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}

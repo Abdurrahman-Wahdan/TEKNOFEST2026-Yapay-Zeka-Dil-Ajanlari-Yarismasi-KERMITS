@@ -8,6 +8,8 @@
     "banks": "Bankalar",
     "finansman": "Finansman",
     "compare": "Karşılaştır",
+    "urunler": "Ürünler",
+    "kampanyalar": "Kampanyalar",
     "aiOverview": "AI Görünümü",
     "chat": "Asistan",
     "settings": "Ayarlar",
@@ -223,5 +225,20 @@
     "allPairs": "Tüm pariteler",
     "allSides": "Alış ve satış",
     "allSelected": "Tümü"
+  },
+  "compareTables": {
+    "titleUrun": "Ürün Karşılaştırma Tabloları",
+    "titleKampanya": "Kampanya Karşılaştırma Tabloları",
+    "subcategory": "Alt Kategori",
+    "allSubcategories": "Tümü",
+    "loadingList": "Tablolar yükleniyor…",
+    "loadingTable": "Tablo yükleniyor…",
+    "loadFailed": "Yüklenemedi.",
+    "noTablesMatch": "Bu alt kategoride tablo bulunamadı.",
+    "backToList": "Listeye dön",
+    "tableCount": "{count} tablo",
+    "notOfferedTitleUrun": "Bu ürünü sunmayan bankalar",
+    "notOfferedTitleKampanya": "Bu kampanyayı sunmayan bankalar",
+    "notOfferedPill": "Sunulmuyor"
   }
 }

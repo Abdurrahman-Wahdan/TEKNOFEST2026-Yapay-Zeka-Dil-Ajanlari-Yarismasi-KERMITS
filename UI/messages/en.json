@@ -7,6 +7,8 @@
     "dashboard": "Dashboard",
     "banks": "Banks",
     "finansman": "Financing",
+    "urunler": "Products",
+    "kampanyalar": "Campaigns",
     "compare": "Compare",
     "aiOverview": "AI Overview",
     "chat": "Assistant",
@@ -223,5 +225,20 @@
     "allPairs": "All pairs",
     "allSides": "Buy and sell",
     "allSelected": "All"
+  },
+  "compareTables": {
+    "titleUrun": "Product Comparison Tables",
+    "titleKampanya": "Campaign Comparison Tables",
+    "subcategory": "Subcategory",
+    "allSubcategories": "All",
+    "loadingList": "Loading tables…",
+    "loadingTable": "Loading table…",
+    "loadFailed": "Failed to load.",
+    "noTablesMatch": "No tables in this subcategory.",
+    "backToList": "Back to list",
+    "tableCount": "{count} tables",
+    "notOfferedTitleUrun": "Banks that do not offer this product",
+    "notOfferedTitleKampanya": "Banks that do not offer this campaign",
+    "notOfferedPill": "Not offered"
   }
 }
