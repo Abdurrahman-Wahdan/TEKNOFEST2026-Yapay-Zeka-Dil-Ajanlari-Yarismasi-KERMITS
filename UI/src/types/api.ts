@@ -569,6 +569,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/compare-tables": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Tables
+         * @description Every table in one category, for the browse-by-subcategory picker.
+         */
+        get: operations["list_tables"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/compare-tables/{table_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Table
+         * @description One table, shaped for `<TableWidget />` -- a 'Banka' column first (bank
+         *     keys the frontend already knows how to render), then every column the
+         *     table itself declared, in the order the producer chose.
+         */
+        get: operations["get_table"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/search": {
         parameters: {
             query?: never;
@@ -913,6 +955,15 @@ export interface components {
              * @default false
              */
             from_vision: boolean;
+        };
+        /** ColumnOut */
+        ColumnOut: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Type */
+            type?: string | null;
         };
         /** ComparisonOut */
         ComparisonOut: {
@@ -1338,6 +1389,20 @@ export interface components {
             /** Detail */
             detail: string;
         };
+        /** RowOut */
+        RowOut: {
+            /** Cells */
+            cells: {
+                [key: string]: string | number | boolean | null;
+            };
+            /** Cite Url */
+            cite_url?: string | null;
+            /**
+             * Cite Note
+             * @description The pipeline's own note on why this source supports the row — shown as a hover title on the citation link, not a second dashboard.
+             */
+            cite_note?: string | null;
+        };
         /** SavedViewIn */
         SavedViewIn: {
             /** Slug */
@@ -1442,6 +1507,67 @@ export interface components {
              * @description error only.
              */
             detail?: string | null;
+        };
+        /**
+         * TableDetailOut
+         * @description Shaped exactly like the frontend's `TableProps` (`UI/src/lib/contract.ts`)
+         *     so it can be spread straight into `<TableWidget />` with no translation
+         *     layer on the client.
+         */
+        TableDetailOut: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /**
+             * Subtitle
+             * @default
+             */
+            subtitle: string;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /** Columns */
+            columns: components["schemas"]["ColumnOut"][];
+            /** Rows */
+            rows: components["schemas"]["RowOut"][];
+        };
+        /**
+         * TableListOut
+         * @description Every table in one category, plus the subcategories present in it.
+         *
+         *     `subcategories` is derived from the tables actually returned, not the
+         *     global registry — a category-scoped dropdown should never offer a
+         *     subcategory that has zero tables under this category.
+         */
+        TableListOut: {
+            /** Category */
+            category: string;
+            /** Subcategories */
+            subcategories: string[];
+            /** Tables */
+            tables: components["schemas"]["TableSummaryOut"][];
+        };
+        /**
+         * TableSummaryOut
+         * @description One table, without its rows — enough to list and pick from.
+         */
+        TableSummaryOut: {
+            /** Id */
+            id: string;
+            /** Topic */
+            topic: string;
+            /** Docstring */
+            docstring: string;
+            /**
+             * Category
+             * @description 'ürün' or 'kampanya'.
+             */
+            category: string;
+            /** Subcategory */
+            subcategory: string;
         };
         /**
          * TokenPair
@@ -2318,6 +2444,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ComponentsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tables: {
+        parameters: {
+            query: {
+                /** @description 'ürün' or 'kampanya'. */
+                category: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TableListOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_table: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description An id from GET /api/compare-tables. */
+                table_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TableDetailOut"];
                 };
             };
             /** @description Validation Error */

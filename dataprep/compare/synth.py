@@ -38,6 +38,22 @@ def _compact_reports(reports: list[dict]) -> list[dict]:
                 s.pop("note", None)
     return reports
 
+
+def _format_subcats(subcats: dict[str, list[str]] | list[str] | None) -> str:
+    """Alt kategorileri LLM'e BAĞLAMLI göster: sadece isim değil, altındaki
+    örnek tabloların ne olduğu da (docstring) — isim benzerliğine değil,
+    GERÇEK İÇERİK uyumuna dayalı bir karar verebilsin diye. Eski çağıranlar
+    hâlâ düz bir isim listesi (list[str]) verebilir; o durumda örneksiz gösterilir."""
+    if not subcats:
+        return "(henüz yok)"
+    if isinstance(subcats, list):
+        return ", ".join(subcats)
+    lines = []
+    for sub, examples in subcats.items():
+        ex = " | ".join(e for e in examples if e) or "(örnek yok)"
+        lines.append(f"- {sub}: {ex}")
+    return "\n".join(lines)
+
 # classify_page (kıyaslanabilir mi + mevcut tablo havuzunda eşleşen var mı) artık
 # BURADA değil, classify_agent.py'de — tablo havuzu büyüdükçe (yüzlerce olabilir)
 # TÜMÜNÜ tek prompt'a sığdırmak mümkün değil; o yüzden sabit-listeli tek çağrı
@@ -90,21 +106,29 @@ _SYNTH_Q = (
     "kelime listesi olmasın. Hem özgün/ayırt edici hem açıklayıcı olan bir "
     "denge kur.\n"
     "- Bu tabloya bir ANA KATEGORİ ata: 'kampanya' ya da 'ürün' (hangisiyse). Bir de "
-    "bir ALT KATEGORİ ata (UI'da filtrelemek için) — daha önce kullanılmış alt "
-    "kategoriler: {subcats}. Bunlardan biri gerçekten uyuyorsa AYNI ismi kullan "
-    "(tutarlılık için), uymuyorsa yeni kısa bir alt kategori adı üret.\n\n"
+    "bir ALT KATEGORİ ata (UI'da filtrelemek için). Aşağıda MEVCUT alt kategoriler "
+    "VE her birinin altında GERÇEKTEN ne tür tablolar olduğunu gösteren örnek "
+    "docstring'ler var — SADECE alt kategori ADINA bakıp karar VERME; altındaki "
+    "örnek tabloların bu yeni tabloyla GERÇEKTEN AYNI ürün/kampanya TÜRÜNDE olup "
+    "olmadığını oku. İsim olarak yakın görünse de İÇERİK farklıysa (örn. bir "
+    "'hesap' ürünüyle bir 'teminatlı finansman' ürünü, isim benzese de FARKLI "
+    "ürün tipleridir) AYNI alt kategoriyi kullanma. Gerçekten aynı türdeyse AYNI "
+    "ismi kullan (tutarlılık için); hiçbiri uymuyorsa yeni kısa bir alt kategori "
+    "adı üret.\n\n"
+    "Mevcut alt kategoriler ve örnekleri:\n\"\"\"{subcats}\"\"\"\n\n"
     "Raporlar:\n\"\"\"{reports}\"\"\"\n\n"
     'SADECE JSON: {{"docstring": "<1-2 cümle>", "category": "kampanya"|"ürün", '
     '"subcategory": "<kısa alt kategori>", "columns": ["<sütun>", ...], '
     '"rows": {{"<banka>": {{"<sütun>": "<değer ya da sunulmuyor>", ...}}}}}}')
 
 
-def synthesize_table(topic: str, reports: list[dict], subcats: list[str] | None = None) -> dict | None:
+def synthesize_table(topic: str, reports: list[dict],
+                      subcats: dict[str, list[str]] | list[str] | None = None) -> dict | None:
     import json
     payload = json.dumps(_compact_reports(reports), ensure_ascii=False)
-    subcat_list = ", ".join(subcats or []) or "(henüz yok)"
-    d = vlm.call_json(vlm.txt_msg(_SYNTH_Q.format(topic=topic, reports=payload, subcats=subcat_list)),
-                       max_tokens=4096)
+    d = vlm.call_json(vlm.txt_msg(_SYNTH_Q.format(
+        topic=topic, reports=payload, subcats=_format_subcats(subcats))),
+        max_tokens=4096)
     if not d:
         return None
     return {"docstring": (d.get("docstring") or "").strip(),
@@ -133,9 +157,14 @@ _MERGE_Q = (
     "Bu docstring ileride EMBEDDING'E ÇIKARILIP anlam bazlı aramada kullanılacak "
     "— kalıplaşmış/diğer tablolarla ortak bir çerçeve cümleye boğma, ayırt edici "
     "olan NE cümlenin başında ve belirgin olsun; aynı zamanda açıklayıcı kal.\n"
-    "- Bir ANA KATEGORİ ata: 'kampanya' ya da 'ürün'. Bir ALT KATEGORİ ata — "
-    "daha önce kullanılmış alt kategoriler: {subcats}. Uyan varsa AYNI ismi "
-    "kullan, uymuyorsa yeni kısa bir ad üret.\n\n"
+    "- Bir ANA KATEGORİ ata: 'kampanya' ya da 'ürün'. Bir ALT KATEGORİ ata. "
+    "Aşağıda MEVCUT alt kategoriler VE her birinin altında GERÇEKTEN ne tür "
+    "tablolar olduğunu gösteren örnek docstring'ler var — SADECE alt kategori "
+    "ADINA bakıp karar VERME; altındaki örnek tabloların bu birleşik tabloyla "
+    "GERÇEKTEN AYNI ürün/kampanya TÜRÜNDE olup olmadığını oku. İsim yakın "
+    "görünse de İÇERİK farklıysa AYNI alt kategoriyi kullanma. Gerçekten aynı "
+    "türdeyse AYNI ismi kullan; hiçbiri uymuyorsa yeni kısa bir ad üret.\n\n"
+    "Mevcut alt kategoriler ve örnekleri:\n\"\"\"{subcats}\"\"\"\n\n"
     "Tablo A ({a_id}) — {a_docstring}:\n\"\"\"{a}\"\"\"\n\n"
     "Tablo B ({b_id}) — {b_docstring}:\n\"\"\"{b}\"\"\"\n\n"
     'SADECE JSON: {{"docstring": "<1-2 cümle>", "category": "kampanya"|"ürün", '
@@ -143,18 +172,18 @@ _MERGE_Q = (
     '"rows": {{"<banka>": {{"<sütun>": "<değer ya da sunulmuyor>", ...}}}}}}')
 
 
-def merge_tables(a: dict, b: dict, subcats: list[str] | None = None) -> dict | None:
+def merge_tables(a: dict, b: dict,
+                  subcats: dict[str, list[str]] | list[str] | None = None) -> dict | None:
     """İki tabloyu (store.load_table çıktısı) TEK tabloda birleştirir — gerekirse
     EK SÜTUN ekleyerek, veri kaybetmeden. `dedup.py` bakım ajanı tarafından,
     mükerrer bulunduktan SONRA çağrılır."""
     import json
     payload_a = json.dumps({"columns": a["columns"], "rows": a["rows"]}, ensure_ascii=False)
     payload_b = json.dumps({"columns": b["columns"], "rows": b["rows"]}, ensure_ascii=False)
-    subcat_list = ", ".join(subcats or []) or "(henüz yok)"
     d = vlm.call_json(vlm.txt_msg(_MERGE_Q.format(
         a_id=a["id"], a_docstring=a["docstring"], a=payload_a,
         b_id=b["id"], b_docstring=b["docstring"], b=payload_b,
-        subcats=subcat_list)), max_tokens=4096)
+        subcats=_format_subcats(subcats))), max_tokens=4096)
     if not d:
         return None
     return {"docstring": (d.get("docstring") or "").strip(),

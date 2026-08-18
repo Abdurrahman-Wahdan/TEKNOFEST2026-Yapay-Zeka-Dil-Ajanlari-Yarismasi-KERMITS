@@ -38,7 +38,11 @@ export default function LoginPage() {
       // than a value comparison.
       const remember = data.get("rememberMe") !== null;
       await login(String(data.get("email")), String(data.get("password")), remember);
-      router.replace("/dashboard");
+      // /compare: both /dashboard and /finansman are unmounted (see
+      // `src/app/[locale]/(app)/_unmounted/README.md`), and Karşılaştır is now
+      // the first live page in the drawer. Keep this in step with the root
+      // redirect in `src/app/[locale]/page.tsx`.
+      router.replace("/compare");
     } catch {
       // One message for a wrong password and for an unknown address, matching
       // what the API returns — telling them apart would confirm which accounts

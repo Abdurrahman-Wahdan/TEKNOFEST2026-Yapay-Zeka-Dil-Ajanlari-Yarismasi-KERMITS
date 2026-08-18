@@ -188,7 +188,7 @@ def merge_pair(canon_id: str, dup_id: str) -> bool:
     b = store.load_table(dup_id)
     if a is None or b is None:
         return False
-    subcats = store.load_subcategories()
+    subcats = store.subcategory_examples()
     merged = synth.merge_tables(a, b, subcats)
     if merged is None:
         log.warning("  BİRLEŞTİRME BAŞARISIZ (LLM ulaşılamadı): %s + %s", canon_id, dup_id)

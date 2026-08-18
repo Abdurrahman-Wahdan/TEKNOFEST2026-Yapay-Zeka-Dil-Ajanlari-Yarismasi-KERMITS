@@ -156,7 +156,7 @@ def process_page(bank: str, url: str, body: str, banks: list[str]) -> None:
 
 
 def _finish_new_table(url: str, topic: str, reports: list[dict], banks: list[str]) -> None:
-    subcats = store.load_subcategories()
+    subcats = store.subcategory_examples()
     table_data = synth.synthesize_table(topic, reports, subcats)
     if table_data is None:
         return                                      # LLM ulaşılamadı -> retry sonra

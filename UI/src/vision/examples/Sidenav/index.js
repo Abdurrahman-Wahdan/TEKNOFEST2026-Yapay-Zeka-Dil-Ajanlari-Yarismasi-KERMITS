@@ -16,7 +16,9 @@
 
 */
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import useMediaQuery from "@mui/material/useMediaQuery";
+import { useTheme } from "@mui/material/styles";
 
 // Next routing, via the react-router shim in vision/router.js
 import { useLocation, NavLink } from "vision/router";
@@ -27,6 +29,7 @@ import { useAuth } from "@/lib/auth";
 import PropTypes from "prop-types";
 
 // @mui material components
+import IconButton from "@mui/material/IconButton";
 import List from "@mui/material/List";
 import Divider from "@mui/material/Divider";
 import Link from "@mui/material/Link";
@@ -38,16 +41,20 @@ import VuiTypography from "components/VuiTypography";
 
 // Vision UI Dashboard React example components
 import SidenavCollapse from "examples/Sidenav/SidenavCollapse";
+import SidenavActions from "examples/Sidenav/SidenavActions";
 
 // Custom styles for the Sidenav
 import SidenavRoot from "examples/Sidenav/SidenavRoot";
-import sidenavLogoLabel from "examples/Sidenav/styles/sidenav";
+import SidenavToggle from "examples/Sidenav/SidenavToggle";
+import NotificationsMenu from "examples/Navbars/DashboardNavbar/NotificationsMenu";
 
 // Vision UI Dashboard React context
-import { useVisionUIController, setMiniSidenav, setTransparentSidenav } from "context";
+import { useVisionUIController, setMiniSidenav, setMobileNavOpen, setTransparentSidenav } from "context";
 
 // Vision UI Dashboard React icons
 import { IoLogOut } from "react-icons/io5";
+import { Bell } from "lucide-react";
+import { useTranslations } from "next-intl";
 // Served from /public rather than imported: Next resolves a static image
 // import to a StaticImageData object, and this template interpolates the
 // value straight into an <img src>, which expects a plain string.
@@ -55,38 +62,56 @@ const kermitsLogo = "/vision/images/kermits-logo.png";
 
 // function Sidenav({ color = "info", brand, brandName, routes, ...rest }) {
 function Sidenav({ color, brandName, routes, ...rest }) {
+  const t = useTranslations("nav");
   const [controller, dispatch] = useVisionUIController();
-  const { miniSidenav, transparentSidenav } = controller;
+  const { miniSidenav, transparentSidenav, mobileNavOpen } = controller;
+
+  /**
+   * On a phone the drawer is an overlay, not a rail.
+   *
+   * A 96px rail on a 375px screen spends a quarter of the width on navigation
+   * and squeezes every page into what is left, which is why the chat composer
+   * had nowhere to go. Below `md` the drawer becomes MUI's `temporary` variant:
+   * closed by default, opened from the navbar's menu button, dismissed by the
+   * backdrop or by picking a destination.
+   *
+   * This reads the viewport, but it does not touch `miniSidenav` -- the note
+   * further down about not deriving that from the window width still stands. The
+   * user's rail-or-expanded choice is untouched by visiting on a phone.
+   */
+  const theme = useTheme();
+  const isPhone = useMediaQuery(theme.breakpoints.down("md"));
   const location = useLocation();
   const { pathname } = location;
   const collapseName = pathname.split("/").slice(1)[0];
   const { logout } = useAuth();
   const router = useRouter();
 
-  const closeSidenav = () => setMiniSidenav(dispatch, true);
+  const toggleSidenav = () => setMiniSidenav(dispatch, !miniSidenav);
+  const closeMobileNav = () => setMobileNavOpen(dispatch, false);
+
+  // Whether the pointer is anywhere over the drawer. Collapsed, this is what
+  // swaps the logo for the expand button -- checked against ChatGPT, where the
+  // swap zone is the whole rail and not just the mark itself, so reaching for
+  // the button from a nav icon lower down already reveals it.
+  //
+  // It does NOT expand the drawer. `VisionApp` used to hold hover handlers that
+  // did exactly that; they are gone, because a rail that expands on hover moves
+  // the page out from under the pointer.
+  const [hovered, setHovered] = useState(false);
 
   const handleSignOut = () => {
+    closeMobileNav();
     logout();
     router.replace("/login");
   };
 
-  useEffect(() => {
-    // A function that sets the mini state of the sidenav.
-    function handleMiniSidenav() {
-      setMiniSidenav(dispatch, window.innerWidth < 1200);
-    }
-
-    /** 
-     The event listener that's calling the handleMiniSidenav function when resizing the window.
-    */
-    window.addEventListener("resize", handleMiniSidenav);
-
-    // Call the handleMiniSidenav function to set the state with the initial value.
-    handleMiniSidenav();
-
-    // Remove event listener on cleanup
-    return () => window.removeEventListener("resize", handleMiniSidenav);
-  }, [dispatch, location]);
+  // There is deliberately no effect deriving `miniSidenav` from the window
+  // width. One used to live here, running on mount, on every resize and -- via
+  // a `location` dependency -- on every route change, which meant a collapse
+  // the user performed was undone the moment they clicked a nav item. The state
+  // is the user's now: seeded from the `tf26.sidenav` cookie in the app layout
+  // and changed only by the two toggles.
 
   useEffect(() => {
     // The glass/transparent sidenav is a large-screen-only look: below xl the
@@ -129,7 +154,10 @@ function Sidenav({ color, brandName, routes, ...rest }) {
           />
         </Link>
       ) : (
-        <NavLink to={route} key={key}>
+        // Picking a destination dismisses the overlay. On a phone the drawer
+        // covers the page, so leaving it open over the page the user just asked
+        // for means every navigation needs a second tap to see the result.
+        <NavLink to={route} key={key} onClick={closeMobileNav}>
           <SidenavCollapse
             color={color}
             key={key}
@@ -165,83 +193,163 @@ function Sidenav({ color, brandName, routes, ...rest }) {
   });
 
   return (
-    <SidenavRoot {...rest} variant="permanent" ownerState={{ transparentSidenav, miniSidenav }}>
-      <VuiBox
-        pt={3.5}
-        pb={0.5}
-        px={4}
-        textAlign="center"
-        sx={{
-          overflow: "unset !important",
-        }}
-      >
+    <SidenavRoot
+      {...rest}
+      variant={isPhone ? "temporary" : "permanent"}
+      open={isPhone ? mobileNavOpen : true}
+      onClose={closeMobileNav}
+      // Keeps the drawer mounted so its state and scroll position survive being
+      // dismissed, and so the nav is in the HTML for crawlers on mobile too.
+      ModalProps={{ keepMounted: true }}
+      ownerState={{ transparentSidenav, miniSidenav, isPhone }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {/*
+        The header, and the two states are genuinely different content rather
+        than one layout that shrinks.
+
+        Expanded: the KERMİTS wordmark on the left, the collapse button on the
+        right. No logo — the wordmark already is the brand here, and the mark
+        beside it was saying the same thing twice in a 250px strip.
+
+        Collapsed: the mark alone on the rail's centre line, becoming the expand
+        button while the pointer is anywhere over the drawer.
+      */}
+      <VuiBox pt={3.5} pb={0.5} px={miniSidenav && !isPhone ? 1 : 3}>
         <VuiBox
-          display={{ xs: "block", xl: "none" }}
-          position="absolute"
-          top={0}
-          right={0}
-          p={1.625}
-          onClick={closeSidenav}
-          sx={{ cursor: "pointer" }}
+          display="flex"
+          alignItems="center"
+          // Centred on the rail, spread apart when expanded. `space-between` on
+          // a single centred child would pin it left, which is what put the
+          // mark off-centre on the rail.
+          justifyContent={miniSidenav && !isPhone ? "center" : "space-between"}
+          sx={{ minHeight: 40 }}
         >
-          <VuiTypography variant="h6" color="text">
-            <Icon sx={{ fontWeight: "bold" }}>close</Icon>
-          </VuiTypography>
-        </VuiBox>
-        <VuiBox component={NavLink} to="/" display="flex" alignItems="center">
-          <VuiBox
-            sx={
-              ((theme) => sidenavLogoLabel(theme, { miniSidenav }),
-              {
-                display: "flex",
-                alignItems: "center",
-                margin: "0 auto",
-              })
-            }
-          >
+          {miniSidenav && !isPhone ? (
+            /* A fixed 40px square holding both the mark and the button, stacked.
+               Both are always rendered and cross-faded rather than swapped by a
+               conditional: a button that only exists while the pointer is over
+               the drawer cannot be reached from the keyboard at all, and this is
+               the rail's only expand control. `focus-within` reveals it for the
+               same reason hover does, so tabbing to it makes it visible. */
             <VuiBox
-              display="flex"
-              sx={
-                ((theme) => sidenavLogoLabel(theme, { miniSidenav, transparentSidenav }),
-                {
-                  mr: miniSidenav || (miniSidenav && transparentSidenav) ? 0 : 1,
-                })
-              }
+              sx={{
+                position: "relative",
+                height: 40,
+                width: 40,
+                "&:focus-within .sidenavToggleSlot": { opacity: 1 },
+              }}
             >
-              {/* `height`/`width` as a plain HTML attribute only accepts a
-                  bare number — "24px" is invalid and the browser silently
-                  drops it, which is why this rendered at the image's full
-                  natural size (301x225) instead of icon-sized. The size has
-                  to go through `style` instead. */}
-              <img
-                src={kermitsLogo}
-                alt=""
-                style={{ display: "block", height: "40px", width: "auto" }}
-              />
+              <VuiBox
+                component={NavLink}
+                to="/"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                sx={{
+                  position: "absolute",
+                  inset: 0,
+                  lineHeight: 0,
+                  opacity: hovered ? 0 : 1,
+                  transition: (theme) =>
+                    theme.transitions.create("opacity", {
+                      duration: theme.transitions.duration.shortest,
+                    }),
+                }}
+              >
+                {/* `height`/`width` as plain HTML attributes only accept bare
+                    numbers — "40px" is silently dropped, which is why this once
+                    rendered at its natural 301x225. Size goes through `style`,
+                    and `objectFit` keeps the mark centred in the square rather
+                    than stretched to fill it. */}
+                <img
+                  src={kermitsLogo}
+                  alt=""
+                  style={{
+                    display: "block",
+                    height: "40px",
+                    width: "40px",
+                    objectFit: "contain",
+                  }}
+                />
+              </VuiBox>
+              <VuiBox
+                className="sidenavToggleSlot"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                sx={{
+                  position: "absolute",
+                  inset: 0,
+                  opacity: hovered ? 1 : 0,
+                  transition: (theme) =>
+                    theme.transitions.create("opacity", {
+                      duration: theme.transitions.duration.shortest,
+                    }),
+                }}
+              >
+                <SidenavToggle miniSidenav={miniSidenav} onClick={toggleSidenav} />
+              </VuiBox>
             </VuiBox>
-            <VuiTypography
-              variant="button"
-              textGradient={true}
-              color="logo"
-              fontSize={14}
-              letterSpacing={2}
-              fontWeight="medium"
-              sx={
-                ((theme) => sidenavLogoLabel(theme, { miniSidenav, transparentSidenav }),
-                {
-                  opacity: miniSidenav || (miniSidenav && transparentSidenav) ? 0 : 1,
-                  maxWidth: miniSidenav || (miniSidenav && transparentSidenav) ? 0 : "100%",
-                  margin: "0 auto",
-                })
-              }
-            >
-              {brandName}
-            </VuiTypography>
-          </VuiBox>
+          ) : (
+            <>
+              <VuiTypography
+                variant="button"
+                textGradient={true}
+                color="logo"
+                fontSize={14}
+                letterSpacing={2}
+                fontWeight="medium"
+                sx={{ whiteSpace: "nowrap" }}
+              >
+                {brandName}
+              </VuiTypography>
+              {/* A rail-vs-expanded toggle makes no sense on the phone overlay:
+                  it is full width and dismissed rather than narrowed. The
+                  navbar's menu button is what opens and closes it there. */}
+              {!isPhone && <SidenavToggle miniSidenav={miniSidenav} onClick={toggleSidenav} />}
+
+              {/*
+                Notifications, beside the wordmark, on the phone overlay only.
+
+                It takes the slot the collapse toggle vacates here, which is why
+                the two are mutually exclusive: on a phone there is no rail to
+                collapse, and on a desktop this lives in the navbar cluster
+                instead. A bare icon with no label, unlike the settings-like rows
+                further down — it is a status indicator, and its badge has to be
+                legible at a glance rather than read as a list item.
+              */}
+              {isPhone && (
+                <NotificationsMenu
+                  renderTrigger={(triggerProps) => (
+                    <IconButton
+                      {...triggerProps}
+                      size="small"
+                      aria-label={t("notifications")}
+                      title={t("notifications")}
+                      sx={{ color: "white.main", p: 0.5 }}
+                    >
+                      <Bell size={20} aria-hidden="true" />
+                    </IconButton>
+                  )}
+                />
+              )}
+            </>
+          )}
         </VuiBox>
       </VuiBox>
       <Divider light />
       <List>{renderRoutes}</List>
+      {/*
+        The navbar's action cluster, on a phone only.
+
+        Above `md` it stays in the navbar, flush with the right edge, and this is
+        not rendered -- the two are mutually exclusive so no control is on screen
+        twice. It sits below the nav list and above Sign Out because that is what
+        it is: the chrome between the destinations and the way out.
+      */}
+      {isPhone && <SidenavActions />}
       <VuiBox
         my={2}
         mx={2}
@@ -256,6 +364,38 @@ function Sidenav({ color, brandName, routes, ...rest }) {
           [breakpoints.down("xl")]: {
             pt: 2,
           },
+
+          /*
+            Sign Out is centred, unlike every row above it.
+
+            The nav entries are a scannable column -- their icons have to line up
+            so the eye can run down them -- but this is not one of them. It is the
+            way out, sitting alone under a gap at the bottom of the drawer, and
+            left-aligning it to a column it is not part of just made it look like a
+            sixth destination that had drifted from the list.
+
+            Centred from here rather than in `SidenavCollapse`, because that
+            component draws the nav rows too and `collapseItem`'s `flex-start` is
+            correct for them. Both rules are needed: `justifyContent` on the row
+            centres the pair, and `flexGrow: 0` on the label stops MUI's default
+            `flex: 1 1 auto` from expanding it and pushing the group back off
+            centre.
+          */
+          "& .MuiListItem-root > .MuiBox-root": {
+            justifyContent: "center",
+            // The row's own padding is 16px left against 12.8px right, which alone
+            // pushed the centred content 1.6px off. Zeroed horizontally only --
+            // the vertical padding is the row's height and stays.
+            paddingLeft: 0,
+            paddingRight: 0,
+          },
+          // The icon box is a 32px alignment unit holding a 20px glyph, so 6px of
+          // empty space sits on the glyph's left. That space is part of the flex
+          // group but is not ink, so centring the group left the *visible* pair
+          // 4.5px right of the drawer's centre line. Hugging the glyph makes the
+          // group's box equal its ink, which is what has to be centred.
+          "& .MuiListItemIcon-root": { minWidth: "auto" },
+          "& .MuiListItemText-root": { flexGrow: 0 },
         })}
       >
         {/*
@@ -296,7 +436,7 @@ function Sidenav({ color, brandName, routes, ...rest }) {
             // convention rather than fighting it.
             color="error"
             name="Sign Out"
-            icon={<IoLogOut size="15px" color="inherit" />}
+            icon={<IoLogOut size="20px" color="inherit" />}
             onClick={handleSignOut}
             noCollapse
           />

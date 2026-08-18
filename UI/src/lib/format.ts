@@ -117,3 +117,38 @@ export function daysUntil(isoDate: string): number {
 export function fold(value: string, locale: Locale) {
   return value.toLocaleLowerCase(tag(locale));
 }
+
+/**
+ * Capitalizes only the first letter, locale-aware.
+ *
+ * The offline table pipeline writes `topic`/`subcategory` all-lowercase —
+ * `"teverruk finansmanı"` — which reads as a slug, not a heading, on a banking
+ * site. `.toLocaleUpperCase("tr-TR")` on just the first character is enough to
+ * fix that without title-casing every word (Turkish does not capitalize
+ * conjunctions like "ve"/"ile" the way English titles do), and the locale tag
+ * matters: plain `.toUpperCase()` turns a leading "i" into ASCII "I" instead
+ * of the dotted "İ" Turkish needs.
+ */
+export function capitalize(value: string, locale: Locale) {
+  if (!value) return value;
+  return value.charAt(0).toLocaleUpperCase(tag(locale)) + value.slice(1);
+}
+
+/**
+ * The host of a URL, without `www.`.
+ *
+ * Currently unused. It was how citation links were labelled, until a bare host
+ * turned out to misrepresent them: every citation points at a deep page — a
+ * named campaign, a specific rate table — and "vakifkatilim.com.tr" reads as
+ * the bank's front page. Those links now say what they are instead, and the
+ * host is not shown at all. Kept because it is a correct, tested helper, and
+ * hosts may well be worth showing somewhere they are not standing in for a
+ * link's destination.
+ */
+export function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}

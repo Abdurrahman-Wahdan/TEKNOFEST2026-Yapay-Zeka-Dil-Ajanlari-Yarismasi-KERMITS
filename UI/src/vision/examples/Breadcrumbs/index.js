@@ -16,77 +16,61 @@
 
 */
 
-// Next routing, via the react-router shim in vision/router.js
-import { Link } from "vision/router";
-
 // prop-types is a library for typechecking of props.
 import PropTypes from "prop-types";
-
-// @mui material components
-import { Breadcrumbs as MuiBreadcrumbs } from "@mui/material";
-import Icon from "@mui/material/Icon";
 
 // Vision UI Dashboard React components
 import VuiBox from "components/VuiBox";
 import VuiTypography from "components/VuiTypography";
 
-function Breadcrumbs({ icon, title, route, light = false }) {
-  const routes = route.slice(0, -1);
+import { BrandWordmark, BRAND_AI } from "@/components/ui/BrandWordmark";
 
+/**
+ * The page title.
+ *
+ * The breadcrumb trail this component is named for is deliberately not rendered.
+ * It read `home / chat` directly above a heading that already said `Chat` — the
+ * same word twice, and a trail is only worth its line when the hierarchy is deep
+ * enough to navigate. This app's routes are all one level under the root, so
+ * every trail was `home / <the title>`.
+ *
+ * Restoring it means putting back the `MuiBreadcrumbs` block above the heading,
+ * along with these imports:
+ *
+ *   import { Link } from "vision/router";
+ *   import { Breadcrumbs as MuiBreadcrumbs } from "@mui/material";
+ *   import Icon from "@mui/material/Icon";
+ *
+ * and `const routes = route.slice(0, -1);` for the intermediate links.
+ *
+ * `icon` and `route` are still accepted, and still required by `propTypes`, so
+ * that every call site keeps working untouched and a restore is a change to this
+ * file alone. They are simply unused for now.
+ */
+// eslint-disable-next-line no-unused-vars
+function Breadcrumbs({ icon, title, route, light = false, brand = false }) {
   return (
     <VuiBox mr={{ xs: 0, xl: 8 }}>
-      <MuiBreadcrumbs
-        sx={{
-          "& .MuiBreadcrumbs-separator": {
-            color: ({ palette: { white, grey } }) => (light ? white.main : grey[600]),
-          },
-        }}
-      >
-        <Link to="/">
-          <VuiTypography
-            component="span"
-            variant="body2"
-            color={light ? "white" : "dark"}
-            opacity={light ? 0.8 : 0.5}
-            sx={{ lineHeight: 0 }}
-          >
-            <Icon>{icon}</Icon>
-          </VuiTypography>
-        </Link>
-        {routes.map((el) => (
-          <Link to={`/${el}`} key={el}>
-            <VuiTypography
-              component="span"
-              variant="button"
-              fontWeight="regular"
-              textTransform="capitalize"
-              color={light ? "white" : "dark"}
-              opacity={light ? 0.8 : 0.5}
-              sx={{ lineHeight: 0 }}
-            >
-              {el}
-            </VuiTypography>
-          </Link>
-        ))}
+      {/*
+        The assistant's page is headed by the brand, not by its route segment.
+
+        `brand` is an explicit prop rather than a check on `route` inside here:
+        this component heads every page in the app, and a hidden special case for
+        one path is the kind of thing that surprises whoever adds the next page.
+      */}
+      {brand ? (
+        <BrandWordmark fontSize={16}>{BRAND_AI}</BrandWordmark>
+      ) : (
         <VuiTypography
-          variant="button"
-          fontWeight="regular"
+          fontWeight="bold"
           textTransform="capitalize"
+          variant="h6"
           color={light ? "white" : "dark"}
-          sx={{ lineHeight: 0 }}
+          noWrap
         >
           {title.replace("-", " ")}
         </VuiTypography>
-      </MuiBreadcrumbs>
-      <VuiTypography
-        fontWeight="bold"
-        textTransform="capitalize"
-        variant="h6"
-        color={light ? "white" : "dark"}
-        noWrap
-      >
-        {title.replace("-", " ")}
-      </VuiTypography>
+      )}
     </VuiBox>
   );
 }
@@ -97,6 +81,8 @@ Breadcrumbs.propTypes = {
   title: PropTypes.string.isRequired,
   route: PropTypes.oneOfType([PropTypes.string, PropTypes.array]).isRequired,
   light: PropTypes.bool,
+  /** Head the page with the brand wordmark instead of the route's title. */
+  brand: PropTypes.bool,
 };
 
 export default Breadcrumbs;

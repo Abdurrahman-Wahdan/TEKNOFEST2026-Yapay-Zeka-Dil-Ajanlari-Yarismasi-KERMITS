@@ -91,6 +91,9 @@ const CellValueSchema = z.union([z.string(), z.number(), z.boolean(), z.null()])
 const RowSchema = z.object({
   cells: z.record(z.string(), CellValueSchema),
   cite_url: z.string().optional(),
+  /** Why `cite_url` supports this row — shown as a hover title on the
+      citation link a producer's row carries, not a second visible column. */
+  cite_note: z.string().optional(),
 });
 
 export const TablePropsSchema = z.object({

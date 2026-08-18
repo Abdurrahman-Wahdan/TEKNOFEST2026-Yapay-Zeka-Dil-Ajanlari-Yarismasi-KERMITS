@@ -1,15 +1,16 @@
 "use client";
 
-import { Table as MuiTable, TableBody, TableContainer, TableRow } from "@mui/material";
+import { Table as MuiTable, TableBody, TableContainer, TableRow, Tooltip } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import type { Theme } from "@mui/material/styles";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { Pill } from "@/components/ui/Pill";
 import { VuiBox, VuiTypography } from "@/components/vision";
 import type { CellValue, ResolvedColumn, Row } from "@/lib/contract";
 import { formatDate, formatMoney, formatNumber, formatRate } from "@/lib/format";
 import { sortHint } from "@/lib/sort-hint";
+import { TABLE_GUTTER, tableRowHoverSx, tableRule } from "@/lib/table-style";
 import type { SortState } from "@/lib/table-filter";
 
 /**
@@ -70,9 +71,10 @@ export function ProducedTable({
   groups?: { key: string; label: string; span: number }[];
 }) {
   const locale = useLocale() as "tr" | "en";
-  const { grey } = useTheme().palette;
-  const { size, fontWeightBold } = useTheme().typography;
-  const { borderWidth } = useTheme().borders;
+  const theme = useTheme();
+  const { grey } = theme.palette;
+  const { size, fontWeightBold } = theme.typography;
+  const { borderWidth } = theme.borders;
 
   if (columns.length === 0 || rows.length === 0) {
     return (
@@ -132,7 +134,7 @@ export function ProducedTable({
                   // the indicator inside it -- 0,7 x 0,35 left the marker at
                   // about a quarter visible, which is why it read as absent.
                   opacity={column.sortable ? 1 : 0.7}
-                  borderBottom={`${borderWidth[1]} solid ${grey[700]}`}
+                  borderBottom={tableRule(theme)}
                   sx={{
                     whiteSpace: "nowrap",
                     px: GUTTER,
@@ -186,7 +188,22 @@ export function ProducedTable({
 
         <TableBody>
           {rows.map((row, index) => (
-            <TableRow key={row.cite_url ? `${row.cite_url}-${index}` : index}>
+            <TableRow
+              key={row.cite_url ? `${row.cite_url}-${index}` : index}
+              // Row hover lives here, on the one component every table page
+              // renders, rather than in an sx wrapper around it — which is how
+              // it used to work, and why only /finansman had it while
+              // /compare, /urunler and /kampanyalar did not.
+              //
+              // Scoped to the body row on purpose. A `MuiTableRow` override in
+              // the theme would be tidier still, but `<thead>` rows are
+              // `TableRow` too, so it would light up the headers as well.
+              //
+              // The tint is on the `td`, not the `tr`: a table row generates no
+              // background box of its own under `border-collapse`, so painting
+              // the row paints nothing. The cells are what is visible.
+              sx={tableRowHoverSx}
+            >
               {columns.map((column) => {
                 const cellKey = rowKey
                   ? `${String(row.cells[rowKey] ?? "")}|${column.key}`
@@ -202,7 +219,7 @@ export function ProducedTable({
                   borderBottom={
                     index === rows.length - 1
                       ? null
-                      : `${borderWidth[1]} solid ${grey[700]}`
+                      : tableRule(theme)
                   }
                   sx={{
                     whiteSpace: "nowrap",
@@ -223,6 +240,7 @@ export function ProducedTable({
                     bankLabels={bankLabels}
                     moved={moved}
                     best={isBest}
+                    title={row.cite_note}
                   />
                 </VuiBox>
                 );
@@ -242,6 +260,7 @@ function Cell({
   bankLabels,
   moved,
   best,
+  title,
 }: {
   value: CellValue | undefined;
   column: ResolvedColumn;
@@ -251,7 +270,12 @@ function Cell({
   moved?: "up" | "down";
   /** Set when this figure is the best on its row. */
   best?: boolean;
+  /** The row's own `cite_note`, if any — shown as a native hover title on a
+      `link`-type cell only; every other cell type ignores it. */
+  title?: string;
 }) {
+  const t = useTranslations("components");
+
   const base = {
     variant: "button" as const,
     fontWeight: "regular" as const,
@@ -327,8 +351,13 @@ function Cell({
         </VuiTypography>
       );
 
-    case "link":
-      return (
+    case "link": {
+      // The native `title` attribute puts the browser's own hover delay in
+      // charge -- Chrome, Firefox and Safari each pick their own, and none
+      // of them can be told to show sooner. `Tooltip` with `enterDelay={0}`
+      // shows the instant the cursor lands, which a citation link needs: the
+      // note is the only thing that says *why* the source supports this row.
+      const link = (
         <VuiTypography
           {...base}
           component="a"
@@ -338,9 +367,26 @@ function Cell({
           color="info"
           sx={{ ...base.sx, textDecoration: "underline" }}
         >
-          {hostOf(String(value))}
+          {/* The call to action, not the bare host. Every citation points at a
+              deep page -- a specific campaign, a specific rate table -- and a
+              link reading "vakifkatilim.com.tr" says the bank's front page,
+              which is not where it goes. The host has not been dropped though:
+              it moves into the tooltip below, because a reader is entitled to
+              know which domain a link will take them to before they click. */}
+          {t("citeLink")}
         </VuiTypography>
       );
+      // The note only. The host is deliberately not shown anywhere -- not as
+      // the link text and not in the tooltip -- because a domain on its own
+      // reads as the bank's front page, which is never where a citation goes.
+      return title ? (
+        <Tooltip title={title} arrow enterDelay={0} enterNextDelay={0} leaveDelay={0}>
+          {link}
+        </Tooltip>
+      ) : (
+        link
+      );
+    }
 
     case "bool":
       // A definite "no" must not render as the same glyph as "we don't know" —
@@ -364,22 +410,10 @@ function Cell({
 }
 
 /**
- * The gutter between columns, applied identically to headers and cells.
+ * The gutter between columns.
  *
- * Only the *inner* spacing. The outer edges — the first column's left and the
- * last column's right — belong to the table theme
- * (`assets/theme/components/table/tableContainer`), which sets them with
- * `!important` for every table in the app so they cannot drift per table. The
- * template's own Table derives padding from `align` instead, which is how a
- * header on 24px ended up above a cell on 8px in the same column.
+ * Now the shared `TABLE_GUTTER` from `@/lib/table-style`, so the markdown table
+ * the assistant produces lines its columns up with this one. Aliased rather than
+ * inlined at the call sites to keep the diff honest about what changed.
  */
-const GUTTER = 1.5;
-
-/** A link reads better as its host than as 90 characters of path. */
-function hostOf(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return url;
-  }
-}
+const GUTTER = TABLE_GUTTER;

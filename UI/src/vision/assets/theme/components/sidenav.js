@@ -31,14 +31,15 @@ export default (colors) => {
 
   return {
     styleOverrides: {
+      // No `width` on either of these any more. `SidenavRoot` owns it, because
+      // it is the only thing that knows whether the drawer is a rail or
+      // expanded; a fixed 250 here fought the rail and won on the root.
       root: {
-        width: pxToRem(250),
         whiteSpace: "nowrap",
         border: "none",
       },
 
       paper: {
-        width: pxToRem(250),
         backgroundColor: rgba(surfaces.card, 0.8),
         backdropFilter: `saturate(200%) blur(${pxToRem(30)})`,
         height: `calc(100vh - ${pxToRem(32)})`,

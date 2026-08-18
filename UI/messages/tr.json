@@ -8,12 +8,19 @@
     "banks": "Bankalar",
     "finansman": "Finansman",
     "compare": "Karşılaştır",
+    "urunler": "Ürünler",
+    "kampanyalar": "Kampanyalar",
     "aiOverview": "AI Görünümü",
     "chat": "Asistan",
     "settings": "Ayarlar",
     "signOut": "Çıkış yap",
     "theme": "Tema",
-    "language": "Dil"
+    "themeLight": "Açık",
+    "themeDark": "Koyu",
+    "language": "Dil",
+    "notifications": "Bildirimler",
+    "expandSidebar": "Kenar çubuğunu genişlet",
+    "collapseSidebar": "Kenar çubuğunu daralt"
   },
   "auth": {
     "loginTitle": "Giriş yap",
@@ -100,7 +107,8 @@
       "rootPath": "(kök)",
       "yes": "evet",
       "no": "hayır"
-    }
+    },
+    "citeLink": "İlgili sayfa için tıklayınız"
   },
   "aiOverview": {
     "title": "AI Görünümü",
@@ -109,7 +117,7 @@
   },
   "chat": {
     "title": "Asistan",
-    "placeholder": "Bir soru sorun — örneğin \"1 milyon TL, 120 ay konut finansmanında en uygun banka hangisi?\"",
+    "placeholder": "Ne isterseniz sorun",
     "send": "Gönder",
     "newChat": "Yeni sohbet",
     "sources": "Kaynaklar",
@@ -118,7 +126,32 @@
       "retrieving": "Kaynaklar aranıyor…",
       "pricing": "Bankalara soruluyor…",
       "writing": "Yanıt yazılıyor…"
-    }
+    },
+    "stop": "Durdur",
+    "attach": "Dosya ekle",
+    "close": "Kapat",
+    "expand": "Tam ekranda aç",
+    "open": "Asistana sor",
+    "thinking": "Düşünüyor…",
+    "emptyTitle": "Ne öğrenmek istersiniz?",
+    "emptySubtitle": "Oranları, kampanyaları veya finansmanı sorun; asistan bankalar arasında araştırsın.",
+    "errorTitle": "İstek başarısız oldu",
+    "removeImage": "Görseli kaldır",
+    "removeFile": "Dosyayı kaldır",
+    "think": "Düşün",
+    "copyCode": "Kodu kopyala",
+    "copied": "Kopyalandı",
+    "mockNotice": "Asistan henüz bağlı değil — aşağıdaki yanıtlar örnek veridir.",
+    "placeholders": [
+      "1 milyon TL, 120 ay vadede en uygun banka hangisi?",
+      "Bu haftanın kampanyalarında ne değişti?",
+      "Taşıt finansmanını tüm bankalarda karşılaştır",
+      "Önümüzdeki 14 günde hangi kampanyalar bitiyor?",
+      "Konut oranlarını tablo olarak göster"
+    ],
+    "voice": "Sesli giriş",
+    "mentionLabel": "Ekli belgeler",
+    "mentionEmpty": "Henüz bir şey eklenmedi"
   },
   "settings": {
     "title": "Ayarlar",
@@ -223,5 +256,20 @@
     "allPairs": "Tüm pariteler",
     "allSides": "Alış ve satış",
     "allSelected": "Tümü"
+  },
+  "compareTables": {
+    "titleUrun": "Ürün Karşılaştırma Tabloları",
+    "titleKampanya": "Kampanya Karşılaştırma Tabloları",
+    "subcategory": "Alt Kategori",
+    "allSubcategories": "Tümü",
+    "loadingList": "Tablolar yükleniyor…",
+    "loadingTable": "Tablo yükleniyor…",
+    "loadFailed": "Yüklenemedi.",
+    "noTablesMatch": "Bu alt kategoride tablo bulunamadı.",
+    "backToList": "Listeye dön",
+    "tableCount": "{count} tablo",
+    "notOfferedTitleUrun": "Bu ürünü sunmayan bankalar",
+    "notOfferedTitleKampanya": "Bu kampanyayı sunmayan bankalar",
+    "notOfferedPill": "Sunulmuyor"
   }
 }

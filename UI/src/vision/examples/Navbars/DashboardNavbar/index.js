@@ -28,16 +28,19 @@ import PropTypes from "prop-types";
 import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
 import IconButton from "@mui/material/IconButton";
-import Menu from "@mui/material/Menu";
 import Icon from "@mui/material/Icon";
 
 // Vision UI Dashboard React components
 import VuiBox from "components/VuiBox";
 import { ThemeToggleIconButton } from "components/VuiThemeToggle";
 
+import { LocaleToggleIconButton } from "@/components/ui/LocaleToggle";
+import { Menu as MenuGlyph } from "lucide-react";
+import { useTranslations } from "next-intl";
+
 // Vision UI Dashboard React example components
 import Breadcrumbs from "examples/Breadcrumbs";
-import NotificationItem from "examples/Items/NotificationItem";
+import NotificationsMenu from "examples/Navbars/DashboardNavbar/NotificationsMenu";
 
 // Custom styles for DashboardNavbar
 import {
@@ -45,30 +48,20 @@ import {
   navbarContainer,
   navbarRow,
   navbarIconButton,
-  navbarMobileMenu,
 } from "examples/Navbars/DashboardNavbar/styles";
 
 // Vision UI Dashboard React context
 import {
   useVisionUIController,
+  setMobileNavOpen,
   setTransparentNavbar,
-  setMiniSidenav,
 } from "context";
 
-// Images
-// Served from /public rather than imported: Next resolves a static image
-// import to a StaticImageData object, and this template interpolates the
-// value straight into CSS url(...) — which would emit [object Object].
-const team2 = "/vision/images/team-2.jpg";
-// Served from /public rather than imported: Next resolves a static image
-// import to a StaticImageData object, and this template interpolates the
-// value straight into CSS url(...) — which would emit [object Object].
-const logoSpotify = "/vision/images/small-logos/logo-spotify.svg";
-function DashboardNavbar({ absolute = false, light = false, isMini = false }) {
+function DashboardNavbar({ absolute = false, light = false, isMini = false, brand = false }) {
   const [navbarType, setNavbarType] = useState();
+  const t = useTranslations("nav");
   const [controller, dispatch] = useVisionUIController();
-  const { miniSidenav, transparentNavbar, fixedNavbar } = controller;
-  const [openMenu, setOpenMenu] = useState(false);
+  const { transparentNavbar, fixedNavbar, mobileNavOpen } = controller;
   const route = useLocation().pathname.split("/").slice(1);
 
   useEffect(() => {
@@ -97,49 +90,6 @@ function DashboardNavbar({ absolute = false, light = false, isMini = false }) {
     return () => window.removeEventListener("scroll", handleTransparentNavbar);
   }, [dispatch, fixedNavbar]);
 
-  const handleMiniSidenav = () => setMiniSidenav(dispatch, !miniSidenav);
-  const handleOpenMenu = (event) => setOpenMenu(event.currentTarget);
-  const handleCloseMenu = () => setOpenMenu(false);
-
-  // Render the notifications menu
-  const renderMenu = () => (
-    <Menu
-      anchorEl={openMenu}
-      anchorReference={null}
-      anchorOrigin={{
-        vertical: "bottom",
-        horizontal: "left",
-      }}
-      open={Boolean(openMenu)}
-      onClose={handleCloseMenu}
-      sx={{ mt: 2 }}
-    >
-      <NotificationItem
-        image={<img src={team2} alt="person" />}
-        title={["New message", "from Laur"]}
-        date="13 minutes ago"
-        onClick={handleCloseMenu}
-      />
-      <NotificationItem
-        image={<img src={logoSpotify} alt="person" />}
-        title={["New album", "by Travis Scott"]}
-        date="1 day"
-        onClick={handleCloseMenu}
-      />
-      <NotificationItem
-        color="text"
-        image={
-          <Icon fontSize="small" sx={{ color: ({ palette: { white } }) => white.main }}>
-            payment
-          </Icon>
-        }
-        title={["", "Payment successfully completed"]}
-        date="2 days"
-        onClick={handleCloseMenu}
-      />
-    </Menu>
-  );
-
   return (
     <AppBar
       position={absolute ? "absolute" : navbarType}
@@ -147,11 +97,67 @@ function DashboardNavbar({ absolute = false, light = false, isMini = false }) {
       sx={(theme) => navbar(theme, { transparentNavbar, absolute, light })}
     >
       <Toolbar sx={(theme) => navbarContainer(theme)}>
-        <VuiBox color="inherit" mb={{ xs: 1, md: 0 }} sx={(theme) => navbarRow(theme, { isMini })}>
-          <Breadcrumbs icon="home" title={route[route.length - 1]} route={route} light={light} />
+        <VuiBox
+          color="inherit"
+          mb={{ xs: 1, md: 0 }}
+          sx={(theme) => ({
+            ...navbarRow(theme, { isMini }),
+            display: "flex",
+            alignItems: "center",
+            gap: theme.spacing(1),
+            // `navbarRow` sets `space-between` below `md`, which with a second
+            // child in this row threw the breadcrumb to the far right and left the
+            // menu button on its own. They belong together at the left edge.
+            justifyContent: "flex-start",
+          })}
+        >
+          {/*
+            The drawer's opener, on phones only.
+
+            Below `md` the drawer is a temporary overlay that starts closed, so
+            without this there is no way to reach the navigation at all. Above
+            `md` the drawer is docked and always visible, and a button to open an
+            already-open drawer would do nothing — hence the breakpoint rather
+            than an always-on button.
+          */}
+          <IconButton
+            size="small"
+            color="inherit"
+            aria-label={mobileNavOpen ? t("collapseSidebar") : t("expandSidebar")}
+            title={mobileNavOpen ? t("collapseSidebar") : t("expandSidebar")}
+            onClick={() => setMobileNavOpen(dispatch, !mobileNavOpen)}
+            // Explicit media query, not the `{ xs: …, md: … }` shorthand: spread
+            // alongside `navbarIconButton` the shorthand did not resolve, and this
+            // button stayed visible on desktop where the drawer is already docked
+            // and there is nothing for it to open.
+            sx={(theme) => ({
+              ...navbarIconButton,
+              display: "none",
+              [theme.breakpoints.down("md")]: { display: "inline-flex" },
+            })}
+          >
+            <MenuGlyph size={20} />
+          </IconButton>
+          <Breadcrumbs icon="home" title={route[route.length - 1]} route={route} light={light} brand={brand} />
         </VuiBox>
         {isMini ? null : (
-          <VuiBox sx={(theme) => navbarRow(theme, { isMini })}>
+          <VuiBox
+            sx={(theme) => ({
+              ...navbarRow(theme, { isMini }),
+              // The whole row goes, not just its contents: `navbarRow` gives it
+              // `width: 100%` below `md`, so hiding only the buttons would leave
+              // an empty full-width line under the breadcrumb. Above `md`
+              // nothing changes -- it is the same flex row it always was.
+              // Written as an explicit media query rather than MUI's
+              // `{ xs: "none", md: "flex" }` shorthand. The shorthand resolved to
+              // `none` at every width here -- it does not survive being spread
+              // alongside `navbarRow`'s own raw `[breakpoints.up("md")]` key -- so
+              // the cluster vanished on desktop too. This is also how `navbarRow`
+              // itself expresses its breakpoints, two lines up.
+              display: "flex",
+              [theme.breakpoints.down("md")]: { display: "none" },
+            })}
+          >
             {/*
               The search field is deliberately not rendered. `VuiInput` is
               untouched at `components/VuiInput`, so bringing it back is just
@@ -169,7 +175,57 @@ function DashboardNavbar({ absolute = false, light = false, isMini = false }) {
                   />
                 </VuiBox>
             */}
+            {/*
+              Counted from the RIGHT-HAND EDGE inwards: profile, then the
+              light/dark switch, then the language switch, then the drawer
+              toggle, then notifications furthest from the edge. The row is
+              flush right, so source order runs the other way and this block
+              reads bottom-up: notifications first in the markup, profile last.
+              Reorder by moving whole entries, and re-check against the edge
+              rather than against the source.
+            */}
+            {/*
+              Phones do not get this row at all.
+
+              Below `md` the navbar is two stacked lines, and four icon buttons
+              wrapped onto their own line under the breadcrumb -- bolted to the
+              top of a page they have nothing to do with. They live in the
+              navigation overlay there instead, drawn as labelled rows by
+              `SidenavActions`, which is the only place they are rendered on a
+              phone: hidden here and shown there, never both.
+            */}
             <VuiBox color={light ? "white" : "inherit"}>
+              <NotificationsMenu
+                renderTrigger={(triggerProps) => (
+                  <IconButton
+                    {...triggerProps}
+                    size="small"
+                    color="inherit"
+                    sx={navbarIconButton}
+                    variant="contained"
+                  >
+                    <Icon
+                      sx={({ palette: { dark, white } }) => ({
+                        color: light ? white.main : dark.main,
+                      })}
+                    >
+                      notifications
+                    </Icon>
+                  </IconButton>
+                )}
+              />
+              {/* No drawer toggle here. The drawer collapses to a rail that is
+                  always on screen and carries its own toggle in its header --
+                  visible expanded, and revealed on hover or focus when
+                  collapsed -- so a second control in the navbar was pointing at
+                  something the user could already see and reach. Counted from
+                  the right edge the row is now profile, theme, language,
+                  notifications. */}
+              <LocaleToggleIconButton sx={navbarIconButton} />
+              {/* Was the Configurator's settings gear. The Configurator is no
+                  longer mounted, so this would have been a dead button; it is
+                  the light/dark switch instead. */}
+              <ThemeToggleIconButton sx={navbarIconButton} />
               {/*
                 Reaching the dashboard already means signed in, so this is the
                 profile link rather than the template's "Sign in" call to
@@ -186,36 +242,6 @@ function DashboardNavbar({ absolute = false, light = false, isMini = false }) {
                   </Icon>
                 </IconButton>
               </Link>
-              <IconButton
-                size="small"
-                color="inherit"
-                sx={navbarMobileMenu}
-                onClick={handleMiniSidenav}
-              >
-                <Icon>{miniSidenav ? "menu_open" : "menu"}</Icon>
-              </IconButton>
-              {/* Was the Configurator's settings gear. The Configurator is no
-                  longer mounted, so this would have been a dead button; it is
-                  the light/dark switch instead. */}
-              <ThemeToggleIconButton sx={navbarIconButton} />
-              <IconButton
-                size="small"
-                color="inherit"
-                sx={navbarIconButton}
-                aria-controls="notification-menu"
-                aria-haspopup="true"
-                variant="contained"
-                onClick={handleOpenMenu}
-              >
-                <Icon
-                  sx={({ palette: { dark, white } }) => ({
-                    color: light ? white.main : dark.main,
-                  })}
-                >
-                  notifications
-                </Icon>
-              </IconButton>
-              {renderMenu()}
             </VuiBox>
           </VuiBox>
         )}
@@ -229,6 +255,8 @@ DashboardNavbar.propTypes = {
   absolute: PropTypes.bool,
   light: PropTypes.bool,
   isMini: PropTypes.bool,
+  /** Head the page with the brand wordmark instead of its route title. */
+  brand: PropTypes.bool,
 };
 
 export default DashboardNavbar;

@@ -166,14 +166,15 @@ const navbarIconButton = ({ typography: { size }, breakpoints, palette: { grey, 
   },
 });
 
-const navbarMobileMenu = ({ breakpoints, palette: { white } }) => ({
+// Unused. It styled the navbar's drawer toggle, which is gone: the drawer is a
+// rail that is always on screen and carries its own toggle, so a second control
+// here duplicated it. Kept because this is a template styles module and the
+// export is part of its surface -- if a navbar button ever needs the plain
+// inline-block treatment again, this is it.
+const navbarMobileMenu = ({ palette: { white } }) => ({
   display: "inline-block",
   lineHeight: 0,
   color: white.main,
-
-  [breakpoints.up("xl")]: {
-    display: "none",
-  },
 });
 
 export { navbar, navbarContainer, navbarRow, navbarIconButton, navbarMobileMenu };

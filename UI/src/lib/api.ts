@@ -25,6 +25,9 @@ export type Constraints = Schemas["ConstraintsOut"];
 export type BankLimits = Schemas["BankLimitsOut"];
 export type ProducedComponents = Schemas["ComponentsResponse"];
 export type ComponentCategory = Schemas["CategoryOut"];
+export type TableSummary = Schemas["TableSummaryOut"];
+export type TableListOut = Schemas["TableListOut"];
+export type TableDetailOut = Schemas["TableDetailOut"];
 export type SearchResponse = Schemas["SearchResponse"];
 export type Profile = Schemas["ProfileOut"];
 export type SavedView = Schemas["SavedViewOut"];
@@ -217,6 +220,13 @@ export const api = {
     category?: "finance" | "profit_share";
     banks?: string[];
   }) => request<Constraints>(`/compare/constraints${queryString(params)}`),
+
+  // ----- comparison-table pool (dataprep.compare, offline) -----
+  /** Every table in one category ("ürün" | "kampanya"), for the browse picker. */
+  compareTablesList: (category: "ürün" | "kampanya") =>
+    request<TableListOut>(`/compare-tables${queryString({ category })}`),
+  /** One table, shaped for `<TableWidget />`. */
+  compareTable: (id: string) => request<TableDetailOut>(`/compare-tables/${id}`),
 
   // ----- produced components -----
   componentCategories: () => request<ComponentCategory[]>("/components"),

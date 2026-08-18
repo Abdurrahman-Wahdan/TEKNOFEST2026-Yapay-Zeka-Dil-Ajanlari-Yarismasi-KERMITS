@@ -6,9 +6,9 @@
       "runtimeExecutable": "sh",
       "runtimeArgs": [
         "-c",
-        "exec \"$HOME/.pyenv/versions/tf26/bin/python\" -m uvicorn api.main:app --reload --host 127.0.0.1 --port 8001"
+        "exec \"$HOME/.pyenv/versions/tf26/bin/python\" -m uvicorn api.main:app --reload --host 127.0.0.1 --port 8002"
       ],
-      "port": 8001,
+      "port": 8002,
       "autoPort": false
     },
     {
@@ -16,7 +16,7 @@
       "runtimeExecutable": "sh",
       "runtimeArgs": [
         "-c",
-        "API_ORIGIN=http://127.0.0.1:8001 exec npm run dev"
+        "API_ORIGIN=http://127.0.0.1:8002 exec npm run dev"
       ],
       "cwd": "UI",
       "port": 3000,

@@ -6,27 +6,46 @@ import type { ReactNode } from "react";
 import { VuiTypography } from "@/components/vision";
 
 /**
- * A small rounded label — a badge cell, a capability tag, a status chip.
+ * A small status label — a badge cell, a capability tag, a state chip.
  *
- * One component rather than the same handful of props repeated wherever a pill
- * is needed, because the thing that goes wrong is always the same: the text
- * inside sits high or low in the capsule. `inline-block` with vertical padding
- * leaves the glyph's position at the mercy of the font's line-height, and the
- * caption variant's line-height is not 1. So this centres properly instead:
- * `inline-flex` with `alignItems: center`, a fixed height, and `lineHeight: 1`
- * on the text so the box is exactly the text's box.
+ * Drawn the way Vision UI's own status badges are, the ones on the template's
+ * Authors table: a rounded rectangle at `borderRadius.md` rather than a full
+ * capsule. Adopting that shape here rather than at the call sites is the point
+ * — this is the one pill in the app, so the four widgets that use it inherit
+ * the look without any of them being touched.
  *
- * Colours are derived from the theme's own palette rather than written as
- * literals: a fixed `rgba(255,255,255,…)` fill reads as a tint in dark mode and
- * as nothing at all in light.
+ * Always outlined, never filled. The tone lives in the **border**, and the text
+ * stays ink in every variant. A filled chip has to solve its own contrast
+ * problem — ink follows the mode, so near-white landed on a light amber fill at
+ * about 1.9:1 — and it shouts louder than a status note needs to. An outline
+ * says the same thing at the same size without either problem, and it means
+ * `neutral` and the tones are one family rather than two looks.
+ *
+ * Colours come from the theme rather than as literals: a fixed
+ * `rgba(255,255,255,…)` fill reads as a tint in dark mode and as nothing at all
+ * in light.
  */
 export type PillTone = "neutral" | "ok" | "warn" | "bad";
 
-type ToneColours = { fg: string; bg: string };
+type ToneColours = { fg: string; bg: string; border: string };
 
+/**
+ * `neutral` is the outlined one: no fill, an ink hairline. Every other tone is
+ * making a claim about state, so it earns a fill.
+ */
 function tone(theme: Theme, name: PillTone): ToneColours {
-  const base = {
-    neutral: (theme.palette as unknown as { text: { main: string } }).text.main,
+  const palette = theme.palette as unknown as {
+    text: { main: string };
+    white: { main: string };
+  };
+
+  if (name === "neutral") {
+    // Quieter than the tones on purpose: it is a label, not a claim. Muted ink
+    // for both the text and the hairline.
+    return { fg: palette.text.main, bg: "transparent", border: alpha(palette.text.main, 0.55) };
+  }
+
+  const accent = {
     ok: theme.palette.success.main,
     warn: theme.palette.warning.main,
     // A bound the current inputs actually violate, as opposed to `warn`, which
@@ -34,7 +53,9 @@ function tone(theme: Theme, name: PillTone): ToneColours {
     bad: theme.palette.error.main,
   }[name];
 
-  return { fg: base, bg: alpha(base, 0.14) };
+  // `white` is the template's name for *ink* -- it follows the mode. The text
+  // sits on the card, not on a fill, so that is exactly what it should do.
+  return { fg: palette.white.main, bg: "transparent", border: accent };
 }
 
 /** The pill's height, and its line height -- the two must stay equal. */
@@ -63,19 +84,27 @@ export function Pill({
       component="span"
       variant="caption"
       fontWeight="medium"
-      sx={(theme: Theme) => ({
-        color: tone(theme, name).fg,
-        background: tone(theme, name).bg,
-        display: "inline-block",
-        height: PILL_HEIGHT,
-        lineHeight: `${PILL_HEIGHT}px`,
-        paddingInline: theme.spacing(1.5),
-        borderRadius: theme.shape.borderRadius * 3,
-        whiteSpace: "nowrap",
-        // The pill sits in a table cell whose own line box would otherwise
-        // drag it off the row's baseline.
-        verticalAlign: "middle",
-      })}
+      sx={(theme: Theme) => {
+        const { fg, bg, border } = tone(theme, name);
+        return {
+          color: fg,
+          background: bg,
+          // 1px of the box is border, so the inner height is 2px short of
+          // PILL_HEIGHT and the line height has to match that, not the box.
+          border: `1px solid ${border}`,
+          display: "inline-block",
+          height: PILL_HEIGHT,
+          lineHeight: `${PILL_HEIGHT - 2}px`,
+          paddingInline: theme.spacing(1.25),
+          // `md`, the radius the template's own status badges use. A capsule
+          // reads as a tag; this reads as a state.
+          borderRadius: theme.spacing(1),
+          whiteSpace: "nowrap",
+          // The pill sits in a table cell whose own line box would otherwise
+          // drag it off the row's baseline.
+          verticalAlign: "middle",
+        };
+      }}
     >
       {children}
     </VuiTypography>
