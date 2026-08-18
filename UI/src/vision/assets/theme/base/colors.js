@@ -128,7 +128,21 @@ export default function makeColors(mode = "dark") {
     },
 
     sidenav: {
-      button: surfaceRaised,
+      // The selected nav row's pill.
+      //
+      // Dark can use the raised surface as-is: #1c1e24 against a near-black
+      // drawer reads as lifted. Light cannot — the drawer's own gradient starts
+      // at rgba(255,255,255,0.94), so a #ffffff pill is white on white and the
+      // selected page had no visible marker at all.
+      //
+      // So light gets a pale wash of the brand instead, mixed from the palette
+      // like every other derived colour here rather than picked. It also agrees
+      // with the nav icons, which are already `info` blue — the row and its glyph
+      // then say "selected" together instead of the glyph saying it alone.
+      //
+      // Only this token changes. `surfaceRaised` is shared with `raised`, `focus`
+      // and three gradients, and those are correct as they are.
+      button: isDark ? surfaceRaised : mix(surface, p.primary, 0.14),
     },
 
     text: {
