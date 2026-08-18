@@ -67,10 +67,22 @@ function reducer(state, action) {
   }
 }
 
+/**
+ * The cookie the drawer's collapsed state lives in.
+ *
+ * A cookie rather than localStorage, for the same reason `src/lib/theme.ts`
+ * uses one: the drawer's width comes from an emotion class computed from
+ * `miniSidenav`, so a value that can only be read after mount renders the wrong
+ * width first and snaps, and the server and client disagree on hydration. The
+ * server layout reads this and seeds `initialMiniSidenav`, so the first HTML is
+ * already the right width.
+ */
+const SIDENAV_COOKIE = "tf26.sidenav";
+
 // Vision UI Dashboard React context provider
-function VisionUIControllerProvider({ children }) {
+function VisionUIControllerProvider({ children, initialMiniSidenav = false }) {
   const initialState = {
-    miniSidenav: false,
+    miniSidenav: initialMiniSidenav,
     transparentSidenav: true,
     sidenavColor: "info",
     transparentNavbar: true,
@@ -99,10 +111,28 @@ function useVisionUIController() {
 // Typechecking props for the VisionUIControllerProvider
 VisionUIControllerProvider.propTypes = {
   children: PropTypes.node.isRequired,
+  /** Seeded from the `tf26.sidenav` cookie by the server layout. */
+  initialMiniSidenav: PropTypes.bool,
 };
 
 // Context module functions
-const setMiniSidenav = (dispatch, value) => dispatch({ type: "MINI_SIDENAV", value });
+
+/**
+ * Collapse or expand the drawer, and remember it.
+ *
+ * The write is here rather than at the call sites because there are three of
+ * them — the drawer header, the navbar button, and any future one — and a
+ * toggle that did not persist would be indistinguishable from one that did
+ * until the user navigated.
+ */
+const setMiniSidenav = (dispatch, value) => {
+  try {
+    document.cookie = `${SIDENAV_COOKIE}=${value ? "mini" : "open"}; path=/; max-age=31536000; samesite=lax`;
+  } catch {
+    /* no document (or cookies blocked) — the choice just does not outlive the session */
+  }
+  dispatch({ type: "MINI_SIDENAV", value });
+};
 const setTransparentSidenav = (dispatch, value) => dispatch({ type: "TRANSPARENT_SIDENAV", value });
 const setSidenavColor = (dispatch, value) => dispatch({ type: "SIDENAV_COLOR", value });
 const setTransparentNavbar = (dispatch, value) => dispatch({ type: "TRANSPARENT_NAVBAR", value });
@@ -112,6 +142,7 @@ const setDirection = (dispatch, value) => dispatch({ type: "DIRECTION", value })
 const setLayout = (dispatch, value) => dispatch({ type: "LAYOUT", value });
 
 export {
+  SIDENAV_COOKIE,
   VisionUIControllerProvider,
   useVisionUIController,
   setMiniSidenav,

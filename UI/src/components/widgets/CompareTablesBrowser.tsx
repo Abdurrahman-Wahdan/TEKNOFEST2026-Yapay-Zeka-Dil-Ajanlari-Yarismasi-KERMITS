@@ -25,8 +25,10 @@ import { Pill } from "@/components/ui/Pill";
 import { VuiBox, VuiTypography } from "@/components/vision";
 import { api, type TableDetailOut, type TableSummary } from "@/lib/api";
 import { resolveTable, type TableProps } from "@/lib/contract";
-import { capitalize, hostOf } from "@/lib/format";
-import { sortRows, type SortState } from "@/lib/table-filter";
+import { capitalize } from "@/lib/format";
+import { sortRows } from "@/lib/table-filter";
+import { useBankLabels } from "@/lib/use-bank-labels";
+import { useTableSort } from "@/lib/use-table-sort";
 
 import { ProducedTable } from "./ProducedTable";
 
@@ -168,11 +170,13 @@ export function CompareTablesBrowser({ category }: { category: "ürün" | "kampa
   const locale = useLocale() as "tr" | "en";
   const [subcategory, setSubcategory] = useState<string>("");
   const [tableId, setTableId] = useState<string | null>(null);
-  // Local sort state, reset per table -- the same shape and the same
-  // three-click asc/desc/off toggle `Comparator` uses for its own results
-  // table, kept here instead of inside a shared widget so this table is
-  // driven by the exact same mechanism, not a lookalike.
-  const [sort, setSort] = useState<SortState | null>(null);
+  // Local sort state, reset per table. The three-click asc/desc/off toggle is
+  // `useTableSort`, the same hook `Comparator` and `TableWidget` call, so this
+  // table is driven by the exact same mechanism rather than a lookalike -- it
+  // used to be a hand-copied one. The state stays out here and not inside
+  // `ProducedTable` because only this component knows when it has to go:
+  // opening a different table.
+  const { sort, toggleSort, resetSort } = useTableSort();
   // `null` means "every bank offering this table" -- the same convention
   // `Comparator` uses for its own bank selection, so "nothing excluded yet"
   // does not have to be recomputed as an explicit list of every value.
@@ -189,14 +193,7 @@ export function CompareTablesBrowser({ category }: { category: "ürün" | "kampa
     enabled: tableId !== null,
   });
 
-  // Same cache key and shape `Comparator` uses for bank display names — every
-  // consumer of `GET /api/banks` on the page shares one request.
-  const { data: banks } = useQuery({ queryKey: ["banks"], queryFn: api.banks });
-  const bankLabels = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const bank of banks ?? []) map[bank.name] = bank.display_name;
-    return map;
-  }, [banks]);
+  const bankLabels = useBankLabels();
 
   const filtered = useMemo<TableSummary[]>(() => {
     const tables = list.data?.tables ?? [];
@@ -246,17 +243,8 @@ export function CompareTablesBrowser({ category }: { category: "ürün" | "kampa
     const visible = table.rows.filter((r) => chosenBanks.includes(String(r.cells.Banka ?? "")));
     return sortRows(visible, sort, table.columns, locale, bankLabels);
   }, [table, chosenBanks, sort, locale, bankLabels]);
-  const toggleSort = (key: string) =>
-    setSort((current) =>
-      current?.key === key
-        ? current.direction === "asc"
-          ? { key, direction: "desc" }
-          : null
-        : { key, direction: "asc" },
-    );
-
   const openTable = (id: string) => {
-    setSort(null);
+    resetSort();
     setSelectedBanks(null);
     setTableId(id);
   };
@@ -349,7 +337,11 @@ export function CompareTablesBrowser({ category }: { category: "ürün" | "kampa
                         }}
                       >
                         <IoOpenOutline size="12px" />
-                        {hostOf(cite_url)}
+                        {/* Same reasoning as `ProducedTable`'s link cell: the
+                            bare host reads as the bank's front page when every
+                            citation is a deep link. The host stays reachable in
+                            the tooltip. */}
+                        {tc("citeLink")}
                       </VuiTypography>
                     </Tooltip>
                   )}

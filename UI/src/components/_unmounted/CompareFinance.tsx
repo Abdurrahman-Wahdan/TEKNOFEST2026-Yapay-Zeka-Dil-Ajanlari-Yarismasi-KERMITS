@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 
-import { Button } from "@/components/ui/Button";
+import { Button } from "./Button";
 import { Card, CardGrid } from "@/components/ui/Card";
 import { api, type Unavailable } from "@/lib/api";
 import { formatMoney, formatRate } from "@/lib/format";

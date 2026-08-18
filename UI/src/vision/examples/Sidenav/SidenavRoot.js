@@ -21,71 +21,47 @@ import Drawer from "@mui/material/Drawer";
 import { styled } from "@mui/material/styles";
 import linearGradient from "assets/theme/functions/linearGradient";
 
+import { SIDENAV_RAIL, SIDENAV_WIDTH } from "vision/sidenavWidths";
+
 export default styled(Drawer)(({ theme, ownerState }) => {
-  const { palette, boxShadows, transitions, breakpoints, functions } = theme;
+  const { palette, boxShadows, transitions } = theme;
   const { transparentSidenav, miniSidenav } = ownerState;
 
-  const sidebarWidth = 250;
   const { transparent, gradients } = palette;
   const { xxl } = boxShadows;
-  const { pxToRem } = functions;
 
-  // styles for the sidenav when miniSidenav={false}
-  const drawerOpenStyles = () => ({
+  // One transition for both states, on `width` alone. The drawer used to slide
+  // itself off-screen with `translateX(-20rem)` below xl and only become a rail
+  // above it; now that the rail applies at every width there is nothing left to
+  // translate, and animating the width is what makes the collapse read as the
+  // panel narrowing rather than leaving.
+  const widthTransition = transitions.create(["width", "background-color"], {
+    easing: transitions.easing.sharp,
+    duration: transitions.duration.shorter,
+  });
+
+  const surface = {
+    boxShadow: transparentSidenav ? "none" : xxl,
+    marginBottom: transparentSidenav ? 0 : "inherit",
+    left: 0,
     transform: "translateX(0)",
-    transition: transitions.create("transform", {
-      easing: transitions.easing.sharp,
-      duration: transitions.duration.shorter,
-    }),
-
-    [breakpoints.up("xl")]: {
-      boxShadow: transparentSidenav ? "none" : xxl,
-      marginBottom: transparentSidenav ? 0 : "inherit",
-      left: "0",
-      width: sidebarWidth,
-      transform: "translateX(0)",
-      transition: transitions.create(["width", "background-color"], {
-        easing: transitions.easing.sharp,
-        duration: transitions.duration.enteringScreen,
-      }),
-    },
-  });
-
-  // styles for the sidenav when miniSidenav={true}
-  const drawerCloseStyles = () => ({
-    transform: `translateX(${pxToRem(-320)})`,
-    transition: transitions.create("transform", {
-      easing: transitions.easing.sharp,
-      duration: transitions.duration.shorter,
-    }),
-
-    [breakpoints.up("xl")]: {
-      boxShadow: transparentSidenav ? "none" : xxl,
-      marginBottom: transparentSidenav ? 0 : "inherit",
-      left: "0",
-      width: pxToRem(96),
-      overflowX: "hidden",
-      transform: "translateX(0)",
-      transition: transitions.create(["width", "background-color"], {
-        easing: transitions.easing.sharp,
-        duration: transitions.duration.shorter,
-      }),
-    },
-  });
+    transition: widthTransition,
+  };
 
   return {
     "& .MuiDrawer-paper": {
       boxShadow: xxl,
       border: "none",
       background: transparentSidenav
-      ? transparent.main
-      : linearGradient(
-            gradients.sidenav.main,
-            gradients.sidenav.state,
-            gradients.sidenav.deg
-          ),
-    backdropFilter: transparentSidenav ? "unset" : "blur(120px)",
-      ...(miniSidenav ? drawerCloseStyles() : drawerOpenStyles()),
+        ? transparent.main
+        : linearGradient(gradients.sidenav.main, gradients.sidenav.state, gradients.sidenav.deg),
+      backdropFilter: transparentSidenav ? "unset" : "blur(120px)",
+      ...surface,
+      width: miniSidenav ? SIDENAV_RAIL : SIDENAV_WIDTH,
+      // The labels are still in the DOM while collapsed — they fade and lose
+      // their width rather than unmount — so the rail has to clip them instead
+      // of scrolling sideways to reveal them.
+      overflowX: "hidden",
     },
   };
 });

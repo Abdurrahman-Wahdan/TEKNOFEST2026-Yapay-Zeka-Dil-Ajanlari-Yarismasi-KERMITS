@@ -15,7 +15,9 @@
     "settings": "Ayarlar",
     "signOut": "Çıkış yap",
     "theme": "Tema",
-    "language": "Dil"
+    "language": "Dil",
+    "expandSidebar": "Kenar çubuğunu genişlet",
+    "collapseSidebar": "Kenar çubuğunu daralt"
   },
   "auth": {
     "loginTitle": "Giriş yap",
@@ -102,7 +104,8 @@
       "rootPath": "(kök)",
       "yes": "evet",
       "no": "hayır"
-    }
+    },
+    "citeLink": "İlgili sayfa için tıklayınız"
   },
   "aiOverview": {
     "title": "AI Görünümü",

@@ -87,20 +87,44 @@ export default function makeColors(mode = "dark") {
   const p = palette(mode);
   const isDark = mode === "dark";
 
-  // Surfaces. Vision UI is a dark design, so its "raised card" is a lift away
-  // from the page in dark and a slight recess in light.
-  const surface = p.card;
-  // The far end of every card gradient. In light mode a neutral grey turns the
-  // whole page into flat off-white, so it carries a little of the palette's
-  // blue — enough to read as a designed surface rather than an unpainted one.
-  const surfaceDeep = isDark ? "#0a0a0c" : mix(p.card, p.primary, 0.09);
+  // Which palette entry plays the page and which plays the card.
+  //
+  // Dark takes them as the palette states them: page #000, card #17181c — the
+  // card is 23 levels LIGHTER than the page, and that is the whole reason it
+  // reads as a lit, translucent sheet lying over the page rather than a shape
+  // drawn on it.
+  //
+  // Light mode's palette has the two the other way round — background #ffffff,
+  // card #f7f8f8 — so a card came out 8 levels DARKER than its page: not a
+  // sheet lifted off the page but a grey rectangle stamped into it. No amount
+  // of tuning the gradient fixes that, because the direction is the problem,
+  // not the amount; the earlier attempts here tried alpha and then a blue tint
+  // and neither could make a darker-than-page card look lifted.
+  //
+  // So light swaps them: a very slightly toned page with white cards lifted
+  // off it. That is the same relationship dark already has, and the way light
+  // UIs are normally built. Both values still come from the palette — this
+  // chooses between them, it does not invent a colour.
+  const page = isDark ? p.background : p.card;
+  const surface = isDark ? p.card : p.background;
+  // The recess behind a raised surface — the sidenav's far stop, the cover and
+  // bill gradients. Still carries a little of the palette's blue in light so a
+  // large panel reads as a designed surface rather than an unpainted one; the
+  // plain `Card` no longer uses it and takes the neutral `cardFar` below.
+  const surfaceDeep = isDark ? "#0a0a0c" : mix(surface, p.primary, 0.09);
   const surfaceRaised = isDark ? "#1c1e24" : "#ffffff";
+  // The far end of the plain `Card` gradient: the card colour walked halfway to
+  // the page. Neutral by construction — it moves the card's own colour toward
+  // the page's rather than blending in a third one, so the gradient reads as a
+  // translucent sheet in both modes instead of a tint. In dark it lands within
+  // two levels of the hand-picked `surfaceDeep` it replaces there.
+  const cardFar = mix(surface, page, 0.5);
 
   return {
 
     // Vision UI Colors
     background: {
-      default: p.background,
+      default: page,
     },
 
     sidenav: {
@@ -151,11 +175,28 @@ export default function makeColors(mode = "dark") {
     // The surface ramp, page outwards. `raised` is the one a card sits on when
     // it needs to read as lifted; `deep` is the recess behind it.
     surfaces: {
-      page: p.background,
+      page,
       card: surface,
       raised: surfaceRaised,
       deep: surfaceDeep,
       muted: p.muted,
+      // The wash under a hovered table row. The one translucent member of the
+      // ramp, and it has to be: the card beneath it is a gradient, so an
+      // opaque value would flatten the far end of it into a rectangle.
+      //
+      // Built from the ink for the same reason `borderCol.navbar` below is.
+      // The hardcoded `rgba(255, 255, 255, 0.03)` this replaces lifted the
+      // dark card (#17181c) by about seven levels and the light one (#f7f8f8)
+      // by none at all — which is why table hover simply did not exist in
+      // light mode. Following the foreground darkens a light card and lightens
+      // a dark one by the same amount: +12 levels in dark, -12 in light.
+      //
+      // Light takes the lower alpha despite its wider channel spread, because
+      // a dark wash on a near-white surface is more salient per level than a
+      // light wash on a near-black one. Both sit under `borderCol.navbar`'s
+      // 0.18/0.12 on purpose: a hairline must read as a line, a hover wash
+      // only has to read as a region.
+      hover: hexToRgba(p.foreground, isDark ? 0.06 : 0.05),
     },
 
     brand: {
@@ -163,14 +204,35 @@ export default function makeColors(mode = "dark") {
       focus: p.primary,
     },
 
-    // Shadow ink. Deliberately *not* the palette background: `boxShadows.js`
-    // builds every shadow as `black` at low alpha, so binding this to the
-    // background makes light mode cast white shadows — which is why the light
-    // cards read as flat rectangles with no separation from the page.
+    // Near-black, for the things that must be dark in both modes: the tooltip
+    // body (which carries `onImage` ink) and the slider rail. NOT shadows —
+    // those take `shadow` below.
     black: {
       light: "#141414",
       main: "#0b0d10",
       focus: "#0b0d10",
+    },
+
+    // Shadow ink, and the last place the two modes were not behaving alike.
+    //
+    // `boxShadows.js` builds every shadow from this at a fixed alpha, so what a
+    // shadow actually does on screen is `alpha × distance(ink, page)`. Pinned
+    // to near-black it was 11 levels from a black page and 236 from a light
+    // one: the same declaration that is invisible in dark cast a grey halo
+    // under all 252 cards in light. That halo is the "extra shadow" — a card
+    // reading as a stamped-on rectangle rather than a sheet lying on the page.
+    //
+    // Binding it to the page instead would cast a *white* shadow and do
+    // nothing, which is the trap the old comment here warned about. The fix is
+    // neither: hold the DISTANCE constant and let the direction follow the
+    // mode. Each entry sits the same number of levels off its own page as the
+    // hand-picked dark value did — main ~11, light ~20 — so every shadow in the
+    // file now lands with the same weight in both modes without touching a
+    // single alpha.
+    shadow: {
+      light: isDark ? "#141414" : mix(page, p.foreground, 0.09),
+      main: isDark ? "#0b0d10" : mix(page, p.foreground, 0.05),
+      focus: isDark ? "#0b0d10" : mix(page, p.foreground, 0.05),
     },
 
     primary: {
@@ -251,7 +313,7 @@ export default function makeColors(mode = "dark") {
     dark: {
       main: p.border,
       focus: surface,
-      body: p.background,
+      body: page,
     },
 
     gradients: {
@@ -289,7 +351,7 @@ export default function makeColors(mode = "dark") {
         deg: "159.02",
         main: `${surfaceDeep} 14.25%`,
         state: `${surface} 56.45%`,
-        stateSecondary: `${p.background} 86.14%`,
+        stateSecondary: `${page} 86.14%`,
       },
 
       cardDark: {
@@ -304,40 +366,41 @@ export default function makeColors(mode = "dark") {
         state: `${hexToRgba(surfaceDeep, 0.49)} 76.65%`,
       },
 
-      // The plain `Card` everywhere in the dashboard (stat tiles, the
-      // Projects table, ...).
+      // The plain `Card` everywhere in the dashboard — the surface nearly
+      // every page is built out of.
       //
-      // In dark mode, both stops are near-black at moderate alpha over a
-      // black page: the card reads as a soft, low-contrast pool that fades
-      // into the page at its edges *and* still shows a visible internal
-      // gradient, because "near-black at partial opacity on black" gives
-      // both at once. Reusing that exact formula in light mode (same alpha,
-      // `surfaceDeep`'s faint blue-grey) put both stops within a few percent
-      // of the white page — no visible gradient at all.
+      // One formula for both modes, and that is the whole point. A card is a
+      // translucent sheet lying on the page, so it may differ from the page in
+      // LIGHTNESS but never in HUE: `cardFar` is the card colour walked halfway
+      // to the page, which darkens in dark mode and lightens in light mode
+      // without introducing a colour of its own.
       //
-      // The second attempt tuned the state stop into a visible blue-grey
-      // wash. That fixed the middle of the card, but not the bottom: a
-      // two-stop `linear-gradient` holds its last colour flat from that stop
-      // to 100%, so the card's final ~23% was a constant-colour band right
-      // up to its rounded corner. Against a black page (dark mode) a flat
-      // near-black band is indistinguishable from the page anyway; against a
-      // white page (light mode) that flat band is exactly the hard edge that
-      // reads as "not blended," no matter how light the tint is upstream of
-      // it. `fade` is the fix — a third stop at 100% that carries the same
-      // hue down to fully transparent, so the card's edge genuinely
-      // dissolves into the page instead of stopping at a solid tail. Dark
-      // mode doesn't need it (its flat tail already matches the page by
-      // coincidence of colour), so it's `undefined` there and `linearGradient`
-      // drops it.
+      // Two earlier attempts branched on `isDark` and tinted the light state
+      // stop with `primary`, on the reasoning that a neutral light card shows
+      // no visible gradient. True — but neither does the dark one: composited
+      // over their pages, dark's stops land 22 and 5 levels off black, and the
+      // gradient is not what makes that card read as a card. What the tint
+      // bought instead was a hue shift — the light state stop sat 15 levels off
+      // white in red and 3 in blue — and a few percent of luminance is
+      // invisible where a hue shift is not, so the card stopped reading as a
+      // sheet over the page and started reading as a separate blue slab.
+      //
+      // Definition comes from the border and the shadow, which is what they
+      // are for — and from the card sitting a few levels above its page, which
+      // is what `page`/`surface` at the top of this function guarantee in both
+      // modes.
+      //
+      // `fade` is a third stop at 100%. Without it a two-stop gradient holds
+      // its last colour flat from 76.65% to the edge, so the final ~23% of the
+      // card is a constant band ending at the rounded corner — the hard edge
+      // that reads as "not blended". Both modes get it now: in dark it is worth
+      // ~5 levels and invisible either way, and one unbranched formula is worth
+      // more than saving a stop nobody can see.
       card: {
         deg: "127.09",
         main: `${hexToRgba(surface, 0.94)} 19.41%`,
-        state: isDark
-          ? `${hexToRgba(surfaceDeep, 0.49)} 76.65%`
-          : `${hexToRgba(mix(p.card, p.primary, 0.12), 0.42)} 76.65%`,
-        fade: isDark
-          ? undefined
-          : `${hexToRgba(mix(p.card, p.primary, 0.12), 0)} 100%`,
+        state: `${hexToRgba(cardFar, 0.49)} 76.65%`,
+        fade: `${hexToRgba(cardFar, 0)} 100%`,
       },
 
       // Dropdown surfaces. The template's hardcoded navy is one of the black
@@ -609,9 +672,17 @@ export default function makeColors(mode = "dark") {
     // shading, and it takes the mode name rather than a colour.
     chartTooltipTheme: mode,
 
-    // The hairline around a card. Vision UI separates cards from the page with
-    // a glow, which only works on a dark background — in light mode the edge
-    // has to do that work instead.
-    cardBorder: hexToRgba(p.foreground, isDark ? 0.06 : 0.09),
+    // The hairline around a card: the mode's own ink at one alpha for both.
+    //
+    // It used to be carried harder in light (0.09 vs 0.06), on the reasoning
+    // that Vision separates cards from the page with a glow that only works on
+    // a dark background, so a light card needed its edge to do that work. That
+    // was compensating for the card being *darker* than its page — with the two
+    // the right way round a light card is lifted like a dark one, and the extra
+    // 0.03 stopped being separation and became the one hard edge left in a
+    // surface built to dissolve. One alpha, and the ink either side of it, puts
+    // the two modes within a couple of levels of each other: +12 against a dark
+    // card, -14 against a light one.
+    cardBorder: hexToRgba(p.foreground, 0.06),
   };
 }

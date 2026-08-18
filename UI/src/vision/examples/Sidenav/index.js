@@ -16,7 +16,7 @@
 
 */
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 // Next routing, via the react-router shim in vision/router.js
 import { useLocation, NavLink } from "vision/router";
@@ -41,7 +41,7 @@ import SidenavCollapse from "examples/Sidenav/SidenavCollapse";
 
 // Custom styles for the Sidenav
 import SidenavRoot from "examples/Sidenav/SidenavRoot";
-import sidenavLogoLabel from "examples/Sidenav/styles/sidenav";
+import SidenavToggle from "examples/Sidenav/SidenavToggle";
 
 // Vision UI Dashboard React context
 import { useVisionUIController, setMiniSidenav, setTransparentSidenav } from "context";
@@ -63,30 +63,29 @@ function Sidenav({ color, brandName, routes, ...rest }) {
   const { logout } = useAuth();
   const router = useRouter();
 
-  const closeSidenav = () => setMiniSidenav(dispatch, true);
+  const toggleSidenav = () => setMiniSidenav(dispatch, !miniSidenav);
+
+  // Whether the pointer is anywhere over the drawer. Collapsed, this is what
+  // swaps the logo for the expand button -- checked against ChatGPT, where the
+  // swap zone is the whole rail and not just the mark itself, so reaching for
+  // the button from a nav icon lower down already reveals it.
+  //
+  // It does NOT expand the drawer. `VisionApp` used to hold hover handlers that
+  // did exactly that; they are gone, because a rail that expands on hover moves
+  // the page out from under the pointer.
+  const [hovered, setHovered] = useState(false);
 
   const handleSignOut = () => {
     logout();
     router.replace("/login");
   };
 
-  useEffect(() => {
-    // A function that sets the mini state of the sidenav.
-    function handleMiniSidenav() {
-      setMiniSidenav(dispatch, window.innerWidth < 1200);
-    }
-
-    /** 
-     The event listener that's calling the handleMiniSidenav function when resizing the window.
-    */
-    window.addEventListener("resize", handleMiniSidenav);
-
-    // Call the handleMiniSidenav function to set the state with the initial value.
-    handleMiniSidenav();
-
-    // Remove event listener on cleanup
-    return () => window.removeEventListener("resize", handleMiniSidenav);
-  }, [dispatch, location]);
+  // There is deliberately no effect deriving `miniSidenav` from the window
+  // width. One used to live here, running on mount, on every resize and -- via
+  // a `location` dependency -- on every route change, which meant a collapse
+  // the user performed was undone the moment they clicked a nav item. The state
+  // is the user's now: seeded from the `tf26.sidenav` cookie in the app layout
+  // and changed only by the two toggles.
 
   useEffect(() => {
     // The glass/transparent sidenav is a large-screen-only look: below xl the
@@ -165,79 +164,116 @@ function Sidenav({ color, brandName, routes, ...rest }) {
   });
 
   return (
-    <SidenavRoot {...rest} variant="permanent" ownerState={{ transparentSidenav, miniSidenav }}>
-      <VuiBox
-        pt={3.5}
-        pb={0.5}
-        px={4}
-        textAlign="center"
-        sx={{
-          overflow: "unset !important",
-        }}
-      >
+    <SidenavRoot
+      {...rest}
+      variant="permanent"
+      ownerState={{ transparentSidenav, miniSidenav }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {/*
+        The header, and the two states are genuinely different content rather
+        than one layout that shrinks.
+
+        Expanded: the KERMİTS wordmark on the left, the collapse button on the
+        right. No logo — the wordmark already is the brand here, and the mark
+        beside it was saying the same thing twice in a 250px strip.
+
+        Collapsed: the mark alone on the rail's centre line, becoming the expand
+        button while the pointer is anywhere over the drawer.
+      */}
+      <VuiBox pt={3.5} pb={0.5} px={miniSidenav ? 1 : 3}>
         <VuiBox
-          display={{ xs: "block", xl: "none" }}
-          position="absolute"
-          top={0}
-          right={0}
-          p={1.625}
-          onClick={closeSidenav}
-          sx={{ cursor: "pointer" }}
+          display="flex"
+          alignItems="center"
+          // Centred on the rail, spread apart when expanded. `space-between` on
+          // a single centred child would pin it left, which is what put the
+          // mark off-centre on the rail.
+          justifyContent={miniSidenav ? "center" : "space-between"}
+          sx={{ minHeight: 40 }}
         >
-          <VuiTypography variant="h6" color="text">
-            <Icon sx={{ fontWeight: "bold" }}>close</Icon>
-          </VuiTypography>
-        </VuiBox>
-        <VuiBox component={NavLink} to="/" display="flex" alignItems="center">
-          <VuiBox
-            sx={
-              ((theme) => sidenavLogoLabel(theme, { miniSidenav }),
-              {
-                display: "flex",
-                alignItems: "center",
-                margin: "0 auto",
-              })
-            }
-          >
+          {miniSidenav ? (
+            /* A fixed 40px square holding both the mark and the button, stacked.
+               Both are always rendered and cross-faded rather than swapped by a
+               conditional: a button that only exists while the pointer is over
+               the drawer cannot be reached from the keyboard at all, and this is
+               the rail's only expand control. `focus-within` reveals it for the
+               same reason hover does, so tabbing to it makes it visible. */
             <VuiBox
-              display="flex"
-              sx={
-                ((theme) => sidenavLogoLabel(theme, { miniSidenav, transparentSidenav }),
-                {
-                  mr: miniSidenav || (miniSidenav && transparentSidenav) ? 0 : 1,
-                })
-              }
+              sx={{
+                position: "relative",
+                height: 40,
+                width: 40,
+                "&:focus-within .sidenavToggleSlot": { opacity: 1 },
+              }}
             >
-              {/* `height`/`width` as a plain HTML attribute only accepts a
-                  bare number — "24px" is invalid and the browser silently
-                  drops it, which is why this rendered at the image's full
-                  natural size (301x225) instead of icon-sized. The size has
-                  to go through `style` instead. */}
-              <img
-                src={kermitsLogo}
-                alt=""
-                style={{ display: "block", height: "40px", width: "auto" }}
-              />
+              <VuiBox
+                component={NavLink}
+                to="/"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                sx={{
+                  position: "absolute",
+                  inset: 0,
+                  lineHeight: 0,
+                  opacity: hovered ? 0 : 1,
+                  transition: (theme) =>
+                    theme.transitions.create("opacity", {
+                      duration: theme.transitions.duration.shortest,
+                    }),
+                }}
+              >
+                {/* `height`/`width` as plain HTML attributes only accept bare
+                    numbers — "40px" is silently dropped, which is why this once
+                    rendered at its natural 301x225. Size goes through `style`,
+                    and `objectFit` keeps the mark centred in the square rather
+                    than stretched to fill it. */}
+                <img
+                  src={kermitsLogo}
+                  alt=""
+                  style={{
+                    display: "block",
+                    height: "40px",
+                    width: "40px",
+                    objectFit: "contain",
+                  }}
+                />
+              </VuiBox>
+              <VuiBox
+                className="sidenavToggleSlot"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                sx={{
+                  position: "absolute",
+                  inset: 0,
+                  opacity: hovered ? 1 : 0,
+                  transition: (theme) =>
+                    theme.transitions.create("opacity", {
+                      duration: theme.transitions.duration.shortest,
+                    }),
+                }}
+              >
+                <SidenavToggle miniSidenav={miniSidenav} onClick={toggleSidenav} />
+              </VuiBox>
             </VuiBox>
-            <VuiTypography
-              variant="button"
-              textGradient={true}
-              color="logo"
-              fontSize={14}
-              letterSpacing={2}
-              fontWeight="medium"
-              sx={
-                ((theme) => sidenavLogoLabel(theme, { miniSidenav, transparentSidenav }),
-                {
-                  opacity: miniSidenav || (miniSidenav && transparentSidenav) ? 0 : 1,
-                  maxWidth: miniSidenav || (miniSidenav && transparentSidenav) ? 0 : "100%",
-                  margin: "0 auto",
-                })
-              }
-            >
-              {brandName}
-            </VuiTypography>
-          </VuiBox>
+          ) : (
+            <>
+              <VuiTypography
+                variant="button"
+                textGradient={true}
+                color="logo"
+                fontSize={14}
+                letterSpacing={2}
+                fontWeight="medium"
+                sx={{ whiteSpace: "nowrap" }}
+              >
+                {brandName}
+              </VuiTypography>
+              <SidenavToggle miniSidenav={miniSidenav} onClick={toggleSidenav} />
+            </>
+          )}
         </VuiBox>
       </VuiBox>
       <Divider light />
@@ -296,7 +332,7 @@ function Sidenav({ color, brandName, routes, ...rest }) {
             // convention rather than fighting it.
             color="error"
             name="Sign Out"
-            icon={<IoLogOut size="15px" color="inherit" />}
+            icon={<IoLogOut size="20px" color="inherit" />}
             onClick={handleSignOut}
             noCollapse
           />

@@ -134,9 +134,17 @@ export function capitalize(value: string, locale: Locale) {
   return value.charAt(0).toLocaleUpperCase(tag(locale)) + value.slice(1);
 }
 
-/** A link reads better as its host than as 90 characters of path. Shared by
-    `ProducedTable`'s `link` cell type and anywhere else a citation URL is
-    shown, so both read the same host out of the same URL the same way. */
+/**
+ * The host of a URL, without `www.`.
+ *
+ * Currently unused. It was how citation links were labelled, until a bare host
+ * turned out to misrepresent them: every citation points at a deep page — a
+ * named campaign, a specific rate table — and "vakifkatilim.com.tr" reads as
+ * the bank's front page. Those links now say what they are instead, and the
+ * host is not shown at all. Kept because it is a correct, tested helper, and
+ * hosts may well be worth showing somewhere they are not standing in for a
+ * link's destination.
+ */
 export function hostOf(url: string): string {
   try {
     return new URL(url).hostname.replace(/^www\./, "");

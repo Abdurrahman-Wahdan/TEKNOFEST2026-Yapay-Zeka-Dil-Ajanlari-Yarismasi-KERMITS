@@ -28,10 +28,12 @@ import {
   type Labels,
 } from "@/lib/comparator";
 import type { Row } from "@/lib/contract";
-import type { FilterState, SortState } from "@/lib/table-filter";
+import type { FilterState } from "@/lib/table-filter";
 import { BANK_KEY, SIDE_KEY, hiddenColumns } from "@/lib/board-filter";
 import { useRatesStream, type StreamedBoard } from "@/lib/use-rates-stream";
 import { applyFilters, EMPTY_FILTERS, sortRows } from "@/lib/table-filter";
+import { useBankLabels } from "@/lib/use-bank-labels";
+import { useTableSort } from "@/lib/use-table-sort";
 
 import { ProducedTable } from "./ProducedTable";
 import { BoardFilters } from "./BoardFilters";
@@ -98,7 +100,10 @@ export function Comparator() {
   // the ranked categories (including card, now) share below.
   const [singleBank, setSingleBank] = useState<string | null>(null);
   const [installments, setInstallments] = useState("");
-  const [sort, setSort] = useState<SortState | null>(null);
+  // The toggle compares against raw `sort`, not `effectiveSort` below, so the
+  // first click on a category's default-sorted column gives ascending rather
+  // than descending. That is existing behaviour and deliberate to keep.
+  const { sort, toggleSort, resetSort } = useTableSort();
   // Free text plus per-column tick-lists. The board is 32 rows across six
   // banks, so "where is the Qatari riyal" is a search, not a scroll.
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
@@ -293,9 +298,10 @@ export function Comparator() {
       ? !(Number(installments) > 0)
       : category !== "convert" && !(Number(term) > 0));
 
-  const bankNames = Object.fromEntries(
-    (banks ?? []).map((b) => [b.name, b.display_name]),
-  );
+  // The labels only. The `banks` query above stays: this component needs the
+  // bank *records* for eligibility and the rate board, not just display names.
+  // Both hooks share one `["banks"]` cache entry, so it is still one request.
+  const bankNames = useBankLabels();
 
   const labels: Labels = {
     bank: t("bank"), instalment: t("instalment"), total: t("total"),
@@ -450,7 +456,7 @@ export function Comparator() {
     : [];
 
   const run = () => {
-    setSort(null);
+    resetSort();
     setFilters(EMPTY_FILTERS);
     if (category === "finance") {
       setQuery({
@@ -520,7 +526,7 @@ export function Comparator() {
             setSelected(null);
             setSingleBank(null);
             setQuery(null);
-            setSort(null);
+            resetSort();
             // Rates and miles load without a Compare press, so a filter set
             // on one and carried into the other would hide rows for a reason
             // the new table gives no sign of -- run() already clears this for
@@ -716,16 +722,7 @@ export function Comparator() {
                 columns={shownColumns}
                 rows={rows}
                 sort={effectiveSort}
-                // Three states: ascending, descending, then off. The third
-                // click is how a sort is cleared, and the heading now shows
-                // which of them the next click gives.
-                onSort={(key) =>
-                  setSort((s) =>
-                    s?.key === key
-                      ? s.direction === "asc" ? { key, direction: "desc" } : null
-                      : { key, direction: "asc" },
-                  )
-                }
+                onSort={toggleSort}
                 bankLabels={bankNames}
                 emptyLabel={t("noResults")}
                 movements={moved}

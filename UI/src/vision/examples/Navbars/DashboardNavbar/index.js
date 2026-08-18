@@ -35,6 +35,8 @@ import Icon from "@mui/material/Icon";
 import VuiBox from "components/VuiBox";
 import { ThemeToggleIconButton } from "components/VuiThemeToggle";
 
+import { LocaleToggleIconButton } from "@/components/ui/LocaleToggle";
+
 // Vision UI Dashboard React example components
 import Breadcrumbs from "examples/Breadcrumbs";
 import NotificationItem from "examples/Items/NotificationItem";
@@ -45,14 +47,12 @@ import {
   navbarContainer,
   navbarRow,
   navbarIconButton,
-  navbarMobileMenu,
 } from "examples/Navbars/DashboardNavbar/styles";
 
 // Vision UI Dashboard React context
 import {
   useVisionUIController,
   setTransparentNavbar,
-  setMiniSidenav,
 } from "context";
 
 // Images
@@ -67,7 +67,7 @@ const logoSpotify = "/vision/images/small-logos/logo-spotify.svg";
 function DashboardNavbar({ absolute = false, light = false, isMini = false }) {
   const [navbarType, setNavbarType] = useState();
   const [controller, dispatch] = useVisionUIController();
-  const { miniSidenav, transparentNavbar, fixedNavbar } = controller;
+  const { transparentNavbar, fixedNavbar } = controller;
   const [openMenu, setOpenMenu] = useState(false);
   const route = useLocation().pathname.split("/").slice(1);
 
@@ -97,7 +97,6 @@ function DashboardNavbar({ absolute = false, light = false, isMini = false }) {
     return () => window.removeEventListener("scroll", handleTransparentNavbar);
   }, [dispatch, fixedNavbar]);
 
-  const handleMiniSidenav = () => setMiniSidenav(dispatch, !miniSidenav);
   const handleOpenMenu = (event) => setOpenMenu(event.currentTarget);
   const handleCloseMenu = () => setOpenMenu(false);
 
@@ -169,35 +168,16 @@ function DashboardNavbar({ absolute = false, light = false, isMini = false }) {
                   />
                 </VuiBox>
             */}
+            {/*
+              Counted from the RIGHT-HAND EDGE inwards: profile, then the
+              light/dark switch, then the language switch, then the drawer
+              toggle, then notifications furthest from the edge. The row is
+              flush right, so source order runs the other way and this block
+              reads bottom-up: notifications first in the markup, profile last.
+              Reorder by moving whole entries, and re-check against the edge
+              rather than against the source.
+            */}
             <VuiBox color={light ? "white" : "inherit"}>
-              {/*
-                Reaching the dashboard already means signed in, so this is the
-                profile link rather than the template's "Sign in" call to
-                action. Icon only — the label was the sign-in prompt.
-              */}
-              <Link to="/profile">
-                <IconButton sx={navbarIconButton} size="small" aria-label="Your profile">
-                  <Icon
-                    sx={({ palette: { dark, white } }) => ({
-                      color: light ? white.main : dark.main,
-                    })}
-                  >
-                    account_circle
-                  </Icon>
-                </IconButton>
-              </Link>
-              <IconButton
-                size="small"
-                color="inherit"
-                sx={navbarMobileMenu}
-                onClick={handleMiniSidenav}
-              >
-                <Icon>{miniSidenav ? "menu_open" : "menu"}</Icon>
-              </IconButton>
-              {/* Was the Configurator's settings gear. The Configurator is no
-                  longer mounted, so this would have been a dead button; it is
-                  the light/dark switch instead. */}
-              <ThemeToggleIconButton sx={navbarIconButton} />
               <IconButton
                 size="small"
                 color="inherit"
@@ -215,6 +195,34 @@ function DashboardNavbar({ absolute = false, light = false, isMini = false }) {
                   notifications
                 </Icon>
               </IconButton>
+              {/* No drawer toggle here. The drawer collapses to a rail that is
+                  always on screen and carries its own toggle in its header --
+                  visible expanded, and revealed on hover or focus when
+                  collapsed -- so a second control in the navbar was pointing at
+                  something the user could already see and reach. Counted from
+                  the right edge the row is now profile, theme, language,
+                  notifications. */}
+              <LocaleToggleIconButton sx={navbarIconButton} />
+              {/* Was the Configurator's settings gear. The Configurator is no
+                  longer mounted, so this would have been a dead button; it is
+                  the light/dark switch instead. */}
+              <ThemeToggleIconButton sx={navbarIconButton} />
+              {/*
+                Reaching the dashboard already means signed in, so this is the
+                profile link rather than the template's "Sign in" call to
+                action. Icon only — the label was the sign-in prompt.
+              */}
+              <Link to="/profile">
+                <IconButton sx={navbarIconButton} size="small" aria-label="Your profile">
+                  <Icon
+                    sx={({ palette: { dark, white } }) => ({
+                      color: light ? white.main : dark.main,
+                    })}
+                  >
+                    account_circle
+                  </Icon>
+                </IconButton>
+              </Link>
               {renderMenu()}
             </VuiBox>
           </VuiBox>

@@ -23,6 +23,7 @@ import PropTypes from "prop-types";
 import Collapse from "@mui/material/Collapse";
 import ListItem from "@mui/material/ListItem";
 import ListItemIcon from "@mui/material/ListItemIcon";
+import Tooltip from "@mui/material/Tooltip";
 import ListItemText from "@mui/material/ListItemText";
 import Icon from "@mui/material/Icon";
 
@@ -47,7 +48,15 @@ function SidenavCollapse({ color = "info", icon, name, children = false, active 
   return (
     <>
       <ListItem component="li">
-        <VuiBox {...rest} sx={(theme) => collapseItem(theme, { active, transparentSidenav })}>
+        {/* Collapsed, the label is the only thing naming the destination and it
+            is faded to nothing -- so the tooltip carries the name instead. Not
+            rendered when expanded, where it would just repeat the visible
+            label under the pointer. */}
+        <Tooltip title={miniSidenav ? name : ""} placement="right" disableInteractive>
+        <VuiBox
+          {...rest}
+          sx={(theme) => collapseItem(theme, { active, transparentSidenav, miniSidenav })}
+        >
           <ListItemIcon
             sx={(theme) => collapseIconBox(theme, { active, transparentSidenav, color })}
           >
@@ -63,6 +72,7 @@ function SidenavCollapse({ color = "info", icon, name, children = false, active 
             sx={(theme) => collapseText(theme, { miniSidenav, transparentSidenav, active })}
           />
         </VuiBox>
+        </Tooltip>
       </ListItem>
       {children && (
         <Collapse in={open} unmountOnExit>

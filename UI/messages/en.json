@@ -15,7 +15,9 @@
     "settings": "Settings",
     "signOut": "Sign out",
     "theme": "Theme",
-    "language": "Language"
+    "language": "Language",
+    "expandSidebar": "Expand sidebar",
+    "collapseSidebar": "Collapse sidebar"
   },
   "auth": {
     "loginTitle": "Sign in",
@@ -102,7 +104,8 @@
       "rootPath": "(root)",
       "yes": "yes",
       "no": "no"
-    }
+    },
+    "citeLink": "Open the related page"
   },
   "aiOverview": {
     "title": "AI Overview",

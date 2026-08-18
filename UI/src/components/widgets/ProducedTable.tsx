@@ -3,12 +3,12 @@
 import { Table as MuiTable, TableBody, TableContainer, TableRow, Tooltip } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import type { Theme } from "@mui/material/styles";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { Pill } from "@/components/ui/Pill";
 import { VuiBox, VuiTypography } from "@/components/vision";
 import type { CellValue, ResolvedColumn, Row } from "@/lib/contract";
-import { formatDate, formatMoney, formatNumber, formatRate, hostOf } from "@/lib/format";
+import { formatDate, formatMoney, formatNumber, formatRate } from "@/lib/format";
 import { sortHint } from "@/lib/sort-hint";
 import type { SortState } from "@/lib/table-filter";
 
@@ -70,7 +70,7 @@ export function ProducedTable({
   groups?: { key: string; label: string; span: number }[];
 }) {
   const locale = useLocale() as "tr" | "en";
-  const { grey } = useTheme().palette;
+  const { grey, surfaces } = useTheme().palette;
   const { size, fontWeightBold } = useTheme().typography;
   const { borderWidth } = useTheme().borders;
 
@@ -186,7 +186,25 @@ export function ProducedTable({
 
         <TableBody>
           {rows.map((row, index) => (
-            <TableRow key={row.cite_url ? `${row.cite_url}-${index}` : index}>
+            <TableRow
+              key={row.cite_url ? `${row.cite_url}-${index}` : index}
+              // Row hover lives here, on the one component every table page
+              // renders, rather than in an sx wrapper around it — which is how
+              // it used to work, and why only /finansman had it while
+              // /compare, /urunler and /kampanyalar did not.
+              //
+              // Scoped to the body row on purpose. A `MuiTableRow` override in
+              // the theme would be tidier still, but `<thead>` rows are
+              // `TableRow` too, so it would light up the headers as well.
+              //
+              // The tint is on the `td`, not the `tr`: a table row generates no
+              // background box of its own under `border-collapse`, so painting
+              // the row paints nothing. The cells are what is visible.
+              sx={{
+                "& td": { transition: "background-color 150ms ease" },
+                "&:hover td": { backgroundColor: surfaces.hover },
+              }}
+            >
               {columns.map((column) => {
                 const cellKey = rowKey
                   ? `${String(row.cells[rowKey] ?? "")}|${column.key}`
@@ -257,6 +275,8 @@ function Cell({
       `link`-type cell only; every other cell type ignores it. */
   title?: string;
 }) {
+  const t = useTranslations("components");
+
   const base = {
     variant: "button" as const,
     fontWeight: "regular" as const,
@@ -348,9 +368,18 @@ function Cell({
           color="info"
           sx={{ ...base.sx, textDecoration: "underline" }}
         >
-          {hostOf(String(value))}
+          {/* The call to action, not the bare host. Every citation points at a
+              deep page -- a specific campaign, a specific rate table -- and a
+              link reading "vakifkatilim.com.tr" says the bank's front page,
+              which is not where it goes. The host has not been dropped though:
+              it moves into the tooltip below, because a reader is entitled to
+              know which domain a link will take them to before they click. */}
+          {t("citeLink")}
         </VuiTypography>
       );
+      // The note only. The host is deliberately not shown anywhere -- not as
+      // the link text and not in the tooltip -- because a domain on its own
+      // reads as the bank's front page, which is never where a citation goes.
       return title ? (
         <Tooltip title={title} arrow enterDelay={0} enterNextDelay={0} leaveDelay={0}>
           {link}

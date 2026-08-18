@@ -27,7 +27,7 @@ import createCache from "@emotion/cache";
 import routes from "routes";
 
 // Vision UI Dashboard React contexts
-import { useVisionUIController, setMiniSidenav } from "context";
+import { useVisionUIController } from "context";
 
 // The app-wide light/dark state, shared with the sign-in screen's toggle.
 import { useTheme as useColorMode } from "@/lib/theme";
@@ -42,8 +42,7 @@ import { useTheme as useColorMode } from "@/lib/theme";
  */
 export default function VisionApp({ children }) {
   const [controller, dispatch] = useVisionUIController();
-  const { miniSidenav, direction, layout, sidenavColor } = controller;
-  const [onMouseEnter, setOnMouseEnter] = useState(false);
+  const { direction, layout, sidenavColor } = controller;
   const [rtlCache, setRtlCache] = useState(null);
 
   // Rebuild the MUI theme whenever the mode changes. This is what makes the
@@ -63,21 +62,12 @@ export default function VisionApp({ children }) {
     setRtlCache(cacheRtl);
   }, []);
 
-  // Open sidenav when mouse enter on mini sidenav
-  const handleOnMouseEnter = () => {
-    if (miniSidenav && !onMouseEnter) {
-      setMiniSidenav(dispatch, false);
-      setOnMouseEnter(true);
-    }
-  };
-
-  // Close sidenav when mouse leave mini sidenav
-  const handleOnMouseLeave = () => {
-    if (onMouseEnter) {
-      setMiniSidenav(dispatch, true);
-      setOnMouseEnter(false);
-    }
-  };
+  // The template's hover-to-expand handlers used to live here and are gone.
+  // They could never fire -- their `if (miniSidenav)` guard only passed below
+  // 1200px, where the drawer was translated off-screen and so could not be
+  // hovered -- and the behaviour is not what we want anyway: `Sidenav` now
+  // tracks hover itself, and uses it only to reveal the expand button. A rail
+  // that expands on hover moves the page out from under the pointer.
 
   // Setting the dir attribute for the body element
   useEffect(() => {
@@ -89,14 +79,7 @@ export default function VisionApp({ children }) {
       <CssBaseline />
       {layout === "dashboard" && (
         <>
-          <Sidenav
-            color={sidenavColor}
-            brand=""
-            brandName="KERMİTS"
-            routes={routes}
-            onMouseEnter={handleOnMouseEnter}
-            onMouseLeave={handleOnMouseLeave}
-          />
+          <Sidenav color={sidenavColor} brand="" brandName="KERMİTS" routes={routes} />
           {/* Where the Configurator's settings button used to sit. */}
           <ThemeToggleFab />
         </>
