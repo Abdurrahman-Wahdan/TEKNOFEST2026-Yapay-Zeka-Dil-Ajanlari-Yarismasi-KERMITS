@@ -12,7 +12,13 @@ import Sidenav from "examples/Sidenav";
 // panel) is deliberately not mounted. The component is kept intact at
 // `examples/Configurator` so it can be brought back: re-add the import, render
 // <Configurator /> beside the Sidenav, and restore the button below.
-import { ThemeToggleFab } from "components/VuiThemeToggle";
+//
+// The bottom-right corner now belongs to the assistant. `ThemeToggleFab` is
+// still exported from `components/VuiThemeToggle` and can come back the same
+// way, but nothing was lost by moving it out: the theme toggle it provided is
+// also in the navbar (`examples/Navbars/DashboardNavbar`), which is where every
+// other page-level control lives anyway.
+import { AgentPopup } from "@/components/chat/AgentPopup";
 
 // Vision UI Dashboard React themes
 import createVisionTheme from "assets/theme";
@@ -80,8 +86,9 @@ export default function VisionApp({ children }) {
       {layout === "dashboard" && (
         <>
           <Sidenav color={sidenavColor} brand="" brandName="KERMİTS" routes={routes} />
-          {/* Where the Configurator's settings button used to sit. */}
-          <ThemeToggleFab />
+          {/* Where the Configurator's settings button, and then the theme
+              toggle, used to sit. */}
+          <AgentPopup />
         </>
       )}
       {children}

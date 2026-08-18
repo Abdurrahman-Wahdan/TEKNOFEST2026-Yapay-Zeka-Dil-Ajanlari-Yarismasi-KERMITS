@@ -17,6 +17,8 @@
 */
 
 import { useEffect, useState } from "react";
+import useMediaQuery from "@mui/material/useMediaQuery";
+import { useTheme } from "@mui/material/styles";
 
 // Next routing, via the react-router shim in vision/router.js
 import { useLocation, NavLink } from "vision/router";
@@ -27,6 +29,7 @@ import { useAuth } from "@/lib/auth";
 import PropTypes from "prop-types";
 
 // @mui material components
+import IconButton from "@mui/material/IconButton";
 import List from "@mui/material/List";
 import Divider from "@mui/material/Divider";
 import Link from "@mui/material/Link";
@@ -38,16 +41,20 @@ import VuiTypography from "components/VuiTypography";
 
 // Vision UI Dashboard React example components
 import SidenavCollapse from "examples/Sidenav/SidenavCollapse";
+import SidenavActions from "examples/Sidenav/SidenavActions";
 
 // Custom styles for the Sidenav
 import SidenavRoot from "examples/Sidenav/SidenavRoot";
 import SidenavToggle from "examples/Sidenav/SidenavToggle";
+import NotificationsMenu from "examples/Navbars/DashboardNavbar/NotificationsMenu";
 
 // Vision UI Dashboard React context
-import { useVisionUIController, setMiniSidenav, setTransparentSidenav } from "context";
+import { useVisionUIController, setMiniSidenav, setMobileNavOpen, setTransparentSidenav } from "context";
 
 // Vision UI Dashboard React icons
 import { IoLogOut } from "react-icons/io5";
+import { Bell } from "lucide-react";
+import { useTranslations } from "next-intl";
 // Served from /public rather than imported: Next resolves a static image
 // import to a StaticImageData object, and this template interpolates the
 // value straight into an <img src>, which expects a plain string.
@@ -55,8 +62,25 @@ const kermitsLogo = "/vision/images/kermits-logo.png";
 
 // function Sidenav({ color = "info", brand, brandName, routes, ...rest }) {
 function Sidenav({ color, brandName, routes, ...rest }) {
+  const t = useTranslations("nav");
   const [controller, dispatch] = useVisionUIController();
-  const { miniSidenav, transparentSidenav } = controller;
+  const { miniSidenav, transparentSidenav, mobileNavOpen } = controller;
+
+  /**
+   * On a phone the drawer is an overlay, not a rail.
+   *
+   * A 96px rail on a 375px screen spends a quarter of the width on navigation
+   * and squeezes every page into what is left, which is why the chat composer
+   * had nowhere to go. Below `md` the drawer becomes MUI's `temporary` variant:
+   * closed by default, opened from the navbar's menu button, dismissed by the
+   * backdrop or by picking a destination.
+   *
+   * This reads the viewport, but it does not touch `miniSidenav` -- the note
+   * further down about not deriving that from the window width still stands. The
+   * user's rail-or-expanded choice is untouched by visiting on a phone.
+   */
+  const theme = useTheme();
+  const isPhone = useMediaQuery(theme.breakpoints.down("md"));
   const location = useLocation();
   const { pathname } = location;
   const collapseName = pathname.split("/").slice(1)[0];
@@ -64,6 +88,7 @@ function Sidenav({ color, brandName, routes, ...rest }) {
   const router = useRouter();
 
   const toggleSidenav = () => setMiniSidenav(dispatch, !miniSidenav);
+  const closeMobileNav = () => setMobileNavOpen(dispatch, false);
 
   // Whether the pointer is anywhere over the drawer. Collapsed, this is what
   // swaps the logo for the expand button -- checked against ChatGPT, where the
@@ -76,6 +101,7 @@ function Sidenav({ color, brandName, routes, ...rest }) {
   const [hovered, setHovered] = useState(false);
 
   const handleSignOut = () => {
+    closeMobileNav();
     logout();
     router.replace("/login");
   };
@@ -128,7 +154,10 @@ function Sidenav({ color, brandName, routes, ...rest }) {
           />
         </Link>
       ) : (
-        <NavLink to={route} key={key}>
+        // Picking a destination dismisses the overlay. On a phone the drawer
+        // covers the page, so leaving it open over the page the user just asked
+        // for means every navigation needs a second tap to see the result.
+        <NavLink to={route} key={key} onClick={closeMobileNav}>
           <SidenavCollapse
             color={color}
             key={key}
@@ -166,8 +195,13 @@ function Sidenav({ color, brandName, routes, ...rest }) {
   return (
     <SidenavRoot
       {...rest}
-      variant="permanent"
-      ownerState={{ transparentSidenav, miniSidenav }}
+      variant={isPhone ? "temporary" : "permanent"}
+      open={isPhone ? mobileNavOpen : true}
+      onClose={closeMobileNav}
+      // Keeps the drawer mounted so its state and scroll position survive being
+      // dismissed, and so the nav is in the HTML for crawlers on mobile too.
+      ModalProps={{ keepMounted: true }}
+      ownerState={{ transparentSidenav, miniSidenav, isPhone }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -182,17 +216,17 @@ function Sidenav({ color, brandName, routes, ...rest }) {
         Collapsed: the mark alone on the rail's centre line, becoming the expand
         button while the pointer is anywhere over the drawer.
       */}
-      <VuiBox pt={3.5} pb={0.5} px={miniSidenav ? 1 : 3}>
+      <VuiBox pt={3.5} pb={0.5} px={miniSidenav && !isPhone ? 1 : 3}>
         <VuiBox
           display="flex"
           alignItems="center"
           // Centred on the rail, spread apart when expanded. `space-between` on
           // a single centred child would pin it left, which is what put the
           // mark off-centre on the rail.
-          justifyContent={miniSidenav ? "center" : "space-between"}
+          justifyContent={miniSidenav && !isPhone ? "center" : "space-between"}
           sx={{ minHeight: 40 }}
         >
-          {miniSidenav ? (
+          {miniSidenav && !isPhone ? (
             /* A fixed 40px square holding both the mark and the button, stacked.
                Both are always rendered and cross-faded rather than swapped by a
                conditional: a button that only exists while the pointer is over
@@ -271,13 +305,51 @@ function Sidenav({ color, brandName, routes, ...rest }) {
               >
                 {brandName}
               </VuiTypography>
-              <SidenavToggle miniSidenav={miniSidenav} onClick={toggleSidenav} />
+              {/* A rail-vs-expanded toggle makes no sense on the phone overlay:
+                  it is full width and dismissed rather than narrowed. The
+                  navbar's menu button is what opens and closes it there. */}
+              {!isPhone && <SidenavToggle miniSidenav={miniSidenav} onClick={toggleSidenav} />}
+
+              {/*
+                Notifications, beside the wordmark, on the phone overlay only.
+
+                It takes the slot the collapse toggle vacates here, which is why
+                the two are mutually exclusive: on a phone there is no rail to
+                collapse, and on a desktop this lives in the navbar cluster
+                instead. A bare icon with no label, unlike the settings-like rows
+                further down — it is a status indicator, and its badge has to be
+                legible at a glance rather than read as a list item.
+              */}
+              {isPhone && (
+                <NotificationsMenu
+                  renderTrigger={(triggerProps) => (
+                    <IconButton
+                      {...triggerProps}
+                      size="small"
+                      aria-label={t("notifications")}
+                      title={t("notifications")}
+                      sx={{ color: "white.main", p: 0.5 }}
+                    >
+                      <Bell size={20} aria-hidden="true" />
+                    </IconButton>
+                  )}
+                />
+              )}
             </>
           )}
         </VuiBox>
       </VuiBox>
       <Divider light />
       <List>{renderRoutes}</List>
+      {/*
+        The navbar's action cluster, on a phone only.
+
+        Above `md` it stays in the navbar, flush with the right edge, and this is
+        not rendered -- the two are mutually exclusive so no control is on screen
+        twice. It sits below the nav list and above Sign Out because that is what
+        it is: the chrome between the destinations and the way out.
+      */}
+      {isPhone && <SidenavActions />}
       <VuiBox
         my={2}
         mx={2}
@@ -292,6 +364,38 @@ function Sidenav({ color, brandName, routes, ...rest }) {
           [breakpoints.down("xl")]: {
             pt: 2,
           },
+
+          /*
+            Sign Out is centred, unlike every row above it.
+
+            The nav entries are a scannable column -- their icons have to line up
+            so the eye can run down them -- but this is not one of them. It is the
+            way out, sitting alone under a gap at the bottom of the drawer, and
+            left-aligning it to a column it is not part of just made it look like a
+            sixth destination that had drifted from the list.
+
+            Centred from here rather than in `SidenavCollapse`, because that
+            component draws the nav rows too and `collapseItem`'s `flex-start` is
+            correct for them. Both rules are needed: `justifyContent` on the row
+            centres the pair, and `flexGrow: 0` on the label stops MUI's default
+            `flex: 1 1 auto` from expanding it and pushing the group back off
+            centre.
+          */
+          "& .MuiListItem-root > .MuiBox-root": {
+            justifyContent: "center",
+            // The row's own padding is 16px left against 12.8px right, which alone
+            // pushed the centred content 1.6px off. Zeroed horizontally only --
+            // the vertical padding is the row's height and stays.
+            paddingLeft: 0,
+            paddingRight: 0,
+          },
+          // The icon box is a 32px alignment unit holding a 20px glyph, so 6px of
+          // empty space sits on the glyph's left. That space is part of the flex
+          // group but is not ink, so centring the group left the *visible* pair
+          // 4.5px right of the drawer's centre line. Hugging the glyph makes the
+          // group's box equal its ink, which is what has to be centred.
+          "& .MuiListItemIcon-root": { minWidth: "auto" },
+          "& .MuiListItemText-root": { flexGrow: 0 },
         })}
       >
         {/*

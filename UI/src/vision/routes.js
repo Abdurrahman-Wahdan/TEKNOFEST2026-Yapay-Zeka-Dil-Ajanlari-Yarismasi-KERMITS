@@ -58,6 +58,7 @@ import { BsFillPersonFill } from "react-icons/bs";
 import { IoAlbums } from "react-icons/io5";
 import { IoPricetags } from "react-icons/io5";
 import { IoMegaphone } from "react-icons/io5";
+import { IoChatbubbles } from "react-icons/io5";
 
 // Dashboard, Finansman, Bankalar, Tables and Billing are unmounted — no drawer entry and
 // no route. Their pages are kept verbatim at
@@ -104,6 +105,21 @@ const routes = [
     key: "kampanyalar",
     route: "/kampanyalar",
     icon: <IoMegaphone size="20px" color="inherit" />,
+    noCollapse: true,
+  },
+  // The assistant. `key` must match the first path segment -- Sidenav derives
+  // the active state from `pathname.split("/").slice(1)[0]`, so a key of
+  // "assistant" here would leave the entry unhighlighted on /chat.
+  //
+  // The name is a Turkish literal like every entry above it: Sidenav renders
+  // `name` raw and does not translate it. `nav.chat` exists in messages/*.json
+  // for the day the drawer learns to.
+  {
+    type: "collapse",
+    name: "Asistan",
+    key: "chat",
+    route: "/chat",
+    icon: <IoChatbubbles size="20px" color="inherit" />,
     noCollapse: true,
   },
   // {

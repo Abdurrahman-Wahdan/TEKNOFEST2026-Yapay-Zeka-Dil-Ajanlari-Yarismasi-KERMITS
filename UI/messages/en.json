@@ -15,7 +15,10 @@
     "settings": "Settings",
     "signOut": "Sign out",
     "theme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
     "language": "Language",
+    "notifications": "Notifications",
     "expandSidebar": "Expand sidebar",
     "collapseSidebar": "Collapse sidebar"
   },
@@ -114,7 +117,7 @@
   },
   "chat": {
     "title": "Assistant",
-    "placeholder": "Ask a question — for example \"which bank is cheapest for 1M TRY over 120 months?\"",
+    "placeholder": "Ask anything",
     "send": "Send",
     "newChat": "New chat",
     "sources": "Sources",
@@ -123,7 +126,32 @@
       "retrieving": "Searching the sources…",
       "pricing": "Asking the banks…",
       "writing": "Writing the answer…"
-    }
+    },
+    "stop": "Stop",
+    "attach": "Attach a file",
+    "close": "Close",
+    "expand": "Open full screen",
+    "open": "Ask the assistant",
+    "thinking": "Thinking…",
+    "emptyTitle": "What would you like to know?",
+    "emptySubtitle": "Ask about rates, campaigns or financing and the assistant will look it up across the banks.",
+    "errorTitle": "The request failed",
+    "removeImage": "Remove image",
+    "removeFile": "Remove file",
+    "think": "Think",
+    "copyCode": "Copy code",
+    "copied": "Copied",
+    "mockNotice": "The assistant is not connected yet — answers below are sample data.",
+    "placeholders": [
+      "Which bank is cheapest for 1M TRY over 120 months?",
+      "What changed in this week's campaigns?",
+      "Compare vehicle financing across every bank",
+      "Which campaigns expire in the next 14 days?",
+      "Show housing rates as a table"
+    ],
+    "voice": "Voice input",
+    "mentionLabel": "Attached documents",
+    "mentionEmpty": "Nothing attached yet"
   },
   "settings": {
     "title": "Settings",

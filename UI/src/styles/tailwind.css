@@ -34,6 +34,18 @@
 @import "tw-animate-css";
 
 /*
+  Streamdown renders the assistant's markdown, and it styles itself with Tailwind
+  utility classes baked into its own compiled JS. Tailwind v4 only emits a
+  utility it has seen in a scanned file, and node_modules is not scanned by
+  default -- so without these the markdown renders completely unstyled.
+
+  Paths are relative to this file, so `../../` is the UI/ package root. The code
+  plugin (Shiki highlighting) is a separate package and needs its own entry.
+*/
+@source "../../node_modules/streamdown/dist/*.js";
+@source "../../node_modules/@streamdown/code/dist/*.js";
+
+/*
   What `dark:` means.
 
   Tailwind v4's stock dark variant follows prefers-color-scheme, which cannot be
@@ -144,6 +156,36 @@
 
   --primary-hover: color-mix(in srgb, var(--primary) 85%, #000);
 
+  /* --primary as *text*.
+
+     The palette's --primary (#1e9df1) is a fill colour: it carries a filled
+     button or a chart series perfectly, and it fails as ink. On the light
+     --card (#f7f8f8) it measures 2.76:1, well under the 4.5:1 body text needs,
+     and the composer's active Think chip made that worse by printing it over a
+     tint of itself -- light blue on pale blue. Darkened until it clears as
+     text: 60% primary / 40% black is 6.50:1 on --card and still 5.22:1 on the
+     22% tint the chip paints behind it. Mixed, not picked, so a palette hue
+     change carries through. Use it wherever the brand colour is the text or a
+     glyph; keep --primary for fills. */
+  --primary-strong: color-mix(in srgb, var(--primary) 60%, #000);
+
+  /* The ink for a quiet-but-readable control: a placeholder, an inactive
+     toggle's label, an icon button at rest.
+
+     --muted-foreground cannot do this job in either theme. Light sets it equal
+     to --foreground, so a "quiet" label came out at full strength; dark sets it
+     to #72767a, which is 3.88:1 on the dark --card -- under the threshold, and
+     the reason the composer's placeholder and Think label read as disabled
+     text. --text-faint is worse still (3.84:1 light, 2.49:1 dark): it is for
+     decoration, not for words. So this is a third step between foreground and
+     faint, tuned to land either side of ~5.5:1 on --card in both themes.
+
+     Light fades --muted-foreground toward the page to get the drop in emphasis
+     (5.42:1 on --card); dark has to go the other way and lift it toward
+     --foreground, because fading toward a black background is what made the
+     dark greys unreadable in the first place. */
+  --control-ink: color-mix(in srgb, var(--muted-foreground) 65%, var(--background));
+
   /* Semantic states, taken from the palette's own chart colours so a success
      tick and a green series are the same green. */
   --ok: var(--chart-2);
@@ -211,6 +253,19 @@
      black darkens rather than fades, which would make faint text invisible. */
   --text-faint: color-mix(in srgb, var(--muted-foreground) 75%, var(--background));
   --primary-hover: color-mix(in srgb, var(--primary) 85%, #fff);
+
+  /* Same inversion as --primary-hover: on a near-black card the brand blue is
+     already legible (5.97:1), so it is *lightened* rather than darkened. The
+     lift is what the tinted chip needs -- plain --primary over a 22% tint of
+     itself is 4.28:1, just short, and 80% primary / 20% white brings that to
+     5.33:1 (7.42:1 on the bare card). Kept off --primary-hover's 85% so the
+     two stay distinguishable when an active chip is hovered. */
+  --primary-strong: color-mix(in srgb, var(--primary) 80%, #fff);
+
+  /* See the light definition: fading toward the background here would push a
+     quiet label to 2.5:1, so the dark value lifts --muted-foreground toward
+     --foreground instead, landing at 5.73:1 on --card. */
+  --control-ink: color-mix(in srgb, var(--muted-foreground) 75%, var(--foreground));
 }
 
 /*
@@ -310,6 +365,42 @@
   }
 }
 
+/*
+  The chat composer's cycling placeholder, which blurs in and out one letter at
+  a time. Two keyframes rather than one because the letters leave as well as
+  arrive, and they leave upward while they arrive from below -- reversing a
+  single animation would send them back the way they came, which reads as the
+  text retreating rather than being replaced.
+
+  The per-letter stagger is an inline `animation-delay` computed from the
+  letter's index; only the motion itself lives here.
+*/
+@keyframes letterBlurIn {
+  from {
+    opacity: 0;
+    filter: blur(12px);
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0px);
+    transform: translateY(0px);
+  }
+}
+
+@keyframes letterBlurOut {
+  from {
+    opacity: 1;
+    filter: blur(0px);
+    transform: translateY(0px);
+  }
+  to {
+    opacity: 0;
+    filter: blur(12px);
+    transform: translateY(-10px);
+  }
+}
+
 @layer components {
   .animate-element {
     opacity: 0;
@@ -348,6 +439,17 @@
   .animate-delay-1100 { animation-delay: 1.1s; }
   .animate-delay-1200 { animation-delay: 1.2s; }
   .animate-delay-1400 { animation-delay: 1.4s; }
+
+  /* One letter of the composer's cycling placeholder. `both` matters: the
+     letter must hold its start state through its stagger delay, or every
+     letter flashes in at full opacity before its turn arrives. */
+  .animate-letter-in {
+    animation: letterBlurIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .animate-letter-out {
+    animation: letterBlurOut 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
 
   .custom-checkbox {
     appearance: none;
@@ -394,7 +496,9 @@
 @media (prefers-reduced-motion: reduce) {
   .animate-element,
   .animate-slide-right,
-  .animate-testimonial {
+  .animate-testimonial,
+  .animate-letter-in,
+  .animate-letter-out {
     opacity: 1;
     filter: none;
     transform: none;

@@ -10,6 +10,7 @@ import { VuiBox, VuiTypography } from "@/components/vision";
 import type { CellValue, ResolvedColumn, Row } from "@/lib/contract";
 import { formatDate, formatMoney, formatNumber, formatRate } from "@/lib/format";
 import { sortHint } from "@/lib/sort-hint";
+import { TABLE_GUTTER, tableRowHoverSx, tableRule } from "@/lib/table-style";
 import type { SortState } from "@/lib/table-filter";
 
 /**
@@ -70,9 +71,10 @@ export function ProducedTable({
   groups?: { key: string; label: string; span: number }[];
 }) {
   const locale = useLocale() as "tr" | "en";
-  const { grey, surfaces } = useTheme().palette;
-  const { size, fontWeightBold } = useTheme().typography;
-  const { borderWidth } = useTheme().borders;
+  const theme = useTheme();
+  const { grey } = theme.palette;
+  const { size, fontWeightBold } = theme.typography;
+  const { borderWidth } = theme.borders;
 
   if (columns.length === 0 || rows.length === 0) {
     return (
@@ -132,7 +134,7 @@ export function ProducedTable({
                   // the indicator inside it -- 0,7 x 0,35 left the marker at
                   // about a quarter visible, which is why it read as absent.
                   opacity={column.sortable ? 1 : 0.7}
-                  borderBottom={`${borderWidth[1]} solid ${grey[700]}`}
+                  borderBottom={tableRule(theme)}
                   sx={{
                     whiteSpace: "nowrap",
                     px: GUTTER,
@@ -200,10 +202,7 @@ export function ProducedTable({
               // The tint is on the `td`, not the `tr`: a table row generates no
               // background box of its own under `border-collapse`, so painting
               // the row paints nothing. The cells are what is visible.
-              sx={{
-                "& td": { transition: "background-color 150ms ease" },
-                "&:hover td": { backgroundColor: surfaces.hover },
-              }}
+              sx={tableRowHoverSx}
             >
               {columns.map((column) => {
                 const cellKey = rowKey
@@ -220,7 +219,7 @@ export function ProducedTable({
                   borderBottom={
                     index === rows.length - 1
                       ? null
-                      : `${borderWidth[1]} solid ${grey[700]}`
+                      : tableRule(theme)
                   }
                   sx={{
                     whiteSpace: "nowrap",
@@ -411,13 +410,10 @@ function Cell({
 }
 
 /**
- * The gutter between columns, applied identically to headers and cells.
+ * The gutter between columns.
  *
- * Only the *inner* spacing. The outer edges — the first column's left and the
- * last column's right — belong to the table theme
- * (`assets/theme/components/table/tableContainer`), which sets them with
- * `!important` for every table in the app so they cannot drift per table. The
- * template's own Table derives padding from `align` instead, which is how a
- * header on 24px ended up above a cell on 8px in the same column.
+ * Now the shared `TABLE_GUTTER` from `@/lib/table-style`, so the markdown table
+ * the assistant produces lines its columns up with this one. Aliased rather than
+ * inlined at the call sites to keep the diff honest about what changed.
  */
-const GUTTER = 1.5;
+const GUTTER = TABLE_GUTTER;

@@ -99,7 +99,17 @@ function collapseIconBox(theme, ownerState) {
     // when active because it had to read against a filled brand tile; with no
     // tile under it that flip would just make the current page's icon the only
     // black one in a column of blue.
-    "& svg, svg g": {
+    //
+    // Set twice over, because the drawer holds two kinds of glyph. react-icons
+    // paints with `fill`; lucide — the phone action rows, and the app's set
+    // everywhere outside this template — strokes `currentColor` and declares
+    // `fill="none"`. So `color` colours the stroked ones, which otherwise sat on
+    // `ListItemIcon`'s own grey while the nav icons above them were blue.
+    //
+    // The `fill` rule has to skip them: a CSS `fill` beats the `fill="none"`
+    // attribute, and an outline glyph filled in solid is a blob, not an icon.
+    color: palette[color].main,
+    "& svg:not([fill='none']), svg:not([fill='none']) g": {
       fill: palette[color].main,
     },
   };

@@ -40,6 +40,13 @@ function reducer(state, action) {
     case "MINI_SIDENAV": {
       return { ...state, miniSidenav: action.value };
     }
+    // Whether the drawer is showing on a phone. Deliberately separate from
+    // `miniSidenav`: on a narrow screen the drawer is an overlay that is either
+    // there or not, and the rail-vs-expanded choice the user made on a desktop
+    // must survive a visit on their phone rather than being overwritten by it.
+    case "MOBILE_NAV_OPEN": {
+      return { ...state, mobileNavOpen: action.value };
+    }
     case "TRANSPARENT_SIDENAV": {
       return { ...state, transparentSidenav: action.value };
     }
@@ -90,6 +97,9 @@ function VisionUIControllerProvider({ children, initialMiniSidenav = false }) {
     openConfigurator: false,
     direction: "ltr",
     layout: "dashboard",
+    // Closed on arrival, like every phone drawer: it is an overlay, and one that
+    // starts open covers the page the user asked for.
+    mobileNavOpen: false,
   };
 
   const [controller, dispatch] = useReducer(reducer, initialState);
@@ -133,6 +143,13 @@ const setMiniSidenav = (dispatch, value) => {
   }
   dispatch({ type: "MINI_SIDENAV", value });
 };
+/**
+ * Show or hide the drawer on a phone.
+ *
+ * Not persisted, unlike `miniSidenav`. An overlay that is open on the next page
+ * load would sit on top of whatever the user navigated to.
+ */
+const setMobileNavOpen = (dispatch, value) => dispatch({ type: "MOBILE_NAV_OPEN", value });
 const setTransparentSidenav = (dispatch, value) => dispatch({ type: "TRANSPARENT_SIDENAV", value });
 const setSidenavColor = (dispatch, value) => dispatch({ type: "SIDENAV_COLOR", value });
 const setTransparentNavbar = (dispatch, value) => dispatch({ type: "TRANSPARENT_NAVBAR", value });
@@ -143,6 +160,7 @@ const setLayout = (dispatch, value) => dispatch({ type: "LAYOUT", value });
 
 export {
   SIDENAV_COOKIE,
+  setMobileNavOpen,
   VisionUIControllerProvider,
   useVisionUIController,
   setMiniSidenav,

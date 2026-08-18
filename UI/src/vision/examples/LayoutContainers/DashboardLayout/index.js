@@ -42,7 +42,7 @@ function DashboardLayout({ children }) {
 
   return (
     <VuiBox
-      sx={({ transitions, functions: { pxToRem } }) => ({
+      sx={({ breakpoints, transitions, functions: { pxToRem } }) => ({
         p: 3,
         position: "relative",
 
@@ -52,6 +52,14 @@ function DashboardLayout({ children }) {
         // The offset is derived from the drawer's own widths rather than the
         // pre-summed 120/274 this used to hardcode.
         marginLeft: pxToRem((miniSidenav ? SIDENAV_RAIL : SIDENAV_WIDTH) + SIDENAV_GUTTER),
+
+        // Below `md` the drawer is a temporary overlay rather than a docked rail,
+        // so there is nothing for the content to make room for -- it takes the
+        // full width and the drawer floats over it when opened.
+        [breakpoints.down("md")]: {
+          marginLeft: 0,
+          p: 2,
+        },
         transition: transitions.create(["margin-left", "margin-right"], {
           easing: transitions.easing.easeInOut,
           duration: transitions.duration.standard,

@@ -2,6 +2,7 @@ import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
 import { setRequestLocale } from "next-intl/server";
 import { cookies } from "next/headers";
 
+import { ChatProvider } from "@/lib/chat/ChatProvider";
 import VisionApp from "@/vision/VisionApp";
 import { VisionUIControllerProvider } from "@/vision/context";
 
@@ -17,6 +18,12 @@ import { VisionUIControllerProvider } from "@/vision/context";
  * reason: its width is an emotion class, so seeding it from the cookie is what
  * makes a collapsed drawer render collapsed in the very first HTML instead of
  * rendering wide and snapping narrow once the client can read storage.
+ *
+ * `ChatProvider` wraps `VisionApp` rather than sitting inside it because the
+ * conversation has two consumers on opposite sides of that boundary: the popup,
+ * which `VisionApp` renders, and the /chat page, which arrives as `children`.
+ * Mounted here it also outlives navigation between the pages inside it, so an
+ * open conversation survives a click from /compare to /urunler.
  */
 export default async function AppLayout({
   children,
@@ -33,7 +40,9 @@ export default async function AppLayout({
   return (
     <AppRouterCacheProvider options={{ key: "mui" }}>
       <VisionUIControllerProvider initialMiniSidenav={miniSidenav}>
-        <VisionApp>{children}</VisionApp>
+        <ChatProvider>
+          <VisionApp>{children}</VisionApp>
+        </ChatProvider>
       </VisionUIControllerProvider>
     </AppRouterCacheProvider>
   );

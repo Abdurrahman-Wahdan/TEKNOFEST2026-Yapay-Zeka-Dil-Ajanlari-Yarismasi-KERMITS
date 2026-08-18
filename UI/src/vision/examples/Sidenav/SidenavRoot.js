@@ -25,7 +25,7 @@ import { SIDENAV_RAIL, SIDENAV_WIDTH } from "vision/sidenavWidths";
 
 export default styled(Drawer)(({ theme, ownerState }) => {
   const { palette, boxShadows, transitions } = theme;
-  const { transparentSidenav, miniSidenav } = ownerState;
+  const { transparentSidenav, miniSidenav, isPhone } = ownerState;
 
   const { transparent, gradients } = palette;
   const { xxl } = boxShadows;
@@ -57,7 +57,10 @@ export default styled(Drawer)(({ theme, ownerState }) => {
         : linearGradient(gradients.sidenav.main, gradients.sidenav.state, gradients.sidenav.deg),
       backdropFilter: transparentSidenav ? "unset" : "blur(120px)",
       ...surface,
-      width: miniSidenav ? SIDENAV_RAIL : SIDENAV_WIDTH,
+      // On a phone the drawer is a temporary overlay and always full width: a
+      // 96px rail there would be a quarter of the screen spent on navigation,
+      // and the overlay is dismissed rather than narrowed.
+      width: isPhone ? SIDENAV_WIDTH : miniSidenav ? SIDENAV_RAIL : SIDENAV_WIDTH,
       // The labels are still in the DOM while collapsed — they fade and lose
       // their width rather than unmount — so the rail has to clip them instead
       // of scrolling sideways to reveal them.
