@@ -4,14 +4,37 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 
+import {
+  chatStore,
+  historyServerSnapshot,
+  historySnapshot,
+  newConversationId,
+  subscribeHistory,
+  titleFor,
+  type StoredConversation,
+} from "./store";
 import { streamChat } from "./transport";
-import type { AgentMessage, ChatStatus } from "./types";
+import { usePathname } from "@/i18n/navigation";
+
+import { formatLocation } from "./page-locator";
+import { toCapturePayloads } from "./capture";
+import { runClientTool } from "./tools";
+import type {
+  AgentMessage,
+  ChatStatus,
+  ClientToolName,
+  MessagePart,
+  PageViewMode,
+  ToolResult,
+} from "./types";
 import { useAttachments } from "./useAttachments";
 
 /**
@@ -42,6 +65,15 @@ type ChatContextValue = {
   setThink: (on: boolean) => void;
   /** Files staged for the next message, shared by both surfaces. */
   attachments: ReturnType<typeof useAttachments>;
+
+  /** Past conversations, newest first. Empty until the store has been read. */
+  history: StoredConversation[];
+  /** Which conversation is on screen. */
+  activeId: string;
+  /** Load a past conversation into both surfaces. */
+  openConversation: (id: string) => void;
+  /** Forget one. If it is the open one, this starts a fresh chat. */
+  deleteConversation: (id: string) => void;
 };
 
 const ChatContext = createContext<ChatContextValue | null>(null);
@@ -64,8 +96,32 @@ export function useChat(): ChatContextValue {
 let messageSeq = 0;
 const nextId = (prefix: string) => `${prefix}-${++messageSeq}`;
 
+/**
+ * How many rounds of client tool use one question may take.
+ *
+ * A backstop, not a budget: an agent that asks to look at the page, is told what
+ * the page says, and asks again would otherwise never return.
+ */
+const MAX_TOOL_PASSES = 3;
+
 export function ChatProvider({ children }: { children: ReactNode }) {
+  // The locale-stripped path, for anything staged from the page the user is on.
+  const pathname = usePathname();
   const [messages, setMessages] = useState<AgentMessage[]>([]);
+  /**
+   * Past conversations, read straight from the store.
+   *
+   * `useSyncExternalStore` rather than state seeded in a mount effect: the effect
+   * version had to `setState` on mount, which is both a render-then-correct and
+   * exactly what `react-hooks/set-state-in-effect` warns about. This subscribes
+   * instead, so a write anywhere updates every reader.
+   */
+  const history = useSyncExternalStore(
+    subscribeHistory,
+    historySnapshot,
+    historyServerSnapshot,
+  );
+  const [activeId, setActiveId] = useState<string>(() => newConversationId());
   const [status, setStatus] = useState<ChatStatus>("ready");
   const [popupOpen, setPopupOpen] = useState(false);
   const [think, setThink] = useState(false);
@@ -79,6 +135,27 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   // nothing renders differently based on the controller's identity.
   const abortRef = useRef<AbortController | null>(null);
 
+  /**
+   * Persist the open conversation whenever it changes.
+   *
+   * Keyed on the message list, so it saves as the answer streams rather than only
+   * at the end -- a reload mid-answer keeps what had arrived. An empty
+   * conversation is deliberately not saved: a "new chat" the user never typed into
+   * would otherwise appear in the list as an untitled row.
+   */
+  const emptyTitle = "…";
+  useEffect(() => {
+    if (messages.length === 0) return;
+    const conversation: StoredConversation = {
+      id: activeId,
+      title: titleFor(messages, emptyTitle),
+      messages,
+      updatedAt: Date.now(),
+    };
+    // The store notifies its subscribers, so nothing has to be set here.
+    chatStore.save(conversation);
+  }, [messages, activeId]);
+
   const stop = useCallback(() => {
     abortRef.current?.abort();
     abortRef.current = null;
@@ -88,7 +165,48 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const send = useCallback(
     (text: string) => {
       const trimmed = text.trim();
-      if (!trimmed) return;
+
+      // Snapshotted before anything else, because they decide whether there is a
+      // message at all and they travel in two directions: into the user's own
+      // turn, and onto the request. Split by kind -- files are metadata (there is
+      // still no upload endpoint) while context *is* its content.
+      const stagedContexts = attachments.contexts;
+      const stagedCaptures = attachments.captures;
+      const stagedFiles = attachments.targets.flatMap((target) =>
+        target.kind === "context"
+          ? []
+          : [{ id: target.id, filename: target.filename, kind: target.kind }],
+      );
+
+      /**
+       * The page outlines that arrived with a capture, as ordinary text context.
+       *
+       * Split out here rather than at the button, so the tray shows one chip for
+       * one press while the request still carries both halves in the fields the
+       * backend expects.
+       */
+      const outgoingContext = [
+        ...stagedContexts,
+        ...stagedCaptures.flatMap((capture) =>
+          capture.outline
+            ? [
+                {
+                  id: `${capture.id}-outline`,
+                  kind: "page" as const,
+                  label: capture.label,
+                  body: capture.outline,
+                  format: "markdown" as const,
+                  location: { path: pathname },
+                },
+              ]
+            : [],
+        ),
+      ];
+
+      // Nothing typed and nothing attached is not a message. But an attachment
+      // with no question is: "here is this table" followed by a look is how
+      // people actually use it, and requiring a word first made that impossible.
+      if (!trimmed && stagedContexts.length === 0 && stagedCaptures.length === 0) return;
 
       // A second send while one is in flight cancels the first. Two concurrent
       // streams would interleave their deltas into whichever assistant message
@@ -100,7 +218,30 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       const userMessage: AgentMessage = {
         id: nextId("user"),
         role: "user",
-        parts: [{ type: "text", text: trimmed }],
+        parts: [
+          // Attachments first, above the question, as they sit in the composer.
+          ...stagedContexts.map((context) => ({
+            type: "context" as const,
+            kind: context.kind,
+            label: context.label,
+            body: context.body,
+            // Printed here, not structured: a message part is persisted to
+            // localStorage and read back by the renderer, and the renderer only
+            // ever shows this to a person.
+            source: formatLocation(context.location),
+          })),
+          // Label only, never the bytes: this array is written to localStorage on
+          // every streamed token, and a base64 image would blow the quota and
+          // silently stop history saving.
+          ...stagedCaptures.map((capture) => ({
+            type: "context" as const,
+            kind: "capture" as const,
+            label: capture.label,
+          })),
+          // Omitted when empty rather than sent blank: an empty text part renders
+          // as an empty bubble.
+          ...(trimmed ? [{ type: "text" as const, text: trimmed }] : []),
+        ],
       };
       const assistantId = nextId("assistant");
 
@@ -121,43 +262,105 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       // asked the previous question.
       const history = [...messages, userMessage];
 
-      // Snapshotted before clearing, so the request describes what the user
-      // actually attached to this turn.
-      const staged = attachments.targets;
+      // Cleared only now: everything this turn needed was snapshotted above, so
+      // the request still describes what the user actually attached.
       attachments.clear();
 
       void (async () => {
         let text = "";
-        try {
-          for await (const chunk of streamChat(
-            { messages: history, think, attachments: staged },
-            { signal: controller.signal },
-          )) {
-            if (controller.signal.aborted) return;
+        /**
+         * What the agent did before answering, kept apart from its prose.
+         *
+         * Every delta rewrites the assistant's parts, so a tool-use note appended
+         * into that array would be wiped by the next token. Held here and
+         * re-prepended on each write instead.
+         *
+         * Labels only -- never a tool's bytes. These parts are persisted to
+         * localStorage on every token, and a base64 capture in there would blow
+         * the quota and silently stop history saving.
+         */
+        const toolParts: MessagePart[] = [];
+        const render = (parts: MessagePart[]) =>
+          setMessages((prev) =>
+            prev.map((m) => (m.id === assistantId ? { ...m, parts } : m)),
+          );
 
-            if (chunk.type === "error") {
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantId
-                    ? {
-                        ...m,
-                        parts: [
-                          { type: "error", title: chunk.title, message: chunk.message },
-                        ],
-                      }
-                    : m,
-                ),
-              );
-              return;
+        try {
+          let toolResults: ToolResult[] | undefined;
+
+          /**
+           * One pass per round of tool use.
+           *
+           * "Look at my screen" cannot be answered on the server, so the agent
+           * asks, we answer, and the request goes again carrying the answer. The
+           * cap is a backstop: an agent that asks to look at the page every time
+           * it is told what the page says would otherwise loop forever.
+           */
+          for (let pass = 0; pass < MAX_TOOL_PASSES; pass += 1) {
+            const pending: {
+              id: string;
+              name: ClientToolName;
+              mode?: PageViewMode;
+            }[] = [];
+
+            for await (const chunk of streamChat(
+              {
+                messages: history,
+                think,
+                attachments: stagedFiles,
+                // Omitted rather than sent empty, so the payload says something
+                // only when there is something to say.
+                // The staged text context, plus the page outline that travelled
+                // on any capture -- one press of the eye stages a single chip
+                // carrying both representations, and they leave on their own
+                // fields.
+                context: outgoingContext.length > 0 ? outgoingContext : undefined,
+                // Split into media type and base64 here, so the backend can drop
+                // each one straight into an image content block. A data URL
+                // forwarded as text shows the model the string rather than the
+                // picture, and bills for it. Anything unsplittable is dropped
+                // rather than sent as a broken image.
+                captures: stagedCaptures.length > 0 ? toCapturePayloads(stagedCaptures) : undefined,
+                toolResults,
+              },
+              { signal: controller.signal },
+            )) {
+              if (controller.signal.aborted) return;
+
+              if (chunk.type === "error") {
+                render([{ type: "error", title: chunk.title, message: chunk.message }]);
+                return;
+              }
+
+              if (chunk.type === "tool-call") {
+                // Collected, not run mid-stream: the agent may ask for several,
+                // and running them as they arrive would serialise what can go
+                // together.
+                pending.push({ id: chunk.id, name: chunk.name, mode: chunk.mode });
+                continue;
+              }
+
+              text += chunk.delta;
+              setStatus("streaming");
+              render([...toolParts, { type: "text", text }]);
             }
 
-            text += chunk.delta;
-            setStatus("streaming");
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === assistantId ? { ...m, parts: [{ type: "text", text }] } : m,
-              ),
+            if (pending.length === 0) break;
+
+            const results = await Promise.all(
+              pending.map((call) => runClientTool(call.name, call.id, call.mode)),
             );
+            if (controller.signal.aborted) return;
+
+            for (const result of results) {
+              toolParts.push({
+                type: "context",
+                kind: "capture",
+                label: result.label,
+              });
+            }
+            render([...toolParts, { type: "text", text }]);
+            toolResults = results;
           }
         } catch (error) {
           // An abort is a user action, not a failure -- surfacing it as an error
@@ -186,16 +389,52 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         }
       })();
     },
-    [messages, think, attachments],
+    [messages, think, attachments, pathname],
   );
 
   const newChat = useCallback(() => {
     abortRef.current?.abort();
     abortRef.current = null;
+    // A new id, not a cleared list: the conversation being left is already in the
+    // store under its own id, and reusing the id would overwrite it on the next
+    // message.
+    setActiveId(newConversationId());
     setMessages([]);
     setStatus("ready");
     attachments.clear();
   }, [attachments]);
+
+  const openConversation = useCallback(
+    (id: string) => {
+      const found = chatStore.list().find((c) => c.id === id);
+      if (!found) return;
+      // Whatever was streaming belongs to the conversation being left.
+      abortRef.current?.abort();
+      abortRef.current = null;
+      setActiveId(found.id);
+      setMessages(found.messages);
+      setStatus("ready");
+      attachments.clear();
+    },
+    [attachments],
+  );
+
+  const deleteConversation = useCallback(
+    (id: string) => {
+      chatStore.remove(id);
+      // Deleting the conversation you are reading leaves nothing to read, so it
+      // becomes a fresh one rather than an orphaned transcript with no store entry.
+      if (id === activeId) {
+        abortRef.current?.abort();
+        abortRef.current = null;
+        setActiveId(newConversationId());
+        setMessages([]);
+        setStatus("ready");
+        attachments.clear();
+      }
+    },
+    [activeId, attachments],
+  );
 
   const value = useMemo(
     () => ({
@@ -209,8 +448,25 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       think,
       setThink,
       attachments,
+      history,
+      activeId,
+      openConversation,
+      deleteConversation,
     }),
-    [messages, status, send, stop, newChat, popupOpen, think, attachments],
+    [
+      messages,
+      status,
+      send,
+      stop,
+      newChat,
+      popupOpen,
+      think,
+      attachments,
+      history,
+      activeId,
+      openConversation,
+      deleteConversation,
+    ],
   );
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

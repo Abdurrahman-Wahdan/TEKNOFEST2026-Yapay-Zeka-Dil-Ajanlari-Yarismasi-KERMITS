@@ -429,13 +429,6 @@ class Settings(BaseSettings):
         "session. A leaked access token expires before it is useful.",
     )
     API_REFRESH_TOKEN_DAYS: int = Field(default=30, gt=0)
-    API_CHAT_HISTORY_TURNS: int = Field(
-        default=12,
-        gt=0,
-        description="Turns replayed into the agent's context. The window is "
-        "bounded rather than whole-session: an unbounded history eventually "
-        "costs more than the retrieved chunks it is meant to support.",
-    )
 
     # ===== Application =====
     LOG_LEVEL: str = "INFO"

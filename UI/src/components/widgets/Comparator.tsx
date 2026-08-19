@@ -35,6 +35,7 @@ import { applyFilters, EMPTY_FILTERS, sortRows } from "@/lib/table-filter";
 import { useBankLabels } from "@/lib/use-bank-labels";
 import { useTableSort } from "@/lib/use-table-sort";
 
+import { useAttachTable } from "@/lib/chat/use-attach-table";
 import { ProducedTable } from "./ProducedTable";
 import { BoardFilters } from "./BoardFilters";
 import { TableFilters } from "./TableFilters";
@@ -303,6 +304,34 @@ export function Comparator() {
   // Both hooks share one `["banks"]` cache entry, so it is still one request.
   const bankNames = useBankLabels();
 
+  /**
+   * What this table is, and what was asked to produce it.
+   *
+   * An instalment figure is meaningless without the amount and term behind it, so
+   * a quoted cell that travels without them forces the agent to ask the user what
+   * they typed -- which is the follow-up question attaching the row was supposed
+   * to remove. Read from `query`, the parameters actually submitted, not from the
+   * live form state: the fields can be edited after Compare was pressed, and the
+   * table on screen still belongs to the old query.
+   *
+   * Bank keys are swapped for the names on screen, for the same reason a `bank`
+   * cell is: `kuveytturk` is not what the user is looking at.
+   */
+  const tableAbout = useMemo(() => {
+    if (!query) return undefined;
+    const params = Object.entries(query.params)
+      .filter(([, value]) => value !== undefined && value !== null && value !== "")
+      .map(([key, value]) => {
+        const text = Array.isArray(value)
+          ? value.map((v) => bankNames[String(v)] ?? String(v)).join(", ")
+          : String(value);
+        return `${key}=${text}`;
+      })
+      .join("; ");
+    return params || undefined;
+  }, [query, bankNames]);
+
+
   const labels: Labels = {
     bank: t("bank"), instalment: t("instalment"), total: t("total"),
     profitRate: t("profitRate"), annualCost: t("annualCost"), product: t("product"),
@@ -454,6 +483,16 @@ export function Comparator() {
         bankNames,
       )
     : [];
+  const tableTitle = t(`category.${category}`);
+
+  // The filtered, sorted, visible rows -- what the user is actually looking at.
+  const attach = useAttachTable({
+    columns: shownColumns,
+    rows,
+    title: tableTitle,
+    about: tableAbout,
+    bankLabels: bankNames,
+  });
 
   const run = () => {
     resetSort();
@@ -731,6 +770,12 @@ export function Comparator() {
                   : undefined}
                 rowKey={category === "rates" ? "instrument" : undefined}
                 groups={shownGroups}
+                // Not drawn: the card header already names the comparison. This
+                // is so a quoted cell can say which comparison it came out of.
+                title={tableTitle}
+                about={tableAbout}
+                onAttachRow={attach.onAttachRow}
+                onAttachTable={attach.onAttachTable}
               />
               </>
             )

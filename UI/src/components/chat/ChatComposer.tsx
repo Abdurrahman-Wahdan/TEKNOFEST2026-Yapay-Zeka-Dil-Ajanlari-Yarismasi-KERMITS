@@ -2,7 +2,7 @@
 
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { styled, useTheme } from "@mui/material/styles";
-import { ArrowUp, Brain, Mic, Plus, Square } from "lucide-react";
+import { ArrowUp, Brain, Eye, Mic, Plus, Square } from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
   useCallback,
@@ -140,6 +140,8 @@ export function ChatComposer({
   const [value, setValue] = useState("");
   /** True once the text no longer fits on one line: controls move below. */
   const [multiline, setMultiline] = useState(false);
+  /** True while snapdom is working, so the button cannot be pressed twice. */
+  const [capturing, setCapturing] = useState(false);
   const [mentionIndex, setMentionIndex] = useState(0);
   const [caret, setCaret] = useState(0);
 
@@ -234,6 +236,44 @@ export function ChatComposer({
   useEffect(() => {
     if (autoFocus) fieldRef.current?.focus();
   }, [autoFocus]);
+
+  /**
+   * Take a picture of the page and stage it.
+   *
+   * Deliberately not awaited into the send path: capturing a full page takes long
+   * enough to notice, and a send that silently stalled behind a screenshot would
+   * read as a broken button. It stages like any other attachment and travels on
+   * the next message.
+   */
+  const capture = useCallback(async () => {
+    setCapturing(true);
+    try {
+      const [{ capturePage }, { readPageText }] = await Promise.all([
+        import("@/lib/chat/capture"),
+        import("@/lib/chat/tools"),
+      ]);
+      // Both representations, because the button promises the assistant will
+      // *see* the page and the two answer different questions: the outline has the
+      // exact figures and the current filters, the picture has the layout. Sending
+      // only the picture handed the agent numbers it had to read off pixels when
+      // they were available as text two lines away.
+      const [shot, outline] = [await capturePage(), readPageText()];
+      if (!shot) return;
+      attachments.addCapture({
+        label: `${shot.width}×${shot.height}`,
+        dataUrl: shot.dataUrl,
+        width: shot.width,
+        height: shot.height,
+        bytes: shot.bytes,
+        // Carried on the capture, not staged as a second chip: one press is one
+        // thing the user did, and two attachments would show them the mechanism
+        // the eye exists to keep out of the way.
+        outline,
+      });
+    } finally {
+      setCapturing(false);
+    }
+  }, [attachments]);
 
   const submit = useCallback(() => {
     if (!hasText || isBusy) return;
@@ -337,6 +377,20 @@ export function ChatComposer({
         onToggle={() => setThink(!think)}
       />
 
+      {/* "Look at this page", not "take a screenshot". The user is asking the
+          assistant to see what they see; whether that happens by photographing
+          the page or reading its markup is ours to decide, and naming the
+          mechanism only invites questions about it. The agent can ask for the
+          same thing itself -- this is the affordance for a user who already
+          knows they want it. */}
+      <RoundButton
+        label={capturing ? t("capturing") : t("capture")}
+        onClick={capture}
+        disabled={capturing}
+      >
+        <Eye size={20} />
+      </RoundButton>
+
       {/* Kept because the design has it and dictation is a real possibility, but
           disabled: there is no speech-to-text pipeline yet, and a button that
           silently does nothing is worse than one that says it cannot. */}
@@ -397,6 +451,10 @@ export function ChatComposer({
         // The width the wrap probe measures against. It is this box, not the outer
         // wrapper, because this is what the field's padding is subtracted from.
         ref={shellRef}
+        // Selecting inside the composer is the user editing their own question,
+        // so `SelectionReply` leaves it alone -- a floating button there would
+        // cover the words being worked on.
+        data-no-quote=""
         onClick={() => fieldRef.current?.focus()}
         sx={{
           position: "relative",
@@ -414,8 +472,12 @@ export function ChatComposer({
           attachments={{
             images: attachments.images,
             files: attachments.files,
+            contexts: attachments.contexts,
+            captures: attachments.captures,
             onRemoveImage: attachments.removeImage,
             onRemoveFile: attachments.removeFile,
+            onRemoveContext: attachments.removeContext,
+            onRemoveCapture: attachments.removeCapture,
           }}
         />
 

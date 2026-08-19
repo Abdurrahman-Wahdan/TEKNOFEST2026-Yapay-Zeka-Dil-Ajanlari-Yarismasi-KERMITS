@@ -50,7 +50,27 @@ import { BrandWordmark, BRAND_AI } from "@/components/ui/BrandWordmark";
 // eslint-disable-next-line no-unused-vars
 function Breadcrumbs({ icon, title, route, light = false, brand = false }) {
   return (
-    <VuiBox mr={{ xs: 0, xl: 8 }}>
+    /*
+      `data-page-title` is a positioning hook, not styling. /chat's history menu
+      lines its left edge up with where the title text actually starts, and the
+      toolbar's own padding sits between the toolbar edge and this element -- so
+      anchoring to the toolbar left the menu 16px further left than the word.
+    */
+    /*
+      Flex, so whatever is inside is vertically centred rather than sitting on a
+      baseline.
+
+      The toolbar row centres this box, but an inline child aligns to its line
+      box's baseline, not to the box's middle -- which left 8px of space above the
+      wordmark and 4px below, so the text rendered 2px lower than the buttons
+      beside it and the header read as two slightly different lines.
+    */
+    <VuiBox
+      mr={{ xs: 0, xl: 8 }}
+      display="flex"
+      alignItems="center"
+      data-page-title
+    >
       {/*
         The assistant's page is headed by the brand, not by its route segment.
 

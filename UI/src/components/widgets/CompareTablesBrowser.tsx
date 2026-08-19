@@ -30,6 +30,7 @@ import { sortRows } from "@/lib/table-filter";
 import { useBankLabels } from "@/lib/use-bank-labels";
 import { useTableSort } from "@/lib/use-table-sort";
 
+import { useAttachTable } from "@/lib/chat/use-attach-table";
 import { ProducedTable } from "./ProducedTable";
 
 /** Same glyphs `vision/routes.js` uses for these two nav entries — the
@@ -243,6 +244,29 @@ export function CompareTablesBrowser({ category }: { category: "ürün" | "kampa
     const visible = table.rows.filter((r) => chosenBanks.includes(String(r.cells.Banka ?? "")));
     return sortRows(visible, sort, table.columns, locale, bankLabels);
   }, [table, chosenBanks, sort, locale, bankLabels]);
+  /**
+   * What this table is, for anything reading the page afterwards.
+   *
+   * Neither is drawn -- the card header above already shows the title, and a
+   * second one inside the table would print it twice. They travel with anything
+   * the user attaches, so the assistant knows which table a row came from and
+   * what that table compares. `subtitle` is the producer's one-line description
+   * and `notes` its caveat; an agent answering about a figure wants both.
+   */
+  const tableTitle = detail.data ? capitalize(detail.data.title, locale) : undefined;
+  const tableAbout =
+    [detail.data?.subtitle, detail.data?.notes].filter(Boolean).join(" — ") || undefined;
+
+  // Above the early return below: hooks cannot be called conditionally. Given the
+  // filtered, sorted rows, so what is attached is what is on screen.
+  const attach = useAttachTable({
+    columns: table?.columns ?? [],
+    rows,
+    title: tableTitle,
+    about: tableAbout,
+    bankLabels,
+  });
+
   const openTable = (id: string) => {
     resetSort();
     setSelectedBanks(null);
@@ -292,6 +316,10 @@ export function CompareTablesBrowser({ category }: { category: "ürün" | "kampa
               onSort={toggleSort}
               bankLabels={bankLabels}
               emptyLabel={tc("tableEmpty")}
+              title={tableTitle}
+              about={tableAbout}
+              onAttachRow={attach.onAttachRow}
+              onAttachTable={attach.onAttachTable}
             />
           )}
         </Card>

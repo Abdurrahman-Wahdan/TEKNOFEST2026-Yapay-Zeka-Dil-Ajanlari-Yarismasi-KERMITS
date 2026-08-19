@@ -18,8 +18,6 @@ from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 
-from config.settings import settings
-
 from ..agent import answer
 from ..db.models import ChatMessage, ChatSession
 from ..db.session import session_scope
@@ -110,17 +108,34 @@ def ask(body: AskRequest, user: CurrentUser, session: DbSession) -> StreamingRes
     # Read the history now, inside the request's session. The generator below
     # runs after this function returns and after that session is closed, so
     # anything it needs must be plain values by then, not ORM instances.
-    recent = session.scalars(
+    # The whole conversation, oldest first. Deliberately unwindowed: there was a
+    # `.limit(API_CHAT_HISTORY_TURNS)` here, which meant that from turn 13 onward the
+    # agent silently stopped seeing the start of the thread -- so a table attached in
+    # turn 1 was forgotten, and it asked about it again. Nothing sent to the model is
+    # truncated anywhere in this app; if a thread ever outgrows the context window,
+    # failing loudly beats answering from half the conversation.
+    earlier = session.scalars(
         select(ChatMessage)
         .where(ChatMessage.session_id == chat_id)
-        .order_by(ChatMessage.created_at.desc())
-        .limit(settings.API_CHAT_HISTORY_TURNS)
+        .order_by(ChatMessage.created_at.asc())
     ).all()
     history = [
-        ("human" if m.role == "user" else "ai", m.content) for m in reversed(recent)
+        ("human" if m.role == "user" else "ai", m.content) for m in earlier
     ]
 
-    session.add(ChatMessage(session_id=chat_id, role="user", content=body.question))
+    # The question as typed, plus a note of what travelled with it. The bytes of a
+    # capture are deliberately not persisted: `content` is a Text column and would
+    # take them, but a 100kB base64 string per turn bloats the table for something
+    # only the turn it belongs to can use. The consequence is honest and worth
+    # knowing: replayed history carries the note, not the picture.
+    stored = body.question
+    if body.captures:
+        shots = ", ".join(f"{c.width}x{c.height}" for c in body.captures)
+        stored = f"{stored}\n\n[ekran görüntüsü: {shots}]".strip()
+    if body.context:
+        labels = ", ".join(c.label for c in body.context if c.label)
+        stored = f"{stored}\n\n[ekli bağlam: {labels}]".strip()
+    session.add(ChatMessage(session_id=chat_id, role="user", content=stored))
     session.commit()
 
     def frames() -> Iterator[str]:
@@ -128,13 +143,26 @@ def ask(body: AskRequest, user: CurrentUser, session: DbSession) -> StreamingRes
         parts: list[str] = []
         citations: list[dict] = []
         failed = False
+        # Set when the model asked the client to look at the page. The turn is not
+        # over: the client runs the tool and asks again, and the answer is written
+        # on that pass.
+        awaiting_tool = False
 
         try:
-            for event in answer(body.question, history):
+            for event in answer(
+                body.question,
+                history,
+                body.context,
+                body.captures,
+                body.tool_results,
+                body.client_tools,
+            ):
                 if event.type == "token" and event.text:
                     parts.append(event.text)
                 elif event.type == "citation" and event.citation is not None:
                     citations.append(event.citation.model_dump(mode="json"))
+                elif event.type == "tool_call":
+                    awaiting_tool = True
                 elif event.type == "error":
                     failed = True
                 yield f"data: {event.model_dump_json(exclude_none=True)}\n\n"
@@ -144,6 +172,13 @@ def ask(body: AskRequest, user: CurrentUser, session: DbSession) -> StreamingRes
             yield "data: " + json.dumps(
                 {"type": "error", "detail": "The assistant failed to answer."}
             ) + "\n\n"
+
+        if awaiting_tool:
+            # Deliberately no `done` frame and nothing persisted. Any prose the
+            # model wrote before asking for the tool is a preamble, not an answer --
+            # storing it would keep half a reply as though it were complete and
+            # leave two assistant messages for one question.
+            return
 
         if failed or not parts:
             # Nothing usable to keep. The user's question stays in the history

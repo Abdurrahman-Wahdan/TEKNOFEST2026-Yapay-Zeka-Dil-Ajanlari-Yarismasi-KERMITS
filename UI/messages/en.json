@@ -151,7 +151,21 @@
     ],
     "voice": "Voice input",
     "mentionLabel": "Attached documents",
-    "mentionEmpty": "Nothing attached yet"
+    "mentionEmpty": "Nothing attached yet",
+    "history": "Chat history",
+    "historyEmpty": "No past conversations yet",
+    "deleteChat": "Delete conversation",
+    "removeContext": "Remove attachment",
+    "contextRows": "{count, plural, one {# row} other {# rows}}",
+    "reply": "Ask about this",
+    "attachRow": "Ask the assistant about this row",
+    "attachTable": "Ask the assistant about this table",
+    "rowNumber": "Row {number}",
+    "thisTable": "This table",
+    "capture": "Let the assistant see this page",
+    "capturing": "Looking at the page…",
+    "removeCapture": "Remove screenshot",
+    "readPage": "Reading the page"
   },
   "settings": {
     "title": "Settings",

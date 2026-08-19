@@ -6,6 +6,8 @@ import { useTranslations } from "next-intl";
 import { VuiBox, VuiTypography } from "@/components/vision";
 import type { AgentMessage } from "@/lib/chat/types";
 
+import { ContextGlyph } from "./ContextGlyph";
+
 /**
  * Streamdown pulls in Shiki, and Shiki is large. Loading it lazily keeps it off
  * the critical path for every dashboard page -- which matters because the popup
@@ -69,6 +71,64 @@ export function ChatMessage({
           );
         }
 
+        /**
+         * A piece of the app that travelled with this turn.
+         *
+         * A reference line, never the body. The body is a serialised table --
+         * fifty rows of markdown -- and the user has already seen it on the page
+         * they attached it from; repeating it in the transcript would bury their
+         * own question. What this has to answer is "what did I send?", which is
+         * the label and where it came from.
+         */
+        if (part.type === "context") {
+          return (
+            <VuiBox
+              key={index}
+              alignSelf={message.role === "user" ? "flex-end" : "flex-start"}
+              display="flex"
+              alignItems="center"
+              gap={0.75}
+              px={1.25}
+              py={0.75}
+              sx={{
+                maxWidth: "75%",
+                minWidth: 0,
+                // Outlined rather than filled, so it reads as a citation next to
+                // the user's filled bubble instead of as a second thing they said.
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-md)",
+                color: "var(--control-ink)",
+              }}
+            >
+              <ContextGlyph kind={part.kind} />
+              <VuiTypography
+                variant="caption"
+                fontWeight="medium"
+                color="text"
+                sx={{
+                  minWidth: 0,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {/*
+                  The assistant looking at the page gets one fixed, translated
+                  phrase; everything the user attached themselves keeps its own
+                  label.
+
+                  The label is deliberately not shown for a tool: it is written for
+                  the agent and read "read the page (1 table(s), 1 control(s))",
+                  which tells the user nothing they wanted and quite a lot about
+                  our internals. It still travels on the request -- it is just not
+                  page furniture.
+                */}
+                {part.kind === "capture" ? t("readPage") : part.label}
+              </VuiTypography>
+            </VuiBox>
+          );
+        }
+
         if (message.role === "user") {
           return (
             <VuiBox
@@ -84,6 +144,17 @@ export function ChatMessage({
                 // in the light theme is a pale blue box and read as a callout
                 // rather than as something the user said.
                 maxWidth: "75%",
+                // Flex, so the text is centred in the bubble rather than sitting
+                // on a baseline. The padding was already symmetric at 10px, but
+                // the block's own line-box strut is taller than the text's inline
+                // box, so the glyphs landed 19.5px below the top edge and 15px
+                // above the bottom -- 4.5px out, which is exactly enough to read
+                // as "not quite in the middle".
+                display: "flex",
+                alignItems: "center",
+                // A flex item will not shrink below its content width without
+                // this, so a long message would stop wrapping.
+                "& > *": { minWidth: 0 },
                 backgroundColor: "var(--muted)",
                 border: "none",
                 // Large, but not a pill -- a multi-line question in a pill looks

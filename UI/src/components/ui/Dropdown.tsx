@@ -76,6 +76,11 @@ export function Dropdown({
       <VuiBox
         component="select"
         value={value}
+        // The visible label is a caption box above the control, not a `<label
+        // for>`, so nothing could associate the two: a screen reader announced
+        // "combobox" with no name, and the assistant's page snapshot -- whose most
+        // useful section is "what is currently selected" -- came back empty.
+        aria-label={label}
         onChange={(e: { target: { value: string } }) => onChange(e.target.value)}
         sx={(theme: VisionTheme) => ({
           ...controlShape(theme),

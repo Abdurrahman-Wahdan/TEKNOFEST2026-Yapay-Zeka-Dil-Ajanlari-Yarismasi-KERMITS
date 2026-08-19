@@ -1,6 +1,8 @@
 "use client";
 
 import { File as FileGlyph, Image as ImageGlyph } from "lucide-react";
+
+import { ContextGlyph } from "./ContextGlyph";
 import { useTranslations } from "next-intl";
 
 import { VuiBox, VuiTypography } from "@/components/vision";
@@ -92,7 +94,15 @@ export function MentionMenu({
                 surface -- readable enough to notice, not enough to tell an
                 image icon from a document one. */}
             <VuiBox display="flex" sx={{ color: "var(--control-ink)", flexShrink: 0 }}>
-              {target.kind === "image" ? <ImageGlyph size={16} /> : <FileGlyph size={16} />}
+              {/* Three kinds, so no longer a ternary: a staged table fell
+                  through to the document glyph and read as an uploaded file. */}
+              {target.kind === "image" ? (
+                <ImageGlyph size={16} />
+              ) : target.kind === "file" ? (
+                <FileGlyph size={16} />
+              ) : (
+                <ContextGlyph kind={target.contextKind ?? "table"} size={16} />
+              )}
             </VuiBox>
             <VuiTypography
               variant="button"

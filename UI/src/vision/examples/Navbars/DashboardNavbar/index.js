@@ -57,7 +57,13 @@ import {
   setTransparentNavbar,
 } from "context";
 
-function DashboardNavbar({ absolute = false, light = false, isMini = false, brand = false }) {
+function DashboardNavbar({
+  absolute = false,
+  light = false,
+  isMini = false,
+  brand = false,
+  actions = null,
+}) {
   const [navbarType, setNavbarType] = useState();
   const t = useTranslations("nav");
   const [controller, dispatch] = useVisionUIController();
@@ -138,7 +144,16 @@ function DashboardNavbar({ absolute = false, light = false, isMini = false, bran
           >
             <MenuGlyph size={20} />
           </IconButton>
-          <Breadcrumbs icon="home" title={route[route.length - 1]} route={route} light={light} brand={brand} />
+          <Breadcrumbs
+            icon="home"
+            title={route[route.length - 1]}
+            route={route}
+            light={light}
+            brand={brand}
+          />
+          {/* Page-scoped controls, beside the title. /chat puts its new-chat and
+              history buttons here; every other page passes nothing. */}
+          {actions}
         </VuiBox>
         {isMini ? null : (
           <VuiBox
@@ -257,6 +272,8 @@ DashboardNavbar.propTypes = {
   isMini: PropTypes.bool,
   /** Head the page with the brand wordmark instead of its route title. */
   brand: PropTypes.bool,
+  /** Page-scoped controls rendered next to the title. */
+  actions: PropTypes.node,
 };
 
 export default DashboardNavbar;

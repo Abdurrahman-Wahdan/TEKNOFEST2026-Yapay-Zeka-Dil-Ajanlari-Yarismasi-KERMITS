@@ -2,7 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { AttachedFile, AttachedImage, MentionTarget } from "./types";
+import type {
+  AttachedCapture,
+  AttachedContext,
+  AttachedFile,
+  AttachedImage,
+  MentionTarget,
+} from "./types";
 
 /**
  * Files the user has staged for the next message.
@@ -24,6 +30,23 @@ let attachmentSeq = 0;
 export function useAttachments() {
   const [images, setImages] = useState<AttachedImage[]>([]);
   const [files, setFiles] = useState<AttachedFile[]>([]);
+  /**
+   * Pieces of the app, not files: a quote, a table row, a whole table.
+   *
+   * Kept beside the files rather than in their own hook because everything about
+   * the lifecycle is the same -- staged for one turn, listed in the tray,
+   * offered to the `@` menu, cleared on send -- and a second hook would mean two
+   * places to remember to clear.
+   */
+  const [contexts, setContexts] = useState<AttachedContext[]>([]);
+  /**
+   * Screenshots of the page.
+   *
+   * Separate from `images` because these are data URLs rather than blobs -- there
+   * is no object URL to revoke -- and because they leave on their own field of the
+   * request, never through the transcript.
+   */
+  const [captures, setCaptures] = useState<AttachedCapture[]>([]);
 
   // Every object URL handed out, so they can be released. A thumbnail URL pins
   // its blob in memory until revoked, and a chat session that stages a dozen
@@ -72,17 +95,70 @@ export function useAttachments() {
     setFiles((prev) => prev.filter((file) => file.id !== id));
   }, []);
 
+  /**
+   * Stage a piece of the UI. Returns its id, so a caller that needs to undo can.
+   *
+   * The body is serialised by the caller, at the moment of the click -- see
+   * `AttachedContext`. Ids come off the same counter the files use: they end up
+   * as React keys in a list rendered on both server and client, and anything
+   * random there is a hydration mismatch.
+   */
+  const addContext = useCallback((incoming: Omit<AttachedContext, "id">) => {
+    const id = `att-${++attachmentSeq}`;
+    setContexts((prev) => [...prev, { ...incoming, id }]);
+    return id;
+  }, []);
+
+  const removeContext = useCallback((id: string) => {
+    setContexts((prev) => prev.filter((context) => context.id !== id));
+  }, []);
+
+  const addCapture = useCallback((incoming: Omit<AttachedCapture, "id">) => {
+    const id = `att-${++attachmentSeq}`;
+    setCaptures((prev) => [...prev, { ...incoming, id }]);
+    return id;
+  }, []);
+
+  const removeCapture = useCallback((id: string) => {
+    setCaptures((prev) => prev.filter((capture) => capture.id !== id));
+  }, []);
+
   const clear = useCallback(() => {
     for (const id of urls.current.keys()) release(id);
     setImages([]);
     setFiles([]);
+    setContexts([]);
+    setCaptures([]);
   }, [release]);
 
   /** Everything staged, in one list, for the `@` menu and the request payload. */
   const targets: MentionTarget[] = [
     ...images.map((image) => ({ id: image.id, filename: image.filename, kind: "image" as const })),
     ...files.map((file) => ({ id: file.id, filename: file.filename, kind: "file" as const })),
+    // An attached table becomes `@`-mentionable for free by being here, which is
+    // the point of one flattened list: "what does @[Kâr oranları] say about
+    // Kuveyt Türk" needs no new plumbing.
+    ...contexts.map((context) => ({
+      id: context.id,
+      filename: context.label,
+      kind: "context" as const,
+      contextKind: context.kind,
+    })),
   ];
 
-  return { images, files, targets, add, removeImage, removeFile, clear };
+  return {
+    images,
+    files,
+    contexts,
+    captures,
+    targets,
+    add,
+    addContext,
+    addCapture,
+    removeImage,
+    removeFile,
+    removeContext,
+    removeCapture,
+    clear,
+  };
 }

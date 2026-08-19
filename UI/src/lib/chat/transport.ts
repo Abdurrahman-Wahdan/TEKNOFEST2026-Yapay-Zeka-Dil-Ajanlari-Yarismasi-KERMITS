@@ -1,3 +1,4 @@
+import { contextBundle } from "./context-format";
 import type { ChatChunk, ChatRequest } from "./types";
 
 /**
@@ -29,6 +30,17 @@ const SLICE = 18;
 const DELAY_MS = 40;
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/** The most recent thing the user actually typed, for the mock to react to. */
+function lastUserText(request: ChatRequest): string {
+  for (let i = request.messages.length - 1; i >= 0; i -= 1) {
+    const message = request.messages[i];
+    if (message.role !== "user") continue;
+    const text = message.parts.find((p) => p.type === "text");
+    return text && text.type === "text" ? text.text : "";
+  }
+  return "";
+}
 
 /**
  * Canned answers, in the app's own domain rather than the generic lorem a
@@ -123,6 +135,61 @@ async function* mockChat(
   await sleep(320);
   if (signal?.aborted) return;
 
+  /**
+   * "Look at my screen" -- asked for, then answered.
+   *
+   * The real agent decides this; the mock pattern-matches, so the whole round trip
+   * is exercisable before the backend exists. Without it the tool loop would be
+   * code nobody had ever seen run.
+   *
+   * `read_page` rather than `capture_page` by default, for the same reason the
+   * outline exists: it is exact where an image is a guess. The capture is asked
+   * for only when the user's wording is about how the page *looks*.
+   */
+  if (!request.toolResults?.length) {
+    const asked = lastUserText(request);
+    if (/ekran|screen|bu sayfa|current page|sayfaya bak|what.*(i|I).*see|görüyorum|görün|bozuk|broken/i.test(asked)) {
+      // A real agent chooses the mode from the question; the mock reads the same
+      // signals so the whole round trip is exercisable before the backend exists.
+      // `both` when the wording does not clearly point one way, which is the same
+      // default the tool itself uses.
+      const visualOnly = /nasıl görünüyor|bozuk|broken|layout|hizal/i.test(asked);
+      const dataOnly = /rakam|oran|tutar|sayı|figure|rate|amount/i.test(asked);
+      yield {
+        type: "tool-call",
+        id: "call-1",
+        name: "look_at_page",
+        mode: visualOnly ? "image" : dataOnly ? "text" : "both",
+      };
+      return;
+    }
+  }
+
+  // Second pass: the tools answered, so say what came back.
+  if (request.toolResults?.length) {
+    const outline = request.toolResults.find((r) => r.text)?.text;
+    const shot = request.toolResults.find((r) => r.image);
+    // No tool names, no counts. The user is told the assistant looked at the page;
+    // which tool ran and what it found is not theirs to read.
+    let answer = `Sayfaya baktım.\n\n`;
+    if (shot) {
+      // Reported as a decodable image block rather than as a blob of characters,
+      // which is the whole point of splitting it at the seam.
+      answer += `Ekran görüntüsü alındı: ${shot.image!.mediaType}, ${shot.image!.width}×${shot.image!.height}, ${Math.round(
+        shot.image!.data.length / 1024,
+      )} kB base64.\n\n`;
+    }
+    if (outline) {
+      answer += `### Ajana giden sayfa özeti\n\n\`\`\`xml\n${outline}\n\`\`\`\n`;
+    }
+    for (let i = 0; i < answer.length; i += SLICE) {
+      if (signal?.aborted) return;
+      yield { type: "text-delta", delta: answer.slice(i, i + SLICE) };
+      await sleep(DELAY_MS);
+    }
+    return;
+  }
+
   // Alternate, so asking twice does not return the same wall of text and make a
   // working stream look like a cached one.
   const turn = request.messages.filter((m) => m.role === "user").length;
@@ -138,9 +205,34 @@ async function* mockChat(
           .map((a) => a.filename)
           .join(", ")})`
       : null,
+    request.context?.length
+      ? `${request.context.length} bağlam ekli (${request.context
+          .map((c) => c.label)
+          .join(", ")})`
+      : null,
+    request.captures?.length
+      ? `${request.captures.length} ekran görüntüsü ekli (${request.captures
+          .map((c) => `${c.label} ${c.mediaType}, ${Math.round(c.data.length / 1024)} kB`)
+          .join("; ")})`
+      : null,
   ].filter(Boolean);
   if (notes.length > 0) {
     answer = `_${notes.join(" · ")} — arka uç bunları henüz okumuyor._\n\n${answer}`;
+  }
+
+  /**
+   * Attached context is quoted back verbatim, not just counted.
+   *
+   * This is the only way to see what the agent would actually be handed while
+   * the agent does not exist: whether a bank column serialised as its name or
+   * its provider key, whether a pipe in a cell broke the table, whether a 200-row
+   * table said so when it was cut. A count would confirm the wire and prove
+   * nothing about the payload. It goes away with the mock.
+   */
+  if (request.context?.length) {
+    answer = `${answer}\n\n### Ajana gidecek bağlam\n\n\`\`\`xml\n${contextBundle(
+      request.context,
+    )}\n\`\`\`\n`;
   }
 
   for (let i = 0; i < answer.length; i += SLICE) {
@@ -163,6 +255,39 @@ async function* mockChat(
  * Assumes newline-delimited JSON, one `ChatChunk` per line -- adjust to whatever
  * the backend actually emits. The important part is the shape of this function,
  * not its body.
+ *
+ * **Images: the one thing the backend must get right.** `request.captures` and any
+ * `toolResults[].image` carry `{mediaType, data}` -- base64 with no `data:` prefix.
+ * They are split here so the server never has to parse a `data:` URL, and so the
+ * bytes drop straight into whatever the runtime wants.
+ *
+ * The target is **Gemma 4** (Apache-2.0; E2B/E4B at 128k context, 12B/26B-A4B/31B at
+ * 256k), which takes image *and* text input and lists screen/UI understanding and
+ * chart comprehension among its vision capabilities -- so a page capture is
+ * something it is actually built to read. Its chat template takes
+ *
+ *     {"type": "image", "image": <PIL.Image | url>}
+ *
+ * so the server decodes rather than forwards:
+ *
+ *     Image.open(BytesIO(base64.b64decode(capture["data"])))
+ *
+ * Two rules that are easy to get wrong:
+ *
+ *  1. **Images go before the text in the turn.** Gemma 4's template is explicit
+ *     about this, and our user message is already built that way -- capture and
+ *     context parts first, the typed question last -- so preserve that order
+ *     rather than appending images at the end.
+ *  2. **Never forward the base64 as text.** That shows the model a wall of
+ *     characters instead of the page: it answers confidently from nothing, and
+ *     every character is billed.
+ *
+ * Gemma 4 has a configurable visual token budget (70/140/280/560/1120 per image);
+ * the high end is what OCR-grade reading of a rate table needs, the low end is for
+ * "is this layout broken". Worth setting per tool call rather than globally.
+ *
+ * Text results (`toolResults[].text`) are the opposite case -- already markdown,
+ * and they belong in a text block as-is.
  */
 export async function* fetchChat(
   request: ChatRequest,

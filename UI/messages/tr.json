@@ -151,7 +151,21 @@
     ],
     "voice": "Sesli giriş",
     "mentionLabel": "Ekli belgeler",
-    "mentionEmpty": "Henüz bir şey eklenmedi"
+    "mentionEmpty": "Henüz bir şey eklenmedi",
+    "history": "Sohbet geçmişi",
+    "historyEmpty": "Henüz geçmiş sohbet yok",
+    "deleteChat": "Sohbeti sil",
+    "removeContext": "Eki kaldır",
+    "contextRows": "{count} satır",
+    "reply": "Bunu sor",
+    "attachRow": "Bu satırı asistana sor",
+    "attachTable": "Bu tabloyu asistana sor",
+    "rowNumber": "{number}. satır",
+    "thisTable": "Bu tablo",
+    "capture": "Asistanın bu sayfayı görmesini sağla",
+    "capturing": "Sayfaya bakılıyor…",
+    "removeCapture": "Ekran görüntüsünü kaldır",
+    "readPage": "Sayfa okunuyor"
   },
   "settings": {
     "title": "Ayarlar",
