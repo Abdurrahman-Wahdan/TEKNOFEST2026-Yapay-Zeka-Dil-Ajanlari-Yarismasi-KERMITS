@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from config.settings import settings
 
 from .routers import ROUTERS
+from agents.shared.checkpoints import close_checkpointer, get_checkpointer
 
 logging.basicConfig(
     level=settings.LOG_LEVEL,
@@ -45,6 +46,17 @@ app.add_middleware(
 
 for router in ROUTERS:
     app.include_router(router, prefix="/api")
+
+
+@app.on_event("startup")
+def start_agent_checkpointer() -> None:
+    """Create LangGraph's durable checkpoint tables before serving chat."""
+    get_checkpointer()
+
+
+@app.on_event("shutdown")
+def stop_agent_checkpointer() -> None:
+    close_checkpointer()
 
 logger.info(
     "TF26 API ready — environment=%s, CORS origins=%s",

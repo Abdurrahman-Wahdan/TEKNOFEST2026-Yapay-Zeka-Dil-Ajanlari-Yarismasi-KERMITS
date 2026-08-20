@@ -24,7 +24,7 @@ import logging
 import uuid
 from typing import Iterator
 
-from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, ToolMessage
 
 from config.settings import settings
 from index.retrieve import search
@@ -302,7 +302,7 @@ def _sources_block(chunks) -> str:
     return "\n\n".join(parts)
 
 
-def answer(
+def _legacy_answer(
     question: str,
     history: list[tuple[str, str]] | None = None,
     context: list[AttachedContext] | None = None,
@@ -445,3 +445,74 @@ def answer(
         if not fresh:
             # A plain answer, or a model repeating a call it has already made.
             return
+
+
+def _agent_answer(
+    question: str,
+    history: list[tuple[str, str]] | None,
+    context: list[AttachedContext] | None,
+    captures: list[CapturePayload] | None,
+    tool_results: list[ToolResult] | None,
+    session_id: uuid.UUID,
+) -> Iterator[StreamEvent]:
+    """Stream the supervisor while keeping its checkpoint state private."""
+    from agents.main.agent import build_main_agent, main_thread_id
+
+    yield StreamEvent(type="status", stage="pricing")
+    config = {
+        "configurable": {
+            "thread_id": main_thread_id(str(session_id)),
+            "tf26_session_id": str(session_id),
+        }
+    }
+    try:
+        agent = build_main_agent()
+        state = agent.get_state(config)
+        seeded = bool((state.values or {}).get("messages"))
+        messages: list = [] if seeded else list(history or [])
+        # Reuse the existing attachment encoding, but with no RAG context. The
+        # supervisor has no retrieval tool in this milestone; a user attachment
+        # is still part of the request it may delegate to a bank specialist.
+        messages.append(HumanMessage(content=_human_content(
+            question, [], context or [], captures or [], tool_results or []
+        )))
+        for message, metadata in agent.stream(
+            {"messages": messages},
+            config=config,
+            context={"session_id": str(session_id)},
+            stream_mode="messages",
+        ):
+            # Tool output and state bookkeeping must remain private. Only the
+            # supervisor's generated prose is part of the public SSE response.
+            if metadata.get("langgraph_node") != "model":
+                continue
+            if not isinstance(message, (AIMessage, AIMessageChunk)):
+                continue
+            if isinstance(message.content, str) and message.content:
+                yield StreamEvent(type="token", text=message.content)
+    except Exception:
+        logger.exception("Live agent failed for chat session %s", session_id)
+        yield StreamEvent(type="error", detail="The live banking assistant is unavailable.")
+
+
+def answer(
+    question: str,
+    history: list[tuple[str, str]] | None = None,
+    context: list[AttachedContext] | None = None,
+    captures: list[CapturePayload] | None = None,
+    tool_results: list[ToolResult] | None = None,
+    client_tools: list[str] | None = None,
+    user_id: uuid.UUID | None = None,
+    session_id: uuid.UUID | None = None,
+) -> Iterator[StreamEvent]:
+    """Answer through the supervisor when a persisted chat session is available.
+
+    ``session_id`` is supplied by the HTTP router. Keeping the old path for
+    callers without one preserves the standalone API/test seam while they migrate.
+    """
+    if session_id is None:
+        yield from _legacy_answer(
+            question, history, context, captures, tool_results, client_tools, user_id
+        )
+        return
+    yield from _agent_answer(question, history, context, captures, tool_results, session_id)

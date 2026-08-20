@@ -19,6 +19,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 
 from ..agent import CLIENT_TOOLS, answer
+from agents.shared.checkpoints import delete_session_checkpoints
 from ..db.models import ChatMessage, ChatSession
 from ..db.session import session_scope
 from ..deps import CurrentUser, DbSession
@@ -76,6 +77,7 @@ def delete_chat_session(
     session_id: uuid.UUID, user: CurrentUser, session: DbSession
 ) -> None:
     chat = _own_session(session, user, session_id)
+    delete_session_checkpoints(str(session_id))
     session.delete(chat)
     session.commit()
 
@@ -157,6 +159,7 @@ def ask(body: AskRequest, user: CurrentUser, session: DbSession) -> StreamingRes
                 body.tool_results,
                 body.client_tools,
                 user_id,
+                chat_id,
             ):
                 if event.type == "token" and event.text:
                     parts.append(event.text)

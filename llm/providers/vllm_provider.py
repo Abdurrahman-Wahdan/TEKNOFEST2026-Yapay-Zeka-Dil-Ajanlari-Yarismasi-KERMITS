@@ -7,11 +7,13 @@ changing them.
 
 import logging
 from dataclasses import dataclass
+from typing import Any
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_openai import ChatOpenAI
 
 from config.settings import settings
+from config import tunnel
 
 from .base import BaseLLMProvider
 
@@ -19,6 +21,47 @@ logger = logging.getLogger(__name__)
 
 # Turns off chain-of-thought for models that emit it into `content`.
 THINKING_OFF = {"chat_template_kwargs": {"enable_thinking": False}}
+
+
+class TunnelAwareChatOpenAI(ChatOpenAI):
+    """Retry one failed request after refreshing the rotating vLLM tunnel."""
+
+    def _refresh_clients(self) -> None:
+        """Point this already-bound model at the URL just read from the gist."""
+        replacement = ChatOpenAI(
+            model=self.model_name,
+            base_url=settings.VLLM_BASE_URL.rstrip("/") + self._tf26_route,
+            api_key=self.openai_api_key,
+            timeout=self.request_timeout,
+            max_retries=0,
+            temperature=self.temperature,
+            extra_body=self.extra_body,
+        )
+        for name in (
+            "openai_api_base", "root_client", "client", "root_async_client", "async_client"
+        ):
+            object.__setattr__(self, name, getattr(replacement, name))
+
+    def _retry_after_tunnel_refresh(self, operation, *args, **kwargs):
+        try:
+            return operation(*args, **kwargs)
+        except Exception:
+            logger.warning("LLM request failed; checking the tunnel URL before one retry")
+            tunnel.refresh_if_needed()
+            self._refresh_clients()
+            return operation(*args, **kwargs)
+
+    def _generate(self, *args, **kwargs):
+        return self._retry_after_tunnel_refresh(super()._generate, *args, **kwargs)
+
+    def _stream(self, *args, **kwargs):
+        try:
+            yield from super()._stream(*args, **kwargs)
+        except Exception:
+            logger.warning("LLM stream failed; checking the tunnel URL before one retry")
+            tunnel.refresh_if_needed()
+            self._refresh_clients()
+            yield from super()._stream(*args, **kwargs)
 
 
 @dataclass(frozen=True)
@@ -99,15 +142,19 @@ class VLLMProvider(BaseLLMProvider):
 
         kwargs.setdefault("temperature", settings.LLM_TEMPERATURE)
 
-        return ChatOpenAI(
+        model = TunnelAwareChatOpenAI(
             model=spec.model_id,
             base_url=settings.VLLM_BASE_URL.rstrip("/") + spec.route,
             api_key=settings.VLLM_API_KEY,
             timeout=settings.LLM_TIMEOUT,
-            max_retries=settings.LLM_MAX_RETRIES,
+            # SDK retries would keep using a stale tunnel. The wrapper refreshes
+            # the Gist only after the first error and retries once with its URL.
+            max_retries=0,
             extra_body=extra_body or None,
             **kwargs,
         )
+        object.__setattr__(model, "_tf26_route", spec.route)
+        return model
 
     def list_models(self) -> list[str]:
         return list(MODELS)

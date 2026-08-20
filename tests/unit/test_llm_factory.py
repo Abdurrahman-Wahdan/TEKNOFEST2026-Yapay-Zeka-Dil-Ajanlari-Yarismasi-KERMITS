@@ -6,9 +6,10 @@ No network — nothing here calls a model.
 import pytest
 
 from config.settings import settings
+from config import tunnel
 from llm import get_llm, list_models, resolve_model_key
 from llm.providers import MODELS, get_provider
-from llm.providers.vllm_provider import THINKING_OFF
+from llm.providers.vllm_provider import THINKING_OFF, TunnelAwareChatOpenAI
 
 pytestmark = pytest.mark.unit
 
@@ -43,6 +44,53 @@ def test_each_model_gets_its_own_route():
     assert len(set(routes.values())) == len(MODELS)
     for key, base in routes.items():
         assert str(base).endswith(MODELS[key].route)
+
+
+def test_factory_returns_a_tunnel_aware_model_with_sdk_retries_disabled():
+    model = get_llm("gemma")
+    assert isinstance(model, TunnelAwareChatOpenAI)
+    assert model.max_retries == 0
+
+
+def test_tunnel_is_checked_only_after_a_model_error(monkeypatch):
+    model = get_llm("gemma")
+    refreshed: list[bool] = []
+    monkeypatch.setattr(tunnel, "refresh_if_needed", lambda: refreshed.append(True) or False)
+    monkeypatch.setattr(model, "_refresh_clients", lambda: None)
+
+    assert model._retry_after_tunnel_refresh(lambda: "ok") == "ok"
+    assert refreshed == []
+
+    attempts = 0
+
+    def fails_once():
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise ConnectionError("stale tunnel")
+        return "recovered"
+
+    assert model._retry_after_tunnel_refresh(fails_once) == "recovered"
+    assert attempts == 2
+    assert refreshed == [True]
+
+
+def test_tunnel_refresh_strips_whitespace_and_changes_only_when_needed(monkeypatch):
+    before = settings.VLLM_BASE_URL
+
+    class _Response:
+        text = "  https://new-tunnel.example/\n"
+
+        def raise_for_status(self):
+            pass
+
+    try:
+        monkeypatch.setattr(tunnel.httpx, "get", lambda *args, **kwargs: _Response())
+        assert tunnel.refresh_if_needed() is True
+        assert settings.VLLM_BASE_URL == "https://new-tunnel.example"
+        assert tunnel.refresh_if_needed() is False
+    finally:
+        settings.VLLM_BASE_URL = before
 
 
 def test_thinking_is_disabled_where_it_pollutes_content():

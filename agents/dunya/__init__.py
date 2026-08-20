@@ -1,0 +1,1 @@
+"""Dünya Katılım specialist identity."""

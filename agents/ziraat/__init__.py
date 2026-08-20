@@ -1,0 +1,1 @@
+"""Ziraat Katılım specialist identity."""

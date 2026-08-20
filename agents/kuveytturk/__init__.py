@@ -1,0 +1,1 @@
+"""Kuveyt Türk specialist identity."""
