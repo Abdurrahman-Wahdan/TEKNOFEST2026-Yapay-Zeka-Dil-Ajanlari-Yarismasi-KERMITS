@@ -59,6 +59,7 @@ import { IoAlbums } from "react-icons/io5";
 import { IoPricetags } from "react-icons/io5";
 import { IoMegaphone } from "react-icons/io5";
 import { IoChatbubbles } from "react-icons/io5";
+import { IoSparkles } from "react-icons/io5";
 
 // Dashboard, Finansman, Bankalar, Tables and Billing are unmounted — no drawer entry and
 // no route. Their pages are kept verbatim at
@@ -105,6 +106,18 @@ const routes = [
     key: "kampanyalar",
     route: "/kampanyalar",
     icon: <IoMegaphone size="20px" color="inherit" />,
+    noCollapse: true,
+  },
+  // The tables the assistant saved for this user. Sits beside Asistan because
+  // the two are one feature seen from two ends: the conversation writes this
+  // page. Sparkles for the same reason ProducedTable uses it on its attach
+  // button -- it is already this app's glyph for "the assistant did this".
+  {
+    type: "collapse",
+    name: "AI Görünümü",
+    key: "ai-overview",
+    route: "/ai-overview",
+    icon: <IoSparkles size="20px" color="inherit" />,
     noCollapse: true,
   },
   // The assistant. `key` must match the first path segment -- Sidenav derives

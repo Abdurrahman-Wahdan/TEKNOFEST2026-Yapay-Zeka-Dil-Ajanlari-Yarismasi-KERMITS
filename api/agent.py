@@ -21,15 +21,17 @@ Two rules it already honours, because they are not the agent's to break:
 """
 
 import logging
+import uuid
 from typing import Iterator
 
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
 from config.settings import settings
 from index.retrieve import search
 from llm import get_llm
 
 from .converters import chunk_out
+from .saved_tables import fingerprint, save_table_view
 from .schemas.chat import AttachedContext, CapturePayload, StreamEvent, ToolResult
 
 logger = logging.getLogger(__name__)
@@ -51,6 +53,10 @@ sayıdır.
 - Kullanıcının açık olduğu sayfayı görmen gerekiyorsa `look_at_page` aracını \
 kullan. Rakamlar, oranlar ve tablodaki değerler için `text`; yerleşim veya \
 görünüm sorularında `image`; emin değilsen `both`.
+- `save_table` aracını YALNIZCA kullanıcı bir tabloyu paneline eklemeyi açıkça \
+istediğinde kullan ("panele ekle", "kaydet", "bana bir tablo oluştur"). Kullanıcı \
+sadece karşılaştırma sorduysa cevabı sohbette markdown tablo olarak yaz ve \
+kaydetme.
 """
 
 # The one tool the *client* runs on the model's behalf. Declared in OpenAI
@@ -91,6 +97,94 @@ LOOK_AT_PAGE = {
 }
 
 MODES = ("text", "image", "both")
+
+# The tool the *server* runs itself. Same raw OpenAI-function format as
+# LOOK_AT_PAGE rather than a LangChain `@tool`, because the loop below needs the
+# parsed arguments in hand -- and because this must not join `banks.build_tools()`,
+# which is the product-lookup surface and has nothing to do with dashboards.
+#
+# The arguments are a header list plus a matrix of strings, not a list of
+# `{cells: {...}}` objects. A nested object is the likeliest thing for the model to
+# get wrong, arguments arrive split across stream chunks, and a header-plus-matrix
+# is exactly the shape a markdown table already has -- so the agent's path and the
+# "save this chat table" button in the UI produce identical props.
+SAVE_TABLE = {
+    "type": "function",
+    "function": {
+        "name": "save_table",
+        "description": (
+            "Save a comparison table to the user's own AI Overview page, where it "
+            "stays after the conversation ends. Use this ONLY when the user has "
+            "explicitly asked for a table to be created for them or added to their "
+            "page -- never for a comparison you are simply writing out in the "
+            "answer. Saving over an existing table with the same title replaces "
+            "it, so give the table a title that distinguishes it (include the "
+            "amount and the term when they matter)."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "title": {
+                    "type": "string",
+                    "description": (
+                        "The table's name, in the user's language. Shown as its "
+                        "heading, and used to identify it -- a repeated title "
+                        "replaces the earlier table."
+                    ),
+                },
+                "columns": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "The header labels, left to right.",
+                },
+                "rows": {
+                    "type": "array",
+                    "items": {"type": "array", "items": {"type": "string"}},
+                    "description": (
+                        "One array per row, in the same order and of the same "
+                        "length as `columns`. Values as they should be read: "
+                        "\"%2,89\", \"28.410 TL\", \"24 ay\"."
+                    ),
+                },
+                "cite_urls": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": (
+                        "Optional. One source URL per row, by index; \"\" for a row "
+                        "with none. Given one, the table shows a link back to the "
+                        "bank for that row."
+                    ),
+                },
+                "subtitle": {"type": "string", "description": "Optional, one line."},
+                "notes": {
+                    "type": "string",
+                    "description": "Optional. Shown under the table.",
+                },
+            },
+            "required": ["title", "columns", "rows"],
+        },
+    },
+}
+
+# Which side of the wire runs what. A client tool ends the stream -- the browser
+# executes it and asks again. A server tool runs here, in this process, and the
+# answer continues in the same response.
+CLIENT_TOOLS = ("look_at_page",)
+SERVER_TOOLS = ("save_table",)
+
+
+def _assistant_turn(gathered) -> AIMessage:
+    """The accumulated stream chunk as a message the model can be sent back.
+
+    A plain `AIMessage` rather than the `AIMessageChunk` itself: chunk types are
+    not the documented input shape, and `content` may be a list on a multimodal
+    turn. The `tool_calls` have to survive, because the `ToolMessage` that follows
+    is keyed to their ids.
+    """
+    return AIMessage(
+        content=getattr(gathered, "content", "") or "",
+        tool_calls=list(getattr(gathered, "tool_calls", None) or []),
+    )
 
 
 def _context_block(context: list[AttachedContext]) -> str:
@@ -215,6 +309,7 @@ def answer(
     captures: list[CapturePayload] | None = None,
     tool_results: list[ToolResult] | None = None,
     client_tools: list[str] | None = None,
+    user_id: uuid.UUID | None = None,
 ) -> Iterator[StreamEvent]:
     """Answer a question, yielding stream events as the work happens.
 
@@ -231,10 +326,13 @@ def answer(
             image block.
         client_tools: what the caller can execute. `look_at_page` is offered to the
             model only if it is in here.
+        user_id: whose dashboard `save_table` writes to. The tool is offered only
+            when this is set -- a caller with no user has no dashboard.
 
     Yields:
-        StreamEvent: status, then citations, then tokens. The router turns these
-        into SSE frames and persists the assembled answer.
+        StreamEvent: status, then citations, then tokens, and a `saved_view` frame
+        for each table written. The router turns these into SSE frames and
+        persists the assembled answer.
     """
     yield StreamEvent(type="status", stage="retrieving")
 
@@ -263,27 +361,73 @@ def answer(
     )
 
     llm = get_llm("chat")
+    tools = []
     # Offered only when the caller says it can run it. A consumer with no browser
     # has no page to look at, and asking it to would strand the exchange waiting
     # for a result that can never arrive.
     if client_tools and "look_at_page" in client_tools:
-        llm = llm.bind_tools([LOOK_AT_PAGE])
+        tools.append(LOOK_AT_PAGE)
+    if user_id is not None:
+        tools.append(SAVE_TABLE)
+    if tools:
+        llm = llm.bind_tools(tools)
 
-    try:
-        gathered = None
-        for piece in llm.stream(messages):
-            text = piece.content
-            # Multimodal models can hand back a content *list*; only prose is a
-            # token to forward.
-            if isinstance(text, str) and text:
-                yield StreamEvent(type="token", text=text)
-            # Accumulated because a tool call arrives split across chunks -- the
-            # name in one, the arguments a few characters at a time after it.
-            gathered = piece if gathered is None else gathered + piece
+    # Fingerprints of the server-side calls already carried out. This is what
+    # lets the loop run **without a pass limit**: a count would break real work --
+    # "make me five tables" is five passes, and a cap of three stops at the third
+    # with the model believing it saved five. Terminating on *progress* instead
+    # bounds the pathology (the same save repeating) and leaves the legitimate
+    # case unbounded. It also makes a re-emitted identical call write once.
+    executed: set[str] = set()
 
-        for call in getattr(gathered, "tool_calls", None) or []:
-            if call.get("name") != "look_at_page":
-                continue
+    while True:
+        try:
+            gathered = None
+            for piece in llm.stream(messages):
+                text = piece.content
+                # Multimodal models can hand back a content *list*; only prose is
+                # a token to forward.
+                if isinstance(text, str) and text:
+                    yield StreamEvent(type="token", text=text)
+                # Accumulated because a tool call arrives split across chunks --
+                # the name in one, the arguments a few characters at a time after.
+                gathered = piece if gathered is None else gathered + piece
+        except Exception:
+            logger.exception("Generation failed")
+            yield StreamEvent(type="error", detail="The language model is unavailable.")
+            return
+
+        calls = getattr(gathered, "tool_calls", None) or []
+        client_calls = [c for c in calls if c.get("name") in CLIENT_TOOLS]
+        server_calls = [c for c in calls if c.get("name") in SERVER_TOOLS]
+        fresh = [c for c in server_calls if fingerprint(
+            c.get("name") or "", c.get("args") or {}
+        ) not in executed]
+
+        # Server tools run first, before any chance of the stream ending. They are
+        # side-effect-complete, so doing them now means the write is not lost if
+        # the client never comes back for the `look_at_page` round trip.
+        if fresh:
+            messages.append(_assistant_turn(gathered))
+        for call in fresh:
+            executed.add(fingerprint(call.get("name") or "", call.get("args") or {}))
+            # Never raises: a failure comes back as prose the model reads. An
+            # exception here would surface as an `error` frame, and the router
+            # discards the whole assembled answer on an error -- so a failed save
+            # would delete a good answer.
+            note, saved = save_table_view(call.get("args") or {}, user_id)
+            messages.append(
+                ToolMessage(content=note, tool_call_id=call.get("id") or "call-1")
+            )
+            if saved is not None:
+                yield StreamEvent(
+                    type="saved_view",
+                    view_slug=saved.slug,
+                    view_title=saved.title,
+                )
+
+        if client_calls:
+            call = client_calls[0]
             mode = (call.get("args") or {}).get("mode", "both")
             # The model writes this, so it is not trusted to be one of ours.
             if mode not in MODES:
@@ -294,9 +438,10 @@ def answer(
                 tool_name="look_at_page",
                 mode=mode,
             )
-            # One per turn. The client runs it, asks again with the result, and
-            # the answer continues on that pass.
+            # The client runs it, asks again with the result, and the answer
+            # continues on that request.
             return
-    except Exception:
-        logger.exception("Generation failed")
-        yield StreamEvent(type="error", detail="The language model is unavailable.")
+
+        if not fresh:
+            # A plain answer, or a model repeating a call it has already made.
+            return

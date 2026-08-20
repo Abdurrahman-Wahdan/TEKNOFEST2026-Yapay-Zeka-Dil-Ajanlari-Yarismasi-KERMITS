@@ -234,3 +234,92 @@ answers confidently from nothing, and bills for all of it.
 **The backend still reads none of it.** `streamChat` points at the mock, which
 echoes every payload back — including the serialised context and the page snapshot
 — so all of this is verifiable now. That echo goes away with the mock.
+
+# The AI dashboard (`/ai-overview`)
+
+Per-user tables the assistant composed, one `SavedView` row each. **Almost all of
+the storage for this already existed and had never been called**: the model, its
+migration, `GET/PUT/DELETE /me/views`, and `api.views/saveView/deleteView`. Nothing
+new was added to the schema, and nothing should need to be.
+
+**Two ways in, one shape.**
+
+- The agent's own **`save_table`** tool (`api/agent.py`), which writes the row
+  server-side. Offered only when `answer()` was given a `user_id`.
+- **"Keep this table"** on any markdown table in a chat answer, hovering into view
+  above it (`components/chat/MarkdownTable.tsx`).
+
+Both land as `components: [{type: "table", props}]` and render through
+`RenderComponent` → `TableWidget` → `ProducedTable` — the same path a produced
+topic-page table takes. **There is no second table renderer and there must not be
+one.** Both also set `generated: true`.
+
+**Only tables the user asked for.** Nothing saves itself: the model decides, and an
+available tool is an attractive tool, so the rule is written in `SYSTEM_PROMPT`
+*and* repeated in the tool's own description (the string read at the decision
+point). A comparison the agent volunteers is *not* a request — that one gets the
+button instead, so it is the user's click rather than the model's judgment.
+
+**The tool takes a flat matrix** — `columns: string[]`, `rows: string[][]` — not
+`{cells: {...}}`. A nested object is the likeliest thing for the model to get
+wrong, tool arguments arrive split across stream chunks, and a header-plus-matrix
+is exactly what a markdown table already is, so both paths produce identical props.
+`api/saved_tables.py::table_props` does the conversion.
+
+**Two slugifiers, one behaviour.** `slugify` in `api/saved_tables.py` and
+`slugifyTitle` in `src/lib/saved-view.ts` must agree, or the same title saves twice
+under two slugs. Both **transliterate Turkish before lowercasing**, because `"İ"`
+lowercases to `i`+U+0307 in Python and `i̇` in JavaScript — that is exactly where
+they would diverge. The shared case table lives in both test files; change both.
+
+**A collision overwrites.** `PUT /me/views/{slug}` is already an upsert, so
+suffixing would make the tool behave differently from the HTTP route on the same
+storage — and it makes a repeated question a refresh rather than `konut-2`,
+`konut-3`. The cost is real: two different tables with the same title clobber each
+other, addressed by asking for a distinguishing title in the tool description.
+
+**Column types are left off on purpose** so `inferColumnType` reads the values.
+Coercing "%2,89" or "28.410 TL" into numbers destroys "↓ 0,26" for no gain. The one
+exception is the `kaynak` source column, which must stay `link`.
+
+**No truncation.** No row cap, no cell cap, pinned by tests on both sides. The only
+clips are the `slug` (80) and `title` (160) column widths, and the title clip is
+logged because it shortens a string a person reads.
+
+## The tool loop in `answer()`
+
+Two kinds of tool now, and they behave differently. `look_at_page` runs in the
+**browser**, so its call ends the stream and the client asks again.  `save_table`
+runs **here**, so the write happens in-process, the result goes back as a
+`ToolMessage`, and the answer continues in the same response. Server calls run
+*first*, before any chance of the stream ending, so a write is not lost if the
+client never returns with the page.
+
+**There is deliberately no pass limit.** A count breaks real work — "make me five
+tables" is five passes, and a cap of three stops at the third with the model
+believing it saved five. Termination is by **progress**: a call whose
+`fingerprint(name, args)` already ran is not run again, and a turn producing no
+fresh call ends. That bounds the pathology and leaves the legitimate case alone.
+(`ChatProvider.tsx` still carries `MAX_TOOL_PASSES` on the *client* loop; same
+objection applies and it should get the same treatment.)
+
+**Every tool failure must be prose, never an `error` frame.** `api/routers/chat.py`
+sets `failed` on an error and then discards the whole assembled answer — so a
+failed save would delete a good answer. `save_table_view` never raises. Only a
+*client* tool sets `awaiting_tool`, which is why that check names `CLIENT_TOOLS`.
+
+A `saved_view` StreamEvent carries `view_slug`/`view_title` so the UI can say so
+and link without re-fetching. Regenerate `src/types/api.ts` after touching it.
+
+**Verified without the model.** `save_table_view` takes its session factory as an
+argument, so the write path is unit-tested with no database; `_FakeLLM` serves one
+scripted chunk list per pass. The mock transport's canned answers already contain
+GFM tables, so chat → save → `/ai-overview` is a complete loop today. What is *not*
+verified is Gemma 4 actually choosing the tool, filling the matrix, accepting an
+assistant-with-`tool_calls` plus `ToolMessage` on the follow-up, and obeying the
+save-only-when-asked rule — the vLLM host 404s.
+
+**`PageHeader` sets its title colour explicitly.** Inside `AppPage` the Vision
+dashboard container sets a near-white text colour for its own dark template, so an
+inherited heading came out invisible on the light theme. This page is the first to
+put `PageHeader` inside `AppPage`, which is why nothing had caught it.

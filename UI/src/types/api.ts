@@ -750,10 +750,73 @@ export interface components {
          * @description A question. `session_id` omitted starts a new conversation.
          */
         AskRequest: {
-            /** Question */
+            /**
+             * Question
+             * @description Deliberately unbounded. There was a max_length of 4000 here and it was wrong: the UI can attach a whole table, a quoted row, or a page snapshot to a question, and those run to tens of thousands of characters. Capping the field truncates what the agent is asked about, so it answers from part of the data or asks a follow-up the attachment existed to prevent. `ChatMessage.content` is a `Text` column, so nothing narrows downstream either. If a payload ever exceeds the model's window, failing loudly is the safer outcome.
+             * @default
+             */
             question: string;
             /** Session Id */
             session_id?: string | null;
+            /**
+             * Context
+             * @description Pieces of the UI the user attached: a table, a row, a quote.
+             */
+            context?: components["schemas"]["AttachedContext"][];
+            /**
+             * Clienttools
+             * @description Tools this client can execute. The tool is only offered to the model when the caller says it can run it -- a plain API consumer has no page to look at, and asking it to would strand the exchange waiting for a result that can never come.
+             */
+            clientTools?: "look_at_page"[];
+            /**
+             * Toolresults
+             * @description Answers to `look_at_page` calls the agent made on a previous pass. Scoped to the exchange that asked for them, which is why they are here and not on `messages`.
+             */
+            toolResults?: components["schemas"]["ToolResult"][];
+            /**
+             * Captures
+             * @description Screenshots of the page. Passed to the model as image content blocks -- Gemma 4 takes image input, and screen/UI understanding is one of its stated vision capabilities.
+             */
+            captures?: components["schemas"]["CapturePayload"][];
+        };
+        /**
+         * AttachedContext
+         * @description A piece of the UI the user handed to the agent.
+         *
+         *     Serialised by the browser at the moment of the click -- a table as a GFM
+         *     table, a row as a key/value list, a selection as its text -- because what the
+         *     user pointed at is what should travel, not whatever the page looks like by the
+         *     time they press send.
+         */
+        AttachedContext: {
+            /**
+             * Id
+             * @default
+             */
+            id: string;
+            /**
+             * Kind
+             * @default table
+             */
+            kind: string;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+            /**
+             * Body
+             * @default
+             */
+            body: string;
+            /**
+             * Format
+             * @default markdown
+             */
+            format: string;
+            location?: components["schemas"]["ContextLocation"];
+            /** Count */
+            count?: number | null;
         };
         /**
          * BankLimitsOut
@@ -812,6 +875,48 @@ export interface components {
              * @default
              */
             notes: string;
+        };
+        /**
+         * CapturePayload
+         * @description A screenshot of the page, ready to become an image content block.
+         *
+         *     `media_type` and `data` arrive separately rather than as a `data:` URL: the
+         *     browser splits them so nothing here has to parse a URL, and so this can be
+         *     handed to the model as an image rather than accidentally as text. Forwarding
+         *     base64 as text shows the model a wall of characters, answers confidently from
+         *     nothing, and bills for every token of it.
+         */
+        CapturePayload: {
+            /**
+             * Id
+             * @default
+             */
+            id: string;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+            /**
+             * Mediatype
+             * @default image/webp
+             */
+            mediaType: string;
+            /**
+             * Data
+             * @default
+             */
+            data: string;
+            /**
+             * Width
+             * @default 0
+             */
+            width: number;
+            /**
+             * Height
+             * @default 0
+             */
+            height: number;
         };
         /** CardInstallmentQuoteOut */
         CardInstallmentQuoteOut: {
@@ -1044,6 +1149,31 @@ export interface components {
             /** Unavailable */
             unavailable?: components["schemas"]["UnavailableOut"][];
             intersection: components["schemas"]["IntersectionOut"];
+        };
+        /**
+         * ContextLocation
+         * @description Where on the page a piece of attached context came from.
+         */
+        ContextLocation: {
+            /**
+             * Path
+             * @default
+             */
+            path: string;
+            /** Page */
+            page?: string | null;
+            /** Section */
+            section?: string | null;
+            /** Table */
+            table?: string | null;
+            /** About */
+            about?: string | null;
+            /** Row */
+            row?: string | null;
+            /** Column */
+            column?: string | null;
+            /** Kind */
+            kind?: string | null;
         };
         /** ConversionOut */
         ConversionOut: {
@@ -1479,7 +1609,7 @@ export interface components {
              * Type
              * @enum {string}
              */
-            type: "status" | "token" | "citation" | "done" | "error";
+            type: "status" | "token" | "citation" | "tool_call" | "saved_view" | "done" | "error";
             /**
              * Stage
              * @description status only: retrieving | pricing | writing.
@@ -1507,6 +1637,31 @@ export interface components {
              * @description error only.
              */
             detail?: string | null;
+            /**
+             * Tool Call Id
+             * @description tool_call only: echo back on the result.
+             */
+            tool_call_id?: string | null;
+            /**
+             * Tool Name
+             * @description tool_call only.
+             */
+            tool_name?: "look_at_page" | null;
+            /**
+             * Mode
+             * @description tool_call only: how the model wants to see the page. `text` for the semantic outline (exact figures, current filters), `image` for a screenshot (layout), `both` for one round trip carrying each.
+             */
+            mode?: ("text" | "image" | "both") | null;
+            /**
+             * View Slug
+             * @description saved_view only: identifies the saved table.
+             */
+            view_slug?: string | null;
+            /**
+             * View Title
+             * @description saved_view only: the table's heading, as stored.
+             */
+            view_title?: string | null;
         };
         /**
          * TableDetailOut
@@ -1588,6 +1743,41 @@ export interface components {
              * @description Access token lifetime, in seconds.
              */
             expires_in: number;
+        };
+        /**
+         * ToolResult
+         * @description What the browser sent back after looking at the page.
+         *
+         *     One tool, `look_at_page`, taking a mode: `text` for the semantic outline,
+         *     `image` for a screenshot, `both` for one round trip carrying each. Two separate
+         *     tools made the agent commit before it knew which it needed, then cost a second
+         *     exchange whenever it guessed wrong.
+         *
+         *     `text` and `image` are populated according to the mode asked for, so a `both`
+         *     call comes back with each. `text` is finished markdown and belongs in a text
+         *     block; `image` is base64 and must become an image content block -- see
+         *     `_human_content` in `api/agent.py`.
+         */
+        ToolResult: {
+            /**
+             * Id
+             * @default
+             */
+            id: string;
+            /**
+             * Name
+             * @default look_at_page
+             * @constant
+             */
+            name: "look_at_page";
+            /** Text */
+            text?: string | null;
+            image?: components["schemas"]["CapturePayload"] | null;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
         };
         /**
          * UnavailableOut

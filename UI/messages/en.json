@@ -113,7 +113,12 @@
   "aiOverview": {
     "title": "AI Overview",
     "subtitle": "A dashboard the assistant composed for you",
-    "empty": "No view has been composed yet."
+    "empty": "No view has been composed yet.",
+    "loadFailed": "Could not load your saved tables.",
+    "savedAt": "Saved {date}",
+    "delete": "Remove from this page",
+    "deleteFailed": "Could not remove it. Try again.",
+    "untitled": "Untitled table"
   },
   "chat": {
     "title": "Assistant",
@@ -165,7 +170,13 @@
     "capture": "Let the assistant see this page",
     "capturing": "Looking at the page…",
     "removeCapture": "Remove screenshot",
-    "readPage": "Reading the page"
+    "readPage": "Reading the page",
+    "saveToDashboard": "Keep this table",
+    "saving": "Keeping…",
+    "saved": "Kept on your AI Overview page.",
+    "saveFailed": "Could not keep it",
+    "openDashboard": "Open the page",
+    "savedTableTitle": "{label} ({count} rows)"
   },
   "settings": {
     "title": "Settings",

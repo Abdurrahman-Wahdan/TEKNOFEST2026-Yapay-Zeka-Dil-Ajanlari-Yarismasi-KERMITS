@@ -10,6 +10,7 @@ import { Streamdown } from "streamdown";
 import { VuiBox, VuiTypography } from "@/components/vision";
 
 import { MdTable, MdTbody, MdTd, MdTh, MdThead, MdTr } from "./MarkdownTable";
+import { MarkdownTableProvider } from "./markdown-table-context";
 import { domProps, type El } from "./markdown-dom";
 
 /**
@@ -346,7 +347,13 @@ export function AgentMarkdown({
     [t],
   );
 
+  // The table override needs the streaming flag and the message source, and it
+  // cannot be handed them as props: `components` is built at module scope, and
+  // rebuilding it per render remounts the whole markdown tree on every token.
+  const tableTools = useMemo(() => ({ streaming, source: children }), [streaming, children]);
+
   return (
+    <MarkdownTableProvider value={tableTools}>
     <MarkdownScope>
       <Streamdown
         mode={streaming ? "streaming" : "static"}
@@ -375,6 +382,7 @@ export function AgentMarkdown({
         {children}
       </Streamdown>
     </MarkdownScope>
+    </MarkdownTableProvider>
   );
 }
 

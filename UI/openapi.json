@@ -1862,9 +1862,9 @@
         "properties": {
           "question": {
             "type": "string",
-            "maxLength": 4000,
-            "minLength": 1,
-            "title": "Question"
+            "title": "Question",
+            "description": "Deliberately unbounded. There was a max_length of 4000 here and it was wrong: the UI can attach a whole table, a quoted row, or a page snapshot to a question, and those run to tens of thousands of characters. Capping the field truncates what the agent is asked about, so it answers from part of the data or asks a follow-up the attachment existed to prevent. `ChatMessage.content` is a `Text` column, so nothing narrows downstream either. If a payload ever exceeds the model's window, failing loudly is the safer outcome.",
+            "default": ""
           },
           "session_id": {
             "anyOf": [
@@ -1877,14 +1877,90 @@
               }
             ],
             "title": "Session Id"
+          },
+          "context": {
+            "items": {
+              "$ref": "#/components/schemas/AttachedContext"
+            },
+            "type": "array",
+            "title": "Context",
+            "description": "Pieces of the UI the user attached: a table, a row, a quote."
+          },
+          "clientTools": {
+            "items": {
+              "type": "string",
+              "const": "look_at_page"
+            },
+            "type": "array",
+            "title": "Clienttools",
+            "description": "Tools this client can execute. The tool is only offered to the model when the caller says it can run it -- a plain API consumer has no page to look at, and asking it to would strand the exchange waiting for a result that can never come."
+          },
+          "toolResults": {
+            "items": {
+              "$ref": "#/components/schemas/ToolResult"
+            },
+            "type": "array",
+            "title": "Toolresults",
+            "description": "Answers to `look_at_page` calls the agent made on a previous pass. Scoped to the exchange that asked for them, which is why they are here and not on `messages`."
+          },
+          "captures": {
+            "items": {
+              "$ref": "#/components/schemas/CapturePayload"
+            },
+            "type": "array",
+            "title": "Captures",
+            "description": "Screenshots of the page. Passed to the model as image content blocks -- Gemma 4 takes image input, and screen/UI understanding is one of its stated vision capabilities."
           }
         },
         "type": "object",
-        "required": [
-          "question"
-        ],
         "title": "AskRequest",
         "description": "A question. `session_id` omitted starts a new conversation."
+      },
+      "AttachedContext": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "default": ""
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind",
+            "default": "table"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "default": ""
+          },
+          "body": {
+            "type": "string",
+            "title": "Body",
+            "default": ""
+          },
+          "format": {
+            "type": "string",
+            "title": "Format",
+            "default": "markdown"
+          },
+          "location": {
+            "$ref": "#/components/schemas/ContextLocation"
+          },
+          "count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "title": "AttachedContext",
+        "description": "A piece of the UI the user handed to the agent.\n\nSerialised by the browser at the moment of the click -- a table as a GFM\ntable, a row as a key/value list, a selection as its text -- because what the\nuser pointed at is what should travel, not whatever the page looks like by the\ntime they press send."
       },
       "BankLimitsOut": {
         "properties": {
@@ -2003,6 +2079,43 @@
         ],
         "title": "BankOut",
         "description": "One bank, what it publishes, and what is currently down.\n\n`publishes` and `maintenance` are different absences and are reported\nseparately: a bank that does not sell car finance and a bank whose car\nfinance endpoint is broken this morning must never look alike in the UI."
+      },
+      "CapturePayload": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "default": ""
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "default": ""
+          },
+          "mediaType": {
+            "type": "string",
+            "title": "Mediatype",
+            "default": "image/webp"
+          },
+          "data": {
+            "type": "string",
+            "title": "Data",
+            "default": ""
+          },
+          "width": {
+            "type": "integer",
+            "title": "Width",
+            "default": 0
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "CapturePayload",
+        "description": "A screenshot of the page, ready to become an image content block.\n\n`media_type` and `data` arrive separately rather than as a `data:` URL: the\nbrowser splits them so nothing here has to parse a URL, and so this can be\nhanded to the model as an image rather than accidentally as text. Forwarding\nbase64 as text shows the model a wall of characters, answers confidently from\nnothing, and bills for every token of it."
       },
       "CardInstallmentQuoteOut": {
         "properties": {
@@ -2437,6 +2550,95 @@
           "intersection"
         ],
         "title": "ConstraintsOut"
+      },
+      "ContextLocation": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path",
+            "default": ""
+          },
+          "page": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page"
+          },
+          "section": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section"
+          },
+          "table": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table"
+          },
+          "about": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "About"
+          },
+          "row": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Row"
+          },
+          "column": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Column"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          }
+        },
+        "type": "object",
+        "title": "ContextLocation",
+        "description": "Where on the page a piece of attached context came from."
       },
       "ConversionOut": {
         "properties": {
@@ -3471,6 +3673,8 @@
               "status",
               "token",
               "citation",
+              "tool_call",
+              "saved_view",
               "done",
               "error"
             ],
@@ -3548,6 +3752,72 @@
             ],
             "title": "Detail",
             "description": "error only."
+          },
+          "tool_call_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Call Id",
+            "description": "tool_call only: echo back on the result."
+          },
+          "tool_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "look_at_page"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Name",
+            "description": "tool_call only."
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "text",
+                  "image",
+                  "both"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode",
+            "description": "tool_call only: how the model wants to see the page. `text` for the semantic outline (exact figures, current filters), `image` for a screenshot (layout), `both` for one round trip carrying each."
+          },
+          "view_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "View Slug",
+            "description": "saved_view only: identifies the saved table."
+          },
+          "view_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "View Title",
+            "description": "saved_view only: the table's heading, as stored."
           }
         },
         "type": "object",
@@ -3696,6 +3966,50 @@
         ],
         "title": "TokenPair",
         "description": "What a successful signup, login or refresh returns."
+      },
+      "ToolResult": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "default": ""
+          },
+          "name": {
+            "type": "string",
+            "const": "look_at_page",
+            "title": "Name",
+            "default": "look_at_page"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          },
+          "image": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CapturePayload"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "ToolResult",
+        "description": "What the browser sent back after looking at the page.\n\nOne tool, `look_at_page`, taking a mode: `text` for the semantic outline,\n`image` for a screenshot, `both` for one round trip carrying each. Two separate\ntools made the agent commit before it knew which it needed, then cost a second\nexchange whenever it guessed wrong.\n\n`text` and `image` are populated according to the mode asked for, so a `both`\ncall comes back with each. `text` is finished markdown and belongs in a text\nblock; `image` is base64 and must become an image content block -- see\n`_human_content` in `api/agent.py`."
       },
       "UnavailableOut": {
         "properties": {

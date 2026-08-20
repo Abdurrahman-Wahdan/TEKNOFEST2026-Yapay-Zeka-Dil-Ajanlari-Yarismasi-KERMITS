@@ -8,7 +8,7 @@ import type { Theme } from "@mui/material/styles";
 import Tooltip from "@mui/material/Tooltip";
 import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 import {
   IoAlertCircleOutline,
   IoArrowForward,
@@ -19,6 +19,7 @@ import {
 } from "react-icons/io5";
 
 import { ActionButton } from "@/components/ui/ActionButton";
+import { CenteredState } from "@/components/ui/CenteredState";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { MultiSelect } from "@/components/ui/MultiSelect";
 import { Pill } from "@/components/ui/Pill";
@@ -500,35 +501,5 @@ function TableCard({
         </VuiTypography>
       </VuiBox>
     </Card>
-  );
-}
-
-/** A centred icon + label for empty/loading/error states — the app has no
-    dedicated empty-state component, so this covers all three inline. */
-function CenteredState({
-  icon,
-  label,
-  tone = "default",
-}: {
-  icon: ReactNode;
-  label: string;
-  tone?: "default" | "error";
-}) {
-  return (
-    <VuiBox
-      display="flex"
-      flexDirection="column"
-      alignItems="center"
-      justifyContent="center"
-      gap="10px"
-      py="40px"
-      color={tone === "error" ? "error" : "text"}
-      sx={{ opacity: tone === "error" ? 1 : 0.7 }}
-    >
-      {icon}
-      <VuiTypography variant="button" color={tone === "error" ? "error" : "text"}>
-        {label}
-      </VuiTypography>
-    </VuiBox>
   );
 }

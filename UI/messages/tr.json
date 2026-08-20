@@ -113,7 +113,12 @@
   "aiOverview": {
     "title": "AI Görünümü",
     "subtitle": "Yapay zekânın sizin için hazırladığı panel",
-    "empty": "Henüz bir görünüm oluşturulmadı."
+    "empty": "Henüz bir görünüm oluşturulmadı.",
+    "loadFailed": "Kayıtlı tablolarınız yüklenemedi.",
+    "savedAt": "{date} tarihinde kaydedildi",
+    "delete": "Bu sayfadan kaldır",
+    "deleteFailed": "Kaldırılamadı. Tekrar deneyin.",
+    "untitled": "Adsız tablo"
   },
   "chat": {
     "title": "Asistan",
@@ -165,7 +170,13 @@
     "capture": "Asistanın bu sayfayı görmesini sağla",
     "capturing": "Sayfaya bakılıyor…",
     "removeCapture": "Ekran görüntüsünü kaldır",
-    "readPage": "Sayfa okunuyor"
+    "readPage": "Sayfa okunuyor",
+    "saveToDashboard": "Bu tabloyu sakla",
+    "saving": "Saklanıyor…",
+    "saved": "AI Görünümü sayfanıza eklendi.",
+    "saveFailed": "Saklanamadı",
+    "openDashboard": "Sayfayı aç",
+    "savedTableTitle": "{label} ({count} satır)"
   },
   "settings": {
     "title": "Ayarlar",

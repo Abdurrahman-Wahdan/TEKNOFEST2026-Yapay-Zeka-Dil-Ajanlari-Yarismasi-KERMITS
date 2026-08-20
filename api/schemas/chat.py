@@ -193,7 +193,9 @@ class StreamEvent(BaseModel):
     the OpenAPI schema; the endpoint returns a stream, not this object.
     """
 
-    type: Literal["status", "token", "citation", "tool_call", "done", "error"]
+    type: Literal[
+        "status", "token", "citation", "tool_call", "saved_view", "done", "error"
+    ]
     stage: str | None = Field(
         default=None,
         description="status only: retrieving | pricing | writing.",
@@ -222,4 +224,17 @@ class StreamEvent(BaseModel):
             "semantic outline (exact figures, current filters), `image` for a "
             "screenshot (layout), `both` for one round trip carrying each."
         ),
+    )
+
+    # --- saved_view only --------------------------------------------------
+    #
+    # A table the agent wrote to the user's AI Overview page. Unlike `tool_call`
+    # this does not end the stream -- the write already happened server-side and
+    # the answer continues -- so the UI can say so and link to the page without
+    # waiting for `done` or re-fetching `/me/views`.
+    view_slug: str | None = Field(
+        default=None, description="saved_view only: identifies the saved table."
+    )
+    view_title: str | None = Field(
+        default=None, description="saved_view only: the table's heading, as stored."
     )

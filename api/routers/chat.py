@@ -18,7 +18,7 @@ from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 
-from ..agent import answer
+from ..agent import CLIENT_TOOLS, answer
 from ..db.models import ChatMessage, ChatSession
 from ..db.session import session_scope
 from ..deps import CurrentUser, DbSession
@@ -156,12 +156,21 @@ def ask(body: AskRequest, user: CurrentUser, session: DbSession) -> StreamingRes
                 body.captures,
                 body.tool_results,
                 body.client_tools,
+                user_id,
             ):
                 if event.type == "token" and event.text:
                     parts.append(event.text)
                 elif event.type == "citation" and event.citation is not None:
                     citations.append(event.citation.model_dump(mode="json"))
-                elif event.type == "tool_call":
+                elif event.type == "tool_call" and event.tool_name in CLIENT_TOOLS:
+                    # Only a *client* tool suspends the turn. A server-side tool
+                    # (`save_table`) already ran in-process and the answer
+                    # continues in this same response, so treating its frame as a
+                    # suspension would discard the whole answer. The check is
+                    # correct by construction today -- a server tool emits no
+                    # `tool_call` frame -- and explicit anyway, because "by
+                    # construction" is one careless frame away from silently
+                    # dropping every reply.
                     awaiting_tool = True
                 elif event.type == "error":
                     failed = True
