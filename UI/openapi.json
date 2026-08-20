@@ -2717,6 +2717,11 @@
             "type": "string",
             "title": "Label"
           },
+          "group": {
+            "type": "string",
+            "title": "Group",
+            "description": "Semantic picker group for this family."
+          },
           "category": {
             "type": "string",
             "title": "Category",
@@ -2735,6 +2740,7 @@
         "required": [
           "key",
           "label",
+          "group",
           "category",
           "banks"
         ],
@@ -3381,6 +3387,12 @@
             "type": "string",
             "title": "Unit",
             "default": "1"
+          },
+          "quote_currency": {
+            "type": "string",
+            "title": "Quote Currency",
+            "description": "Currency the bank used to quote one unit. The main FX board compares TRY quotes only.",
+            "default": "TRY"
           },
           "as_of": {
             "type": "string",

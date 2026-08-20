@@ -426,16 +426,46 @@ def test_albaraka_catalogue_parses_out_of_the_page(monkeypatch):
     assert konut.max_term == 120
 
 
+def test_albaraka_homepage_keeps_each_live_finance_mode(monkeypatch):
+    """The homepage has a separate Ticari select with its own request flags."""
+    bank = get_bank("albaraka")
+    serve(monkeypatch, [{}], text=load("albaraka", "home_finance_modes.html"))
+
+    products = {p.code: p for p in bank.products("finance")}
+    assert set(products) == {"BIREYSEL", "CVRE"}
+    assert products["CVRE"].raw["_calculator"] == {
+        "page": "https://www.albaraka.com.tr/tr",
+        "Type": "HesaplamaTicari",
+        "CreditType": "K",
+        "customer_mode": "ticari",
+    }
+
+
+def test_albaraka_commercial_quote_uses_the_bank_ui_contract(monkeypatch):
+    sent = []
+    bank = get_bank("albaraka")
+    serve(monkeypatch, [load("albaraka", "finance_quote.json")],
+          text=load("albaraka", "home_finance_modes.html"), spy=sent)
+
+    bank.finance_quote("CVRE", 100000, 24)
+    params = sent[-1]["params"]
+    assert params["Type"] == "HesaplamaTicari"
+    assert params["CreditType"] == "K"
+    assert sent[-1]["headers"]["referer"] == "https://www.albaraka.com.tr/tr"
+
+
 def test_albaraka_account_types_parse_out_of_the_page(monkeypatch):
     bank = get_bank("albaraka")
     serve(monkeypatch, [{}],
           text=load("albaraka", "profit_share_page_select.html"))
     accounts = bank.products("profit_share")
 
-    # Kur Korumalı is listed twice, bireysel and ticari, under one code.
-    assert [a.code for a in accounts] == ["KTLMHSP", "KTLARDM", "KURKTLMHSP"]
+    assert [a.code for a in accounts] == [
+        "KTLMHSP", "KTLARDM", "KURKTLMHSP:bireysel", "KURKTLMHSP:ticari",
+    ]
     assert accounts[0].name == "Katılma Hesabı"
     assert accounts[1].currencies == ("TRY", "USD", "EUR")
+    assert accounts[2].raw["Type"] == accounts[3].raw["Type"] == "KURKTLMHSP"
 
 
 def test_albaraka_finance_quote_maps_onto_the_dataclass(monkeypatch):
@@ -508,7 +538,12 @@ def test_albaraka_reads_its_per_currency_limits_off_the_page(monkeypatch):
     # An option carrying no limits at all must still count as an offered
     # currency: Kur Korumalı lists GBP and XAU with no jsonData, and dropping
     # them narrowed the currency list the bank actually publishes.
-    assert accounts["KURKTLMHSP"].currencies == ("TRY", "USD", "EUR", "GBP", "XAU")
+    assert accounts["KURKTLMHSP:bireysel"].currencies == (
+        "TRY", "USD", "EUR", "GBP", "XAU"
+    )
+    assert accounts["KURKTLMHSP:ticari"].currencies == (
+        "TRY", "USD", "EUR", "GBP", "XAU"
+    )
 
 
 def test_albaraka_refuses_below_the_currency_minimum_without_asking(monkeypatch):
@@ -915,35 +950,16 @@ def test_turkiyefinans_rate_table_becomes_products(monkeypatch):
     assert all(r.min_amount for r in rows)
 
 
-def test_turkiyefinans_quotes_a_rate_and_a_computed_payment(monkeypatch):
-    """It states no payment itself, so the payment is computed and flagged.
-
-    The bank used to be refused outright, which dropped eighteen products'
-    published pricing off the page; then it ranked on rate alone with an
-    empty payment column. Now `finance_quote` reproduces the bank's own
-    client-side annuity (`_installment_plan`, ported from
-    `creditInstallmentResult` in its own JS) instead of leaving the payment
-    blank -- `derived=True` is what tells a caller the figure is worked out
-    rather than read off the wire.
-
-    Expected numbers below are the 19-24 month band for product "1"
-    (Value=4.05, Cost=86.37, Bitt=Rusf=0.15) run through that same formula by
-    hand, independent of the implementation, as a cross-check.
-    """
+def test_turkiyefinans_quotes_only_the_live_service_rate(monkeypatch):
+    """A client-side formula must not be presented as an endpoint quote."""
     serve(monkeypatch, [load("turkiyefinans", "credit_types.json")])
     quote = get_bank("turkiyefinans").finance_quote("1", 100000, 24)
 
-    assert quote.installment == pytest.approx(7435.04)
-    assert quote.total == pytest.approx(178440.96)
-    assert quote.priced is True
-    assert quote.derived is True
+    assert quote.installment is None and quote.total is None and quote.schedule == []
+    assert quote.priced is False
+    assert quote.derived is False
     assert quote.profit_rate > 0
     assert quote.annual_cost_rate > 0
-    assert len(quote.schedule) == 24
-    # The schedule pays the loan off exactly -- no rounding residue left on
-    # the table, the same invariant `_check_quote` enforces for every bank.
-    assert quote.schedule[-1].remaining == 0
-    assert sum(row.principal for row in quote.schedule) == pytest.approx(100000)
     # Read off the bank's own table as percentages, not the shares it sends.
     assert quote.fees["allocation_rate"] == pytest.approx(0.575)
     assert quote.fees["bsmv_rate"] == pytest.approx(15.0)
@@ -958,67 +974,21 @@ def test_turkiyefinans_refuses_a_term_it_publishes_no_rate_for(monkeypatch):
     assert "bands cover" in str(exc.value)
 
 
-def test_turkiyefinans_card_quotes_a_rate_and_a_computed_payment(monkeypatch):
-    """Its card calculator runs a date-dependent annuity in the browser --
-    `installments.js` -- but anchoring the transaction to the statement date
-    itself (`_card_installment_plan`) erases the date dependence, so this now
-    computes a real payment instead of leaving it null.
-
-    The exact instalment amount moves with today's date (real calendar days
-    between now and each future due date), so this checks the structural
-    invariants rather than a fixed number: the schedule closes to zero, the
-    total exceeds the amount borrowed, and -- the property that justifies
-    doing this at all -- the answer does not depend on which of the ordinary
-    statement dates is picked.
-    """
+def test_turkiyefinans_card_quote_keeps_client_side_totals_out(monkeypatch):
+    """The public page states a rate but no endpoint-supplied payment."""
     html = (
         '<input type="text" class="rate" disabled="disabled" value="4.25" '
         'id="txtTaksitleKarPayi">'
     )
-    serve(monkeypatch, [{}], text=html, routes={
-        "GetKKDFandBSMVRate": load("turkiyefinans", "kkdf_bsmv.json"),
-    })
+    serve(monkeypatch, [{}], text=html)
     quote = get_bank("turkiyefinans").card_installment_quote(
         "Kredi Kartı Taksitle", 10000, 6
     )
 
-    assert quote.priced is True
-    assert quote.derived is True
+    assert quote.priced is False
+    assert quote.derived is False
     assert quote.profit_rate == pytest.approx(4.25)
-    assert quote.installment > 0
-    assert quote.total > quote.amount
-    schedule = quote.raw["schedule"]
-    assert len(schedule) == 6
-    assert schedule[-1].remaining == 0
-    assert sum(row.principal for row in schedule) == pytest.approx(10000, abs=0.02)
-
-
-def test_turkiyefinans_card_installment_does_not_depend_on_statement_day(monkeypatch):
-    """The whole justification for computing this at all: pick any of the six
-    ordinary statement dates and the transaction-anchored schedule answers
-    identically, so the day the calculator's own dropdown asks for was never
-    actually customer-specific information for this quote."""
-    import banks.providers.turkiyefinans as tf_module
-
-    html = (
-        '<input type="text" class="rate" disabled="disabled" value="4.25" '
-        'id="txtTaksitleKarPayi">'
-    )
-    original_day = tf_module._CARD_STATEMENT_DAY
-    try:
-        results = []
-        for day in (3, 5, 7, 10, 17, 25):
-            tf_module._CARD_STATEMENT_DAY = day
-            serve(monkeypatch, [{}], text=html, routes={
-                "GetKKDFandBSMVRate": load("turkiyefinans", "kkdf_bsmv.json"),
-            })
-            quote = get_bank("turkiyefinans").card_installment_quote(
-                "Kredi Kartı Taksitle", 10000, 6
-            )
-            results.append((quote.installment, quote.total))
-        assert len(set(results)) == 1, f"statement day changed the answer: {results}"
-    finally:
-        tf_module._CARD_STATEMENT_DAY = original_day
+    assert quote.installment is None and quote.total is None
 
 
 def test_turkiyefinans_card_refuses_outside_its_slider_range(monkeypatch):
@@ -1683,7 +1653,8 @@ def test_turkiyefinans_publishes_a_full_fx_board(monkeypatch):
     # the shared code and the ounce rows keep their own.
     assert rates["ALT (gr)"].unit == "gram"
     assert rates["GMS (gr)"].unit == "gram"
-    assert rates["XAU"].unit == "1", "the ounce-in-USD row must not join the gram board"
+    assert rates["XAU"].unit == "ounce", "the ounce-in-USD row must not join the gram board"
+    assert rates["XAU"].quote_currency == "USD"
     # /Date(1786798759996+0300)/ is not a timestamp anyone can read.
     assert rates["USD"].as_of.startswith("20")
 

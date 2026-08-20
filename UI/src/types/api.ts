@@ -1217,6 +1217,11 @@ export interface components {
             /** Label */
             label: string;
             /**
+             * Group
+             * @description Semantic picker group for this family.
+             */
+            group: string;
+            /**
              * Category
              * @description finance | profit_share
              */
@@ -1471,6 +1476,12 @@ export interface components {
              * @default 1
              */
             unit: string;
+            /**
+             * Quote Currency
+             * @description Currency the bank used to quote one unit. The main FX board compares TRY quotes only.
+             * @default TRY
+             */
+            quote_currency: string;
             /**
              * As Of
              * @default

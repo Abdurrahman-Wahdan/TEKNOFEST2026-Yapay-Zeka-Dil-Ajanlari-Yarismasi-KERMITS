@@ -24,7 +24,7 @@ from banks.providers.base import TemporarilyUnavailable
 
 from ..converters import (
     card_quote_out, family_list, finance_quote_out, mile_rate_out, product_out,
-    profit_share_quote_out, rate_out,
+    profit_share_quote_out, rate_list_out,
 )
 from ..schemas.banks import (
     BankOut, CardInstallmentQuoteOut, FamilyOut, FinanceQuoteOut, MileRateOut,
@@ -172,7 +172,7 @@ def bank_rates(bank: str = BankName) -> list[RateOut]:
     """
     provider = _bank(bank)
     try:
-        return cache.rates.get(provider.name, lambda: [rate_out(r) for r in provider.rates()])
+        return cache.rates.get(provider.name, lambda: rate_list_out(provider.rates()))
     except UnsupportedProduct as exc:
         raise _handle(exc) from exc
 

@@ -80,11 +80,25 @@ def test_every_family_entry_names_a_bank_that_can_serve_it():
     assert families.unknown_banks() == []
 
 
-def test_every_family_is_worth_comparing():
-    """One bank is not a comparison, it is a single quote."""
+def test_every_family_has_at_least_one_live_bank():
+    """A one-bank family is still a valid live-comparison option.
+
+    It returns that bank's live quote and explains that the other banks do not
+    offer an equivalent; hiding it in a separate catalogue would make a real
+    calculator unreachable from the comparison screen.
+    """
     for category, table in families.BY_CATEGORY.items():
         for family, entries in table.items():
-            assert len(entries) >= 2, f"{category}/{family} names only {entries}"
+            assert entries, f"{category}/{family} has no bank to quote"
+
+
+def test_a_one_bank_family_returns_its_live_row_and_reports_the_others(monkeypatch):
+    result = answer(monkeypatch, {"albaraka": 8_222.41}, family="cevre")
+
+    assert [row.bank for row in result.quotes] == ["albaraka"]
+    assert {row.bank for row in result.unavailable} >= {
+        "kuveytturk", "vakif", "emlak", "dunya", "ziraat", "turkiyefinans", "tom",
+    }
 
 
 def test_every_family_has_a_label():

@@ -489,6 +489,16 @@ class BaseBank(ABC):
         Raises:
             UnsupportedProduct: naming which of the bank's figures disagree.
         """
+        # A bank may publish a live rate table while doing its payment arithmetic
+        # entirely in browser JavaScript. That is a legitimate rate-only answer,
+        # but it is never permission for us to manufacture an instalment.
+        if quote.installment is None:
+            if quote.total is None and quote.profit_rate > 0:
+                return quote
+            raise UnsupportedProduct(
+                f"{self.display_name} returned neither an instalment nor a "
+                f"usable rate for {quote.product.name}."
+            )
         if quote.installment <= 0:
             raise UnsupportedProduct(
                 f"{self.display_name} returned no instalment for "

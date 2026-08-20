@@ -64,6 +64,10 @@
    {
     "code": "VRKNT0B",
     "name": "2. VE SONRAKİ KONUT FİNANSMANI"
+   },
+   {
+    "code": "CVRE",
+    "name": "Gri Su/Çevre Kredisi"
    }
   ],
   "dunya": [
@@ -380,8 +384,12 @@
     "name": "Ara Dönem Kâr Payı Ödemeli"
    },
    {
-    "code": "KURKTLMHSP",
+    "code": "KURKTLMHSP:bireysel",
     "name": "Kur Korumalı Katılma Hesabı (Bireysel)"
+   },
+   {
+    "code": "KURKTLMHSP:ticari",
+    "name": "Kur Korumalı Katılma Hesabı (Ticari)"
    }
   ],
   "dunya": [

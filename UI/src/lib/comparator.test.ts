@@ -28,8 +28,11 @@ const t = {
   buy: "Alış", sell: "Satış",
 } as unknown as Labels;
 
-const rate = (bank: string, code: string, canonical: string, unit: string, buy: number, sell: number): BankRate =>
-  ({ bank, code, canonical, unit, name: code, buy, sell, as_of: "" }) as BankRate;
+const rate = (
+  bank: string, code: string, canonical: string, unit: string, buy: number, sell: number,
+  quote_currency = "TRY",
+): BankRate =>
+  ({ bank, code, canonical, unit, name: code, buy, sell, quote_currency, as_of: "" }) as BankRate;
 
 describe("rateGroup", () => {
   it("separates currencies, metals and coins by unit", () => {
@@ -610,19 +613,22 @@ describe("the pair, the unit and the lira", () => {
     assert.deepEqual(rows.map((r) => r.cells.instrument), ["USD/TRY"]);
   });
 
-  it("keeps the unit beside the pair, not inside it", () => {
-    // A gram of gold and an ounce of gold are both "XAU/TRY" and are not the
-    // same price. Türkiye Finans publishes both.
+  it("keeps a USD ounce quote out of the TRY comparison board", () => {
     const { rows, columns } = ratesBoard([
       bankRate("turkiyefinans", "ALT (gr)", "XAU", "gram", 6614, 6823),
-      bankRate("turkiyefinans", "XAU", "XAU", "1", 4362, 4400),
+      rate("turkiyefinans", "XAU", "XAU", "ounce", 4362, 4400, "USD"),
     ], ["turkiyefinans"], t);
 
     assert.ok(columns.some((c) => c.key === "unit"));
-    assert.equal(rows.length, 2, "gram and ounce must not collapse into one row");
-    assert.deepEqual(new Set(rows.map((r) => r.cells.unit)), new Set(["gram", "birim"]));
-    // Same pair label, told apart by the unit column.
-    assert.deepEqual(new Set(rows.map((r) => r.cells.instrument)), new Set(["XAU/TRY"]));
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].cells.unit, "gram");
+  });
+
+  it("refuses a duplicate instead of silently replacing a bank quote", () => {
+    assert.throws(() => ratesBoard([
+      rate("albaraka", "USD", "USD", "1", 47, 48),
+      rate("albaraka", "USD", "USD", "1", 47.1, 48.1),
+    ], ["albaraka"], t), /Duplicate live rate identity/);
   });
 
   it("labels a coin price as a coin", () => {

@@ -34,10 +34,10 @@ are four separate families.
 Ziraat each sell one konut product that answers for a first home and a resale
 alike, so they join every konut family as `general=True` and the answer says so.
 
-A family needs **two banks to be worth having**. One bank alone is not a
-comparison, it is finance_quote. Everything left out on that rule is in
-SINGLE_BANK below, with the bank that sells it, so "why is this missing" has an
-answer that is not silence.
+A family may have **one bank**. It still belongs in the comparator: a customer
+can run that bank's live endpoint and see plainly that no other integrated bank
+currently offers an equivalent. A one-bank result is never ranked as if it had
+competition, but it must not disappear into a separate catalogue.
 
 A bank absent from a family does not sell it, and that is reported as an answer
 rather than hidden.
@@ -232,6 +232,48 @@ PROFIT_SHARE: dict[str, tuple[Member, ...]] = {
     ),
 }
 
+# A product does not need a competitor to be selectable.  These entries used
+# to live in SINGLE_BANK, which made the product visible only in the catalogue
+# despite its bank publishing a live calculator.  Keep each bank's exact
+# request key here so the normal comparator sends the live call rather than
+# inventing a number or hiding the option.
+FINANCE.update({
+    "cevre": (_m("albaraka", "CVRE"),),
+    "alisveris": (_m("kuveytturk", "ECOMMERCE"),),
+    "bisiklet": (_m("kuveytturk", "Bisiklet Finansmanı"),),
+    "sarj": (_m("kuveytturk", "Elektrikli Araç Şarj Ünitesi Finansmanı"),),
+    "seyahat": (_m("kuveytturk", "Seyahat Finansmanı"),),
+    "tekne": (_m("kuveytturk", "Tekne Tüketici Finansmanı"),),
+    "tasit-yeni-ticari": (_m("kuveytturk", "Yeni Ticari Araç Finansmanı"),),
+    "tasit-2el-ticari": (_m("kuveytturk", "2. El Ticari Araç Finansmanı"),),
+    "tasit-ticari-dijital": (_m("kuveytturk", "Ticari Dijital Araç Finansmanı"),),
+    "cep-telefonu": (_m("albaraka", "CEPFİN"),),
+    "teknoloji": (_m("albaraka", "TEKNO"),),
+    "prefabrik": (_m("albaraka", "PRFBFİN"),),
+    "engelsiz": (_m("albaraka", "ENGLFİN"),),
+    "yurt": (_m("albaraka", "YURTH"),),
+    "banka-gayrimenkulu": (_m("turkiyefinans", "102"),),
+    "banka-gayrimenkulu-ticari": (_m("turkiyefinans", "105"),),
+})
+
+PROFIT_SHARE.update({
+    "katilma-aradonem": (
+        _m("albaraka", "KTLARDM"),
+        _m("kuveytturk", "Ara Dönem Kar Payı Ödemeli Katılma Hesabı"),
+    ),
+    "katilma-kurkorumali": (
+        _m("albaraka", "KURKTLMHSP:bireysel", variant="bireysel"),
+        _m("albaraka", "KURKTLMHSP:ticari", variant="ticari"),
+    ),
+    "katilma-dijital": (_m("kuveytturk", "Dijital Katılma Hesabı"),),
+    "katilma-hosgeldin": (_m("kuveytturk", "Hoş Geldin Katılma Hesabı"),),
+    "katilma-sepet": (_m("kuveytturk", "Sepet Hesap"),),
+    "katilma-yuvam": (_m("kuveytturk", "Yuvam TL Katılma Hesabı"),),
+    "katilma-gunes": (_m("dunya", "GNSHSP"),),
+    "katilma-avantajli": (_m("hayat", "AVANTAJLIHESAP"),),
+    "katilma-avantajli-gunluk": (_m("hayat", "AVANTAJLIGUNLUKHESAP"),),
+})
+
 BY_CATEGORY = {"finance": FINANCE, "profit_share": PROFIT_SHARE}
 
 # Products only one bank sells, and the bank that sells it. A family of one is
@@ -242,44 +284,13 @@ BY_CATEGORY = {"finance": FINANCE, "profit_share": PROFIT_SHARE}
 # amount and term, Albaraka and Kuveyt Türk both publish the interim-profit
 # account and neither publishes its rate. Recorded rather than shipped, so the
 # absence has a reason and uncovered() does not report it every run.
-NOT_PRICED: dict[str, dict[str, str]] = {
-    "profit_share": {
-        "katilma-aradonem": "albaraka and kuveytturk both sell it; neither publishes a rate",
-    },
-}
+NOT_PRICED: dict[str, dict[str, str]] = {}
 
 # Keys are taxonomy.family_key() output, so a product reaching a second bank is
 # caught by uncovered() rather than by someone re-reading this file.
-SINGLE_BANK_FINANCE: dict[str, str] = {
-    "alisveris": "kuveytturk",
-    "bisiklet": "kuveytturk",
-    "sarj": "kuveytturk",
-    "seyahat": "kuveytturk",
-    "tekne": "kuveytturk",
-    "tasit-yeni-ticari": "kuveytturk",
-    "tasit-2el-ticari": "kuveytturk",
-    "tasit-ticari-dijital": "kuveytturk",
-    "cep-telefonu": "albaraka",
-    "teknoloji": "albaraka",
-    "prefabrik": "albaraka",
-    "engelsiz": "albaraka",
-    "yurt": "albaraka",
-    # Türkiye Finans finances the properties it holds itself; the collateral is
-    # the bank's own stock, so it is not the general konut or işyeri product.
-    "banka-gayrimenkulu": "turkiyefinans",
-    "banka-gayrimenkulu-ticari": "turkiyefinans",
-}
+SINGLE_BANK_FINANCE: dict[str, str] = {}
 
-SINGLE_BANK_PROFIT_SHARE: dict[str, str] = {
-    "katilma-kurkorumali": "albaraka",
-    "katilma-dijital": "kuveytturk",
-    "katilma-hosgeldin": "kuveytturk",
-    "katilma-sepet": "kuveytturk",
-    "katilma-yuvam": "kuveytturk",
-    "katilma-gunes": "dunya",
-    "katilma-avantajli": "hayat",
-    "katilma-avantajli-gunluk": "hayat",
-}
+SINGLE_BANK_PROFIT_SHARE: dict[str, str] = {}
 
 SINGLE_BANK: dict[str, dict[str, str]] = {
     "finance": SINGLE_BANK_FINANCE,
@@ -303,8 +314,57 @@ LABELS = {
     "egitim": "Eğitim finansmanı",
     "hac-umre": "Hac ve umre finansmanı",
     "kira": "Kira finansmanı",
+    "cevre": "Çevre finansmanı",
+    "alisveris": "Alışveriş finansmanı",
+    "bisiklet": "Bisiklet finansmanı",
+    "sarj": "Elektrikli araç şarj ünitesi finansmanı",
+    "seyahat": "Seyahat finansmanı",
+    "tekne": "Tekne finansmanı",
+    "tasit-yeni-ticari": "Yeni ticari taşıt finansmanı",
+    "tasit-2el-ticari": "2. el ticari taşıt finansmanı",
+    "tasit-ticari-dijital": "Ticari dijital taşıt finansmanı",
+    "cep-telefonu": "Cep telefonu finansmanı",
+    "teknoloji": "Teknoloji finansmanı",
+    "prefabrik": "Prefabrik finansmanı",
+    "engelsiz": "Engelsiz hayat finansmanı",
+    "yurt": "Yurt hizmeti finansmanı",
+    "banka-gayrimenkulu": "Banka gayrimenkulü finansmanı",
+    "banka-gayrimenkulu-ticari": "Banka gayrimenkulü ticari finansmanı",
     "katilma": "Katılma hesabı",
     "katilma-altin": "Altın katılma hesabı",
+    "katilma-aradonem": "Ara dönem kâr payı ödemeli hesap",
+    "katilma-kurkorumali": "Kur korumalı katılma hesabı",
+    "katilma-dijital": "Dijital katılma hesabı",
+    "katilma-hosgeldin": "Hoş geldin katılma hesabı",
+    "katilma-sepet": "Sepet hesap",
+    "katilma-yuvam": "Yuvam TL katılma hesabı",
+    "katilma-gunes": "Güneş katılma hesabı",
+    "katilma-avantajli": "Avantajlı hesap",
+    "katilma-avantajli-gunluk": "Avantajlı günlük hesap",
+}
+
+# Presentation groups are derived from the semantic family, not a bank's
+# marketing label. They organise the picker only; the family still owns the
+# exact comparability contract and the endpoint product code.
+FAMILY_GROUPS: dict[str, str] = {
+    "ihtiyac": "personal", "ihtiyac-kart": "personal", "alisveris": "personal",
+    "egitim": "personal", "hac-umre": "personal", "kira": "personal", "seyahat": "personal",
+    "cep-telefonu": "personal", "teknoloji": "personal", "prefabrik": "personal",
+    "engelsiz": "personal", "yurt": "personal", "cevre": "personal",
+    "tasit-0km": "vehicle", "tasit-2el": "vehicle", "tasit-dijital": "vehicle",
+    "tasit-yeni-ticari": "vehicle", "tasit-2el-ticari": "vehicle",
+    "tasit-ticari-dijital": "vehicle", "motosiklet": "vehicle",
+    "bisiklet": "vehicle", "sarj": "vehicle", "tekne": "vehicle",
+    # Property condition and ownership are intentionally not merged.
+    "konut-yeni": "property", "konut-2el": "property", "konut-ilk": "property",
+    "konut-sonraki": "property", "arsa": "property", "isyeri": "property",
+    "banka-gayrimenkulu": "property", "banka-gayrimenkulu-ticari": "property",
+    "katilma": "standard_account", "katilma-altin": "standard_account",
+    "katilma-aradonem": "standard_account", "katilma-kurkorumali": "standard_account",
+    "katilma-dijital": "special_account", "katilma-hosgeldin": "special_account",
+    "katilma-sepet": "special_account", "katilma-yuvam": "special_account",
+    "katilma-gunes": "special_account", "katilma-avantajli": "special_account",
+    "katilma-avantajli-gunluk": "special_account",
 }
 
 # Turkish words a model may send instead of a family key. A word that cannot
@@ -403,6 +463,19 @@ def banks_in(category: str, family: str) -> list[str]:
 
 def label(family: str) -> str:
     return LABELS.get(family, family)
+
+
+def group(family: str) -> str:
+    """The semantic picker group for a family.
+
+    Missing metadata is a programming error, not a harmless fallback: an
+    ungrouped product is how a newly discovered live calculator becomes hard to
+    find even though its endpoint was wired correctly.
+    """
+    try:
+        return FAMILY_GROUPS[family]
+    except KeyError as exc:
+        raise ValueError(f"{family!r} has no semantic family group") from exc
 
 
 def unknown_banks() -> list[tuple[str, str, str]]:

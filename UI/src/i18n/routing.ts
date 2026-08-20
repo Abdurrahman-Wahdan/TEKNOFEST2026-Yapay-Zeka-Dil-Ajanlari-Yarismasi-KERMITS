@@ -1,14 +1,14 @@
 import { defineRouting } from "next-intl/routing";
 
 /**
- * Turkish is the default and carries no prefix: the users are Turkish, the
- * campaign text is Turkish, and `/dashboard` reading as Turkish is the honest
- * default. English lives under `/en`.
+ * Both locales use an explicit prefix. In particular, the App Router only has
+ * locale-segment routes (`/[locale]/...`); leaving Turkish unprefixed makes
+ * Next's internal rewrite of `/compare` redirect back to `/compare` and loop.
  */
 export const routing = defineRouting({
   locales: ["tr", "en"],
   defaultLocale: "tr",
-  localePrefix: "as-needed",
+  localePrefix: "always",
 });
 
 export type Locale = (typeof routing.locales)[number];

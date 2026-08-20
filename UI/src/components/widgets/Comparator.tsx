@@ -100,6 +100,10 @@ export function Comparator() {
   // so it gets a dedicated single-bank selection, not the multi-bank picker
   // the ranked categories (including card, now) share below.
   const [singleBank, setSingleBank] = useState<string | null>(null);
+  // Comparison families intentionally exclude offerings sold by only one bank.
+  // Keep a separate bank picker for the complete live catalogue, otherwise a
+  // product can be available through the API yet remain invisible in the UI.
+  const [catalogueBank, setCatalogueBank] = useState("albaraka");
   const [installments, setInstallments] = useState("");
   // The toggle compares against raw `sort`, not `effectiveSort` below, so the
   // first click on a category's default-sorted column gives ascending rather
@@ -117,6 +121,16 @@ export function Comparator() {
   const { data: familyList } = useQuery({ queryKey: ["families"], queryFn: api.families });
 
   const spec = CATEGORIES[category];
+  // Keep these lookups explicit. `next-intl` can validate and hot-reload static
+  // nested keys, while a runtime-built `familyGroup.${key}` can retain a stale
+  // namespace during Turbopack updates and throw on an otherwise valid group.
+  const familyGroupLabels: Record<string, string> = {
+    personal: t("familyGroup.personal"),
+    vehicle: t("familyGroup.vehicle"),
+    property: t("familyGroup.property"),
+    standard_account: t("familyGroup.standard_account"),
+    special_account: t("familyGroup.special_account"),
+  };
 
 
   /** Banks that can serve this category at all, and why the others cannot. */
@@ -127,6 +141,19 @@ export function Comparator() {
   const eligibleKeys = eligible.map((b) => b.name);
   const chosen = selected ?? eligibleKeys;
   const activeBanks = chosen.filter((b) => eligibleKeys.includes(b));
+  const catalogueCategory = category === "profit_share" ? "profit_share" : "finance";
+  const catalogueBanks = (banks ?? []).filter((bank) =>
+    bank.publishes.includes(catalogueCategory),
+  );
+  const effectiveCatalogueBank = catalogueBanks.some((bank) => bank.name === catalogueBank)
+    ? catalogueBank
+    : (catalogueBanks[0]?.name ?? "");
+  const { data: catalogueProducts, isLoading: catalogueLoading } = useQuery({
+    queryKey: ["bankProducts", effectiveCatalogueBank, catalogueCategory],
+    queryFn: () => api.bankProducts(effectiveCatalogueBank, catalogueCategory),
+    enabled: (category === "finance" || category === "profit_share") && Boolean(effectiveCatalogueBank),
+    staleTime: 15 * 60 * 1000,
+  });
   // Which banks publish a rate feed is the registry's answer, not a list kept
   // here: a bank that starts publishing appears on the board without a release.
   const rateBanks = (banks ?? [])
@@ -342,8 +369,7 @@ export function Comparator() {
     source: t("bankOwn"), computed: t("computed"), card: t("card"),
     installments: t("installments"), tier: t("tier"), category: t("category_label"),
     perLira: t("perLira"), basis: t("basis"), insured: t("insured"),
-    unit: t("unit"), perUnit: t("perUnit"), perGram: t("perGram"),
-    perCoin: t("perCoin"),
+    unit: t("unit"), perUnit: t("perUnit"), perGram: t("perGram"), perCoin: t("perCoin"),
     uninsured: t("uninsured"), campaign: t("campaign"), coversAll: t("coversAll"), rateOnly: t("rateOnly"),
   };
 
@@ -359,14 +385,14 @@ export function Comparator() {
       if (stream.live) {
         for (const [bank, board] of Object.entries(stream.banks) as [string, StreamedBoard][]) {
           for (const r of board.rates) {
-            if (rateGroup(r) === "parity") continue;
+            if (rateGroup(r) === "parity" || (r.quote_currency ?? "TRY") !== "TRY") continue;
             collected.push({ ...r, bank });
           }
         }
       } else {
         rateQueries.forEach((q, i) => {
           for (const r of (q.data ?? []) as Rate[]) {
-            if (rateGroup(r) === "parity") continue; // a cross rate is not a TRY price
+            if (rateGroup(r) === "parity" || (r.quote_currency ?? "TRY") !== "TRY") continue; // not a TRY price
             collected.push({ ...r, bank: rateBanks[i] });
           }
         });
@@ -642,6 +668,7 @@ export function Comparator() {
             value={family}
             options={families.map((f) => ({
               value: f.key,
+              group: familyGroupLabels[f.group] ?? f.group,
               // The bank count belongs in the label, not a second line: a native
               // <option> renders one string, and knowing a family reaches two
               // banks rather than six is the whole basis for picking it.
@@ -670,7 +697,7 @@ export function Comparator() {
           </VuiBox>
         )}
 
-        {category === "profit_share" && (
+        {category === "profit_share" && currencyOptions.length > 1 && (
           <Dropdown
             label={t("currency")}
             value={effectiveCurrency}
@@ -722,6 +749,58 @@ export function Comparator() {
           </VuiBox>
         )}
       </Card>
+
+      {/* This is deliberately separate from the comparison-family picker above.
+          A product does not disappear merely because no second bank sells the
+          same thing; the catalogue is the complete set of bank-published
+          options, while the picker remains the subset that can be ranked. */}
+      {(category === "finance" || category === "profit_share") && (
+        <Card>
+          <VuiBox mb="8px">
+            <VuiTypography variant="lg" color="white">
+              {t("catalogueTitle")}
+            </VuiTypography>
+          </VuiBox>
+          <VuiTypography variant="caption" color="text">
+            {t("catalogueDescription")}
+          </VuiTypography>
+          <VuiBox mt={2}>
+            <Dropdown
+              label={t("bank")}
+              value={effectiveCatalogueBank}
+              options={catalogueBanks.map((bank) => ({ value: bank.name, label: bank.display_name }))}
+              onChange={setCatalogueBank}
+            />
+          </VuiBox>
+          <VuiBox mt={2} display="flex" flexDirection="column" gap="8px">
+            {catalogueLoading ? (
+              <VuiTypography variant="caption" color="text">{tc("loading")}</VuiTypography>
+            ) : catalogueProducts?.length ? (
+              catalogueProducts.map((product) => (
+                <VuiBox
+                  key={product.code}
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="space-between"
+                  gap="12px"
+                  flexWrap="wrap"
+                  sx={{
+                    borderBottom: "1px solid",
+                    borderColor: "borders.main",
+                    paddingBottom: "8px",
+                  }}
+                  >
+                    <VuiTypography variant="button" color="white" fontWeight="medium">
+                      {product.name}
+                    </VuiTypography>
+                </VuiBox>
+              ))
+            ) : (
+              <VuiTypography variant="caption" color="text">{t("noResults")}</VuiTypography>
+            )}
+          </VuiBox>
+        </Card>
+      )}
 
       {/* results -- mounted only once there is something to show: the rates
           board and the mile table load on their own, everything else waits
@@ -912,4 +991,3 @@ function Bounds({
     </VuiBox>
   );
 }
-

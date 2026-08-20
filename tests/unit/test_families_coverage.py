@@ -43,6 +43,17 @@ NO_SHARED_PRODUCTS: dict[str, set[str]] = {
 CAPABILITY_FOR = {"finance": "finance", "profit_share": "profit_share"}
 
 
+def test_every_selectable_family_has_exactly_one_semantic_group():
+    """A live calculator must be discoverable under a meaningful picker group."""
+    selectable = {
+        family
+        for table in families.BY_CATEGORY.values()
+        for family in table
+    }
+    assert set(families.FAMILY_GROUPS) == selectable
+    assert all(families.group(family) for family in selectable)
+
+
 @pytest.mark.parametrize("category", sorted(CAPABILITY_FOR))
 def test_every_capable_bank_belongs_to_a_family(category):
     capability = CAPABILITY_FOR[category]
@@ -282,6 +293,30 @@ def test_the_api_and_the_catalogue_canonicalise_the_same_way():
 
     for code in ("TL", "ALT (gr)", "GMS (gr)", "USD", "EUR", "XAU"):
         assert canonical_code(code) == canonical_currency(code)
+
+
+def test_rate_response_rejects_duplicate_comparable_identities():
+    """A frontend map must never silently replace one live quote with another."""
+    from api.converters import DuplicateRateIdentity, rate_list_out
+    from banks.models import Rate
+
+    rows = [
+        Rate(code="USD", name="US Doları", buy=47.0, sell=48.0),
+        Rate(code="USD", name="US Doları", buy=47.1, sell=48.1),
+    ]
+    with pytest.raises(DuplicateRateIdentity, match="duplicate live rate identity"):
+        rate_list_out(rows)
+
+
+def test_rate_response_keeps_different_quote_bases_distinct():
+    from api.converters import rate_list_out
+    from banks.models import Rate
+
+    rows = [
+        Rate(code="ALT (gr)", name="Altın-Gr", buy=6800.0, sell=7000.0, unit="gram"),
+        Rate(code="XAU", name="Altın-Ons (USD)", buy=4500.0, sell=4550.0, unit="ounce", quote_currency="USD"),
+    ]
+    assert len(rate_list_out(rows)) == 2
 
 
 def test_every_capability_has_somewhere_to_be_compared():

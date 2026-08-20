@@ -38,6 +38,7 @@ class FamilyOut(BaseModel):
 
     key: str
     label: str
+    group: str = Field(description="Semantic picker group for this family.")
     category: str = Field(description="finance | profit_share")
     banks: list[str] = Field(description="Banks that sell it.")
 
@@ -180,6 +181,10 @@ class RateOut(BaseModel):
     buy: float
     sell: float
     unit: str = "1"
+    quote_currency: str = Field(
+        default="TRY",
+        description="Currency the bank used to quote one unit. The main FX board compares TRY quotes only.",
+    )
     as_of: str = ""
     derived: bool = Field(
         default=False,

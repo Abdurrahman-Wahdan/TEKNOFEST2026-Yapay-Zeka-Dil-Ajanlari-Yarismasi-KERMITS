@@ -44,6 +44,8 @@ type VisionTheme = Theme & {
 export interface DropdownOption {
   value: string;
   label: string;
+  /** Native select group, used to keep semantically different products apart. */
+  group?: string;
   /** Greyed out and unselectable — a choice that exists but is not available. */
   disabled?: boolean;
 }
@@ -119,11 +121,27 @@ export function Dropdown({
           },
         })}
       >
-        {options.map((option) => (
-          <option key={option.value} value={option.value} disabled={option.disabled}>
-            {option.label}
-          </option>
-        ))}
+        {Object.entries(
+          options.reduce<Record<string, DropdownOption[]>>((groups, option) => {
+            const key = option.group ?? "";
+            (groups[key] ??= []).push(option);
+            return groups;
+          }, {}),
+        ).map(([group, grouped]) =>
+          group ? (
+            <optgroup key={group} label={group}>
+              {grouped.map((option) => (
+                <option key={option.value} value={option.value} disabled={option.disabled}>
+                  {option.label}
+                </option>
+              ))}
+            </optgroup>
+          ) : grouped.map((option) => (
+            <option key={option.value} value={option.value} disabled={option.disabled}>
+              {option.label}
+            </option>
+          )),
+        )}
       </VuiBox>
     </VuiBox>
   );
