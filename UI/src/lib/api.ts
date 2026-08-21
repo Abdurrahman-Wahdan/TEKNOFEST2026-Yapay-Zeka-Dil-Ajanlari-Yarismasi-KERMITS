@@ -36,6 +36,8 @@ export type ChatSessionDetail = Schemas["ChatSessionDetail"];
 export type ChatMessage = Schemas["ChatMessageOut"];
 export type StreamEvent = Schemas["StreamEvent"];
 export type TableMetadata = Schemas["TableMetadataOut"];
+export type ChatModel = Schemas["ModelOut"];
+export type ChatModels = Schemas["ModelsResponse"];
 export type TokenPair = Schemas["TokenPair"];
 export type User = Schemas["UserOut"];
 export type ResetPasswordResponse = Schemas["ResetPasswordResponse"];
@@ -257,6 +259,9 @@ export const api = {
   chatSession: (id: string) => request<ChatSessionDetail>(`/chat/sessions/${id}`),
   deleteChatSession: (id: string) =>
     request<void>(`/chat/sessions/${id}`, { method: "DELETE" }),
+  // The composer's model picker. No arguments: the caller has nothing to filter
+  // this by, and the list is short enough that paging it would be theatre.
+  models: () => request<ChatModels>("/models"),
   tableMetadata: (body: Schemas["TableMetadataRequest"]) =>
     request<TableMetadata>("/chat/table-metadata", {
       method: "POST",
@@ -279,6 +284,8 @@ export async function* askStream(
     context?: Schemas["AttachedContext"][];
     captures?: Schemas["CapturePayload"][];
     toolResults?: Schemas["ToolResult"][];
+    think?: boolean;
+    model?: string | null;
   },
   signal?: AbortSignal,
 ): AsyncGenerator<StreamEvent> {

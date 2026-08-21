@@ -73,6 +73,10 @@ export async function* fetchChat(
       context: request.context,
       captures: request.captures,
       toolResults: request.toolResults,
+      // Both were accepted into ChatRequest and then dropped here, so the
+      // composer's toggle never left the browser. They travel now.
+      think: request.think,
+      model: request.model,
     },
     signal,
   )) {

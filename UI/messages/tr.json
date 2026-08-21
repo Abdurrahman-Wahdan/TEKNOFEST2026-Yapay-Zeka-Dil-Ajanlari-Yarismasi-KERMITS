@@ -144,6 +144,18 @@
     "removeImage": "Görseli kaldır",
     "removeFile": "Dosyayı kaldır",
     "think": "Düşün",
+    "advanced": "Gelişmiş",
+    "advancedModel": "Model",
+    "advancedThinking": "Düşünme",
+    "thinkHint": "Modelin akıl yürütme adımını açık tutar.",
+    "thinkUnsupported": "{model} bunu desteklemiyor.",
+    "modelHint": {
+        "gemma": "En hızlı, en iyi Türkçe",
+        "qwen": "En iyi yapılandırılmış çıktı",
+        "gpt": "Alternatif model"
+    },
+    "modelsLoading": "Modeller yükleniyor…",
+    "modelsError": "Modeller alınamadı",
     "copyCode": "Kodu kopyala",
     "copied": "Kopyalandı",
     "mockNotice": "Asistan henüz bağlı değil — aşağıdaki yanıtlar örnek veridir.",

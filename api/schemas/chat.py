@@ -22,7 +22,7 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from .banks import ChunkOut
 
@@ -206,7 +206,41 @@ class AskRequest(BaseModel):
         ),
     )
 
+    think: bool = Field(
+        default=False,
+        description=(
+            "Keep the model's chain-of-thought on. Only changes the request for "
+            "models that reason by default -- `GET /api/models` reports which "
+            "with `supports_thinking`, and for the rest the flag is discarded "
+            "downstream rather than silently altering the answer."
+        ),
+    )
+    model: str | None = Field(
+        default=None,
+        description=(
+            "A key from `GET /api/models`. Null answers with the configured chat "
+            "model, which is what every caller that does not care should send."
+        ),
+    )
+
     model_config = ConfigDict(populate_by_name=True)
+
+    @field_validator("model")
+    @classmethod
+    def _known_model(cls, value: str | None) -> str | None:
+        """Reject an unknown key here, where the caller can still be told why.
+
+        Unvalidated it would reach `resolve_model_key`, which treats anything it
+        does not recognise as a literal model key and fails inside the provider
+        -- a 500 from the middle of a stream, several layers from the typo.
+        """
+        if value is None:
+            return None
+        from llm.providers.vllm_provider import MODELS
+
+        if value not in MODELS:
+            raise ValueError(f"Unknown model {value!r}. Valid: {', '.join(MODELS)}.")
+        return value
 
     @model_validator(mode="after")
     def _needs_something(self) -> "AskRequest":

@@ -144,6 +144,18 @@
     "removeImage": "Remove image",
     "removeFile": "Remove file",
     "think": "Think",
+    "advanced": "Advanced",
+    "advancedModel": "Model",
+    "advancedThinking": "Thinking",
+    "thinkHint": "Keep the model's reasoning pass on.",
+    "thinkUnsupported": "{model} does not support this.",
+    "modelHint": {
+        "gemma": "Fastest, best Turkish",
+        "qwen": "Best structured output",
+        "gpt": "Alternative model"
+    },
+    "modelsLoading": "Loading models…",
+    "modelsError": "Models unavailable",
     "copyCode": "Copy code",
     "copied": "Copied",
     "mockNotice": "The assistant is not connected yet — answers below are sample data.",

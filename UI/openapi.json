@@ -1896,6 +1896,28 @@
         ]
       }
     },
+    "/api/models": {
+      "get": {
+        "tags": [
+          "models"
+        ],
+        "summary": "List Models",
+        "description": "Every selectable model, with the facts the picker needs to describe it.",
+        "operationId": "list_models",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "tags": [
@@ -1995,6 +2017,24 @@
             "type": "array",
             "title": "Captures",
             "description": "Screenshots of the page. Passed to the model as image content blocks -- Gemma 4 takes image input, and screen/UI understanding is one of its stated vision capabilities."
+          },
+          "think": {
+            "type": "boolean",
+            "title": "Think",
+            "description": "Keep the model's chain-of-thought on. Only changes the request for models that reason by default -- `GET /api/models` reports which with `supports_thinking`, and for the rest the flag is discarded downstream rather than silently altering the answer.",
+            "default": false
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model",
+            "description": "A key from `GET /api/models`. Null answers with the configured chat model, which is what every caller that does not care should send."
           }
         },
         "type": "object",
@@ -3082,6 +3122,68 @@
         ],
         "title": "MileRateOut",
         "description": "One reward rate: miles earned per lira, for one card/tier/category.\n\nKuveyt Türk's table is 567 rows -- card x tier x category -- so the\nfrontend filters this client-side rather than the route taking three query\nparameters that would each need their own \"list the valid ones\" endpoint."
+      },
+      "ModelOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key",
+            "description": "The value to send back on AskRequest.model: \"gemma\" | \"qwen\" | \"gpt\"."
+          },
+          "model_id": {
+            "type": "string",
+            "title": "Model Id",
+            "description": "What vLLM serves it as, e.g. google/gemma-4-31B-it."
+          },
+          "notes": {
+            "type": "string",
+            "title": "Notes",
+            "description": "Measured behaviour, shown as the row's one-line description."
+          },
+          "context_window": {
+            "type": "integer",
+            "title": "Context Window",
+            "description": "Tokens the model accepts. Currently the value measured into MODELS; it becomes the number vLLM reports once /v1/models is probed."
+          },
+          "supports_thinking": {
+            "type": "boolean",
+            "title": "Supports Thinking",
+            "description": "Whether the thinking switch does anything for this model. False for models that ignore enable_thinking, or whose output is unusable with it on -- the UI disables the switch and says why rather than offering a toggle that changes nothing."
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "model_id",
+          "notes",
+          "context_window",
+          "supports_thinking"
+        ],
+        "title": "ModelOut",
+        "description": "One model the user can pick."
+      },
+      "ModelsResponse": {
+        "properties": {
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/ModelOut"
+            },
+            "type": "array",
+            "title": "Models"
+          },
+          "default": {
+            "type": "string",
+            "title": "Default",
+            "description": "The key used when AskRequest.model is null."
+          }
+        },
+        "type": "object",
+        "required": [
+          "models",
+          "default"
+        ],
+        "title": "ModelsResponse",
+        "description": "Every selectable model, plus which one answers when none is chosen."
       },
       "PaymentRowOut": {
         "properties": {

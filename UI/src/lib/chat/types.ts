@@ -181,8 +181,22 @@ export type ChatRequest = {
   sessionId?: string;
   /** Called when the API creates the server-side session on the first turn. */
   onSessionId?: (sessionId: string) => void;
-  /** The composer's "Think" toggle -- ask for a longer reasoning pass. */
+  /**
+   * The Advanced menu's thinking switch: keep chain-of-thought on.
+   *
+   * Only models that reason by default are affected -- `supports_thinking` on
+   * `GET /api/models` says which, and the menu disables the switch for the rest
+   * rather than offering a toggle that changes nothing.
+   */
   think?: boolean;
+  /**
+   * The Advanced menu's model choice: a key from `GET /api/models`.
+   *
+   * Undefined answers with the server's configured chat model. Per turn, not
+   * per session: the conversation lives in the agent's checkpointer, so
+   * switching mid-thread keeps the history already built up.
+   */
+  model?: string | null;
   /**
    * Files the user staged for this turn.
    *

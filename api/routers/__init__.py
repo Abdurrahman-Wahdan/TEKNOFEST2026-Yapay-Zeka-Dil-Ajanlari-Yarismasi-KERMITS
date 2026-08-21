@@ -8,6 +8,7 @@
     compare_tables  the offline cross-bank comparison-table pool (dataprep.compare)
     search          the corpus index
     chat            the agent, streamed over SSE
+    models          the chat models the composer lets the user pick between
     system          liveness, readiness, and the nightly jobs' last state
 
 `banks` and `compare` serve the live endpoints; `components` and `compare_tables`
@@ -15,7 +16,10 @@ serve what a model read/synthesized out of the corpus, offline. Nothing crosses:
 a live figure never arrives as a component or a comparison-table row.
 """
 
-from . import auth, banks, chat, compare, compare_tables, components, profile, search, system
+from . import (
+    auth, banks, chat, compare, compare_tables, components, models, profile, search,
+    system,
+)
 
 ROUTERS = (
     auth.router,
@@ -26,6 +30,7 @@ ROUTERS = (
     compare_tables.router,
     search.router,
     chat.router,
+    models.router,
     system.router,
 )
 

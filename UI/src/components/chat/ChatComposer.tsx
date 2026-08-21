@@ -2,7 +2,7 @@
 
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { styled, useTheme } from "@mui/material/styles";
-import { ArrowUp, Brain, Eye, Mic, Plus, Square } from "lucide-react";
+import { ArrowUp, Eye, Mic, Plus, SlidersHorizontal, Square } from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
   useCallback,
@@ -19,6 +19,7 @@ import { VuiBox } from "@/components/vision";
 import { useChat } from "@/lib/chat/ChatProvider";
 import type { MentionTarget } from "@/lib/chat/types";
 
+import { AdvancedMenu } from "./AdvancedMenu";
 import { AttachmentTray } from "./AttachmentTray";
 import { MentionMenu, mentionAt } from "./MentionMenu";
 
@@ -131,7 +132,8 @@ export function ChatComposer({
 }) {
   const t = useTranslations("chat");
   const theme = useTheme();
-  const { status, send, stop, think, setThink, attachments } = useChat();
+  const { status, send, stop, think, setThink, model, setModel, attachments } =
+    useChat();
 
   /**
    * On a phone the controls always get their own row.
@@ -143,6 +145,9 @@ export function ChatComposer({
   const narrow = useMediaQuery(theme.breakpoints.down("sm"));
 
   const [value, setValue] = useState("");
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  // Wraps the chip and its menu, so a click on either counts as inside.
+  const advancedRef = useRef<HTMLDivElement>(null);
   /** True once the text no longer fits on one line: controls move below. */
   const [multiline, setMultiline] = useState(false);
   /** True while snapdom is working, so the button cannot be pressed twice. */
@@ -199,6 +204,26 @@ export function ChatComposer({
    * giving them their own positioning context instead.
    */
   const stacked = multiline || narrow;
+
+  // Dismiss the Advanced menu. `mousedown` rather than `click`, matching the
+  // popup shell: the field takes focus on mousedown, so waiting for the click
+  // leaves the menu open through the gesture that moved the caret away from it.
+  useEffect(() => {
+    if (!advancedOpen) return;
+    const onPointerDown = (event: MouseEvent) => {
+      if (advancedRef.current?.contains(event.target as Node)) return;
+      setAdvancedOpen(false);
+    };
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") setAdvancedOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [advancedOpen]);
 
   /** The `@…` the caret is sitting in, if any. */
   const mention = useMemo(() => mentionAt(value, caret), [value, caret]);
@@ -411,11 +436,27 @@ export function ChatComposer({
         gap={0.75}
         sx={{ flexShrink: 0 }}
       >
-        <ThinkChip
-          active={think}
-          label={t("think")}
-          onToggle={() => setThink(!think)}
-        />
+        {/* Relative so the menu anchors to the chip rather than to the shell,
+            and so a click on either lands inside `advancedRef`. */}
+        <VuiBox ref={advancedRef} sx={{ position: "relative", flexShrink: 0 }}>
+          <AdvancedChip
+            open={advancedOpen}
+            // Tinted whenever a setting is off-default, not only while the menu
+            // is open. The Think chip showed that state on its face; folding it
+            // into a menu must not cost the user the ability to see it.
+            changed={think || model !== undefined}
+            label={t("advanced")}
+            onToggle={() => setAdvancedOpen(!advancedOpen)}
+          />
+          {advancedOpen && (
+            <AdvancedMenu
+              think={think}
+              model={model}
+              onThink={setThink}
+              onModel={setModel}
+            />
+          )}
+        </VuiBox>
 
         {/* "Look at this page", not "take a screenshot". The user is asking the
             assistant to see what they see; whether that happens by photographing
@@ -794,15 +835,22 @@ function RoundButton({
  * inactive one. Checked against ChatGPT's, which tints the background and matches
  * the text to it, with no border in either state.
  */
-function ThinkChip({
-  active,
+function AdvancedChip({
+  open,
+  changed,
   label,
   onToggle,
 }: {
-  active: boolean;
+  /** Whether the menu is showing. */
+  open: boolean;
+  /** Whether anything inside the menu is off its default. */
+  changed: boolean;
   label: string;
   onToggle: () => void;
 }) {
+  // One tinted state, two reasons to be in it: the menu is open, or a setting
+  // inside it is non-default. Both mean "there is something to look at here".
+  const active = open || changed;
   return (
     <VuiBox
       component="button"
@@ -811,7 +859,8 @@ function ThinkChip({
         event.stopPropagation();
         onToggle();
       }}
-      aria-pressed={active}
+      aria-haspopup="dialog"
+      aria-expanded={open}
       aria-label={label}
       title={label}
       display="flex"
@@ -874,7 +923,7 @@ function ThinkChip({
         inline content that must inherit colour should not go through it.
       */}
       <span style={{ display: "flex", flexShrink: 0 }}>
-        <Brain size={18} />
+        <SlidersHorizontal size={18} />
       </span>
       <span>{label}</span>
     </VuiBox>

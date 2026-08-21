@@ -309,6 +309,8 @@ def _legacy_answer(
     captures: list[CapturePayload] | None = None,
     tool_results: list[ToolResult] | None = None,
     client_tools: list[str] | None = None,
+    think: bool = False,
+    model: str | None = None,
     user_id: uuid.UUID | None = None,
 ) -> Iterator[StreamEvent]:
     """Answer a question, yielding stream events as the work happens.
@@ -360,7 +362,7 @@ def _legacy_answer(
         )
     )
 
-    llm = get_llm("chat")
+    llm = get_llm(model or "chat", thinking=think)
     tools = []
     # Offered only when the caller says it can run it. A consumer with no browser
     # has no page to look at, and asking it to would strand the exchange waiting
@@ -454,6 +456,8 @@ def _agent_answer(
     captures: list[CapturePayload] | None,
     tool_results: list[ToolResult] | None,
     session_id: uuid.UUID,
+    think: bool = False,
+    model: str | None = None,
 ) -> Iterator[StreamEvent]:
     """Stream the supervisor while keeping its checkpoint state private."""
     from agents.main.agent import build_main_agent, main_thread_id
@@ -466,7 +470,7 @@ def _agent_answer(
         }
     }
     try:
-        agent = build_main_agent()
+        agent = build_main_agent(model=model, thinking=think)
         state = agent.get_state(config)
         seeded = bool((state.values or {}).get("messages"))
         messages: list = [] if seeded else list(history or [])
@@ -502,6 +506,8 @@ def answer(
     captures: list[CapturePayload] | None = None,
     tool_results: list[ToolResult] | None = None,
     client_tools: list[str] | None = None,
+    think: bool = False,
+    model: str | None = None,
     user_id: uuid.UUID | None = None,
     session_id: uuid.UUID | None = None,
 ) -> Iterator[StreamEvent]:
@@ -511,8 +517,15 @@ def answer(
     callers without one preserves the standalone API/test seam while they migrate.
     """
     if session_id is None:
+        # Keyword-passed from here down. These two grew by two arguments in the
+        # middle, and positional calls would have slid `user_id` into `think`
+        # without a word from the type checker.
         yield from _legacy_answer(
-            question, history, context, captures, tool_results, client_tools, user_id
+            question, history, context, captures, tool_results, client_tools,
+            think=think, model=model, user_id=user_id,
         )
         return
-    yield from _agent_answer(question, history, context, captures, tool_results, session_id)
+    yield from _agent_answer(
+        question, history, context, captures, tool_results, session_id,
+        think=think, model=model,
+    )

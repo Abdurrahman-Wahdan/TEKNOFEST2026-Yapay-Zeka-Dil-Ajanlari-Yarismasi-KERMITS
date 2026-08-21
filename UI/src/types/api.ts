@@ -717,6 +717,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Models
+         * @description Every selectable model, with the facts the picker needs to describe it.
+         */
+        get: operations["list_models"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -798,6 +818,17 @@ export interface components {
              * @description Screenshots of the page. Passed to the model as image content blocks -- Gemma 4 takes image input, and screen/UI understanding is one of its stated vision capabilities.
              */
             captures?: components["schemas"]["CapturePayload"][];
+            /**
+             * Think
+             * @description Keep the model's chain-of-thought on. Only changes the request for models that reason by default -- `GET /api/models` reports which with `supports_thinking`, and for the rest the flag is discarded downstream rather than silently altering the answer.
+             * @default false
+             */
+            think: boolean;
+            /**
+             * Model
+             * @description A key from `GET /api/models`. Null answers with the configured chat model, which is what every caller that does not care should send.
+             */
+            model?: string | null;
         };
         /**
          * AttachedContext
@@ -1363,6 +1394,50 @@ export interface components {
             category: string;
             /** Per Lira */
             per_lira: number;
+        };
+        /**
+         * ModelOut
+         * @description One model the user can pick.
+         */
+        ModelOut: {
+            /**
+             * Key
+             * @description The value to send back on AskRequest.model: "gemma" | "qwen" | "gpt".
+             */
+            key: string;
+            /**
+             * Model Id
+             * @description What vLLM serves it as, e.g. google/gemma-4-31B-it.
+             */
+            model_id: string;
+            /**
+             * Notes
+             * @description Measured behaviour, shown as the row's one-line description.
+             */
+            notes: string;
+            /**
+             * Context Window
+             * @description Tokens the model accepts. Currently the value measured into MODELS; it becomes the number vLLM reports once /v1/models is probed.
+             */
+            context_window: number;
+            /**
+             * Supports Thinking
+             * @description Whether the thinking switch does anything for this model. False for models that ignore enable_thinking, or whose output is unusable with it on -- the UI disables the switch and says why rather than offering a toggle that changes nothing.
+             */
+            supports_thinking: boolean;
+        };
+        /**
+         * ModelsResponse
+         * @description Every selectable model, plus which one answers when none is chosen.
+         */
+        ModelsResponse: {
+            /** Models */
+            models: components["schemas"]["ModelOut"][];
+            /**
+             * Default
+             * @description The key used when AskRequest.model is null.
+             */
+            default: string;
         };
         /** PaymentRowOut */
         PaymentRowOut: {
@@ -2989,6 +3064,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_models: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelsResponse"];
                 };
             };
         };

@@ -38,8 +38,16 @@ class Settings(BaseSettings):
     # The full retry window for a live model call.  During this period the
     # tunnel-aware client retries transport/tunnel failures with exponential
     # backoff after refreshing the published tunnel URL.
-    LLM_TIMEOUT: float = Field(default=1800.0, gt=0)
+    LLM_TIMEOUT: float = Field(default=3000.0, gt=0)
     LLM_RETRY_MAX_DELAY_SECONDS: float = Field(default=60.0, gt=0)
+    LLM_MAX_RETRIES: int = Field(
+        default=20,
+        ge=0,
+        description="Transport retries inside the SDK client. The chat "
+        "clients set 0 and retry in TunnelAwareChatOpenAI instead, which "
+        "re-resolves the tunnel first; embeddings have no such wrapper, so "
+        "the SDK's own retries are all they get.",
+    )
     LLM_TEMPERATURE: float = Field(
         default=0.0,
         description="Extraction favours repeatability over variety.",

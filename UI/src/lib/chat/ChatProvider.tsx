@@ -67,6 +67,12 @@ type ChatContextValue = {
   setPopupOpen: (open: boolean) => void;
   think: boolean;
   setThink: (on: boolean) => void;
+  /**
+   * The model answering, as a key from `GET /api/models`. `undefined` means the
+   * server's configured default -- the composer never has to know what that is.
+   */
+  model?: string;
+  setModel: (key: string | undefined) => void;
   /** Files staged for the next message, shared by both surfaces. */
   attachments: ReturnType<typeof useAttachments>;
 
@@ -120,6 +126,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<ChatStatus>("ready");
   const [popupOpen, setPopupOpen] = useState(false);
   const [think, setThink] = useState(false);
+  // Undefined, not a hardcoded "gemma": the default belongs to the server, and
+  // pinning it here would silently override a change made in settings.
+  const [model, setModel] = useState<string | undefined>();
 
   // Staged here rather than in the composer so a file picked in the popup is
   // still attached after expanding to the full page -- the same reason the
@@ -305,6 +314,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                 sessionId: serverSessionId,
                 onSessionId: setServerSessionId,
                 think,
+                model,
                 attachments: stagedFiles,
                 // Omitted rather than sent empty, so the payload says something
                 // only when there is something to say.
@@ -387,7 +397,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         }
       })();
     },
-    [messages, serverSessionId, think, attachments, pathname],
+    [messages, serverSessionId, think, model, attachments, pathname],
   );
 
   const newChat = useCallback(() => {
@@ -457,6 +467,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       setPopupOpen,
       think,
       setThink,
+      model,
+      setModel,
       attachments,
       history,
       activeId,
@@ -472,6 +484,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       newChat,
       popupOpen,
       think,
+      model,
       attachments,
       history,
       activeId,

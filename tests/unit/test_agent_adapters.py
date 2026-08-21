@@ -94,7 +94,9 @@ def test_main_agent_is_rebuilt_without_losing_checkpoint_backed_memory(monkeypat
     checkpointer = object()
     graphs: list[object] = []
 
-    monkeypatch.setattr(main_agent, "get_llm", lambda role: object())
+    # Takes the keyword too: the supervisor now passes the composer's thinking
+    # switch through to the factory.
+    monkeypatch.setattr(main_agent, "get_llm", lambda role, **kwargs: object())
     monkeypatch.setattr(main_agent, "build_specialist_tools", lambda: [])
     monkeypatch.setattr(main_agent, "get_checkpointer", lambda: checkpointer)
 

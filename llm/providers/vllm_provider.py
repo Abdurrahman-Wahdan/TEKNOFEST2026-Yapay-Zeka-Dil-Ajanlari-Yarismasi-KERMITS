@@ -22,8 +22,11 @@ from .base import BaseLLMProvider
 
 logger = logging.getLogger(__name__)
 
-# Turns off chain-of-thought for models that emit it into `content`.
+# Chain-of-thought, asked for explicitly in both directions. Sending only the
+# "off" half meant a model that does not reason by default could never be turned
+# *on*: the flag was accepted, matched no branch, and was dropped.
 THINKING_OFF = {"chat_template_kwargs": {"enable_thinking": False}}
+THINKING_ON = {"chat_template_kwargs": {"enable_thinking": True}}
 
 
 class TunnelAwareChatOpenAI(ChatOpenAI):
@@ -200,6 +203,11 @@ class ModelSpec:
     # `content`. Measured on qwen: turning it off cut 433 output tokens to 36.
     thinking_by_default: bool
 
+    # Whether `enable_thinking` does anything at all. Separate from the above:
+    # gemma reasons only when asked, so it is False by default and True here,
+    # and collapsing the two is what hid its thinking support entirely.
+    supports_thinking: bool = True
+
     # Below this, reasoning can consume the whole budget and `content` comes
     # back empty with finish_reason='length' and no exception.
     min_max_tokens: int = 0
@@ -211,11 +219,15 @@ MODELS: dict[str, ModelSpec] = {
     "gemma": ModelSpec(
         model_id="google/gemma-4-31B-it",
         route="/gemma/v1",
-        context_window=65536,
+        context_window=131072,
         thinking_by_default=False,
-        notes="Fastest and cleanest Turkish. Thinking is off by default and "
-        "should stay off: when enabled the answer is concatenated onto the "
-        "reasoning with no delimiter.",
+        notes="Fastest and cleanest Turkish. Reasons only when asked, and the "
+        "reasoning arrives in the response's `reasoning` field with `content` "
+        "left clean -- measured both ways against the running server: "
+        "enable_thinking=true returned 159 completion tokens with a populated "
+        "`reasoning`, false returned 4 and none. An earlier note here said "
+        "thinking concatenated the answer onto the reasoning; that is no longer "
+        "how this model behaves.",
     ),
     "qwen": ModelSpec(
         model_id="Qwen/Qwen3.6-27B",
@@ -231,6 +243,7 @@ MODELS: dict[str, ModelSpec] = {
         context_window=65536,
         thinking_by_default=False,
         min_max_tokens=300,
+        supports_thinking=False,
         notes="Ignores enable_thinking and writes reasoning to the `reasoning` "
         "field, which LangChain drops. Returns empty content under 300 tokens.",
     ),
@@ -251,7 +264,15 @@ class VLLMProvider(BaseLLMProvider):
 
         thinking = kwargs.pop("thinking", False)
         extra_body = dict(kwargs.pop("extra_body", None) or {})
-        if not thinking and spec.thinking_by_default:
+        # Sent only when it changes the outcome, which is why this is not a plain
+        # `enable_thinking = thinking`. A model already doing what was asked is
+        # left alone deliberately: fewer chat_template_kwargs reach a template
+        # that may not read them. So the flag goes out to turn a reasoning model
+        # off, or to turn a non-reasoning one on -- never to restate a default.
+        if thinking:
+            if spec.supports_thinking and not spec.thinking_by_default:
+                extra_body.update(THINKING_ON)
+        elif spec.thinking_by_default:
             extra_body.update(THINKING_OFF)
 
         max_tokens = kwargs.pop("max_tokens", None)

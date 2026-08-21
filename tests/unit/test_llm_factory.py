@@ -13,7 +13,7 @@ from config.settings import settings
 from config import tunnel
 from llm import get_llm, list_models, resolve_model_key
 from llm.providers import MODELS, get_provider
-from llm.providers.vllm_provider import THINKING_OFF, TunnelAwareChatOpenAI
+from llm.providers.vllm_provider import THINKING_OFF, THINKING_ON, TunnelAwareChatOpenAI
 
 pytestmark = pytest.mark.unit
 
@@ -262,4 +262,30 @@ def test_explicit_arguments_beat_settings():
 def test_list_models_reports_measured_capabilities():
     models = list_models()
     assert set(models) == set(MODELS)
-    assert all(spec.context_window == 65536 for spec in models.values())
+    # Not one shared number. gemma is served with a 131072 window -- read back
+    # from the host's own /v1/models, which is the only place the truth lives:
+    # this constant said 65536 and was half the real figure.
+    assert models["gemma"].context_window == 131072
+    assert models["qwen"].context_window == 65536
+    assert models["gpt"].context_window == 65536
+
+
+def test_thinking_can_be_turned_on_for_a_model_that_does_not_reason_by_default():
+    """gemma reasons only when asked, and the flag is what asks.
+
+    Measured against the running host: enable_thinking=true came back with a
+    populated `reasoning` field and 159 completion tokens, false with 4 and none.
+    Before this, the "on" half was never sent and the switch could not reach it.
+    """
+    assert MODELS["gemma"].thinking_by_default is False
+    assert MODELS["gemma"].supports_thinking is True
+    assert get_llm("gemma", thinking=True).extra_body == THINKING_ON
+    # Still left alone when nothing is asked for.
+    assert get_llm("gemma").extra_body is None
+
+
+def test_thinking_is_not_offered_where_the_model_ignores_it():
+    """gpt discards enable_thinking, so nothing is sent in either direction."""
+    assert MODELS["gpt"].supports_thinking is False
+    assert get_llm("gpt", thinking=True).extra_body is None
+    assert get_llm("gpt").extra_body is None

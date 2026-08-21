@@ -231,8 +231,10 @@ def ask(body: AskRequest, user: CurrentUser, session: DbSession) -> StreamingRes
                     body.captures,
                     body.tool_results,
                     body.client_tools,
-                    user_id,
-                    chat_id,
+                    think=body.think,
+                    model=body.model,
+                    user_id=user_id,
+                    session_id=chat_id,
                 )
 
             for event in _with_heartbeats(produce_events):
