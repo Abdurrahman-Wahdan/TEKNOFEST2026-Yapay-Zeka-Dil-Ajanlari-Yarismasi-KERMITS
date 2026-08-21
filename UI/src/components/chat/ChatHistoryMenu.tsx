@@ -94,6 +94,15 @@ export function ChatHistoryMenu() {
               border: "1px solid var(--border)",
               backgroundImage: "none",
               borderRadius: "var(--radius-md)",
+              // Match the drawer's inset navigation rows. MUI may change the
+              // list's right padding to reserve scrollbar space, so the equal
+              // horizontal gutter belongs to each row below instead.
+              "& .MuiMenu-list": {
+                display: "flex",
+                flexDirection: "column",
+                gap: 0.5,
+                py: 1,
+              },
             },
           },
         }}
@@ -115,12 +124,17 @@ export function ChatHistoryMenu() {
                 gap={1}
                 px={1.5}
                 py={1}
+                mx={1}
                 sx={{
+                  // Exact radius used by the drawer's selected navigation row.
+                  borderRadius: "15px",
                   // Tinted rather than ticked: the row the user is already reading
                   // does not need a second affordance explaining itself.
                   backgroundColor: isActive ? "var(--muted)" : "transparent",
+                  transition: "background-color 150ms ease",
                   "&:hover": { backgroundColor: "var(--muted)" },
                   "&:hover .tf26-delete": { opacity: 1 },
+                  "&:focus-within": { backgroundColor: "var(--muted)" },
                 }}
               >
                 <VuiBox
@@ -139,6 +153,11 @@ export function ChatHistoryMenu() {
                     textAlign: "start",
                     cursor: "pointer",
                     fontFamily: "inherit",
+                    borderRadius: "inherit",
+                    "&:focus-visible": {
+                      outline: "2px solid var(--ring)",
+                      outlineOffset: 2,
+                    },
                   }}
                 >
                   <VuiTypography

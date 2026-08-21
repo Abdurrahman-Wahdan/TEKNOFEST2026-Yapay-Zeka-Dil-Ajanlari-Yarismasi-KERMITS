@@ -51,7 +51,12 @@ export function MentionMenu({
         backgroundColor: "var(--popover)",
         border: "1px solid var(--border)",
         boxShadow: "0 8px 24px rgb(0 0 0 / 0.18)",
-        py: 0.5,
+        // The drawer's selected page is an inset rounded rectangle rather than
+        // an edge-to-edge strip. Mentions use the same gutter and row rhythm.
+        display: "flex",
+        flexDirection: "column",
+        gap: 0.5,
+        p: 1,
       }}
     >
       {targets.length === 0 ? (
@@ -85,8 +90,15 @@ export function MentionMenu({
               cursor: "pointer",
               textAlign: "left",
               fontFamily: "inherit",
+              // Exact radius used by the drawer's selected navigation row.
+              borderRadius: "15px",
               backgroundColor: index === activeIndex ? "var(--muted)" : "transparent",
+              transition: "background-color 150ms ease",
               "&:hover": { backgroundColor: "var(--muted)" },
+              "&:focus-visible": {
+                outline: "2px solid var(--ring)",
+                outlineOffset: 2,
+              },
             }}
           >
             {/* --control-ink: this glyph is the row's only image/file

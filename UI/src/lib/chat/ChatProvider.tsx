@@ -17,6 +17,7 @@ import {
   historyServerSnapshot,
   historySnapshot,
   newConversationId,
+  newMessageId,
   subscribeHistory,
   titleFor,
   type StoredConversation,
@@ -55,6 +56,8 @@ import { useAttachments } from "./useAttachments";
 
 type ChatContextValue = {
   messages: AgentMessage[];
+  /** Persisted server conversation used when a kept table gets its context. */
+  serverSessionId?: string;
   status: ChatStatus;
   send: (text: string) => void;
   stop: () => void;
@@ -86,16 +89,6 @@ export function useChat(): ChatContextValue {
   }
   return value;
 }
-
-/**
- * Ids for messages.
- *
- * A counter, not `crypto.randomUUID()` or `Date.now()`: these ids are React keys
- * for a list rendered on both server and client, and anything non-deterministic
- * in that position is a hydration mismatch waiting to happen.
- */
-let messageSeq = 0;
-const nextId = (prefix: string) => `${prefix}-${++messageSeq}`;
 
 /**
  * How many rounds of client tool use one question may take.
@@ -219,7 +212,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       abortRef.current = controller;
 
       const userMessage: AgentMessage = {
-        id: nextId("user"),
+        id: newMessageId("user"),
         role: "user",
         parts: [
           // Attachments first, above the question, as they sit in the composer.
@@ -246,7 +239,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           ...(trimmed ? [{ type: "text" as const, text: trimmed }] : []),
         ],
       };
-      const assistantId = nextId("assistant");
+      const assistantId = newMessageId("assistant");
 
       // The assistant's message is appended empty, up front. The alternative --
       // waiting for the first delta to create it -- means the list has nothing to
@@ -455,6 +448,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       messages,
+      serverSessionId,
       status,
       send,
       stop,
@@ -471,6 +465,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }),
     [
       messages,
+      serverSessionId,
       status,
       send,
       stop,

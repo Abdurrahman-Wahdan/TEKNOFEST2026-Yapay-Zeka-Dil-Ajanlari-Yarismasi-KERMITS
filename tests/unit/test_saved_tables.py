@@ -21,7 +21,6 @@ import pytest
 
 from api.saved_tables import (
     SLUG_CHARS,
-    TITLE_CHARS,
     fingerprint,
     save_table_view,
     slugify,
@@ -273,11 +272,11 @@ def test_a_model_supplied_slug_is_slugified_too():
     assert saved.slug == "konut-tablosu"
 
 
-def test_the_title_is_clipped_to_the_column_width():
+def test_the_title_is_not_clipped():
     long = "K" * 300
     _, saved, store = _save(_table(title=long))
-    assert len(store.added[0].title) == TITLE_CHARS
-    assert saved.title == long[:TITLE_CHARS]
+    assert store.added[0].title == long
+    assert saved.title == long
 
 
 def test_a_missing_title_is_refused_in_prose():

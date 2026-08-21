@@ -1,5 +1,7 @@
 """Adapters that make private bank agents callable by the main agent."""
 
+import logging
+
 from langchain.tools import ToolRuntime
 from langchain_core.tools import BaseTool, StructuredTool
 from pydantic import BaseModel, Field
@@ -9,6 +11,8 @@ from banks.factory import get_bank
 from .registry import SpecialistSpec
 from .specialists import build_specialist, specialist_thread_id
 from .runtime import AgentContext
+
+logger = logging.getLogger(__name__)
 
 
 class DelegateInput(BaseModel):
@@ -56,6 +60,11 @@ def build_specialist_tool(spec: SpecialistSpec) -> BaseTool:
                 "bank's standard live rate for this scenario."
             )
         try:
+            # This is intentionally blocking. LangChain's tool node waits for
+            # this callable to return, while the specialist's tunnel-aware model
+            # refreshes and retries internally. The main agent therefore sees
+            # either the specialist's final response or a terminal failure after
+            # the configured retry window, never an in-progress placeholder.
             result = build_specialist(spec.bank, monthly_profit_rate).invoke(
                 {"messages": [("user", request)]},
                 config={"configurable": {"thread_id": specialist_thread_id(session_id, spec.bank)}},
@@ -63,6 +72,9 @@ def build_specialist_tool(spec: SpecialistSpec) -> BaseTool:
             )
             return _final_text(result)
         except Exception as exc:  # noqa: BLE001 - a single bank must not end the supervisor turn
+            logger.exception(
+                "%s specialist exhausted its model retry window", spec.display_name
+            )
             return f"{spec.display_name} live specialist failed ({type(exc).__name__})."
 
     return StructuredTool.from_function(

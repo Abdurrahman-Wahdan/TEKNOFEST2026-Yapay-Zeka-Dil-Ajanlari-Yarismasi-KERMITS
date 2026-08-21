@@ -1801,6 +1801,53 @@
         }
       }
     },
+    "/api/chat/table-metadata": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Create Table Metadata",
+        "description": "Give one kept table a durable title and future-chat handoff.",
+        "operationId": "create_table_metadata",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TableMetadataRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableMetadataOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/chat/ask": {
       "post": {
         "tags": [
@@ -3596,8 +3643,6 @@
           },
           "title": {
             "type": "string",
-            "maxLength": 160,
-            "minLength": 1,
             "title": "Title"
           },
           "components": {
@@ -3958,6 +4003,152 @@
         ],
         "title": "TableListOut",
         "description": "Every table in one category, plus the subcategories present in it.\n\n`subcategories` is derived from the tables actually returned, not the\nglobal registry — a category-scoped dropdown should never offer a\nsubcategory that has zero tables under this category."
+      },
+      "TableMetadataColumn": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "key"
+        ],
+        "title": "TableMetadataColumn"
+      },
+      "TableMetadataContextMessage": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "assistant"
+            ],
+            "title": "Role"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          }
+        },
+        "type": "object",
+        "required": [
+          "role",
+          "content"
+        ],
+        "title": "TableMetadataContextMessage",
+        "description": "One visible chat turn supplied to the table-metadata specialist."
+      },
+      "TableMetadataOut": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "description"
+        ],
+        "title": "TableMetadataOut"
+      },
+      "TableMetadataRequest": {
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Session Id"
+          },
+          "conversation": {
+            "items": {
+              "$ref": "#/components/schemas/TableMetadataContextMessage"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Conversation"
+          },
+          "table": {
+            "$ref": "#/components/schemas/TableMetadataSnapshot"
+          }
+        },
+        "type": "object",
+        "required": [
+          "session_id",
+          "conversation",
+          "table"
+        ],
+        "title": "TableMetadataRequest"
+      },
+      "TableMetadataRow": {
+        "properties": {
+          "cells": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Cells"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cells"
+        ],
+        "title": "TableMetadataRow"
+      },
+      "TableMetadataSnapshot": {
+        "properties": {
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/TableMetadataColumn"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Columns"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/TableMetadataRow"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Rows"
+          }
+        },
+        "type": "object",
+        "required": [
+          "columns",
+          "rows"
+        ],
+        "title": "TableMetadataSnapshot",
+        "description": "The exact table selected in the browser, without inferred prose."
       },
       "TableSummaryOut": {
         "properties": {

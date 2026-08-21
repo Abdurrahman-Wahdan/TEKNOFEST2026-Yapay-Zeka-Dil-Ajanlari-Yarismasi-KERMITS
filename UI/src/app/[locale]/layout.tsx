@@ -81,6 +81,7 @@ export default async function LocaleLayout({
     <html
       lang={locale}
       className={`${openSans.variable} ${geist.variable}${theme === "dark" ? " dark" : ""}`}
+      data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
       <head>

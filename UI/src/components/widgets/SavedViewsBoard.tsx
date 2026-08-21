@@ -126,6 +126,12 @@ function SavedViewCard({
 }) {
   const t = useTranslations("aiOverview");
   const specs = savedViewSpecs(view);
+  const description = specs.find((spec) => spec.type === "table")?.props;
+  const subtitle =
+    typeof description === "object" && description !== null &&
+    typeof (description as { subtitle?: unknown }).subtitle === "string"
+      ? (description as { subtitle: string }).subtitle
+      : "";
 
   return (
     <Card sx={{ height: "100%", opacity: deleting ? 0.5 : 1 }}>
@@ -143,6 +149,11 @@ function SavedViewCard({
           <VuiTypography variant="lg" color="white" fontWeight="bold">
             {savedViewTitle(view, t("untitled"))}
           </VuiTypography>
+          {subtitle && (
+            <VuiTypography variant="caption" color="text" mt={0.5}>
+              {subtitle}
+            </VuiTypography>
+          )}
           <VuiTypography variant="caption" color="text">
             {t("savedAt", { date: formatDate(view.updated_at, locale) })}
           </VuiTypography>

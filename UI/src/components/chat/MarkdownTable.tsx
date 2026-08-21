@@ -10,14 +10,15 @@ import { Link } from "@/i18n/navigation";
 import { VuiBox, VuiButton, VuiTypography } from "@/components/vision";
 import { api } from "@/lib/api";
 import {
-  headingBefore,
   tableFromHast,
   type HastNode,
 } from "@/lib/chat/markdown-table";
+import { conversationForTableMetadata } from "@/lib/chat/table-metadata";
 import { slugifyTitle } from "@/lib/saved-view";
 import { TABLE_GUTTER, tableRowHoverSx, tableRule } from "@/lib/table-style";
 
 import { useMarkdownTableTools } from "./markdown-table-context";
+import { useChat } from "@/lib/chat/ChatProvider";
 import { domProps, type El } from "./markdown-dom";
 
 /** Hooked by the wrapper's hover rule below. */
@@ -76,28 +77,39 @@ export function MdTable(props: El<"table">) {
  */
 function SaveToDashboard({ node }: { node: HastNode | undefined }) {
   const t = useTranslations("chat");
-  const { streaming, source } = useMarkdownTableTools();
+  const { streaming } = useMarkdownTableTools();
+  const { messages, serverSessionId } = useChat();
   const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [detail, setDetail] = useState<string>("");
 
   const props = streaming ? null : tableFromHast(node);
   // No header and no rows: a fragment, and saving it would save nothing.
   if (!props) return null;
-
-  const title =
-    headingBefore(source, node?.position?.start?.offset) ??
-    t("savedTableTitle", {
-      label: props.columns?.[0]?.label ?? "",
-      count: props.rows.length,
-    });
+  const tableProps = props;
 
   async function save() {
     setState("saving");
     try {
+      if (!serverSessionId) throw new Error(t("saveNeedsConversation"));
+      const metadata = await api.tableMetadata({
+        session_id: serverSessionId,
+        conversation: conversationForTableMetadata(messages),
+        table: {
+          columns: (tableProps.columns ?? []).map(({ key, label }) => ({ key, label: label ?? "" })),
+          rows: tableProps.rows.map(({ cells }) => ({ cells })),
+        },
+      });
       await api.saveView({
-        slug: slugifyTitle(title),
-        title,
-        components: [{ type: "table", props: { ...props, title } }],
+        slug: slugifyTitle(metadata.title),
+        title: metadata.title,
+        components: [{
+          type: "table",
+          props: {
+            ...tableProps,
+            title: metadata.title,
+            subtitle: metadata.description,
+          },
+        }],
         // The same flag the agent's own writes set: this table was composed by
         // the assistant, whoever pressed the button.
         generated: true,

@@ -12,9 +12,8 @@ and without a language model. That is deliberate: the model host is the one piec
 of this feature nobody can reach yet.
 
 **Nothing here truncates table data.** No row cap, no cell-length cap, no
-"showing 25 of 30". A table the agent saved is the table the user sees. The two
-clips that do exist -- 80 characters of slug, 160 of title -- are column limits on
-identifiers and headings, not on content, and the title clip is logged.
+"showing 25 of 30". A table the agent saved is the table the user sees. Only the
+slug is clipped because it is an identifier; the human-readable title is not.
 """
 
 import hashlib
@@ -42,10 +41,8 @@ logger = logging.getLogger(__name__)
 CITE_KEY = "kaynak"
 CITE_LABEL = "Kaynak"
 
-# Column limits from `saved_views` (api/db/models.py:118-119), mirrored in
-# `SavedViewIn` (api/schemas/profile.py:52-53).
+# The slug remains a bounded identifier. The title is unbounded text.
 SLUG_CHARS = 80
-TITLE_CHARS = 160
 
 # Turkish letters, transliterated to ASCII. Needed because the slug pattern is
 # `^[a-z0-9-]{1,80}$`: "Konut finansmanı" has to become `konut-finansmani`, and a
@@ -243,13 +240,7 @@ def save_table_view(
         requested = str(args.get("slug") or "").strip()
         slug = slugify(requested or title)
 
-        stored_title = title[:TITLE_CHARS]
-        if stored_title != title:
-            # A user-visible string just got shorter. Nobody should discover that
-            # by noticing a heading looks odd.
-            logger.warning(
-                "Saved view title clipped to %d chars: %r", TITLE_CHARS, title
-            )
+        stored_title = title
 
         with scope() as store:
             view = store.scalar(

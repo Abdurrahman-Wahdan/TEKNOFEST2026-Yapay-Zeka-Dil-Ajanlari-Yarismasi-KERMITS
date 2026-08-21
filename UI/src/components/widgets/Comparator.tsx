@@ -118,7 +118,11 @@ export function Comparator() {
   // the right one without casting away the types the client already has.
   const [query, setQuery] = useState<RunQuery | null>(null);
 
-  const { data: banks } = useQuery({ queryKey: ["banks"], queryFn: api.banks });
+  const {
+    data: banks,
+    isPending: banksPending,
+    isError: banksError,
+  } = useQuery({ queryKey: ["banks"], queryFn: api.banks });
   const { data: familyList } = useQuery({ queryKey: ["families"], queryFn: api.families });
 
   const spec = CATEGORIES[category];
@@ -175,7 +179,11 @@ export function Comparator() {
   // The mile-rate table is read-only reference data, like the rates board —
   // it loads on selecting a bank rather than waiting for a submit, because
   // there is nothing to submit: no amount, no term, just the published table.
-  const { data: mileRates } = useQuery({
+  const {
+    data: mileRates,
+    isPending: mileRatesPending,
+    isError: mileRatesError,
+  } = useQuery({
     queryKey: ["mileRates", effectiveSingleBank],
     queryFn: () => api.mileRates(effectiveSingleBank),
     enabled: category === "miles" && Boolean(effectiveSingleBank),
@@ -417,6 +425,33 @@ export function Comparator() {
     return null;
   })();
 
+  // Each category owns its loading state. The submit-driven query is disabled
+  // for the two read-only boards, and TanStack correctly keeps such a query in
+  // `pending` because it has no data. Letting that unrelated state control the
+  // Results card is what left FX Rates saying "Loading..." after its stream and
+  // REST fallbacks had already returned.
+  const ratesHaveData = stream.live || rateQueries.some((q) => (q.data?.length ?? 0) > 0);
+  const ratesPending = category === "rates"
+    && !ratesHaveData
+    && (banksPending || rateQueries.some((q) => q.isPending || q.isFetching));
+  const ratesError = category === "rates"
+    && !ratesHaveData
+    && (banksError || (rateQueries.length > 0 && rateQueries.every((q) => q.isError)));
+  const submitDriven = category !== "rates" && category !== "miles";
+  const resultsPending = category === "rates"
+    ? ratesPending
+    : category === "miles"
+      ? mileRatesPending
+      : submitDriven && query !== null && result.isPending;
+  const resultsError = category === "rates"
+    ? ratesError
+    : category === "miles"
+      ? mileRatesError
+      : submitDriven && query !== null && result.isError;
+  const resultsVisible = category === "rates" || category === "miles"
+    ? resultsPending || resultsError || table !== null
+    : query !== null;
+
   // The user's choice when they have made one, otherwise the category's own
   // ranking. Passed to the table as well as to the sort, so the header shows
   // which column the answer is ordered by rather than looking unsorted.
@@ -522,6 +557,7 @@ export function Comparator() {
     title: tableTitle,
     about: tableAbout,
     bankLabels: bankNames,
+    groups: shownGroups,
   });
 
   const run = () => {
@@ -748,7 +784,6 @@ export function Comparator() {
                 value={monthlyProfitRate}
                 fullWidth={false}
                 minWidth="12rem"
-                placeholder="Bank live rate"
                 onChange={(next) => { setMonthlyProfitRate(next); setQuery(null); }}
               />
             )}
@@ -846,7 +881,7 @@ export function Comparator() {
           for the user to press Compare. Without this, an empty "Results" card
           sat under the form on every category before a single request had
           been made. */}
-      {(category === "rates" || category === "miles" ? table : query !== null) && (
+      {resultsVisible && (
         <Card ref={resultsRef}>
           <VuiBox mb="22px" display="flex" alignItems="center" gap="12px" flexWrap="wrap">
             <VuiTypography variant="lg" color="white">{t("results")}</VuiTypography>
@@ -866,11 +901,11 @@ export function Comparator() {
             </VuiBox>
           )}
 
-          {result.isPending ? (
+          {resultsPending ? (
             <VuiTypography variant="button" color="text" fontWeight="regular">
               {tc("loading")}
             </VuiTypography>
-          ) : result.isError ? (
+          ) : resultsError ? (
             <VuiTypography variant="button" color="text" fontWeight="regular">
               {tc("error")}
             </VuiTypography>

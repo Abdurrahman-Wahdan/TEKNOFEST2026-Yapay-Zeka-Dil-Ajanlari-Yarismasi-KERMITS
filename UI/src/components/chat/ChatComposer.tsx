@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -69,7 +70,11 @@ const LINE_PX = 24;
  * and one that oscillates.
  */
 const SINGLE_ROW_LEFT_PX = 56;
-const SINGLE_ROW_RIGHT_PX = 168;
+// Used only until the right-hand controls have been measured. The real reserve
+// is derived from their rendered width below, so adding a control or translating
+// the Think label cannot make the field run underneath the buttons again.
+const SINGLE_ROW_RIGHT_FALLBACK_PX = 224;
+const SINGLE_ROW_CONTROL_CLEARANCE_PX = 20;
 
 /** How long each example placeholder holds before the next one blurs in. */
 const PLACEHOLDER_HOLD_MS = 3000;
@@ -148,6 +153,34 @@ export function ChatComposer({
   const fieldRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const shellRef = useRef<HTMLDivElement>(null);
+  const rightControlsRef = useRef<HTMLDivElement>(null);
+  const [singleRowRightPx, setSingleRowRightPx] = useState(
+    SINGLE_ROW_RIGHT_FALLBACK_PX,
+  );
+
+  /**
+   * Reserve exactly the space occupied by the right-hand controls.
+   *
+   * This used to be a fixed 168px. Once the page-view button joined Think, mic
+   * and send, the cluster became wider than that reserve: text painted beneath
+   * the icons and the wrap probe made the same late decision. A ResizeObserver
+   * also covers translated labels and responsive font changes.
+   */
+  useLayoutEffect(() => {
+    const controls = rightControlsRef.current;
+    if (!controls) return;
+
+    const measure = () => {
+      const next = Math.ceil(controls.getBoundingClientRect().width)
+        + SINGLE_ROW_CONTROL_CLEARANCE_PX;
+      setSingleRowRightPx((current) => (current === next ? current : next));
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(controls);
+    return () => observer.disconnect();
+  }, []);
 
   // `submitted` counts as busy: the wait before the first token is exactly when
   // someone wants to cancel, so the stop button has to be live there too.
@@ -213,7 +246,7 @@ export function ChatComposer({
     // 1. Would this text fit on one line in the single-row layout? Probed at that
     //    width explicitly, then the override is removed.
     const shellWidth = shellRef.current?.clientWidth ?? 0;
-    const probeWidth = Math.max(shellWidth - SINGLE_ROW_LEFT_PX - SINGLE_ROW_RIGHT_PX, 40);
+    const probeWidth = Math.max(shellWidth - SINGLE_ROW_LEFT_PX - singleRowRightPx, 40);
     el.style.width = `${probeWidth}px`;
     el.style.height = "auto";
     // A couple of pixels of slack: a single line's scrollHeight is not exactly the
@@ -231,7 +264,7 @@ export function ChatComposer({
     el.style.overflowY = needed > MAX_FIELD_PX ? "auto" : "hidden";
 
     setMultiline(wrapped);
-  }, [value]);
+  }, [singleRowRightPx, value]);
 
   useEffect(() => {
     if (autoFocus) fieldRef.current?.focus();
@@ -371,45 +404,53 @@ export function ChatComposer({
 
       <VuiBox sx={{ flex: 1 }} />
 
-      <ThinkChip
-        active={think}
-        label={t("think")}
-        onToggle={() => setThink(!think)}
-      />
-
-      {/* "Look at this page", not "take a screenshot". The user is asking the
-          assistant to see what they see; whether that happens by photographing
-          the page or reading its markup is ours to decide, and naming the
-          mechanism only invites questions about it. The agent can ask for the
-          same thing itself -- this is the affordance for a user who already
-          knows they want it. */}
-      <RoundButton
-        label={capturing ? t("capturing") : t("capture")}
-        onClick={capture}
-        disabled={capturing}
+      <VuiBox
+        ref={rightControlsRef}
+        display="flex"
+        alignItems="center"
+        gap={0.75}
+        sx={{ flexShrink: 0 }}
       >
-        <Eye size={20} />
-      </RoundButton>
+        <ThinkChip
+          active={think}
+          label={t("think")}
+          onToggle={() => setThink(!think)}
+        />
 
-      {/* Kept because the design has it and dictation is a real possibility, but
-          disabled: there is no speech-to-text pipeline yet, and a button that
-          silently does nothing is worse than one that says it cannot. */}
-      <RoundButton label={t("voice")} onClick={() => {}} disabled>
-        <Mic size={20} />
-      </RoundButton>
+        {/* "Look at this page", not "take a screenshot". The user is asking the
+            assistant to see what they see; whether that happens by photographing
+            the page or reading its markup is ours to decide, and naming the
+            mechanism only invites questions about it. The agent can ask for the
+            same thing itself -- this is the affordance for a user who already
+            knows they want it. */}
+        <RoundButton
+          label={capturing ? t("capturing") : t("capture")}
+          onClick={capture}
+          disabled={capturing}
+        >
+          <Eye size={20} />
+        </RoundButton>
 
-      <RoundButton
-        label={isBusy ? t("stop") : t("send")}
-        onClick={() => (isBusy ? stop() : submit())}
-        disabled={!isBusy && !hasText}
-        filled
-      >
-        {isBusy ? (
-          <Square size={14} fill="currentColor" />
-        ) : (
-          <ArrowUp size={18} />
-        )}
-      </RoundButton>
+        {/* Kept because the design has it and dictation is a real possibility, but
+            disabled: there is no speech-to-text pipeline yet, and a button that
+            silently does nothing is worse than one that says it cannot. */}
+        <RoundButton label={t("voice")} onClick={() => {}} disabled>
+          <Mic size={20} />
+        </RoundButton>
+
+        <RoundButton
+          label={isBusy ? t("stop") : t("send")}
+          onClick={() => (isBusy ? stop() : submit())}
+          disabled={!isBusy && !hasText}
+          filled
+        >
+          {isBusy ? (
+            <Square size={14} fill="currentColor" />
+          ) : (
+            <ArrowUp size={18} />
+          )}
+        </RoundButton>
+      </VuiBox>
     </>
   );
 
@@ -502,7 +543,7 @@ export function ChatComposer({
               // ends. Multiline: they are on their own row below and the text gets
               // the full width.
               pl: stacked ? 2.5 : `${SINGLE_ROW_LEFT_PX}px`,
-              pr: stacked ? 2.5 : `${SINGLE_ROW_RIGHT_PX}px`,
+              pr: stacked ? 2.5 : `${singleRowRightPx}px`,
               transition: "padding 200ms ease",
             }}
           >

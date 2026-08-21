@@ -116,7 +116,7 @@ class SavedView(UUIDMixin, TimestampMixin, Base):
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     slug: Mapped[str] = mapped_column(String(80), nullable=False)
-    title: Mapped[str] = mapped_column(String(160), nullable=False)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
     components: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     # True when the AI Overview page composed it rather than the user.
     generated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

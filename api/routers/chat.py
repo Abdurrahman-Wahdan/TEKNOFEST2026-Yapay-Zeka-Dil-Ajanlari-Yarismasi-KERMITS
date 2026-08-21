@@ -22,12 +22,14 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 
 from ..agent import CLIENT_TOOLS, answer
+from agents.table_metadata import generate_table_metadata
 from agents.shared.checkpoints import delete_session_checkpoints
 from ..db.models import ChatMessage, ChatSession
 from ..db.session import session_scope
 from ..deps import CurrentUser, DbSession
 from ..schemas.chat import (
     AskRequest, ChatMessageOut, ChatSessionDetail, ChatSessionOut, StreamEvent,
+    TableMetadataOut, TableMetadataRequest,
 )
 
 logger = logging.getLogger(__name__)
@@ -123,6 +125,33 @@ def delete_chat_session(
     delete_session_checkpoints(str(session_id))
     session.delete(chat)
     session.commit()
+
+
+@router.post("/table-metadata", response_model=TableMetadataOut)
+def create_table_metadata(
+    body: TableMetadataRequest, user: CurrentUser, session: DbSession
+) -> TableMetadataOut:
+    """Give one kept table a durable title and future-chat handoff."""
+    _own_session(session, user, body.session_id)
+    try:
+        result = generate_table_metadata(
+            [(message.role, message.content) for message in body.conversation],
+            body.table.model_dump(mode="json"),
+        )
+    except Exception as exc:
+        logger.exception(
+            "Table metadata generation failed session=%s user=%s",
+            body.session_id,
+            user.id,
+        )
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Could not create context for this table. Please try again.",
+        ) from exc
+    return TableMetadataOut(
+        title=result.title,
+        description=result.description,
+    )
 
 
 @router.post(

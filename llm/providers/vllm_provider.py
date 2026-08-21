@@ -13,6 +13,7 @@ from typing import Any
 import httpx
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_openai import ChatOpenAI
+from openai import APIConnectionError, APITimeoutError
 
 from config.settings import settings
 from config import tunnel
@@ -37,11 +38,31 @@ class TunnelAwareChatOpenAI(ChatOpenAI):
         A stale tunnel is observed as 404; reverse-proxy outages use the listed
         gateway statuses or a transport failure.
         """
-        if isinstance(
-            exc, (ConnectionError, TimeoutError, OSError, httpx.TransportError)
-        ):
-            return True
-        return getattr(exc, "status_code", None) in {404, 502, 503, 504}
+        # The OpenAI SDK wraps httpx connection/reset/timeout exceptions in its
+        # own APIConnectionError hierarchy.  Looking only for httpx exceptions
+        # therefore misses the exact error LangChain gives us and skips tunnel
+        # refresh entirely.  Walk the exception chain as well so this remains
+        # correct if another client wrapper adds one more layer later.
+        current: BaseException | None = exc
+        seen: set[int] = set()
+        while current is not None and id(current) not in seen:
+            seen.add(id(current))
+            if isinstance(
+                current,
+                (
+                    APIConnectionError,
+                    APITimeoutError,
+                    ConnectionError,
+                    TimeoutError,
+                    OSError,
+                    httpx.TransportError,
+                ),
+            ):
+                return True
+            if getattr(current, "status_code", None) in {404, 502, 503, 504}:
+                return True
+            current = current.__cause__ or current.__context__
+        return False
 
     def _recover_tunnel(self, exc: Exception) -> None:
         if not self._is_tunnel_failure(exc):

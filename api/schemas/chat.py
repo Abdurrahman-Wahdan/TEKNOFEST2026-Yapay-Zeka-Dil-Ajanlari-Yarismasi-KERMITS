@@ -50,6 +50,40 @@ class ChatSessionDetail(ChatSessionOut):
     messages: list[ChatMessageOut] = Field(default_factory=list)
 
 
+class TableMetadataContextMessage(BaseModel):
+    """One visible chat turn supplied to the table-metadata specialist."""
+
+    role: Literal["user", "assistant"]
+    content: str
+
+
+class TableMetadataColumn(BaseModel):
+    key: str = Field(min_length=1)
+    label: str = ""
+
+
+class TableMetadataRow(BaseModel):
+    cells: dict[str, str | int | float | bool | None]
+
+
+class TableMetadataSnapshot(BaseModel):
+    """The exact table selected in the browser, without inferred prose."""
+
+    columns: list[TableMetadataColumn] = Field(min_length=1)
+    rows: list[TableMetadataRow] = Field(min_length=1)
+
+
+class TableMetadataRequest(BaseModel):
+    session_id: uuid.UUID
+    conversation: list[TableMetadataContextMessage] = Field(min_length=1)
+    table: TableMetadataSnapshot
+
+
+class TableMetadataOut(BaseModel):
+    title: str
+    description: str
+
+
 class ToolResult(BaseModel):
     """What the browser sent back after looking at the page.
 

@@ -7,6 +7,7 @@ import pytest
 import httpx
 from langchain_core.messages import AIMessageChunk
 from langchain_core.outputs import ChatGenerationChunk
+from openai import APIConnectionError, APITimeoutError
 
 from config.settings import settings
 from config import tunnel
@@ -53,6 +54,18 @@ def test_factory_returns_a_tunnel_aware_model_with_sdk_retries_disabled():
     model = get_llm("gemma")
     assert isinstance(model, TunnelAwareChatOpenAI)
     assert model.max_retries == 0
+
+
+def test_openai_wrapped_connection_failures_trigger_tunnel_recovery():
+    """LangChain surfaces OpenAI errors, not the wrapped httpx exception."""
+    request = httpx.Request("POST", "https://stale-tunnel.example/gemma/v1/chat/completions")
+
+    assert TunnelAwareChatOpenAI._is_tunnel_failure(
+        APIConnectionError(request=request)
+    )
+    assert TunnelAwareChatOpenAI._is_tunnel_failure(
+        APITimeoutError(request=request)
+    )
 
 
 def test_recovery_replaces_the_failed_http_client():

@@ -1,7 +1,5 @@
 """Build the main LangGraph supervisor."""
 
-from functools import lru_cache
-
 from langchain.agents import create_agent
 
 from llm import get_llm
@@ -12,9 +10,14 @@ from ..shared.runtime import AgentContext
 from .prompt import NAME
 
 
-@lru_cache(maxsize=1)
 def build_main_agent():
-    """Compile the supervisor with exactly the ten bank-specialist tools."""
+    """Compile a fresh supervisor with exactly ten bank-specialist tools.
+
+    Conversation state lives in the checkpointer, not in this graph object.
+    Rebuilding per request prevents the supervisor itself from retaining an old
+    tunnel-bound model client between chat turns while preserving its private
+    ``<session>:main`` memory.
+    """
     return create_agent(
         model=get_llm("chat"),
         tools=build_specialist_tools(),

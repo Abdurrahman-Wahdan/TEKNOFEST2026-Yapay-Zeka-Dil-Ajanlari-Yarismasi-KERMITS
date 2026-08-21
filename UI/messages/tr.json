@@ -175,6 +175,7 @@
     "saving": "Saklanıyor…",
     "saved": "AI Görünümü sayfanıza eklendi.",
     "saveFailed": "Saklanamadı",
+    "saveNeedsConversation": "Tabloyu saklamadan önce sohbet yanıtının tamamlanmasını bekleyin.",
     "openDashboard": "Sayfayı aç",
     "savedTableTitle": "{label} ({count} satır)"
   },

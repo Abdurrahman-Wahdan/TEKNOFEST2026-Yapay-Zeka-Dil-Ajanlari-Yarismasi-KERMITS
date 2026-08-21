@@ -103,6 +103,49 @@ describe("tableToMarkdown", () => {
     assert.equal(lines[2], "| Kuveyt Türk | %2,95 | ₺2.000.000,00 |");
   });
 
+  it("expands grouped bank headers into every FX leaf column", () => {
+    const columns = [
+      col("instrument", "PAIR"),
+      col("unit", "PRICE BASIS"),
+      col("kuveytturk__buy", "BUY", "number"),
+      col("kuveytturk__sell", "SELL", "number"),
+      col("vakif__buy", "BUY", "number"),
+      col("vakif__sell", "SELL", "number"),
+    ];
+    const groups = [
+      { key: "instrument", label: "", span: 1 },
+      { key: "unit", label: "", span: 1 },
+      { key: "kuveytturk", label: "KUVEYT TÜRK", span: 2 },
+      { key: "vakif", label: "VAKIF KATILIM", span: 2 },
+    ];
+    const opts = { ...OPTS, columns, groups };
+    const body = tableToMarkdown([
+      row({
+        instrument: "XAU/TRY",
+        unit: "1 GRAM",
+        kuveytturk__buy: 7000,
+        kuveytturk__sell: 7100,
+        vakif__buy: 7020,
+        vakif__sell: 7080,
+      }),
+    ], opts);
+
+    assert.equal(
+      body.split("\n")[0],
+      "| PAIR | PRICE BASIS | KUVEYT TÜRK — BUY | KUVEYT TÜRK — SELL | VAKIF KATILIM — BUY | VAKIF KATILIM — SELL |",
+    );
+    assert.match(rowToMarkdownKv(row({ kuveytturk__sell: 7100 }), opts),
+      /\*\*KUVEYT TÜRK — SELL\*\*: 7\.100/);
+  });
+
+  it("does not misattribute columns when grouped spans are malformed", () => {
+    const opts = {
+      ...OPTS,
+      groups: [{ key: "bank", label: "Kuveyt Türk", span: 2 }],
+    };
+    assert.equal(tableToMarkdown([], opts).split("\n")[0], "| Banka | Kâr oranı | Üst limit |");
+  });
+
   it("escapes a pipe so it cannot shift the columns", () => {
     // "3 ay | 6 ay" in a cell ends the column early and silently misaligns
     // every cell after it -- the agent would read a table whose headers no

@@ -175,6 +175,7 @@
     "saving": "Keeping…",
     "saved": "Kept on your AI Overview page.",
     "saveFailed": "Could not keep it",
+    "saveNeedsConversation": "Finish a chat response before keeping its table.",
     "openDashboard": "Open the page",
     "savedTableTitle": "{label} ({count} rows)"
   },

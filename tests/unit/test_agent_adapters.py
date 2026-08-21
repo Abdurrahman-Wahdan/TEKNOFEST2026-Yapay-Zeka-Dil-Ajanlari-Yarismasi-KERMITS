@@ -1,5 +1,8 @@
 """Main-agent adapters expose summaries, not specialist internals."""
 
+from concurrent.futures import ThreadPoolExecutor
+from threading import Event
+
 import pytest
 from langchain.agents import create_agent
 from langchain_core.language_models.fake_chat_models import FakeMessagesListChatModel
@@ -8,6 +11,8 @@ from langgraph.checkpoint.memory import InMemorySaver
 
 from agents.shared import agent_tools
 from agents.shared import checkpoints
+from agents.shared import specialists
+from agents.main import agent as main_agent
 from agents.shared.registry import SPECS
 from agents.shared.runtime import AgentContext
 
@@ -50,6 +55,87 @@ def test_main_adapter_uses_its_bank_private_thread(monkeypatch):
     assert tool.name == "ask_kuveytturk"
     assert "request" in tool.args_schema.model_json_schema()["properties"]
     assert "bank" not in tool.args_schema.model_json_schema()["properties"]
+
+
+def test_specialists_are_rebuilt_with_fresh_non_streaming_models(monkeypatch):
+    """A graph must not pin a tunnel-bound model client across delegations."""
+    model_calls: list[tuple[str, dict]] = []
+    graphs: list[object] = []
+
+    def fake_get_llm(role, **kwargs):
+        model_calls.append((role, kwargs))
+        return object()
+
+    def fake_create_agent(**kwargs):
+        graph = object()
+        graphs.append(graph)
+        return graph
+
+    monkeypatch.setattr(specialists, "get_llm", fake_get_llm)
+    monkeypatch.setattr(specialists, "create_agent", fake_create_agent)
+    monkeypatch.setattr(specialists, "build_bank_tools", lambda *args, **kwargs: [])
+    monkeypatch.setattr(specialists, "get_checkpointer", lambda: object())
+    monkeypatch.setattr(specialists, "prompt_for", lambda bank: bank)
+
+    first = specialists.build_specialist("kuveytturk")
+    second = specialists.build_specialist("kuveytturk")
+
+    assert first is graphs[0]
+    assert second is graphs[1]
+    assert first is not second
+    assert model_calls == [
+        ("chat", {"disable_streaming": True}),
+        ("chat", {"disable_streaming": True}),
+    ]
+
+
+def test_main_agent_is_rebuilt_without_losing_checkpoint_backed_memory(monkeypatch):
+    """The graph is disposable; its checkpointer remains the state authority."""
+    checkpointer = object()
+    graphs: list[object] = []
+
+    monkeypatch.setattr(main_agent, "get_llm", lambda role: object())
+    monkeypatch.setattr(main_agent, "build_specialist_tools", lambda: [])
+    monkeypatch.setattr(main_agent, "get_checkpointer", lambda: checkpointer)
+
+    def fake_create_agent(**kwargs):
+        assert kwargs["checkpointer"] is checkpointer
+        graph = object()
+        graphs.append(graph)
+        return graph
+
+    monkeypatch.setattr(main_agent, "create_agent", fake_create_agent)
+
+    assert main_agent.build_main_agent() is graphs[0]
+    assert main_agent.build_main_agent() is graphs[1]
+    assert graphs[0] is not graphs[1]
+
+
+def test_specialist_adapter_waits_for_the_final_retry_result(monkeypatch):
+    """The supervisor tool cannot complete while its specialist is still retrying."""
+    started = Event()
+    release = Event()
+
+    class _WaitingSpecialist:
+        def invoke(self, payload, config, context):
+            started.set()
+            assert release.wait(timeout=1)
+            return {"messages": [type("Message", (), {"content": "Final retry result"})()]}
+
+    monkeypatch.setattr(
+        agent_tools,
+        "build_specialist",
+        lambda bank, monthly_profit_rate=None: _WaitingSpecialist(),
+    )
+    spec = next(spec for spec in SPECS if spec.bank == "kuveytturk")
+    tool = agent_tools.build_specialist_tool(spec)
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        pending = executor.submit(tool.func, "Get a live quote", _Runtime())
+        assert started.wait(timeout=1)
+        assert pending.done() is False
+        release.set()
+        assert pending.result(timeout=1) == "Final retry result"
 
 
 def test_main_has_exactly_one_adapter_per_bank():

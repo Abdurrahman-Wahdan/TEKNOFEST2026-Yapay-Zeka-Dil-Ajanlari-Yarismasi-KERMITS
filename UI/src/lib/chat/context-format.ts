@@ -51,7 +51,36 @@ export type SerialiseOptions = {
   columns: ResolvedColumn[];
   locale: "tr" | "en";
   bankLabels?: Record<string, string>;
+  /** Optional visual header groups, expanded into each leaf column for text. */
+  groups?: { key: string; label: string; span: number }[];
 };
+
+/**
+ * Give every serialised leaf column its full visible identity.
+ *
+ * The FX board draws a bank name in a grouped header above its BUY/SELL pair.
+ * Markdown has no colspan, so sending only the leaf labels produced a table of
+ * repeated BUY/SELL columns with no bank attribution. Expanding the group into
+ * each leaf makes the text contract unambiguous: "Kuveyt Türk — SELL".
+ */
+function columnLabels(opts: SerialiseOptions): string[] {
+  if (!opts.groups?.length) return opts.columns.map((column) => column.label);
+
+  const groupForColumn = opts.groups.flatMap((group) =>
+    Array.from({ length: group.span }, () => group.label),
+  );
+  // A malformed span row must not shift labels onto the wrong figures. The
+  // rendered table requires an exact span total too; fall back to leaf labels
+  // rather than inventing an attribution when the contract is inconsistent.
+  if (groupForColumn.length !== opts.columns.length) {
+    return opts.columns.map((column) => column.label);
+  }
+
+  return opts.columns.map((column, index) => {
+    const group = groupForColumn[index]?.trim();
+    return group ? `${group} — ${column.label}` : column.label;
+  });
+}
 
 /**
  * A cell, safe to drop inside a markdown table.
@@ -78,8 +107,9 @@ function cell(row: Row, column: ResolvedColumn, opts: SerialiseOptions): string 
  * answering and inventing.
  */
 export function rowToMarkdownKv(row: Row, opts: SerialiseOptions): string {
+  const labels = columnLabels(opts);
   const lines = opts.columns.map(
-    (column) => `- **${escapeCell(column.label)}**: ${cell(row, column, opts)}`,
+    (column, index) => `- **${escapeCell(labels[index] ?? column.label)}**: ${cell(row, column, opts)}`,
   );
   if (row.cite_url) lines.push(`- **cite_url**: ${row.cite_url}`);
   if (row.cite_note) lines.push(`- **cite_note**: ${escapeCell(row.cite_note)}`);
@@ -90,7 +120,7 @@ export function rowToMarkdownKv(row: Row, opts: SerialiseOptions): string {
  * Many rows, as a GFM table. Every row, in the order they are on screen.
  */
 export function tableToMarkdown(rows: Row[], opts: SerialiseOptions): string {
-  const header = `| ${opts.columns.map((c) => escapeCell(c.label)).join(" | ")} |`;
+  const header = `| ${columnLabels(opts).map(escapeCell).join(" | ")} |`;
   // GFM carries alignment in the delimiter row, and the columns already know
   // theirs -- so a money column arrives right-aligned, as it looks on screen.
   const rule = `| ${opts.columns

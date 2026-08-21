@@ -50,7 +50,7 @@ class Component(BaseModel):
 
 class SavedViewIn(BaseModel):
     slug: str = Field(pattern="^[a-z0-9-]{1,80}$")
-    title: str = Field(min_length=1, max_length=160)
+    title: str
     components: list[Component] = Field(default_factory=list)
     generated: bool = False
 

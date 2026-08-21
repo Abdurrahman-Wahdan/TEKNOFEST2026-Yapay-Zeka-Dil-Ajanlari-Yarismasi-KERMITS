@@ -35,6 +35,7 @@ export type ChatSession = Schemas["ChatSessionOut"];
 export type ChatSessionDetail = Schemas["ChatSessionDetail"];
 export type ChatMessage = Schemas["ChatMessageOut"];
 export type StreamEvent = Schemas["StreamEvent"];
+export type TableMetadata = Schemas["TableMetadataOut"];
 export type TokenPair = Schemas["TokenPair"];
 export type User = Schemas["UserOut"];
 export type ResetPasswordResponse = Schemas["ResetPasswordResponse"];
@@ -256,6 +257,11 @@ export const api = {
   chatSession: (id: string) => request<ChatSessionDetail>(`/chat/sessions/${id}`),
   deleteChatSession: (id: string) =>
     request<void>(`/chat/sessions/${id}`, { method: "DELETE" }),
+  tableMetadata: (body: Schemas["TableMetadataRequest"]) =>
+    request<TableMetadata>("/chat/table-metadata", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 };
 
 /**

@@ -1,7 +1,5 @@
 """Bank-specialist LangGraph agents."""
 
-from functools import lru_cache
-
 from langchain.agents import create_agent
 
 from llm import get_llm
@@ -12,11 +10,23 @@ from .registry import prompt_for
 from .runtime import AgentContext
 
 
-@lru_cache(maxsize=128)
 def build_specialist(bank: str, enforced_monthly_profit_rate: float | None = None):
-    """Compile one isolated specialist; state isolation comes from thread IDs."""
+    """Compile one isolated specialist with a fresh tunnel-aware model client.
+
+    The graph is deliberately not cached.  A compiled agent retains the model
+    instance it was built with, including that instance's reverse-proxy URL and
+    HTTP connection pool.  Specialist state does not depend on the graph object:
+    the PostgreSQL checkpointer and bank-specific thread ID provide persistence,
+    so rebuilding here preserves memory while preventing a rotated tunnel from
+    being pinned across chat turns.
+
+    Specialist output is private and is returned to the supervisor only after
+    the invocation completes.  Disabling model streaming here makes a dropped
+    connection safe to replay inside ``TunnelAwareChatOpenAI._generate``: no
+    partial prose or partial tool call has been emitted into the graph.
+    """
     return create_agent(
-        model=get_llm("chat"),
+        model=get_llm("chat", disable_streaming=True),
         tools=build_bank_tools(
             bank, enforced_monthly_profit_rate=enforced_monthly_profit_rate
         ),

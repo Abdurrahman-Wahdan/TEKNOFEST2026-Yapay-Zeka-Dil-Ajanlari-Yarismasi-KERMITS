@@ -32,6 +32,7 @@ export function useAttachTable({
   title,
   about,
   bankLabels,
+  groups,
 }: {
   columns: ResolvedColumn[];
   rows: Row[];
@@ -40,6 +41,8 @@ export function useAttachTable({
   /** What the table is for -- the producer's description, or the query behind it. */
   about?: string;
   bankLabels?: Record<string, string>;
+  /** Grouped visual headers, such as one bank spanning BUY and SELL. */
+  groups?: { key: string; label: string; span: number }[];
 }) {
   const t = useTranslations("chat");
   const locale = useLocale() as "tr" | "en";
@@ -47,8 +50,8 @@ export function useAttachTable({
   const { attachments, setPopupOpen } = useChat();
 
   const options = useMemo(
-    () => ({ columns, locale, bankLabels }),
-    [columns, locale, bankLabels],
+    () => ({ columns, locale, bankLabels, groups }),
+    [columns, locale, bankLabels, groups],
   );
 
   /**

@@ -672,6 +672,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/chat/table-metadata": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Table Metadata
+         * @description Give one kept table a durable title and future-chat handoff.
+         */
+        post: operations["create_table_metadata"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/chat/ask": {
         parameters: {
             query?: never;
@@ -1717,6 +1737,64 @@ export interface components {
             subcategories: string[];
             /** Tables */
             tables: components["schemas"]["TableSummaryOut"][];
+        };
+        /** TableMetadataColumn */
+        TableMetadataColumn: {
+            /** Key */
+            key: string;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+        };
+        /**
+         * TableMetadataContextMessage
+         * @description One visible chat turn supplied to the table-metadata specialist.
+         */
+        TableMetadataContextMessage: {
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "user" | "assistant";
+            /** Content */
+            content: string;
+        };
+        /** TableMetadataOut */
+        TableMetadataOut: {
+            /** Title */
+            title: string;
+            /** Description */
+            description: string;
+        };
+        /** TableMetadataRequest */
+        TableMetadataRequest: {
+            /**
+             * Session Id
+             * Format: uuid
+             */
+            session_id: string;
+            /** Conversation */
+            conversation: components["schemas"]["TableMetadataContextMessage"][];
+            table: components["schemas"]["TableMetadataSnapshot"];
+        };
+        /** TableMetadataRow */
+        TableMetadataRow: {
+            /** Cells */
+            cells: {
+                [key: string]: string | number | boolean | null;
+            };
+        };
+        /**
+         * TableMetadataSnapshot
+         * @description The exact table selected in the browser, without inferred prose.
+         */
+        TableMetadataSnapshot: {
+            /** Columns */
+            columns: components["schemas"]["TableMetadataColumn"][];
+            /** Rows */
+            rows: components["schemas"]["TableMetadataRow"][];
         };
         /**
          * TableSummaryOut
@@ -2836,6 +2914,39 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_table_metadata: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TableMetadataRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TableMetadataOut"];
+                };
             };
             /** @description Validation Error */
             422: {

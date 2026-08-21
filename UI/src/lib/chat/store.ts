@@ -69,6 +69,43 @@ export function newConversationId(): string {
   return `c-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
 }
 
+/** A client-created message key that cannot collide with restored history. */
+export function newMessageId(role: AgentMessage["role"]): string {
+  return `${role}-${newConversationId()}`;
+}
+
+/**
+ * Repair duplicate keys written by older counter-based clients.
+ *
+ * The first occurrence keeps its id; only later collisions are renamed. The
+ * replacement is derived from the conversation and message position, so every
+ * localStorage read produces the same keys instead of remounting the transcript.
+ */
+export function ensureUniqueMessageIds(
+  conversation: StoredConversation,
+): StoredConversation {
+  const used = new Set<string>();
+  let changed = false;
+  const messages = conversation.messages.map((message, index) => {
+    if (!used.has(message.id)) {
+      used.add(message.id);
+      return message;
+    }
+
+    changed = true;
+    let candidate = `${message.id}-${conversation.id}-${index}`;
+    let suffix = 1;
+    while (used.has(candidate)) {
+      candidate = `${message.id}-${conversation.id}-${index}-${suffix}`;
+      suffix += 1;
+    }
+    used.add(candidate);
+    return { ...message, id: candidate };
+  });
+
+  return changed ? { ...conversation, messages } : conversation;
+}
+
 function read(): StoredConversation[] {
   // Guarded for SSR and for browsers with storage disabled: this module is
   // imported by a client component that still renders on the server.
@@ -81,13 +118,15 @@ function read(): StoredConversation[] {
     // Shape-checked rather than trusted. This is user-writable storage, and one
     // malformed entry from an older version of the app should not take the whole
     // history down with it.
-    return parsed.filter(
-      (c): c is StoredConversation =>
-        Boolean(c) &&
-        typeof (c as StoredConversation).id === "string" &&
-        typeof (c as StoredConversation).title === "string" &&
-        Array.isArray((c as StoredConversation).messages),
-    );
+    return parsed
+      .filter(
+        (c): c is StoredConversation =>
+          Boolean(c) &&
+          typeof (c as StoredConversation).id === "string" &&
+          typeof (c as StoredConversation).title === "string" &&
+          Array.isArray((c as StoredConversation).messages),
+      )
+      .map(ensureUniqueMessageIds);
   } catch {
     return [];
   }
