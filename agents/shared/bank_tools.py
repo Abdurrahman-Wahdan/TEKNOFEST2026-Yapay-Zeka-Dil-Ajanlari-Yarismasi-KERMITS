@@ -28,6 +28,18 @@ class FinanceInput(BaseModel):
     include_schedule: bool = Field(default=False, description="Include the full payment plan.")
 
 
+class CustomRateFinanceInput(FinanceInput):
+    monthly_profit_rate: float | None = Field(
+        gt=0,
+        le=100,
+        description=(
+            "Required. The customer-supplied monthly profit rate as a percentage, "
+            "or null when requesting the bank's live rate. Infer this from the user "
+            "request and always include the field."
+        ),
+    )
+
+
 class ProfitShareInput(BaseModel):
     product: str = Field(description="The account's Turkish name or code.")
     amount: float = Field(gt=0)
@@ -78,7 +90,11 @@ def _tool(
     )
 
 
-def build_bank_tools(bank_name: str) -> list[BaseTool]:
+def build_bank_tools(
+    bank_name: str,
+    *,
+    enforced_monthly_profit_rate: float | None = None,
+) -> list[BaseTool]:
     """Return only the live tools the named bank truthfully supports."""
     bank = get_bank(bank_name)
     capabilities = bank.capabilities
@@ -94,15 +110,67 @@ def build_bank_tools(bank_name: str) -> list[BaseTool]:
             ]),
         ))
     if "finance" in capabilities:
+        finance_schema = (
+            CustomRateFinanceInput
+            if "monthly_profit_rate" in bank.finance_input_capabilities
+            else FinanceInput
+        )
+
+        def finance(
+            product: str,
+            amount: float,
+            term_months: int,
+            include_schedule: bool = False,
+            monthly_profit_rate: float | None = None,
+        ) -> str:
+            def quote_data():
+                # The supervisor may have extracted an explicit customer rate
+                # from natural language.  Do not rely on a second model to
+                # repeat it exactly in its tool arguments: bind it into this
+                # specialist's one delegated turn instead.
+                effective_rate = (
+                    monthly_profit_rate
+                    if monthly_profit_rate is not None
+                    else enforced_monthly_profit_rate
+                )
+                quote = bank.finance_quote(
+                    product,
+                    amount,
+                    term_months,
+                    **(
+                        {"monthly_profit_rate": effective_rate}
+                        if effective_rate is not None
+                        else {}
+                    ),
+                )
+                if (
+                    effective_rate is not None
+                    and abs(float(quote.profit_rate) - float(effective_rate)) > 0.005
+                ):
+                    raise ValueError(
+                        "The live calculator did not apply the requested monthly profit "
+                        f"rate ({effective_rate}%). It returned {quote.profit_rate}% instead."
+                    )
+                data = generic._finance(quote, include_schedule)
+                if effective_rate is not None:
+                    data["pricing_basis"] = "customer_supplied_monthly_profit_rate"
+                    data["requested_monthly_profit_rate"] = effective_rate
+                return data
+
+            return live_result(bank.name, "finance_quote", quote_data)
+
         tools.append(_tool(
             "finance_quote",
-            f"Get a live financing quote from {bank.display_name}. Use only for this bank.",
-            FinanceInput,
-            lambda product, amount, term_months, include_schedule=False: live_result(
-                bank.name, "finance_quote", lambda: generic._finance(
-                    bank.finance_quote(product, amount, term_months), include_schedule
+            (
+                f"Get a live financing quote from {bank.display_name}. Use only for this bank. "
+                + (
+                    "This calculator also supports an optional customer-supplied monthly profit-rate scenario."
+                    if "monthly_profit_rate" in bank.finance_input_capabilities
+                    else ""
                 )
             ),
+            finance_schema,
+            finance,
         ))
     if "profit_share" in capabilities:
         tools.append(_tool(

@@ -26,6 +26,7 @@ class BankOut(BaseModel):
     name: str = Field(description="The key every other endpoint takes.")
     display_name: str
     publishes: list[str]
+    finance_input_capabilities: list[str] = Field(default_factory=list)
     maintenance: list[str] = Field(
         default_factory=list,
         description="Capabilities the last health check found failing.",

@@ -99,6 +99,10 @@ class TurkiyeFinans(BaseBank):
     # same labels Kuveyt Türk and Hayat use -- so the shared alias map applies
     # unchanged.
     rate_aliases = RATE_ALIASES
+    # The public financing calculator explicitly lets the customer enable
+    # “Kâr oranını kendim belirleyeceğim”.  The page calculates the resulting
+    # plan locally from the same live product/fee table exposed below.
+    finance_input_capabilities = frozenset({"monthly_profit_rate"})
     notes = (
         "It publishes rate and fee tables and computes nothing itself: its "
         "own calculator does the arithmetic in the browser. Financing and "
@@ -244,7 +248,10 @@ class TurkiyeFinans(BaseBank):
 
     # ----- live-published financing rate -----
 
-    def finance_quote(self, product: str, amount: float, term: int) -> FinanceQuote:
+    def finance_quote(
+        self, product: str, amount: float, term: int,
+        monthly_profit_rate: float | None = None,
+    ) -> FinanceQuote:
         """Return only values supplied by Türkiye Finans's live service.
 
         Its page computes a payment client-side after receiving this rate
@@ -274,18 +281,37 @@ class TurkiyeFinans(BaseBank):
         bsmv = rate(chosen.raw.get("Bitt"))
         if bsmv:
             fees["bsmv_rate"] = round(bsmv * 100, 4)
+        if monthly_profit_rate is not None:
+            # There is no submit endpoint: this is precisely the arithmetic
+            # the bank's public page runs after the customer toggles its own
+            # rate. Preserve that distinction for every caller.
+            installment, total, schedule = _installment_plan(
+                amount=float(amount),
+                term=int(term),
+                monthly_rate=float(monthly_profit_rate) / 100,
+                kkdf=0.15,
+                bsmv=float(bsmv or 0.0),
+            )
+            quote_rate = float(monthly_profit_rate)
+            derived = True
+        else:
+            installment, total, schedule = None, None, []
+            quote_rate = rate(band.get("Value"))
+            derived = False
+
         return self._check_quote(FinanceQuote(
             bank=self.name,
             product=chosen,
             amount=amount,
             term=term,
-            installment=None,
-            total=None,
-            profit_rate=rate(band.get("Value")),
+            installment=installment,
+            total=total,
+            profit_rate=quote_rate,
             annual_cost_rate=rate(band.get("Cost")),
             fees=fees,
-            schedule=[],
+            schedule=schedule,
             raw={"band": band, "product": chosen.raw},
+            derived=derived,
         ))
 
     # ----- live-published card rate -----

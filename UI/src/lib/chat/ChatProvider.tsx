@@ -22,6 +22,7 @@ import {
   type StoredConversation,
 } from "./store";
 import { streamChat } from "./transport";
+import { api } from "@/lib/api";
 import { usePathname } from "@/i18n/navigation";
 
 import { formatLocation } from "./page-locator";
@@ -122,6 +123,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     historyServerSnapshot,
   );
   const [activeId, setActiveId] = useState<string>(() => newConversationId());
+  const [serverSessionId, setServerSessionId] = useState<string | undefined>();
   const [status, setStatus] = useState<ChatStatus>("ready");
   const [popupOpen, setPopupOpen] = useState(false);
   const [think, setThink] = useState(false);
@@ -148,13 +150,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     if (messages.length === 0) return;
     const conversation: StoredConversation = {
       id: activeId,
+      serverSessionId,
       title: titleFor(messages, emptyTitle),
       messages,
       updatedAt: Date.now(),
     };
     // The store notifies its subscribers, so nothing has to be set here.
     chatStore.save(conversation);
-  }, [messages, activeId]);
+  }, [messages, activeId, serverSessionId]);
 
   const stop = useCallback(() => {
     abortRef.current?.abort();
@@ -306,6 +309,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             for await (const chunk of streamChat(
               {
                 messages: history,
+                sessionId: serverSessionId,
+                onSessionId: setServerSessionId,
                 think,
                 attachments: stagedFiles,
                 // Omitted rather than sent empty, so the payload says something
@@ -389,7 +394,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         }
       })();
     },
-    [messages, think, attachments, pathname],
+    [messages, serverSessionId, think, attachments, pathname],
   );
 
   const newChat = useCallback(() => {
@@ -399,6 +404,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     // store under its own id, and reusing the id would overwrite it on the next
     // message.
     setActiveId(newConversationId());
+    setServerSessionId(undefined);
     setMessages([]);
     setStatus("ready");
     attachments.clear();
@@ -412,6 +418,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       abortRef.current?.abort();
       abortRef.current = null;
       setActiveId(found.id);
+      setServerSessionId(found.serverSessionId);
       setMessages(found.messages);
       setStatus("ready");
       attachments.clear();
@@ -421,13 +428,22 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   const deleteConversation = useCallback(
     (id: string) => {
+      const found = chatStore.list().find((conversation) => conversation.id === id);
       chatStore.remove(id);
+      // The server session contains the agents' private checkpoint state as well
+      // as visible messages, so deleting a UI conversation must remove both.
+      if (found?.serverSessionId) {
+        void api.deleteChatSession(found.serverSessionId).catch(() => {
+          // Local deletion remains useful if the user is offline or logged out.
+        });
+      }
       // Deleting the conversation you are reading leaves nothing to read, so it
       // becomes a fresh one rather than an orphaned transcript with no store entry.
       if (id === activeId) {
         abortRef.current?.abort();
         abortRef.current = null;
         setActiveId(newConversationId());
+        setServerSessionId(undefined);
         setMessages([]);
         setStatus("ready");
         attachments.clear();

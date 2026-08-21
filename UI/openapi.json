@@ -610,6 +610,24 @@
               "title": "Term"
             },
             "description": "Months."
+          },
+          {
+            "name": "monthly_profit_rate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "maximum": 100,
+                  "exclusiveMinimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Monthly Profit Rate"
+            }
           }
         ],
         "responses": {
@@ -949,6 +967,26 @@
               "title": "Term"
             },
             "description": "Months."
+          },
+          {
+            "name": "monthly_profit_rate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "maximum": 100,
+                  "exclusiveMinimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional customer-supplied monthly profit-rate scenario, as a percentage.",
+              "title": "Monthly Profit Rate"
+            },
+            "description": "Optional customer-supplied monthly profit-rate scenario, as a percentage."
           },
           {
             "name": "banks",
@@ -2056,6 +2094,13 @@
             },
             "type": "array",
             "title": "Publishes"
+          },
+          "finance_input_capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Finance Input Capabilities"
           },
           "maintenance": {
             "items": {

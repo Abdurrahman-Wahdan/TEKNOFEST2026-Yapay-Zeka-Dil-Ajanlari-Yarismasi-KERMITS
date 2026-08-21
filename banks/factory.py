@@ -46,6 +46,7 @@ def list_banks() -> dict[str, dict]:
         entry = {
             "display_name": bank.display_name,
             "publishes": sorted(bank.capabilities),
+            "finance_input_capabilities": sorted(bank.finance_input_capabilities),
             "notes": bank.notes,
         }
         # What the last check found broken. Read from the cached status file, so

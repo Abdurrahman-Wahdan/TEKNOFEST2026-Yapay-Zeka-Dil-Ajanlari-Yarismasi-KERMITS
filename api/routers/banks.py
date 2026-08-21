@@ -73,6 +73,7 @@ def all_banks() -> list[BankOut]:
             name=name,
             display_name=entry["display_name"],
             publishes=entry["publishes"],
+            finance_input_capabilities=entry["finance_input_capabilities"],
             maintenance=entry.get("maintenance", []),
             notes=entry.get("notes") or "",
         )
@@ -98,6 +99,7 @@ def one_bank(bank: str = BankName) -> BankOut:
         name=provider.name,
         display_name=entry["display_name"],
         publishes=entry["publishes"],
+        finance_input_capabilities=entry["finance_input_capabilities"],
         maintenance=entry.get("maintenance", []),
         notes=entry.get("notes") or "",
     )
@@ -122,6 +124,7 @@ def bank_finance_quote(
     product: str = Query(description="A product code from /products."),
     amount: float = Query(gt=0),
     term: int = Query(gt=0, le=360, description="Months."),
+    monthly_profit_rate: float | None = Query(default=None, gt=0, le=100),
 ) -> FinanceQuoteOut:
     """A live financing quote, including the full payment schedule.
 
@@ -131,7 +134,15 @@ def bank_finance_quote(
     """
     provider = _bank(bank)
     try:
-        return finance_quote_out(provider.finance_quote(product, amount, term))
+        if monthly_profit_rate is not None and "monthly_profit_rate" not in provider.finance_input_capabilities:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                f"{provider.display_name}'s calculator does not accept a customer-supplied monthly profit rate.",
+            )
+        return finance_quote_out(provider.finance_quote(
+            product, amount, term,
+            **({"monthly_profit_rate": monthly_profit_rate} if monthly_profit_rate is not None else {}),
+        ))
     except UnsupportedProduct as exc:
         raise _handle(exc) from exc
 

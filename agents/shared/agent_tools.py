@@ -4,6 +4,8 @@ from langchain.tools import ToolRuntime
 from langchain_core.tools import BaseTool, StructuredTool
 from pydantic import BaseModel, Field
 
+from banks.factory import get_bank
+
 from .registry import SpecialistSpec
 from .specialists import build_specialist, specialist_thread_id
 from .runtime import AgentContext
@@ -12,6 +14,15 @@ from .runtime import AgentContext
 class DelegateInput(BaseModel):
     request: str = Field(
         description="A complete, bank-specific request including all known amounts, terms, products, and currencies."
+    )
+    monthly_profit_rate: float | None = Field(
+        default=None,
+        gt=0,
+        le=100,
+        description=(
+            "Customer-supplied monthly profit rate for a financing scenario, if the user "
+            "explicitly requested one. Do not use a bank's normal live rate instead."
+        ),
     )
 
 
@@ -25,12 +36,27 @@ def _final_text(result: dict) -> str:
 
 def build_specialist_tool(spec: SpecialistSpec) -> BaseTool:
     """Wrap one specialist without exposing its tools or message history."""
-    def delegate(request: str, runtime: ToolRuntime[AgentContext]) -> str:
+    bank = get_bank(spec.bank)
+
+    def delegate(
+        request: str,
+        runtime: ToolRuntime[AgentContext],
+        monthly_profit_rate: float | None = None,
+    ) -> str:
         session_id = runtime.context.get("session_id")
         if not session_id:
             return "The bank specialist cannot run because the chat session is missing."
+        if (
+            monthly_profit_rate is not None
+            and "monthly_profit_rate" not in bank.finance_input_capabilities
+        ):
+            return (
+                f"{spec.display_name} unavailable: its live financing calculator does not "
+                "accept a customer-supplied monthly profit rate. Do not substitute the "
+                "bank's standard live rate for this scenario."
+            )
         try:
-            result = build_specialist(spec.bank).invoke(
+            result = build_specialist(spec.bank, monthly_profit_rate).invoke(
                 {"messages": [("user", request)]},
                 config={"configurable": {"thread_id": specialist_thread_id(session_id, spec.bank)}},
                 context={"session_id": session_id},
@@ -45,7 +71,12 @@ def build_specialist_tool(spec: SpecialistSpec) -> BaseTool:
         description=(
             f"Ask only the {spec.display_name} live-data specialist. Use it when "
             "the user needs current information from this specific bank. It cannot "
-            "answer for other banks and returns a concise result with retrieval time."
+            "answer for other banks and returns a concise result with retrieval time. "
+            + (
+                "Its financing calculator accepts a customer-supplied monthly profit-rate scenario."
+                if "monthly_profit_rate" in bank.finance_input_capabilities
+                else "Its financing calculator does not accept a customer-supplied monthly profit rate."
+            )
         ),
         args_schema=DelegateInput,
     )

@@ -192,6 +192,18 @@ def test_tom_finance_quote_reads_its_own_annual_cost_rate(monkeypatch):
     assert len(quote.schedule) == 24
 
 
+def test_tom_finance_quote_forwards_a_customer_rate(monkeypatch):
+    spy = []
+    serve(monkeypatch, [{}], spy=spy, routes={
+        "LoanRateList": load("tom", "rate_list.json"),
+        "GetLoanPayBackPlan": load("tom", "finance_quote.json"),
+    })
+
+    get_bank("tom").finance_quote("TKTCDGRFNS", 100000, 24, 3.2)
+
+    assert spy[-1]["json"]["CustomRate"] == 3.2
+
+
 def test_a_bank_without_a_card_calculator_refuses():
     with pytest.raises(UnsupportedProduct, match="does not publish"):
         get_bank("albaraka").card_installment_quote("any", 1000, 3)
@@ -275,6 +287,18 @@ def test_kuveytturk_finance_quote_maps_onto_the_dataclass(monkeypatch):
     assert first.order == 1
     assert first.taxes == pytest.approx(first.amount - first.principal - first.profit)
     assert first.due_date == "2026-08-10"
+
+
+def test_kuveytturk_finance_quote_sends_a_customer_rate_when_requested(monkeypatch):
+    spy = []
+    serve(monkeypatch, [
+        load("kuveytturk", "catalogue_finance.json"),
+        load("kuveytturk", "finance_quote.json"),
+    ], spy=spy)
+
+    get_bank("kuveytturk").finance_quote("IHTIYACKART", 100000, 24, 3.2)
+
+    assert spy[-1]["json"]["p6"] == "3.20"
 
 
 def test_kuveytturk_profit_share_quote_maps_onto_the_dataclass(monkeypatch):
@@ -483,6 +507,19 @@ def test_albaraka_finance_quote_maps_onto_the_dataclass(monkeypatch):
     first = quote.schedule[0]
     assert first.amount == 6684.28
     assert first.taxes == pytest.approx(first.amount - first.principal - first.profit)
+
+
+def test_albaraka_finance_quote_forwards_a_customer_rate(monkeypatch):
+    spy = []
+    bank = get_bank("albaraka")
+    serve(monkeypatch, [load("albaraka", "finance_quote.json")], spy=spy,
+          text=load("albaraka", "finance_page_options.html"))
+
+    bank.finance_quote("SIFIR KM TAŞIT FİNANSMANI", 100000, 24, 3.2)
+
+    params = spy[-1]["params"]
+    assert params["ProfitRateByMe"] == "true"
+    assert params["ProfitRate"] == "3.2"
 
 
 def test_albaraka_a_zero_rate_is_reported_as_a_zero_rate(monkeypatch):
@@ -767,6 +804,16 @@ def test_emlak_finance_quote_reads_the_plan(monkeypatch):
     assert first.taxes == pytest.approx(first.amount - first.principal - first.profit)
 
 
+def test_emlak_finance_quote_forwards_a_customer_rate(monkeypatch):
+    spy = []
+    serve(monkeypatch, [], text=load("emlak", "page_selects.html"), spy=spy, routes={
+        "SelectLoansProperty": load("emlak", "loan_property.json"),
+        "CalculateLoansProduct": load("emlak", "finance_quote.json"),
+    })
+    get_bank("emlak").finance_quote("ARACBINEK2EL", 100000, 24, 2.6)
+    assert spy[-1]["params"]["CustomRate"] == 2.6
+
+
 def test_emlak_gold_past_six_months_raises(monkeypatch):
     serve(monkeypatch, [load("emlak", "profit_share_zeros.json")],
           text=load("emlak", "page_selects.html"))
@@ -805,6 +852,17 @@ def test_dunya_amount_is_sent_without_separators(monkeypatch):
     get_bank("dunya").finance_quote("KONUTTUKETICI", 100000, 24)
 
     assert sent[-1]["data"]["amount"] == "100000"
+
+
+def test_dunya_finance_quote_forwards_a_customer_rate(monkeypatch):
+    sent = []
+    serve(monkeypatch, [], text=load("dunya", "home_selects.html"), spy=sent, routes={
+        "LoanInstallmentValues": load("dunya", "loan_limits.json"),
+        "LoanCheckRate": load("dunya", "finance_quote.json"),
+    })
+    get_bank("dunya").finance_quote("KONUTTUKETICI", 100000, 24, 2.6)
+    assert sent[-1]["data"]["userRate"] == "2,60"
+    assert sent[-1]["data"]["userSelected"] == "true"
 
 
 def test_dunya_finance_quote_maps_onto_the_dataclass(monkeypatch):
@@ -863,6 +921,18 @@ def test_ziraat_reads_the_plan_out_of_drupal_markup(monkeypatch):
     assert len(quote.schedule) == 24
     assert quote.schedule[0].order == 1
     assert quote.schedule[-1].order == 24
+
+
+def test_ziraat_finance_quote_forwards_a_customer_rate(monkeypatch):
+    spy = []
+    serve(monkeypatch, [], text=load("ziraat", "home_select.html"), spy=spy, routes={
+        "get-vade": load("ziraat", "get_vade.json"),
+        "finansmanhesapla": load("ziraat", "finance_plan.json"),
+    })
+    quote = get_bank("ziraat").finance_quote("64356287", 100000, 24, 2.6)
+    assert spy[-1]["data"]["finansman_is_bank_ratio"] == "false"
+    assert spy[-1]["data"]["finans_kar_orani"] == "2.6"
+    assert quote.profit_rate == 2.6
 
 
 def test_ziraat_will_not_swap_one_product_for_another(monkeypatch):
@@ -963,6 +1033,15 @@ def test_turkiyefinans_quotes_only_the_live_service_rate(monkeypatch):
     # Read off the bank's own table as percentages, not the shares it sends.
     assert quote.fees["allocation_rate"] == pytest.approx(0.575)
     assert quote.fees["bsmv_rate"] == pytest.approx(15.0)
+
+
+def test_turkiyefinans_uses_its_public_calculator_for_a_customer_rate(monkeypatch):
+    serve(monkeypatch, [load("turkiyefinans", "credit_types.json")])
+    quote = get_bank("turkiyefinans").finance_quote("1", 100000, 24, 2.6)
+    assert quote.profit_rate == 2.6
+    assert quote.priced is True
+    assert quote.derived is True
+    assert len(quote.schedule) == 24
 
 
 def test_turkiyefinans_refuses_a_term_it_publishes_no_rate_for(monkeypatch):
@@ -1239,6 +1318,23 @@ def test_vakif_returns_a_payment_schedule(monkeypatch):
     assert first.order == 1
     # "bsmfTutari" is the bank's own spelling of BSMV.
     assert first.taxes == pytest.approx(first.amount - first.principal - first.profit)
+
+
+def test_vakif_finance_quote_forwards_a_customer_rate(monkeypatch):
+    spy = []
+    serve(monkeypatch, [], text=load("vakif", "finance_page_select.html"), spy=spy, routes={
+        "FinancingInstallment": load("vakif", "installments.json"),
+        "FinancingComputationExecute": load("vakif", "finance_quote.json"),
+        "InstallmentPayBack": load("vakif", "payment_plan.json"),
+    })
+
+    get_bank("vakif").finance_quote("IF", 100000, 24, 2.6)
+
+    calculator_calls = [
+        call for call in spy
+        if call["params"].get("profitRate") == "2.6"
+    ]
+    assert len(calculator_calls) == 2
 
 
 def test_vakif_keeps_the_quote_when_the_plan_call_fails(monkeypatch):

@@ -3,7 +3,7 @@
 import Card from "@mui/material/Card";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ActionButton } from "@/components/ui/ActionButton";
 import { AmountField, IntegerField } from "@/components/ui/AmountField";
@@ -93,6 +93,7 @@ export function Comparator() {
   // (AmountField's default) until the user enters their own amount and term.
   const [amount, setAmount] = useState("");
   const [term, setTerm] = useState("");
+  const [monthlyProfitRate, setMonthlyProfitRate] = useState("");
   const [currency, setCurrency] = useState("TRY");
   const [source, setSource] = useState("USD");
   const [target, setTarget] = useState("TRY");
@@ -141,6 +142,9 @@ export function Comparator() {
   const eligibleKeys = eligible.map((b) => b.name);
   const chosen = selected ?? eligibleKeys;
   const activeBanks = chosen.filter((b) => eligibleKeys.includes(b));
+  const customRateBanks = (banks ?? []).filter(
+    (bank) => activeBanks.includes(bank.name) && (bank.finance_input_capabilities ?? []).includes("monthly_profit_rate"),
+  );
   const catalogueCategory = category === "profit_share" ? "profit_share" : "finance";
   const catalogueBanks = (banks ?? []).filter((bank) =>
     bank.publishes.includes(catalogueCategory),
@@ -526,7 +530,13 @@ export function Comparator() {
     if (category === "finance") {
       setQuery({
         kind: "finance",
-        params: { family, amount: Number(amount), term: Number(term), banks: activeBanks },
+        params: {
+          family,
+          amount: Number(amount),
+          term: Number(term),
+          banks: activeBanks,
+          monthly_profit_rate: Number(monthlyProfitRate) > 0 ? Number(monthlyProfitRate) : undefined,
+        },
       });
     } else if (category === "profit_share") {
       // Days, always. Five of the six banks answer in days natively, and
@@ -559,6 +569,16 @@ export function Comparator() {
 
   const unavailable = result.data?.unavailable ?? [];
   const ineligible = (banks ?? []).filter((b) => !b.publishes.includes(spec.capability));
+  const resultsRef = useRef<HTMLDivElement>(null);
+
+  // Financing has a catalogue between the form and the results. Without this,
+  // a successful click appears to do nothing because the new Results card is
+  // below a full card of products, often outside the viewport.
+  useEffect(() => {
+    if (query !== null && category !== "rates" && category !== "miles") {
+      resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [query, category]);
 
   return (
     <VuiBox display="flex" flexDirection="column" gap="24px">
@@ -722,6 +742,17 @@ export function Comparator() {
                 onChange={(next) => { setTerm(next); setQuery(null); }} />
             )}
 
+            {category === "finance" && (
+              <AmountField
+                label={t("customProfitRate")}
+                value={monthlyProfitRate}
+                fullWidth={false}
+                minWidth="12rem"
+                placeholder="Bank live rate"
+                onChange={(next) => { setMonthlyProfitRate(next); setQuery(null); }}
+              />
+            )}
+
             <ActionButton
               onClick={run}
               disabled={activeBanks.length === 0 || broken.size > 0 || missingInput}
@@ -729,6 +760,14 @@ export function Comparator() {
               {t("run")}
             </ActionButton>
           </VuiBox>
+        )}
+
+        {category === "finance" && Number(monthlyProfitRate) > 0 && (
+          <VuiTypography variant="caption" color="text" sx={{ display: "block", mt: 1 }}>
+            {t("customProfitRateHint", {
+              banks: customRateBanks.map((bank) => bank.display_name).join(", ") || t("noResults"),
+            })}
+          </VuiTypography>
         )}
 
         {/* The ceiling, and who set it -- only once the current input actually
@@ -808,7 +847,7 @@ export function Comparator() {
           sat under the form on every category before a single request had
           been made. */}
       {(category === "rates" || category === "miles" ? table : query !== null) && (
-        <Card>
+        <Card ref={resultsRef}>
           <VuiBox mb="22px" display="flex" alignItems="center" gap="12px" flexWrap="wrap">
             <VuiTypography variant="lg" color="white">{t("results")}</VuiTypography>
             {/* Unmounted, not deleted: how long the round trip took is a
@@ -819,7 +858,19 @@ export function Comparator() {
                 block, not a redesign. */}
           </VuiBox>
 
-          {result.isError ? (
+          {query?.kind === "finance" && query.params.monthly_profit_rate !== undefined && (
+            <VuiBox mb={2}>
+              <Pill tone="warn">
+                {t("customProfitRateResult", { rate: query.params.monthly_profit_rate })}
+              </Pill>
+            </VuiBox>
+          )}
+
+          {result.isPending ? (
+            <VuiTypography variant="button" color="text" fontWeight="regular">
+              {tc("loading")}
+            </VuiTypography>
+          ) : result.isError ? (
             <VuiTypography variant="button" color="text" fontWeight="regular">
               {tc("error")}
             </VuiTypography>

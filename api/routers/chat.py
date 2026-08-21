@@ -11,8 +11,11 @@ WebSocket would add a second transport to operate for no capability gained.
 
 import json
 import logging
+import queue
+import threading
 import uuid
-from typing import Iterator
+from collections.abc import Callable, Iterator
+from typing import TypeVar
 
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -32,6 +35,46 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 TITLE_CHARS = 60
+SSE_HEARTBEAT_SECONDS = 15.0
+_T = TypeVar("_T")
+_STREAM_FINISHED = object()
+
+
+def _with_heartbeats(
+    producer: Callable[[], Iterator[_T]],
+    interval: float = SSE_HEARTBEAT_SECONDS,
+) -> Iterator[_T | None]:
+    """Run a blocking producer while keeping its HTTP stream alive.
+
+    LangGraph can spend minutes waiting for Gemma or several bank specialists
+    without yielding an application event. A valid SSE comment during that
+    silence keeps Next.js, reverse proxies, and the browser reader from treating
+    the connection as dead. The worker also keeps the blocking agent execution
+    off the response iterator, which is what lets that iterator send heartbeats.
+    """
+    items: queue.Queue[object] = queue.Queue()
+
+    def run() -> None:
+        try:
+            for item in producer():
+                items.put(item)
+        except Exception as exc:
+            items.put(exc)
+        finally:
+            items.put(_STREAM_FINISHED)
+
+    threading.Thread(target=run, name="tf26-chat-stream", daemon=True).start()
+    while True:
+        try:
+            item = items.get(timeout=interval)
+        except queue.Empty:
+            yield None
+            continue
+        if item is _STREAM_FINISHED:
+            return
+        if isinstance(item, Exception):
+            raise item
+        yield item  # type: ignore[misc]
 
 
 def _own_session(session, user, session_id: uuid.UUID) -> ChatSession:
@@ -151,16 +194,25 @@ def ask(body: AskRequest, user: CurrentUser, session: DbSession) -> StreamingRes
         awaiting_tool = False
 
         try:
-            for event in answer(
-                body.question,
-                history,
-                body.context,
-                body.captures,
-                body.tool_results,
-                body.client_tools,
-                user_id,
-                chat_id,
-            ):
+            def produce_events():
+                return answer(
+                    body.question,
+                    history,
+                    body.context,
+                    body.captures,
+                    body.tool_results,
+                    body.client_tools,
+                    user_id,
+                    chat_id,
+                )
+
+            for event in _with_heartbeats(produce_events):
+                if event is None:
+                    # SSE comments are deliberately invisible to askStream's
+                    # application-event parser but reset every idle timer in the
+                    # HTTP path.
+                    yield ": keep-alive\n\n"
+                    continue
                 if event.type == "token" and event.text:
                     parts.append(event.text)
                 elif event.type == "citation" and event.citation is not None:

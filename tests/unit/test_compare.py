@@ -184,6 +184,33 @@ def test_a_bank_that_does_not_sell_it_is_reported_not_hidden(monkeypatch):
     assert "does not offer" in missing["albaraka"].detail
 
 
+def test_customer_rate_scenario_only_calls_calculators_that_accept_it(monkeypatch):
+    seen = []
+
+    def kuveyt_quote(self, product, amount, term, monthly_profit_rate=None):
+        seen.append(monthly_profit_rate)
+        return quote("kuveytturk", 1_000)
+
+    def vakif_quote(self, product, amount, term, monthly_profit_rate=None):
+        seen.append(monthly_profit_rate)
+        return quote("vakif", 1_000)
+
+    monkeypatch.setattr(type(get_bank("kuveytturk")), "finance_quote", kuveyt_quote)
+    monkeypatch.setattr(type(get_bank("vakif")), "finance_quote", vakif_quote)
+
+    result = compare.finance(
+        "ihtiyac",
+        100_000,
+        24,
+        banks=["kuveytturk", "vakif"],
+        monthly_profit_rate=3.2,
+    )
+
+    assert seen == [3.2, 3.2]
+    assert {row.bank for row in result.quotes} == {"kuveytturk", "vakif"}
+    assert not result.unavailable
+
+
 def test_one_bank_failing_does_not_fail_the_comparison(monkeypatch):
     result = answer(monkeypatch, {
         "kuveytturk": 900.0, "vakif": RuntimeError("boom"), "emlak": 800.0,

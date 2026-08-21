@@ -865,6 +865,8 @@ export interface components {
             display_name: string;
             /** Publishes */
             publishes: string[];
+            /** Finance Input Capabilities */
+            finance_input_capabilities?: string[];
             /**
              * Maintenance
              * @description Capabilities the last health check found failing.
@@ -2259,6 +2261,7 @@ export interface operations {
                 amount: number;
                 /** @description Months. */
                 term: number;
+                monthly_profit_rate?: number | null;
             };
             header?: never;
             path: {
@@ -2436,6 +2439,8 @@ export interface operations {
                 amount: number;
                 /** @description Months. */
                 term: number;
+                /** @description Optional customer-supplied monthly profit-rate scenario, as a percentage. */
+                monthly_profit_rate?: number | null;
                 /** @description Limit to these banks. Omitted, every bank that sells it is asked. */
                 banks?: string[] | null;
             };

@@ -35,8 +35,11 @@ class Settings(BaseSettings):
         default="EMPTY",
         description="vLLM needs no auth, but the OpenAI client rejects an empty key.",
     )
-    LLM_TIMEOUT: float = Field(default=300.0, gt=0)
-    LLM_MAX_RETRIES: int = Field(default=1, ge=0)
+    # The full retry window for a live model call.  During this period the
+    # tunnel-aware client retries transport/tunnel failures with exponential
+    # backoff after refreshing the published tunnel URL.
+    LLM_TIMEOUT: float = Field(default=1800.0, gt=0)
+    LLM_RETRY_MAX_DELAY_SECONDS: float = Field(default=60.0, gt=0)
     LLM_TEMPERATURE: float = Field(
         default=0.0,
         description="Extraction favours repeatability over variety.",

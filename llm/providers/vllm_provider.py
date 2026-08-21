@@ -6,9 +6,11 @@ changing them.
 """
 
 import logging
+import time
 from dataclasses import dataclass
 from typing import Any
 
+import httpx
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_openai import ChatOpenAI
 
@@ -24,10 +26,60 @@ THINKING_OFF = {"chat_template_kwargs": {"enable_thinking": False}}
 
 
 class TunnelAwareChatOpenAI(ChatOpenAI):
-    """Retry one failed request after refreshing the rotating vLLM tunnel."""
+    """Retry tunnel failures until the configured request window expires."""
+
+    @staticmethod
+    def _is_tunnel_failure(exc: Exception) -> bool:
+        """Whether retrying against a newly published tunnel can help.
+
+        Do not fetch the Gist for validation/authentication errors: those are
+        application failures, not evidence that the reverse-proxy URL rotated.
+        A stale tunnel is observed as 404; reverse-proxy outages use the listed
+        gateway statuses or a transport failure.
+        """
+        if isinstance(
+            exc, (ConnectionError, TimeoutError, OSError, httpx.TransportError)
+        ):
+            return True
+        return getattr(exc, "status_code", None) in {404, 502, 503, 504}
+
+    def _recover_tunnel(self, exc: Exception) -> None:
+        if not self._is_tunnel_failure(exc):
+            raise exc
+        logger.warning(
+            "LLM request failed; checking tunnel before retry type=%s status=%s base=%s",
+            type(exc).__name__,
+            getattr(exc, "status_code", None),
+            self._tf26_base_url,
+        )
+        try:
+            tunnel.refresh_after_failure(self._tf26_base_url)
+        except Exception:
+            # The Gist can be unavailable at the same time as the tunnel.  Keep
+            # the existing base URL and let the bounded retry schedule recover
+            # once either service is back, instead of failing the chat at once.
+            logger.warning("Could not refresh the tunnel URL; retrying current URL", exc_info=True)
+        self._refresh_clients()
+        object.__setattr__(self, "_tf26_base_url", settings.VLLM_BASE_URL.rstrip("/"))
+        logger.info("LLM client rebuilt with fresh connection base=%s", self._tf26_base_url)
+
+    @staticmethod
+    def _next_delay(delay: float) -> float:
+        return min(delay * 2, settings.LLM_RETRY_MAX_DELAY_SECONDS)
+
+    def _wait_before_retry(self, delay: float, deadline: float) -> float:
+        """Sleep 1, 2, 4, ... seconds (capped) without exceeding the window."""
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return 0.0
+        wait_for = min(delay, remaining)
+        logger.warning("Retrying LLM request in %.0fs", wait_for)
+        time.sleep(wait_for)
+        return self._next_delay(delay)
 
     def _refresh_clients(self) -> None:
-        """Point this already-bound model at the URL just read from the gist."""
+        """Replace the failed HTTP client with a fresh connection for the retry."""
+        old_root_client = self.root_client
         replacement = ChatOpenAI(
             model=self.model_name,
             base_url=settings.VLLM_BASE_URL.rstrip("/") + self._tf26_route,
@@ -41,27 +93,78 @@ class TunnelAwareChatOpenAI(ChatOpenAI):
             "openai_api_base", "root_client", "client", "root_async_client", "async_client"
         ):
             object.__setattr__(self, name, getattr(replacement, name))
+        # A stream that failed mid-connect can leave a dead pooled connection
+        # behind. Close the old synchronous client after replacement so every
+        # retry starts from a new TCP/TLS connection.
+        close = getattr(old_root_client, "close", None)
+        if callable(close):
+            close()
 
     def _retry_after_tunnel_refresh(self, operation, *args, **kwargs):
-        try:
-            return operation(*args, **kwargs)
-        except Exception:
-            logger.warning("LLM request failed; checking the tunnel URL before one retry")
-            tunnel.refresh_if_needed()
-            self._refresh_clients()
-            return operation(*args, **kwargs)
+        deadline = time.monotonic() + settings.LLM_TIMEOUT
+        delay = 1.0
+        attempt = 1
+        while True:
+            try:
+                logger.info("Starting LLM request attempt=%d base=%s", attempt, self._tf26_base_url)
+                result = operation(*args, **kwargs)
+                logger.info("LLM request completed attempt=%d base=%s", attempt, self._tf26_base_url)
+                return result
+            except Exception as exc:
+                self._recover_tunnel(exc)
+                delay = self._wait_before_retry(delay, deadline)
+                if delay == 0.0:
+                    raise
+                attempt += 1
 
     def _generate(self, *args, **kwargs):
         return self._retry_after_tunnel_refresh(super()._generate, *args, **kwargs)
 
+    @staticmethod
+    def _chunk_has_meaningful_output(chunk: Any) -> bool:
+        """Ignore OpenAI's empty role/bootstrap frame for retry safety."""
+        message = getattr(chunk, "message", None)
+        if message is None:
+            return False
+        if getattr(message, "content", None):
+            return True
+        if getattr(message, "tool_call_chunks", None):
+            return True
+        return bool((getattr(message, "additional_kwargs", None) or {}).get("tool_calls"))
+
+    def _open_stream(self, *args, **kwargs):
+        """One physical HTTP stream; separated so retry behavior is testable."""
+        return super()._stream(*args, **kwargs)
+
     def _stream(self, *args, **kwargs):
-        try:
-            yield from super()._stream(*args, **kwargs)
-        except Exception:
-            logger.warning("LLM stream failed; checking the tunnel URL before one retry")
-            tunnel.refresh_if_needed()
-            self._refresh_clients()
-            yield from super()._stream(*args, **kwargs)
+        deadline = time.monotonic() + settings.LLM_TIMEOUT
+        delay = 1.0
+        attempt = 1
+        while True:
+            meaningful_output = False
+            try:
+                logger.info("Opening LLM stream attempt=%d base=%s", attempt, self._tf26_base_url)
+                for chunk in self._open_stream(*args, **kwargs):
+                    meaningful_output = meaningful_output or self._chunk_has_meaningful_output(chunk)
+                    yield chunk
+                logger.info("LLM stream completed attempt=%d base=%s", attempt, self._tf26_base_url)
+                return
+            except Exception as exc:
+                # Retrying after meaningful content would duplicate prose or a
+                # tool call. OpenAI's initial empty role frame is protocol
+                # bookkeeping and must not suppress recovery.
+                if meaningful_output:
+                    logger.error(
+                        "LLM stream failed after meaningful output; not replaying type=%s base=%s",
+                        type(exc).__name__,
+                        self._tf26_base_url,
+                    )
+                    raise
+                self._recover_tunnel(exc)
+                delay = self._wait_before_retry(delay, deadline)
+                if delay == 0.0:
+                    raise
+                attempt += 1
 
 
 @dataclass(frozen=True)
@@ -154,6 +257,7 @@ class VLLMProvider(BaseLLMProvider):
             **kwargs,
         )
         object.__setattr__(model, "_tf26_route", spec.route)
+        object.__setattr__(model, "_tf26_base_url", settings.VLLM_BASE_URL.rstrip("/"))
         return model
 
     def list_models(self) -> list[str]:

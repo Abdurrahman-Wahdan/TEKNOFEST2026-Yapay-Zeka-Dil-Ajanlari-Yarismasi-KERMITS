@@ -34,7 +34,11 @@ class _ToolCallingFake(FakeMessagesListChatModel):
 
 
 def test_main_adapter_uses_its_bank_private_thread(monkeypatch):
-    monkeypatch.setattr(agent_tools, "build_specialist", lambda bank: _Specialist())
+    monkeypatch.setattr(
+        agent_tools,
+        "build_specialist",
+        lambda bank, monthly_profit_rate=None: _Specialist(),
+    )
     spec = next(spec for spec in SPECS if spec.bank == "kuveytturk")
     tool = agent_tools.build_specialist_tool(spec)
 

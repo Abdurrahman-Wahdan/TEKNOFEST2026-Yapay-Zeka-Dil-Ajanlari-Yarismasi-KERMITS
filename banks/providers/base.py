@@ -185,6 +185,10 @@ class BaseBank(ABC):
     name: str = ""
     display_name: str = ""
     capabilities: frozenset[str] = frozenset()
+    # Optional controls that the bank's financing calculator genuinely accepts.
+    # This describes customer-facing calculator inputs, never internal routing
+    # fields such as product ids, page slugs, or anti-forgery tokens.
+    finance_input_capabilities: frozenset[str] = frozenset()
 
     # How this bank has to be called. "httpx" is plain, "csrf" is httpx plus a
     # per-page anti-forgery token, "impersonate" is curl_cffi for hosts whose
@@ -265,7 +269,13 @@ class BaseBank(ABC):
             + self._what_it_does()
         )
 
-    def finance_quote(self, product: str, amount: float, term: int) -> FinanceQuote:
+    def finance_quote(
+        self,
+        product: str,
+        amount: float,
+        term: int,
+        monthly_profit_rate: float | None = None,
+    ) -> FinanceQuote:
         """Instalment plan for a financing product. `product` is a code or a name."""
         raise self._unsupported("a financing calculator")
 

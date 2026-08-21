@@ -10,7 +10,6 @@ import { Link } from "@/i18n/navigation";
 import { VuiBox, VuiButton, VuiTypography } from "@/components/vision";
 import { api } from "@/lib/api";
 import {
-  fallbackTitle,
   headingBefore,
   tableFromHast,
   type HastNode,
@@ -87,7 +86,10 @@ function SaveToDashboard({ node }: { node: HastNode | undefined }) {
 
   const title =
     headingBefore(source, node?.position?.start?.offset) ??
-    fallbackTitle(props, t("savedTableTitle"));
+    t("savedTableTitle", {
+      label: props.columns?.[0]?.label ?? "",
+      count: props.rows.length,
+    });
 
   async function save() {
     setState("saving");

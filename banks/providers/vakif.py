@@ -105,6 +105,9 @@ class Vakif(BaseBank):
     )
     # Plain httpx, plus a per-page anti-forgery token on every plugin call.
     transport = "csrf"
+    # The public calculator exposes "Kâr Oranı Kendin Belirle" and passes the
+    # selected value through its existing profitRate parameter.
+    finance_input_capabilities = frozenset({"monthly_profit_rate"})
 
     def _plugin(self, plugin: str, page: str, **params):
         """POST a plugin: parameters in the query string, token in the body.
@@ -205,7 +208,13 @@ class Vakif(BaseBank):
 
     # ----- finance -----
 
-    def finance_quote(self, product: str, amount: float, term: int) -> FinanceQuote:
+    def finance_quote(
+        self,
+        product: str,
+        amount: float,
+        term: int,
+        monthly_profit_rate: float | None = None,
+    ) -> FinanceQuote:
         chosen = self.find_product("finance", product)
         self._check_limits(chosen, amount=amount, term=term)
         payload = self._usable(
@@ -215,7 +224,7 @@ class Vakif(BaseBank):
                 financingType=chosen.code,
                 amount=str(int(amount)),
                 numberOfInstallments=str(int(term)),
-                profitRate="null",
+                profitRate=str(monthly_profit_rate) if monthly_profit_rate is not None else "null",
                 calculateType="1",
             )
         )
@@ -244,11 +253,17 @@ class Vakif(BaseBank):
                 "appraisement": money(payload.get("appraisementFee")),
                 "mortgage_release": money(payload.get("mortgageReleaseFee")),
             },
-            schedule=self._schedule(chosen, amount, term),
+            schedule=self._schedule(chosen, amount, term, monthly_profit_rate),
             raw=payload,
         ))
 
-    def _schedule(self, product: Product, amount: float, term: int) -> list[PaymentRow]:
+    def _schedule(
+        self,
+        product: Product,
+        amount: float,
+        term: int,
+        monthly_profit_rate: float | None = None,
+    ) -> list[PaymentRow]:
         """The payment plan, which is a second call at this bank.
 
         A failure here must not lose the quote: the instalment and total are
@@ -263,7 +278,7 @@ class Vakif(BaseBank):
                     financingType=product.code,
                     amount=str(int(amount)),
                     numberOfInstallments=str(int(term)),
-                    profitRate="null",
+                    profitRate=str(monthly_profit_rate) if monthly_profit_rate is not None else "null",
                     calculateType="1",
                 )
             )

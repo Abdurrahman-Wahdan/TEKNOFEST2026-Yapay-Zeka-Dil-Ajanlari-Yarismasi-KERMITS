@@ -14,6 +14,8 @@ import type { AgentMessage } from "./types";
 
 export type StoredConversation = {
   id: string;
+  /** FastAPI session id; absent for an old local-only conversation. */
+  serverSessionId?: string;
   /** Derived from the first thing the user said -- see `titleFor`. */
   title: string;
   messages: AgentMessage[];

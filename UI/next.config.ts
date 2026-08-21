@@ -9,6 +9,11 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 const here = path.dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
+  // Codex and local test clients open the dev server through 127.0.0.1 while
+  // Next itself starts on localhost. Permit that same-machine origin so HMR can
+  // load the current UI bundle rather than leaving a stale chat transport open.
+  allowedDevOrigins: ["127.0.0.1"],
+
   sassOptions: {
     // Sass resolves its own imports and knows nothing about the `@/` alias in
     // tsconfig, so the tokens directory goes on the load path instead.

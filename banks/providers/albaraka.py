@@ -97,6 +97,7 @@ class Albaraka(BaseBank):
     capabilities = frozenset(
         {"products", "finance", "profit_share", "rates", "convert"}
     )
+    finance_input_capabilities = frozenset({"monthly_profit_rate"})
     # An F5 WAF fingerprints the TLS handshake and rejects httpx whatever
     # the headers, so this bank is called through curl_cffi.
     transport = "impersonate"
@@ -264,13 +265,19 @@ class Albaraka(BaseBank):
 
     # ----- finance -----
 
-    def finance_quote(self, product: str, amount: float, term: int) -> FinanceQuote:
+    def finance_quote(
+        self,
+        product: str,
+        amount: float,
+        term: int,
+        monthly_profit_rate: float | None = None,
+    ) -> FinanceQuote:
         chosen = self.find_product("finance", product)
         calculator = chosen.raw.get("_calculator") or {}
         payload = self._plugin(
             "getFinanceCalculate",
             calculator.get("page", FINANCE_PAGE),
-            ProfitRateByMe="false",
+            ProfitRateByMe="true" if monthly_profit_rate is not None else "false",
             # `_calculator` is our routing metadata; FinanceType must remain
             # the exact JSON object the bank placed in the select option.
             FinanceType=json.dumps(
@@ -279,9 +286,7 @@ class Albaraka(BaseBank):
             ),
             FinanceAmount=str(int(amount)),
             Maturity=str(int(term)),
-            # ProfitRateByMe=true would let us impose our own rate. We never do:
-            # the bank's rate is the answer.
-            ProfitRate="0",
+            ProfitRate=str(monthly_profit_rate if monthly_profit_rate is not None else 0),
             Type=calculator.get("Type", "HesaplamaBireysel"),
             CreditType=calculator.get("CreditType", "B"),
         )

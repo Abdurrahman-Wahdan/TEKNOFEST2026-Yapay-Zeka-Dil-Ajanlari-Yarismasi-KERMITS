@@ -164,7 +164,7 @@ export const api = {
   bankProducts: (bank: string, category = "finance") =>
     request<Product[]>(`/banks/${bank}/products${queryString({ category })}`),
   bankRates: (bank: string) => request<Rate[]>(`/banks/${bank}/rates`),
-  financeQuote: (bank: string, params: { product: string; amount: number; term: number }) =>
+  financeQuote: (bank: string, params: { product: string; amount: number; term: number; monthly_profit_rate?: number }) =>
     request<FinanceQuote>(`/banks/${bank}/finance${queryString(params)}`),
   cardQuote: (
     bank: string,
@@ -177,6 +177,7 @@ export const api = {
     family: string;
     amount: number;
     term: number;
+    monthly_profit_rate?: number;
     banks?: string[];
   }) => request<Comparison>(`/compare/finance${queryString(params)}`),
   compareProfitShare: (params: {
@@ -266,7 +267,13 @@ export const api = {
  * every access log it passes through.
  */
 export async function* askStream(
-  body: { question: string; session_id?: string },
+  body: {
+    question: string;
+    session_id?: string;
+    context?: Schemas["AttachedContext"][];
+    captures?: Schemas["CapturePayload"][];
+    toolResults?: Schemas["ToolResult"][];
+  },
   signal?: AbortSignal,
 ): AsyncGenerator<StreamEvent> {
   const headers = new Headers({ "Content-Type": "application/json" });

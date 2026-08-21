@@ -171,6 +171,16 @@ export type MentionTarget = {
 /** What the UI asks the agent for. */
 export type ChatRequest = {
   messages: AgentMessage[];
+  /**
+   * The persisted FastAPI conversation behind this browser-local transcript.
+   *
+   * Omitted for the first turn; the API creates a session and returns its id in
+   * the final SSE frame. It is intentionally not an `AgentMessage` field: the
+   * id is transport state, never model context.
+   */
+  sessionId?: string;
+  /** Called when the API creates the server-side session on the first turn. */
+  onSessionId?: (sessionId: string) => void;
   /** The composer's "Think" toggle -- ask for a longer reasoning pass. */
   think?: boolean;
   /**
