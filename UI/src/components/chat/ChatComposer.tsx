@@ -72,6 +72,39 @@ const LINE_PX = 24;
  * and one that oscillates.
  */
 const SINGLE_ROW_LEFT_PX = 56;
+
+/**
+ * The narrowest single-row field worth offering.
+ *
+ * Above it a sentence fits before wrapping; below it the layout would change
+ * within a few words. The page leaves about 544px here and the 420px popup about
+ * 196px, so the two land either side of this without it having to know about
+ * either surface.
+ */
+const COMFORTABLE_FIELD_PX = 320;
+
+/**
+ * Even spacing in the control row, measured between what you can *see*.
+ *
+ * A single `gap` looks wrong here because the controls do not paint the same
+ * share of their boxes. Measured on the running row: an icon button draws a 20px
+ * glyph inside a 36px box, so its ink starts 8px in; the Advanced chip's ink
+ * starts at its 10px padding; and Send is a filled 36px disc whose ink starts at
+ * 0. With a flat 6px gap the eye and the ring sat 22px apart while the ring and
+ * Send sat 14px apart -- the row read as crowded at the right end even though
+ * every box gap was identical.
+ *
+ * So the gap between any two neighbours is the optical distance minus what each
+ * one insets its own ink, and the same subtraction sets the distance from the
+ * shell's edge.
+ */
+const OPTICAL_GAP_PX = 22;
+const ICON_INK_INSET_PX = 8;
+const CHIP_INK_INSET_PX = 10;
+const FILLED_INK_INSET_PX = 0;
+
+const gapBetween = (leftInset: number, rightInset: number) =>
+  OPTICAL_GAP_PX - leftInset - rightInset;
 // Used only until the right-hand controls have been measured. The real reserve
 // is derived from their rendered width below, so adding a control or translating
 // the Think label cannot make the field run underneath the buttons again.
@@ -165,6 +198,7 @@ export function ChatComposer({
   const [singleRowRightPx, setSingleRowRightPx] = useState(
     SINGLE_ROW_RIGHT_FALLBACK_PX,
   );
+  const [shellWidth, setShellWidth] = useState(0);
 
   /**
    * Reserve exactly the space occupied by the right-hand controls.
@@ -190,6 +224,28 @@ export function ChatComposer({
     return () => observer.disconnect();
   }, []);
 
+  /**
+   * The shell's own width, which is what decides whether one row is viable.
+   *
+   * Not the viewport's. The popup is a 420px panel on a full-size screen, so a
+   * media query calls it wide while the field it leaves is about 196px -- barely
+   * a few words before the text wraps and the layout changes under the cursor.
+   * A container measurement covers the popup and the phone with one rule,
+   * because they are the same problem.
+   */
+  useLayoutEffect(() => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const measure = () => {
+      const next = Math.round(shell.clientWidth);
+      setShellWidth((current) => (current === next ? current : next));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(shell);
+    return () => observer.disconnect();
+  }, []);
+
   // `submitted` counts as busy: the wait before the first token is exactly when
   // someone wants to cancel, so the stop button has to be live there too.
   const isBusy = status === "streaming" || status === "submitted";
@@ -206,7 +262,19 @@ export function ChatComposer({
    * the tray's height dragged them down over the thumbnails. That is fixed by
    * giving them their own positioning context instead.
    */
-  const stacked = multiline || narrow;
+  /**
+   * Too little room for the field to share a row with the controls.
+   *
+   * Measured against what single-row would actually leave: the shell minus the
+   * attach button and the right-hand cluster. Below this the row is not worth
+   * having -- the user types a few words, the text wraps, and the controls drop
+   * to their own row anyway. Starting stacked skips that reflow.
+   */
+  const cramped =
+    shellWidth > 0 &&
+    shellWidth - SINGLE_ROW_LEFT_PX - singleRowRightPx < COMFORTABLE_FIELD_PX;
+
+  const stacked = multiline || narrow || cramped;
 
   // Dismiss the Advanced menu. `mousedown` rather than `click`, matching the
   // popup shell: the field takes focus on mousedown, so waiting for the click
@@ -439,12 +507,23 @@ export function ChatComposer({
         ref={rightControlsRef}
         display="flex"
         alignItems="center"
-        gap={0.75}
-        sx={{ flexShrink: 0 }}
+        // No `gap`: each control sets its own left margin, because an even row
+        // needs uneven box gaps. See OPTICAL_GAP_PX.
+        sx={{
+          flexShrink: 0,
+          // Send is a filled disc that runs to its box edge, so it would sit
+          // 8px nearer the shell's edge than the attach glyph sits to the other.
+          mr: `${ICON_INK_INSET_PX}px`,
+        }}
       >
-        {/* Relative so the menu anchors to the chip rather than to the shell,
-            and so a click on either lands inside `advancedRef`. */}
-        <VuiBox ref={advancedRef} sx={{ position: "relative", flexShrink: 0 }}>
+        {/* Deliberately *not* `position: relative`.
+            The popovers below are absolutely positioned, so they resolve against
+            the nearest positioned ancestor -- the field row, which spans the
+            composer. Anchored to this 111px chip instead, `right: 0` sent a
+            288px menu 288px leftward from the chip's right edge: fine on the
+            page, and straight off the left edge of the 420px popup, where it
+            clipped the model names. The ref is still here for click-outside. */}
+        <VuiBox ref={advancedRef} sx={{ flexShrink: 0 }}>
           <AdvancedChip
             open={advancedOpen}
             // Tinted whenever a setting is off-default, not only while the menu
@@ -474,6 +553,7 @@ export function ChatComposer({
           label={capturing ? t("capturing") : t("capture")}
           onClick={capture}
           disabled={capturing}
+          ml={gapBetween(CHIP_INK_INSET_PX, ICON_INK_INSET_PX)}
         >
           <Eye size={20} />
         </RoundButton>
@@ -484,7 +564,14 @@ export function ChatComposer({
         {/* Where the mic was. That button had been disabled since it was added
             -- there is no speech-to-text pipeline -- so the row was spending a
             slot on a control that did nothing. */}
-        <VuiBox ref={contextRef} sx={{ position: "relative", flexShrink: 0 }}>
+        {/* Static for the same reason as the Advanced wrapper above. */}
+        <VuiBox
+          ref={contextRef}
+          sx={{
+            flexShrink: 0,
+            ml: `${gapBetween(ICON_INK_INSET_PX, ICON_INK_INSET_PX)}px`,
+          }}
+        >
           <ContextRing
             sessionId={serverSessionId}
             open={contextOpen}
@@ -503,6 +590,7 @@ export function ChatComposer({
           onClick={() => (isBusy ? stop() : submit())}
           disabled={!isBusy && !hasText}
           filled
+          ml={gapBetween(ICON_INK_INSET_PX, FILLED_INK_INSET_PX)}
         >
           {isBusy ? (
             <Square size={14} fill="currentColor" />
@@ -767,6 +855,7 @@ function RoundButton({
   children,
   disabled,
   filled,
+  ml = 0,
 }: {
   label: string;
   onClick: () => void;
@@ -774,6 +863,8 @@ function RoundButton({
   disabled?: boolean;
   /** The send/stop button: solid, so it reads as the primary action. */
   filled?: boolean;
+  /** Distance from the control on its left, in px. See OPTICAL_GAP_PX. */
+  ml?: number;
 }) {
   return (
     <VuiBox
@@ -796,6 +887,7 @@ function RoundButton({
         height: 36,
         flexShrink: 0,
         alignSelf: "center",
+        ml: `${ml}px`,
         border: "none",
         padding: 0,
         borderRadius: "var(--radius-full)",

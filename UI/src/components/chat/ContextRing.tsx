@@ -2,9 +2,11 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 
 import { VuiBox, VuiTypography } from "@/components/vision";
-import { api, type ContextLevel } from "@/lib/api";
+import { api } from "@/lib/api";
+import { ringColor } from "@/lib/chat/context-ring";
 
 /**
  * How full the conversation is, in the composer, where the mic used to be.
@@ -24,26 +26,26 @@ import { api, type ContextLevel } from "@/lib/api";
  * it describes is worse than no meter.
  */
 
-const SIZE = 36;
-const STROKE = 2.5;
-const RADIUS = (SIZE - STROKE) / 2 - 5;
-const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+/** The hit area, matching every other control in the row. */
+const BUTTON = 36;
 
 /**
- * Colour by nearness to compaction, not by raw fullness.
+ * The drawn ring, sized to the row's *glyphs* rather than to its buttons.
  *
- * A thread at 60% of its window is at 86% of a 0.7 threshold -- the second
- * number is the one worth reacting to, because compaction is what actually
- * happens next. At rest it is `--control-ink`, the same grey as every other
- * glyph in the row, so a quiet conversation does not decorate the composer.
+ * Measured: the plus and the eye each render a 20px glyph inside a 36px button,
+ * leaving 8px of clear space either side. This SVG used to fill its button edge
+ * to edge, so its mark sat 5px from its neighbours where theirs sat 8px -- and
+ * the row read as unevenly spaced even though every gap was exactly 6px. Same
+ * optical size, same insets, even row.
  */
-function ringColor(level: ContextLevel): string {
-  if (level.compact_at_tokens <= 0) return "var(--control-ink)";
-  const ratio = level.used_tokens / level.compact_at_tokens;
-  if (ratio >= 1) return "var(--danger)";
-  if (ratio >= 0.75) return "var(--warn)";
-  return "var(--control-ink)";
-}
+const GLYPH = 20;
+
+/** One padding value for the hover box, used above, below and to each side. */
+const TOOLTIP_PAD_PX = 10;
+const BAR_HEIGHT_PX = 4;
+const STROKE = 2.5;
+const RADIUS = (GLYPH - STROKE) / 2;
+const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 export function ContextRing({
   sessionId,
@@ -56,6 +58,7 @@ export function ContextRing({
   onToggle: () => void;
 }) {
   const t = useTranslations("chat");
+  const [hovered, setHovered] = useState(false);
 
   const { data: level } = useQuery({
     queryKey: ["contextLevel", sessionId],
@@ -68,7 +71,12 @@ export function ContextRing({
   });
 
   const fraction = level?.fraction ?? 0;
-  const color = level ? ringColor(level) : "var(--control-ink)";
+  // Blue while it fills, amber as it nears compaction, red when compaction is a
+  // turn or two away. Before the first turn there is no thread to describe, so
+  // the empty track is all there is to draw and the stroke colour is moot.
+  const color = level
+    ? ringColor(level.used_tokens, level.compact_at_tokens)
+    : "var(--primary)";
 
   return (
     <VuiBox
@@ -78,6 +86,8 @@ export function ContextRing({
         event.stopPropagation();
         onToggle();
       }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       // Disabled rather than hidden before the first turn: a control that
       // appears once you start typing moves the row under the user's cursor.
       disabled={!sessionId}
@@ -89,8 +99,8 @@ export function ContextRing({
       alignItems="center"
       justifyContent="center"
       sx={{
-        width: SIZE,
-        height: SIZE,
+        width: BUTTON,
+        height: BUTTON,
         flexShrink: 0,
         alignSelf: "center",
         border: "none",
@@ -104,18 +114,18 @@ export function ContextRing({
         "&:focus-visible": { outline: "2px solid var(--ring)", outlineOffset: 2 },
       }}
     >
-      <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} aria-hidden>
+      <svg width={GLYPH} height={GLYPH} viewBox={`0 0 ${GLYPH} ${GLYPH}`} aria-hidden>
         <circle
-          cx={SIZE / 2}
-          cy={SIZE / 2}
+          cx={GLYPH / 2}
+          cy={GLYPH / 2}
           r={RADIUS}
           fill="none"
           stroke="var(--border-strong)"
           strokeWidth={STROKE}
         />
         <circle
-          cx={SIZE / 2}
-          cy={SIZE / 2}
+          cx={GLYPH / 2}
+          cy={GLYPH / 2}
           r={RADIUS}
           fill="none"
           stroke={color}
@@ -125,10 +135,94 @@ export function ContextRing({
           strokeDashoffset={CIRCUMFERENCE * (1 - fraction)}
           // From the top, clockwise. The default start is 3 o'clock, which
           // reads as an arbitrary arc rather than as a gauge filling up.
-          transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}
+          transform={`rotate(-90 ${GLYPH / 2} ${GLYPH / 2})`}
           style={{ transition: "stroke-dashoffset 300ms ease, stroke 300ms ease" }}
         />
       </svg>
+      {/* The figures on hover, so the ring can be read without being clicked.
+          Hidden while the menu is open: the same numbers are already on screen,
+          in more detail, eight pixels above this. */}
+      {hovered && !open && level && (
+        <VuiBox
+          role="tooltip"
+          sx={{
+            position: "absolute",
+            right: 0,
+            bottom: "calc(100% + 8px)",
+            zIndex: 4,
+            // Never wider than the composer it sits in -- in a 420px popup a
+            // fixed width would hang off the panel.
+            maxWidth: "100%",
+            width: "max-content",
+            // One padding value, so the bar below sits the same distance from
+            // every edge as the line above it.
+            p: `${TOOLTIP_PAD_PX}px`,
+            pointerEvents: "none",
+            borderRadius: "var(--radius-md)",
+            backgroundColor: "var(--popover)",
+            border: "1px solid var(--border)",
+            boxShadow: "0 8px 24px rgb(0 0 0 / 0.18)",
+          }}
+        >
+          <VuiTypography
+            variant="caption"
+            sx={{
+              display: "block",
+              color: "var(--foreground)",
+              whiteSpace: "nowrap",
+              // The type's own leading would otherwise put more space under the
+              // line than the padding puts above it.
+              lineHeight: 1.4,
+            }}
+          >
+            {t("contextTooltip", {
+              percent: Math.round(level.fraction * 100),
+              tokens: level.tokens_until_compaction.toLocaleString(),
+            })}
+          </VuiTypography>
+
+          {/* The same reading as the ring, laid flat: a bar shows how much room
+              is left, which a circle can only imply. */}
+          <VuiBox
+            sx={{
+              mt: `${TOOLTIP_PAD_PX}px`,
+              height: BAR_HEIGHT_PX,
+              borderRadius: "var(--radius-full)",
+              backgroundColor: "var(--border-strong)",
+              position: "relative",
+              overflow: "hidden",
+            }}
+          >
+            <VuiBox
+              sx={{
+                width: `${level.fraction * 100}%`,
+                height: "100%",
+                borderRadius: "var(--radius-full)",
+                backgroundColor: color,
+                transition: "width 300ms ease, background-color 300ms ease",
+              }}
+            />
+            {/* Where compaction happens on its own. Without it the colour
+                changes have no visible cause -- the bar turns amber at a point
+                the user cannot see. */}
+            {level.usable_tokens > 0 && (
+              <VuiBox
+                sx={{
+                  position: "absolute",
+                  top: 0,
+                  bottom: 0,
+                  left: `${Math.min(
+                    (level.compact_at_tokens / level.usable_tokens) * 100,
+                    100,
+                  )}%`,
+                  width: "2px",
+                  backgroundColor: "var(--popover)",
+                }}
+              />
+            )}
+          </VuiBox>
+        </VuiBox>
+      )}
     </VuiBox>
   );
 }
@@ -168,6 +262,8 @@ export function ContextMenu({
         bottom: "calc(100% + 8px)",
         zIndex: 3,
         width: 288,
+        // Never wider than the composer: a fixed 288px hangs off a 420px popup.
+        maxWidth: "100%",
         // Same shell as the mention list and the Advanced menu.
         borderRadius: "var(--radius-md)",
         backgroundColor: "var(--popover)",

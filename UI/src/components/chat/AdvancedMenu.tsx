@@ -91,6 +91,9 @@ export function AdvancedMenu({
         bottom: "calc(100% + 8px)",
         zIndex: 3,
         width: 288,
+        // Never wider than the composer it belongs to. At a fixed 288px this
+        // hung off the left edge of the 420px popup and clipped the model names.
+        maxWidth: "100%",
         maxHeight: 360,
         overflowY: "auto",
         // Same shell as MentionMenu, so the two popups read as one family.

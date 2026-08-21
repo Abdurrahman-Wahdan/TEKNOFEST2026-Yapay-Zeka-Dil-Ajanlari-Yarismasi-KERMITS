@@ -146,6 +146,7 @@
     "think": "Think",
     "advanced": "Advanced",
     "contextLabel": "Context usage",
+    "contextTooltip": "{percent}% used · {tokens} tokens before it compacts",
     "contextLoading": "Reading the context…",
     "contextUsed": "{percent}% of the context used",
     "contextTokens": "{used} of {total} tokens",

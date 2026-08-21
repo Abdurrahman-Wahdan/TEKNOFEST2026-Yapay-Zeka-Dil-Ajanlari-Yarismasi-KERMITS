@@ -146,6 +146,7 @@
     "think": "Düşün",
     "advanced": "Gelişmiş",
     "contextLabel": "Bağlam kullanımı",
+    "contextTooltip": "%{percent} dolu · özetlemeye {tokens} token kaldı",
     "contextLoading": "Bağlam okunuyor…",
     "contextUsed": "Bağlam kullanımı: %{percent}",
     "contextTokens": "{total} tokenin {used} kadarı kullanıldı",

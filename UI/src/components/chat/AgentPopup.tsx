@@ -2,7 +2,7 @@
 
 import { useMediaQuery } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { Maximize2, Plus, X } from "lucide-react";
+import { Maximize2, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { usePathname } from "@/i18n/navigation";
 import { useEffect, useRef } from "react";
@@ -13,6 +13,7 @@ import { useRouter } from "@/i18n/navigation";
 import { useAuth } from "@/lib/auth";
 import { useChat } from "@/lib/chat/ChatProvider";
 
+import { ChatHistoryMenu } from "./ChatHistoryMenu";
 import { ChatPanel } from "./ChatPanel";
 
 /**
@@ -46,7 +47,7 @@ export function AgentPopup() {
   const theme = useTheme();
   const router = useRouter();
   const { user } = useAuth();
-  const { popupOpen, setPopupOpen, newChat, messages } = useChat();
+  const { popupOpen, setPopupOpen } = useChat();
   const pathname = usePathname();
 
   const panelRef = useRef<HTMLDivElement>(null);
@@ -236,12 +237,22 @@ export function AgentPopup() {
             */}
             <BrandWordmark>{BRAND_AI}</BrandWordmark>
 
-            <VuiBox display="flex" alignItems="center" gap={0.5}>
-              {messages.length > 0 && (
-                <HeaderButton label={t("newChat")} onClick={newChat}>
-                  <Plus size={16} />
-                </HeaderButton>
-              )}
+            <VuiBox
+              display="flex"
+              alignItems="center"
+              gap={0.5}
+              // Named so the history menu can line its right edge up with the
+              // close button rather than with the button that opened it, which
+              // left it floating in the middle of the panel.
+              data-panel-header-actions=""
+            >
+              {/* The same control the page header uses, rather than a second
+                  new-chat button beside a popup-only one. It brings the past
+                  conversations with it: the panel could start a chat but never
+                  return to one, so anything opened here was only reachable by
+                  expanding to /chat first. Its menu renders in a portal, so a
+                  420px panel does not clip it. */}
+              <ChatHistoryMenu />
               <HeaderButton
                 label={t("expand")}
                 onClick={() => {

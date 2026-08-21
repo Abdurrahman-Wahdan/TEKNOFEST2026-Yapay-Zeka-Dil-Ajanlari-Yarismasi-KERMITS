@@ -34,6 +34,15 @@ export function ChatHistoryMenu() {
    * decides whether the menu is open.
    */
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
+  /**
+   * The width of the panel this button lives in, when it lives in one.
+   *
+   * Null on the page, where the menu opens into an empty toolbar and can be any
+   * width. Set inside the assistant popup, where the same 280px paper anchored
+   * the same way hung off the right edge of a 420px panel and over the page
+   * behind it.
+   */
+  const [panelWidth, setPanelWidth] = useState<number | null>(null);
 
   /**
    * The page title, not the button, is what the menu lines up with.
@@ -46,6 +55,26 @@ export function ChatHistoryMenu() {
    */
   const openMenu = (event: React.MouseEvent<HTMLElement>) => {
     const button = event.currentTarget;
+
+    // Inside the popup there is no toolbar and no page title to line up with,
+    // and the panel is narrower than the menu's own minimum. Anchored to the
+    // button and opened *leftward*, the paper stays within the panel: this
+    // button sits near its right edge, which is the edge to grow away from.
+    const panel = button.closest('[role="dialog"]') as HTMLElement | null;
+    if (panel) {
+      setPanelWidth(Math.round(panel.getBoundingClientRect().width));
+      // The header's whole action cluster, not this button: right-aligned to the
+      // button the paper stopped short of the close control and sat in the
+      // middle of the panel. Aligned to the cluster it ends where the header
+      // ends, against the panel's own gutter.
+      const actions = button.closest(
+        "[data-panel-header-actions]",
+      ) as HTMLElement | null;
+      setAnchor(actions ?? button);
+      return;
+    }
+    setPanelWidth(null);
+
     const toolbar = button.closest(".MuiToolbar-root");
     // The title element itself, so the paper's left edge lands on the `K` rather
     // than on the toolbar's padding 16px to its left. Two fallbacks, widest first:
@@ -77,8 +106,14 @@ export function ChatHistoryMenu() {
         open={Boolean(anchor)}
         anchorEl={anchor}
         onClose={() => setAnchor(null)}
-        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-        transformOrigin={{ vertical: "top", horizontal: "left" }}
+        anchorOrigin={{
+          vertical: "bottom",
+          horizontal: panelWidth === null ? "left" : "right",
+        }}
+        transformOrigin={{
+          vertical: "top",
+          horizontal: panelWidth === null ? "left" : "right",
+        }}
         // Keeps the paper off the viewport edge now that it opens rightward.
         marginThreshold={16}
         slotProps={{
@@ -88,6 +123,11 @@ export function ChatHistoryMenu() {
               // full height; this brings the paper back up under the controls.
               mt: 0.5,
               minWidth: 280,
+              // Inside a panel the paper must fit it, so `minWidth` cannot be
+              // allowed to win. 32px leaves the panel's own gutter either side.
+              ...(panelWidth === null
+                ? {}
+                : { minWidth: 0, maxWidth: panelWidth - 32 }),
               maxWidth: 360,
               maxHeight: 420,
               backgroundColor: "var(--popover)",

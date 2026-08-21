@@ -607,9 +607,8 @@ export function Comparator() {
   const ineligible = (banks ?? []).filter((b) => !b.publishes.includes(spec.capability));
   const resultsRef = useRef<HTMLDivElement>(null);
 
-  // Financing has a catalogue between the form and the results. Without this,
-  // a successful click appears to do nothing because the new Results card is
-  // below a full card of products, often outside the viewport.
+  // The Results card mounts on the first Compare, so on a tall form it can
+  // appear below the fold and a successful click reads as doing nothing.
   useEffect(() => {
     if (query !== null && category !== "rates" && category !== "miles") {
       resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -824,58 +823,6 @@ export function Comparator() {
         )}
       </Card>
 
-      {/* This is deliberately separate from the comparison-family picker above.
-          A product does not disappear merely because no second bank sells the
-          same thing; the catalogue is the complete set of bank-published
-          options, while the picker remains the subset that can be ranked. */}
-      {(category === "finance" || category === "profit_share") && (
-        <Card>
-          <VuiBox mb="8px">
-            <VuiTypography variant="lg" color="white">
-              {t("catalogueTitle")}
-            </VuiTypography>
-          </VuiBox>
-          <VuiTypography variant="caption" color="text">
-            {t("catalogueDescription")}
-          </VuiTypography>
-          <VuiBox mt={2}>
-            <Dropdown
-              label={t("bank")}
-              value={effectiveCatalogueBank}
-              options={catalogueBanks.map((bank) => ({ value: bank.name, label: bank.display_name }))}
-              onChange={setCatalogueBank}
-            />
-          </VuiBox>
-          <VuiBox mt={2} display="flex" flexDirection="column" gap="8px">
-            {catalogueLoading ? (
-              <VuiTypography variant="caption" color="text">{tc("loading")}</VuiTypography>
-            ) : catalogueProducts?.length ? (
-              catalogueProducts.map((product) => (
-                <VuiBox
-                  key={product.code}
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="space-between"
-                  gap="12px"
-                  flexWrap="wrap"
-                  sx={{
-                    borderBottom: "1px solid",
-                    borderColor: "borders.main",
-                    paddingBottom: "8px",
-                  }}
-                  >
-                    <VuiTypography variant="button" color="white" fontWeight="medium">
-                      {product.name}
-                    </VuiTypography>
-                </VuiBox>
-              ))
-            ) : (
-              <VuiTypography variant="caption" color="text">{t("noResults")}</VuiTypography>
-            )}
-          </VuiBox>
-        </Card>
-      )}
-
       {/* results -- mounted only once there is something to show: the rates
           board and the mile table load on their own, everything else waits
           for the user to press Compare. Without this, an empty "Results" card
@@ -978,6 +925,60 @@ export function Comparator() {
                 )}
               </VuiBox>
             ))}
+          </VuiBox>
+        </Card>
+      )}
+
+      {/* Last on the page, below the ranking and below the banks that could
+          not be ranked: this is deliberately separate from the
+          comparison-family picker above. A product does not disappear merely
+          because no second bank sells the same thing -- the catalogue is the
+          complete set of bank-published options, while the picker remains the
+          subset that can be ranked. */}
+      {(category === "finance" || category === "profit_share") && (
+        <Card>
+          <VuiBox mb="8px">
+            <VuiTypography variant="lg" color="white">
+              {t("catalogueTitle")}
+            </VuiTypography>
+          </VuiBox>
+          <VuiTypography variant="caption" color="text">
+            {t("catalogueDescription")}
+          </VuiTypography>
+          <VuiBox mt={2}>
+            <Dropdown
+              label={t("bank")}
+              value={effectiveCatalogueBank}
+              options={catalogueBanks.map((bank) => ({ value: bank.name, label: bank.display_name }))}
+              onChange={setCatalogueBank}
+            />
+          </VuiBox>
+          <VuiBox mt={2} display="flex" flexDirection="column" gap="8px">
+            {catalogueLoading ? (
+              <VuiTypography variant="caption" color="text">{tc("loading")}</VuiTypography>
+            ) : catalogueProducts?.length ? (
+              catalogueProducts.map((product) => (
+                <VuiBox
+                  key={product.code}
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="space-between"
+                  gap="12px"
+                  flexWrap="wrap"
+                  sx={{
+                    borderBottom: "1px solid",
+                    borderColor: "borders.main",
+                    paddingBottom: "8px",
+                  }}
+                  >
+                    <VuiTypography variant="button" color="white" fontWeight="medium">
+                      {product.name}
+                    </VuiTypography>
+                </VuiBox>
+              ))
+            ) : (
+              <VuiTypography variant="caption" color="text">{t("noResults")}</VuiTypography>
+            )}
           </VuiBox>
         </Card>
       )}
