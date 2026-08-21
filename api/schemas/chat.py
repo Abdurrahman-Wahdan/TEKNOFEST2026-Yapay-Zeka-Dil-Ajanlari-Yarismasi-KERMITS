@@ -254,6 +254,46 @@ class AskRequest(BaseModel):
         return self
 
 
+class ContextLevelOut(BaseModel):
+    """How full one conversation's thread is, and when it compacts.
+
+    Every figure is in the units the agent's own threshold uses, read from the
+    middleware that governs that thread. The alternative -- counting separately
+    for display -- produces a number that drifts from the one that actually
+    fires, which is worse than showing nothing.
+    """
+
+    used_tokens: int = Field(description="Tokens the conversation currently occupies.")
+    usable_tokens: int = Field(
+        description="What the conversation can occupy: the window the model's "
+        "host reports, less the system prompt and tool schemas that ride on "
+        "every request and no summary can remove."
+    )
+    fraction: float = Field(
+        ge=0.0, le=1.0, description="used/usable, clamped to 1.0."
+    )
+    compact_at_tokens: int = Field(
+        description="The level at which compaction happens without being asked."
+    )
+    tokens_until_compaction: int = Field(
+        description="Headroom before that, floored at 0."
+    )
+    keep_messages: int = Field(
+        description="Messages left verbatim when it does; the rest become a summary."
+    )
+    message_count: int = Field(description="Messages currently on the thread.")
+
+
+class CompactionResult(BaseModel):
+    """What a hand-triggered compaction did."""
+
+    compacted: bool = Field(
+        description="False when there was nothing ahead of the preserved tail "
+        "to summarise -- a short thread is not an error."
+    )
+    context: ContextLevelOut = Field(description="The level afterwards.")
+
+
 class StreamEvent(BaseModel):
     """One SSE frame. Only the fields belonging to `type` are populated.
 

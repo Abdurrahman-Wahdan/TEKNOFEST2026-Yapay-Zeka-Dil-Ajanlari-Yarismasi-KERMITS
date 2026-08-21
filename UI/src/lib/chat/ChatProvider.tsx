@@ -22,6 +22,8 @@ import {
   titleFor,
   type StoredConversation,
 } from "./store";
+import { useQueryClient } from "@tanstack/react-query";
+
 import { streamChat } from "./transport";
 import { api } from "@/lib/api";
 import { usePathname } from "@/i18n/navigation";
@@ -125,6 +127,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [serverSessionId, setServerSessionId] = useState<string | undefined>();
   const [status, setStatus] = useState<ChatStatus>("ready");
   const [popupOpen, setPopupOpen] = useState(false);
+  const queryClient = useQueryClient();
   const [think, setThink] = useState(false);
   // Undefined, not a hardcoded "gemma": the default belongs to the server, and
   // pinning it here would silently override a change made in settings.
@@ -393,11 +396,16 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           if (abortRef.current === controller) {
             abortRef.current = null;
             setStatus("ready");
+            // The thread just grew, so the composer's context ring is stale.
+            // Invalidated on completion rather than polled: the level only
+            // moves when a turn does, and a timer would ask the agent for its
+            // state on a loop while nothing is happening.
+            queryClient.invalidateQueries({ queryKey: ["contextLevel"] });
           }
         }
       })();
     },
-    [messages, serverSessionId, think, model, attachments, pathname],
+    [messages, serverSessionId, think, model, attachments, pathname, queryClient],
   );
 
   const newChat = useCallback(() => {

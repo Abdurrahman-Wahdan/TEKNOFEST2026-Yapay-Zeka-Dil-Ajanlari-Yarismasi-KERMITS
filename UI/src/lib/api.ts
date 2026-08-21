@@ -36,6 +36,8 @@ export type ChatSessionDetail = Schemas["ChatSessionDetail"];
 export type ChatMessage = Schemas["ChatMessageOut"];
 export type StreamEvent = Schemas["StreamEvent"];
 export type TableMetadata = Schemas["TableMetadataOut"];
+export type ContextLevel = Schemas["ContextLevelOut"];
+export type CompactionResult = Schemas["CompactionResult"];
 export type ChatModel = Schemas["ModelOut"];
 export type ChatModels = Schemas["ModelsResponse"];
 export type TokenPair = Schemas["TokenPair"];
@@ -262,6 +264,15 @@ export const api = {
   // The composer's model picker. No arguments: the caller has nothing to filter
   // this by, and the list is short enough that paging it would be theatre.
   models: () => request<ChatModels>("/models"),
+  // How full the conversation's thread is. Only the supervisor's -- the bank
+  // specialists have their own, compacted the same way, but they are working
+  // memory rather than the conversation.
+  contextLevel: (sessionId: string) =>
+    request<ContextLevel>(`/chat/sessions/${sessionId}/context`),
+  compactSession: (sessionId: string) =>
+    request<CompactionResult>(`/chat/sessions/${sessionId}/compact`, {
+      method: "POST",
+    }),
   tableMetadata: (body: Schemas["TableMetadataRequest"]) =>
     request<TableMetadata>("/chat/table-metadata", {
       method: "POST",

@@ -672,6 +672,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/chat/sessions/{session_id}/context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Context Level
+         * @description How full this conversation is, and how far it is from compacting.
+         *
+         *     Only the supervisor's thread. Each bank specialist has its own, compacted the
+         *     same way, but they are private working memory rather than the conversation
+         *     and nothing asks after them.
+         */
+        get: operations["get_context_level"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chat/sessions/{session_id}/compact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Compact Session
+         * @description Summarise this conversation now, without waiting for the threshold.
+         *
+         *     The stored transcript is untouched: this rewrites the agent's thread, not
+         *     `chat_messages`, so the user keeps every message they can scroll back to
+         *     while the model continues from the summary.
+         */
+        post: operations["compact_session"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/chat/table-metadata": {
         parameters: {
             query?: never;
@@ -1123,6 +1171,19 @@ export interface components {
             /** Type */
             type?: string | null;
         };
+        /**
+         * CompactionResult
+         * @description What a hand-triggered compaction did.
+         */
+        CompactionResult: {
+            /**
+             * Compacted
+             * @description False when there was nothing ahead of the preserved tail to summarise -- a short thread is not an error.
+             */
+            compacted: boolean;
+            /** @description The level afterwards. */
+            context: components["schemas"]["ContextLevelOut"];
+        };
         /** ComparisonOut */
         ComparisonOut: {
             /** Category */
@@ -1202,6 +1263,52 @@ export interface components {
             /** Unavailable */
             unavailable?: components["schemas"]["UnavailableOut"][];
             intersection: components["schemas"]["IntersectionOut"];
+        };
+        /**
+         * ContextLevelOut
+         * @description How full one conversation's thread is, and when it compacts.
+         *
+         *     Every figure is in the units the agent's own threshold uses, read from the
+         *     middleware that governs that thread. The alternative -- counting separately
+         *     for display -- produces a number that drifts from the one that actually
+         *     fires, which is worse than showing nothing.
+         */
+        ContextLevelOut: {
+            /**
+             * Used Tokens
+             * @description Tokens the conversation currently occupies.
+             */
+            used_tokens: number;
+            /**
+             * Usable Tokens
+             * @description What the conversation can occupy: the window the model's host reports, less the system prompt and tool schemas that ride on every request and no summary can remove.
+             */
+            usable_tokens: number;
+            /**
+             * Fraction
+             * @description used/usable, clamped to 1.0.
+             */
+            fraction: number;
+            /**
+             * Compact At Tokens
+             * @description The level at which compaction happens without being asked.
+             */
+            compact_at_tokens: number;
+            /**
+             * Tokens Until Compaction
+             * @description Headroom before that, floored at 0.
+             */
+            tokens_until_compaction: number;
+            /**
+             * Keep Messages
+             * @description Messages left verbatim when it does; the rest become a summary.
+             */
+            keep_messages: number;
+            /**
+             * Message Count
+             * @description Messages currently on the thread.
+             */
+            message_count: number;
         };
         /**
          * ContextLocation
@@ -2989,6 +3096,68 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_context_level: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContextLevelOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    compact_session: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompactionResult"];
+                };
             };
             /** @description Validation Error */
             422: {

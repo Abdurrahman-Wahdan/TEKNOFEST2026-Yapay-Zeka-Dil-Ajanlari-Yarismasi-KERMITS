@@ -473,6 +473,14 @@ def _agent_answer(
         agent = build_main_agent(model=model, thinking=think)
         state = agent.get_state(config)
         seeded = bool((state.values or {}).get("messages"))
+        # The whole stored conversation, however long it is. Nothing is dropped
+        # to make it fit: compaction runs in `before_model`, so a history longer
+        # than the window is summarised before the model is ever called, and a
+        # history longer than one summarising pass is folded rather than cut.
+        #
+        # This is the path that reloads a thread whose checkpoints are gone --
+        # after a compaction the checkpoint holds the summary, so `seeded` is
+        # true and the stored history is correctly left alone.
         messages: list = [] if seeded else list(history or [])
         # Reuse the existing attachment encoding, but with no RAG context. The
         # supervisor has no retrieval tool in this milestone; a user attachment

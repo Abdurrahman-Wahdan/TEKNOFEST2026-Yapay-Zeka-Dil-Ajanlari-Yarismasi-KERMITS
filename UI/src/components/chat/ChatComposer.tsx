@@ -2,7 +2,7 @@
 
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { styled, useTheme } from "@mui/material/styles";
-import { ArrowUp, Eye, Mic, Plus, SlidersHorizontal, Square } from "lucide-react";
+import { ArrowUp, Eye, Plus, SlidersHorizontal, Square } from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
   useCallback,
@@ -21,6 +21,7 @@ import type { MentionTarget } from "@/lib/chat/types";
 
 import { AdvancedMenu } from "./AdvancedMenu";
 import { AttachmentTray } from "./AttachmentTray";
+import { ContextMenu, ContextRing } from "./ContextRing";
 import { MentionMenu, mentionAt } from "./MentionMenu";
 
 /**
@@ -132,7 +133,7 @@ export function ChatComposer({
 }) {
   const t = useTranslations("chat");
   const theme = useTheme();
-  const { status, send, stop, think, setThink, model, setModel, attachments } =
+  const { status, send, stop, think, setThink, model, setModel, attachments, serverSessionId } =
     useChat();
 
   /**
@@ -148,6 +149,8 @@ export function ChatComposer({
   const [advancedOpen, setAdvancedOpen] = useState(false);
   // Wraps the chip and its menu, so a click on either counts as inside.
   const advancedRef = useRef<HTMLDivElement>(null);
+  const [contextOpen, setContextOpen] = useState(false);
+  const contextRef = useRef<HTMLDivElement>(null);
   /** True once the text no longer fits on one line: controls move below. */
   const [multiline, setMultiline] = useState(false);
   /** True while snapdom is working, so the button cannot be pressed twice. */
@@ -209,13 +212,16 @@ export function ChatComposer({
   // popup shell: the field takes focus on mousedown, so waiting for the click
   // leaves the menu open through the gesture that moved the caret away from it.
   useEffect(() => {
-    if (!advancedOpen) return;
+    if (!advancedOpen && !contextOpen) return;
     const onPointerDown = (event: MouseEvent) => {
-      if (advancedRef.current?.contains(event.target as Node)) return;
-      setAdvancedOpen(false);
+      const target = event.target as Node;
+      if (!advancedRef.current?.contains(target)) setAdvancedOpen(false);
+      if (!contextRef.current?.contains(target)) setContextOpen(false);
     };
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") setAdvancedOpen(false);
+      if (event.key !== "Escape") return;
+      setAdvancedOpen(false);
+      setContextOpen(false);
     };
     document.addEventListener("mousedown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
@@ -223,7 +229,7 @@ export function ChatComposer({
       document.removeEventListener("mousedown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [advancedOpen]);
+  }, [advancedOpen, contextOpen]);
 
   /** The `@…` the caret is sitting in, if any. */
   const mention = useMemo(() => mentionAt(value, caret), [value, caret]);
@@ -475,9 +481,22 @@ export function ChatComposer({
         {/* Kept because the design has it and dictation is a real possibility, but
             disabled: there is no speech-to-text pipeline yet, and a button that
             silently does nothing is worse than one that says it cannot. */}
-        <RoundButton label={t("voice")} onClick={() => {}} disabled>
-          <Mic size={20} />
-        </RoundButton>
+        {/* Where the mic was. That button had been disabled since it was added
+            -- there is no speech-to-text pipeline -- so the row was spending a
+            slot on a control that did nothing. */}
+        <VuiBox ref={contextRef} sx={{ position: "relative", flexShrink: 0 }}>
+          <ContextRing
+            sessionId={serverSessionId}
+            open={contextOpen}
+            onToggle={() => setContextOpen(!contextOpen)}
+          />
+          {contextOpen && serverSessionId && (
+            <ContextMenu
+              sessionId={serverSessionId}
+              onCompacted={() => setContextOpen(false)}
+            />
+          )}
+        </VuiBox>
 
         <RoundButton
           label={isBusy ? t("stop") : t("send")}

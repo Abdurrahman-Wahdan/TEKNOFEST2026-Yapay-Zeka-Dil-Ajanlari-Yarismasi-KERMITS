@@ -28,8 +28,8 @@ from ..db.models import ChatMessage, ChatSession
 from ..db.session import session_scope
 from ..deps import CurrentUser, DbSession
 from ..schemas.chat import (
-    AskRequest, ChatMessageOut, ChatSessionDetail, ChatSessionOut, StreamEvent,
-    TableMetadataOut, TableMetadataRequest,
+    AskRequest, ChatMessageOut, ChatSessionDetail, ChatSessionOut, CompactionResult,
+    ContextLevelOut, StreamEvent, TableMetadataOut, TableMetadataRequest,
 )
 
 logger = logging.getLogger(__name__)
@@ -125,6 +125,89 @@ def delete_chat_session(
     delete_session_checkpoints(str(session_id))
     session.delete(chat)
     session.commit()
+
+
+def _thread_of(session_id: uuid.UUID):
+    """The supervisor's compaction, its agent, and this conversation's thread.
+
+    The middleware is the same one the supervisor runs with, so the number
+    reported here is the number that fires compaction -- not a second estimate
+    that happens to be close.
+    """
+    from agents.main.agent import build_main_agent, main_compaction, main_thread_id
+
+    compaction, window = main_compaction()
+    agent = build_main_agent()
+    config = {"configurable": {"thread_id": main_thread_id(str(session_id))}}
+    return compaction, window, agent, config
+
+
+def _level_out(compaction, window, agent, config) -> ContextLevelOut:
+    """Read the thread as it stands now."""
+    from agents.shared.compaction import measure
+
+    state = agent.get_state(config)
+    messages = list((state.values or {}).get("messages") or [])
+    level = measure(compaction, messages, window)
+    return ContextLevelOut(
+        used_tokens=level.used_tokens,
+        usable_tokens=level.usable_tokens,
+        fraction=level.fraction,
+        compact_at_tokens=level.compact_at_tokens,
+        tokens_until_compaction=level.tokens_until_compaction,
+        keep_messages=level.keep_messages,
+        message_count=level.message_count,
+    )
+
+
+@router.get("/sessions/{session_id}/context", response_model=ContextLevelOut)
+def get_context_level(
+    session_id: uuid.UUID, user: CurrentUser, session: DbSession
+) -> ContextLevelOut:
+    """How full this conversation is, and how far it is from compacting.
+
+    Only the supervisor's thread. Each bank specialist has its own, compacted the
+    same way, but they are private working memory rather than the conversation
+    and nothing asks after them.
+    """
+    _own_session(session, user, session_id)
+    try:
+        return _level_out(*_thread_of(session_id))
+    except Exception as exc:
+        logger.exception("Could not read the context level for %s", session_id)
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "The context level is unavailable.",
+        ) from exc
+
+
+@router.post("/sessions/{session_id}/compact", response_model=CompactionResult)
+def compact_session(
+    session_id: uuid.UUID, user: CurrentUser, session: DbSession
+) -> CompactionResult:
+    """Summarise this conversation now, without waiting for the threshold.
+
+    The stored transcript is untouched: this rewrites the agent's thread, not
+    `chat_messages`, so the user keeps every message they can scroll back to
+    while the model continues from the summary.
+    """
+    _own_session(session, user, session_id)
+    try:
+        # Built once and measured twice. Rebuilding for the second reading would
+        # compile a second supervisor -- ten specialist tools and their bank
+        # clients -- to count tokens it already has the means to count.
+        compaction, window, agent, config = _thread_of(session_id)
+        update = compaction.compact_now(agent.get_state(config).values)
+        if update is not None:
+            agent.update_state(config, update)
+        level = _level_out(compaction, window, agent, config)
+    except Exception as exc:
+        logger.exception("Compaction failed for %s", session_id)
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "The conversation could not be compacted.",
+        ) from exc
+    return CompactionResult(compacted=update is not None, context=level)
 
 
 @router.post("/table-metadata", response_model=TableMetadataOut)

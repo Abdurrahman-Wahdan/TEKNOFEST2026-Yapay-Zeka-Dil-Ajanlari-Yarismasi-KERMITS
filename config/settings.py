@@ -59,6 +59,45 @@ class Settings(BaseSettings):
     EXTRACTOR_MODEL: str = Field(default="qwen", description="Best structured output.")
     REASONER_MODEL: str = "gpt"
 
+    # ===== Compaction (summarising a thread before it fills its window) =====
+    #
+    # Every agent is compacted the same way -- the supervisor and all ten bank
+    # specialists -- because each is a separate instance with its own thread and
+    # its own history. The two tiers get their own keys so they can be tuned
+    # apart: a specialist's thread fills with bank JSON at a different rate than
+    # a conversation does, and nobody is watching it.
+    COMPACT_AT_FRACTION: float = Field(
+        default=0.7,
+        gt=0.0,
+        le=1.0,
+        description="Compact the supervisor's thread once its messages reach "
+        "this share of the usable window. Measured against what the server "
+        "reports for the model, not a constant.",
+    )
+    COMPACT_SPECIALIST_AT_FRACTION: float = Field(
+        default=0.7,
+        gt=0.0,
+        le=1.0,
+        description="The same, for one bank specialist's private thread.",
+    )
+    COMPACT_KEEP_MESSAGES: int = Field(
+        default=10,
+        gt=0,
+        description="Messages left untouched at the end of the supervisor's "
+        "thread. Everything before them is replaced by the summary; these are "
+        "carried through verbatim so the last exchanges keep their exact wording.",
+    )
+    COMPACT_SPECIALIST_KEEP_MESSAGES: int = Field(
+        default=10,
+        gt=0,
+        description="The same, for one bank specialist's private thread.",
+    )
+    COMPACT_MODEL: str = Field(
+        default="chat",
+        description="Role or model key that writes the summary. A role, so it "
+        "follows CHAT_MODEL rather than pinning a model that may not be served.",
+    )
+
     # ===== Embeddings =====
     EMBEDDING_PROVIDER: str = Field(
         default="remote",

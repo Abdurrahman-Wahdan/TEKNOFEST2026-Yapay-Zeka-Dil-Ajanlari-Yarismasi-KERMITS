@@ -65,9 +65,27 @@ def build_specialist_tool(spec: SpecialistSpec) -> BaseTool:
             # refreshes and retries internally. The main agent therefore sees
             # either the specialist's final response or a terminal failure after
             # the configured retry window, never an in-progress placeholder.
+            # The parent's callbacks are carried across, and this is the only
+            # reason anything can see what a specialist spends. A config built
+            # from scratch here *replaces* the caller's rather than extending
+            # it, so the handlers attached to the supervisor's run never reach
+            # the specialist's model calls. Measured: with a fresh config the
+            # inner call was invisible to the parent's usage handler; carrying
+            # the callbacks through, it was counted. Ten specialists were
+            # spending tokens that nothing could observe.
+            #
+            # `thread_id` is still replaced on purpose: the specialist's memory
+            # is private and must not land on the supervisor's thread.
+            parent = runtime.config or {}
             result = build_specialist(spec.bank, monthly_profit_rate).invoke(
                 {"messages": [("user", request)]},
-                config={"configurable": {"thread_id": specialist_thread_id(session_id, spec.bank)}},
+                config={
+                    **parent,
+                    "configurable": {
+                        **(parent.get("configurable") or {}),
+                        "thread_id": specialist_thread_id(session_id, spec.bank),
+                    },
+                },
                 context={"session_id": session_id},
             )
             return _final_text(result)

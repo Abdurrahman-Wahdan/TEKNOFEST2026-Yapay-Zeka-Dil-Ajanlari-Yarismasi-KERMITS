@@ -19,6 +19,7 @@ def clear_caches():
     from banks import status
     from corpus import store as corpus_store
     from embeddings import clear_embedding_cache
+    from llm.context import clear_cache as clear_context_cache
     from vector_stores import clear_client_cache
 
     def clear():
@@ -31,6 +32,8 @@ def clear_caches():
         status.clear_cache()
         # The parsed manifest, which is keyed on a path a test may have moved.
         corpus_store.clear_cache()
+        # Probed context windows, keyed on the tunnel URL a test may have moved.
+        clear_context_cache()
 
     clear()
     yield

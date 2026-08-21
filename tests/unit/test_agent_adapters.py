@@ -22,13 +22,30 @@ pytestmark = pytest.mark.unit
 class _Specialist:
     def invoke(self, payload, config, context):
         assert payload == {"messages": [("user", "Get a live quote")]}
+        # The private thread wins over the supervisor's, so the specialist's
+        # memory never lands on the conversation's thread.
         assert config["configurable"]["thread_id"] == "chat-1:bank:kuveytturk"
+        # ...but everything else on the supervisor's config is carried across.
+        # Without this the parent's callbacks never reach the specialist and its
+        # token spend is invisible to anything watching the supervisor.
+        assert config["callbacks"] == ["the supervisor's handlers"]
         assert context == {"session_id": "chat-1"}
         return {"messages": [type("Message", (), {"content": "Live result"})()]}
 
 
 class _Runtime:
+    """What LangChain's ToolNode injects, as far as the adapter uses it.
+
+    `config` carries the supervisor's run: its callbacks are what let anything
+    observe a specialist's token spend, and its `thread_id` is what the adapter
+    must override so a specialist's memory stays private.
+    """
+
     context = {"session_id": "chat-1"}
+    config = {
+        "configurable": {"thread_id": "main-thread"},
+        "callbacks": ["the supervisor's handlers"],
+    }
 
 
 class _ToolCallingFake(FakeMessagesListChatModel):
