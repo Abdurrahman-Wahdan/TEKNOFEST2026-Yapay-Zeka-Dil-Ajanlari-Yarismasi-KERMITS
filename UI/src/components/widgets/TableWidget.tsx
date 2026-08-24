@@ -72,6 +72,7 @@ export function TableWidget(props: TableProps) {
         rows={table.rows}
         state={filters}
         onChange={setFilters}
+        bankLabels={bankLabels}
         matched={rows.length}
         total={table.rows.length}
       />

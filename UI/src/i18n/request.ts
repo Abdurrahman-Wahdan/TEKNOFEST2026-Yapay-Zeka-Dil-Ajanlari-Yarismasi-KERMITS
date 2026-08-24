@@ -1,7 +1,14 @@
 import { getRequestConfig } from "next-intl/server";
 import { hasLocale } from "next-intl";
 
+import enMessages from "../../messages/en.json";
+import trMessages from "../../messages/tr.json";
 import { routing } from "./routing";
+
+const messages = {
+  en: enMessages,
+  tr: trMessages,
+};
 
 export default getRequestConfig(async ({ requestLocale }) => {
   const requested = await requestLocale;
@@ -13,7 +20,10 @@ export default getRequestConfig(async ({ requestLocale }) => {
 
   return {
     locale,
-    messages: (await import(`../../messages/${locale}.json`)).default,
+    // Explicit imports make message edits part of Turbopack's dependency graph.
+    // A computed JSON import kept the old catalogue alive across Fast Refresh,
+    // leaving newly added controls rendered as raw `chat.someKey` strings.
+    messages: messages[locale],
     // Turkey is the only market, so times are shown in Istanbul regardless of
     // where the browser is. A campaign that "ends today" must mean today in
     // Turkey.

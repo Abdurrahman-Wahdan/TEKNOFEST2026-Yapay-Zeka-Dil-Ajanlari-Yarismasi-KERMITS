@@ -98,6 +98,50 @@ class Settings(BaseSettings):
         "follows CHAT_MODEL rather than pinning a model that may not be served.",
     )
 
+    # ===== Corpus retrieval (a specialist reading its own bank's documents) =====
+    #
+    # A physical ceiling on one delegated turn, not a judgement about content.
+    # The agent decides what to search for and when it has enough; these only
+    # stop a loop, and a loop is what happens without them: the offline
+    # researcher, which has the same tools, was measured going 42 `next=true`
+    # calls deep on a single topic and 50 calls into a marking cycle that
+    # returned nothing. `exit_behavior="continue"` means hitting one of these
+    # blocks that tool and lets the specialist answer with what it has, rather
+    # than failing the turn.
+    RETRIEVE_SEARCH_LIMIT: int = Field(
+        default=8,
+        gt=0,
+        description="Most `search_bank` calls in one delegated turn. Lower than "
+        "the offline pipeline's budget on purpose: a user is waiting on this "
+        "one, and each call now returns whole chunks rather than previews.",
+    )
+    RETRIEVE_EXPAND_LIMIT: int = Field(
+        default=8,
+        gt=0,
+        description="Most `expand_chunk` calls in one delegated turn. Roughly one "
+        "per search: widening a cut-off passage is the normal follow-up to a "
+        "hit, and walking a long document outward is several.",
+    )
+    RETRIEVE_PAGE_LIMIT: int = Field(
+        default=3,
+        gt=0,
+        description="Most `read_full_page` calls in one delegated turn. The "
+        "smallest of the three because it is the largest payload and the one "
+        "`expand_chunk` usually replaces.",
+    )
+
+    # ===== Table overviews =====
+    TABLE_OVERVIEW_CONCURRENCY: int = Field(
+        default=2,
+        gt=0,
+        description="How many overviews may be generated at once, process-wide. "
+        "The per-table lock stops two readers of the *same* table racing; this "
+        "stops a reader who opens six tables in a minute queueing six vision "
+        "calls on a single-GPU host that is also serving the chat. Measured: "
+        "the engine had 14 requests in flight during testing and stopped "
+        "answering a ten-token prompt inside 90 seconds.",
+    )
+
     # ===== Embeddings =====
     EMBEDDING_PROVIDER: str = Field(
         default="remote",
@@ -446,6 +490,51 @@ class Settings(BaseSettings):
         gt=0,
         description="Per-capability budget. Higher than BANK_HTTP_TIMEOUT "
         "because one check may call a catalogue and then a quote.",
+    )
+
+    # ===== Voice transcription =====
+    VOICE_MODEL_PATH: str = Field(
+        default=str(
+            PROJECT_ROOT
+            / "TF26_data"
+            / "models"
+            / "whisper-large-v3-mlx-4bit"
+        ),
+        description="Local MLX checkpoint for Turkish voice input. A local path "
+        "is deliberate: serving a request must never trigger a multi-gigabyte "
+        "network download. The default is exact Whisper large-v3 with 4-bit "
+        "weights, ready for the on-device M1 Max benchmark.",
+    )
+    VOICE_LANGUAGE: str = Field(
+        default="tr",
+        min_length=2,
+        max_length=5,
+        description="Forced source language. Skipping language detection removes "
+        "work from every short recording and prevents Turkish speech being "
+        "misclassified from a one- or two-word prompt.",
+    )
+    VOICE_MODEL_BYTES: int = Field(
+        default=973_563_040,
+        gt=0,
+        description="Expected byte size of the configured MLX weights.npz.",
+    )
+    VOICE_MODEL_SHA256: str = Field(
+        default="3bfa3c4e42344ea87a5b81a73992a867088ae076d377042e384b657adea81db9",
+        min_length=64,
+        max_length=64,
+        description="Official Hugging Face LFS SHA-256 for the configured "
+        "checkpoint. Verified once before any model bytes are executed.",
+    )
+    VOICE_MAX_UPLOAD_MB: int = Field(
+        default=10,
+        gt=0,
+        le=100,
+        description="Hard cap on one compressed browser recording.",
+    )
+    VOICE_WARM_ON_STARTUP: bool = Field(
+        default=True,
+        description="Load and compile Whisper during API startup so the first "
+        "voice request has warm-request latency.",
     )
 
     # ===== API (the FastAPI service the dashboard talks to) =====

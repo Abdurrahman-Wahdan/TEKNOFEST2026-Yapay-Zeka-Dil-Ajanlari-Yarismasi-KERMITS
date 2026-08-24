@@ -8,7 +8,7 @@ import { VuiBox, VuiTypography } from "@/components/vision";
 import { api, type ChatModel } from "@/lib/api";
 
 /**
- * The composer's Advanced menu: which model answers, and whether it thinks.
+ * The composer's Advanced menu: model, thinking, and web-search preferences.
  *
  * It replaces the "Think" chip rather than sitting beside it. Thinking was one
  * of two settings that belong together and only one of them had a control, so
@@ -37,14 +37,18 @@ function modelName(model: ChatModel): string {
 
 export function AdvancedMenu({
   think,
+  webSearch,
   model,
   onThink,
+  onWebSearch,
   onModel,
 }: {
   think: boolean;
+  webSearch: boolean;
   /** Undefined means "whatever the server's default is". */
   model?: string;
   onThink: (on: boolean) => void;
+  onWebSearch: (on: boolean) => void;
   onModel: (key: string | undefined) => void;
 }) {
   const t = useTranslations("chat");
@@ -242,6 +246,52 @@ export function AdvancedMenu({
           </span>
         </span>
         <Track on={thinkable && think} />
+      </VuiBox>
+
+      <VuiBox
+        sx={{ height: "1px", backgroundColor: "var(--border)", mx: 1.25, my: 0.5 }}
+      />
+
+      <GroupLabel>{t("advancedWebSearch")}</GroupLabel>
+
+      <VuiBox
+        component="button"
+        type="button"
+        role="switch"
+        aria-checked={webSearch}
+        onClick={(event: React.MouseEvent) => {
+          event.stopPropagation();
+          onWebSearch(!webSearch);
+        }}
+        display="flex"
+        alignItems="center"
+        gap={1}
+        sx={{
+          width: "100%",
+          textAlign: "left",
+          border: "none",
+          cursor: "pointer",
+          px: 1.25,
+          py: 1,
+          borderRadius: "15px",
+          backgroundColor: "transparent",
+          color: "var(--foreground)",
+          fontFamily: "inherit",
+          "&:hover": { backgroundColor: "var(--muted)" },
+          "&:focus-visible": { outline: "2px solid var(--ring)", outlineOffset: -2 },
+        }}
+      >
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: "block", fontSize: "0.875rem", fontWeight: 500 }}>
+            {t("webSearch")}
+          </span>
+          <span
+            style={{ display: "block", fontSize: "0.75rem", color: "var(--control-ink)" }}
+          >
+            {t("webSearchHint")}
+          </span>
+        </span>
+        <Track on={webSearch} />
       </VuiBox>
     </VuiBox>
   );

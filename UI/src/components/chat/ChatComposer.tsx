@@ -2,7 +2,14 @@
 
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { styled, useTheme } from "@mui/material/styles";
-import { ArrowUp, Eye, Plus, SlidersHorizontal, Square } from "lucide-react";
+import {
+  ArrowUp,
+  AudioLines,
+  Eye,
+  Plus,
+  SlidersHorizontal,
+  Square,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
   useCallback,
@@ -16,13 +23,16 @@ import {
 } from "react";
 
 import { VuiBox } from "@/components/vision";
+import { api } from "@/lib/api";
 import { useChat } from "@/lib/chat/ChatProvider";
 import type { MentionTarget } from "@/lib/chat/types";
+import { useVoiceSession } from "@/lib/chat/useVoiceSession";
 
 import { AdvancedMenu } from "./AdvancedMenu";
 import { AttachmentTray } from "./AttachmentTray";
 import { ContextMenu, ContextRing } from "./ContextRing";
 import { MentionMenu, mentionAt } from "./MentionMenu";
+import { VoiceSessionBar } from "./VoiceSessionBar";
 
 /**
  * The composer. One of it, in both chat surfaces.
@@ -166,8 +176,19 @@ export function ChatComposer({
 }) {
   const t = useTranslations("chat");
   const theme = useTheme();
-  const { status, send, stop, think, setThink, model, setModel, attachments, serverSessionId } =
-    useChat();
+  const {
+    status,
+    send,
+    stop,
+    think,
+    setThink,
+    webSearch,
+    setWebSearch,
+    model,
+    setModel,
+    attachments,
+    serverSessionId,
+  } = useChat();
 
   /**
    * On a phone the controls always get their own row.
@@ -190,8 +211,30 @@ export function ChatComposer({
   const [capturing, setCapturing] = useState(false);
   const [mentionIndex, setMentionIndex] = useState(0);
   const [caret, setCaret] = useState(0);
-
   const fieldRef = useRef<HTMLTextAreaElement>(null);
+  const transcribeRecording = useCallback(
+    async (audio: Blob, signal: AbortSignal) => {
+      const transcript = await api.voiceTranscription(audio, signal);
+      if (!transcript.text) return;
+      setValue((current) =>
+        current ? `${current.trimEnd()} ${transcript.text}` : transcript.text,
+      );
+      requestAnimationFrame(() => {
+        const field = fieldRef.current;
+        if (!field) return;
+        field.focus();
+        field.setSelectionRange(field.value.length, field.value.length);
+        setCaret(field.value.length);
+      });
+    },
+    [],
+  );
+  const voiceCallbacks = useMemo(
+    () => ({ onEnd: transcribeRecording }),
+    [transcribeRecording],
+  );
+  const voice = useVoiceSession(voiceCallbacks);
+
   const fileRef = useRef<HTMLInputElement>(null);
   const shellRef = useRef<HTMLDivElement>(null);
   const rightControlsRef = useRef<HTMLDivElement>(null);
@@ -529,15 +572,17 @@ export function ChatComposer({
             // Tinted whenever a setting is off-default, not only while the menu
             // is open. The Think chip showed that state on its face; folding it
             // into a menu must not cost the user the ability to see it.
-            changed={think || model !== undefined}
+            changed={think || webSearch || model !== undefined}
             label={t("advanced")}
             onToggle={() => setAdvancedOpen(!advancedOpen)}
           />
           {advancedOpen && (
             <AdvancedMenu
               think={think}
+              webSearch={webSearch}
               model={model}
               onThink={setThink}
+              onWebSearch={setWebSearch}
               onModel={setModel}
             />
           )}
@@ -586,21 +631,51 @@ export function ChatComposer({
         </VuiBox>
 
         <RoundButton
-          label={isBusy ? t("stop") : t("send")}
-          onClick={() => (isBusy ? stop() : submit())}
-          disabled={!isBusy && !hasText}
+          label={isBusy ? t("stop") : hasText ? t("send") : t("voiceStart")}
+          onClick={() => (isBusy ? stop() : hasText ? submit() : void voice.start())}
           filled
           ml={gapBetween(ICON_INK_INSET_PX, FILLED_INK_INSET_PX)}
         >
           {isBusy ? (
             <Square size={14} fill="currentColor" />
-          ) : (
+          ) : hasText ? (
             <ArrowUp size={18} />
+          ) : (
+            <AudioLines size={20} />
           )}
         </RoundButton>
       </VuiBox>
     </>
   );
+
+  if (voice.phase !== "idle") {
+    return (
+      <VuiBox sx={{ position: "relative", width: "100%", maxWidth: 768, mx: "auto" }}>
+        <VuiBox
+          data-no-quote=""
+          sx={{
+            position: "relative",
+            borderRadius: "28px",
+            backgroundColor: "var(--card)",
+            border: "1px solid var(--ring)",
+            boxShadow:
+              "0 0 0 3px color-mix(in srgb, var(--ring) 12%, transparent)",
+          }}
+        >
+          <VoiceSessionBar
+            phase={voice.phase}
+            error={voice.error}
+            elapsedMs={voice.elapsedMs}
+            levels={voice.levels}
+            onRetry={() => void voice.start()}
+            onMute={voice.toggleMute}
+            onEnd={voice.end}
+            onCancel={voice.cancel}
+          />
+        </VuiBox>
+      </VuiBox>
+    );
+  }
 
   return (
     <VuiBox

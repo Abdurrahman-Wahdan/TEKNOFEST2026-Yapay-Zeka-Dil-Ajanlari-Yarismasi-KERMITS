@@ -21,18 +21,21 @@ import {
 import { ActionButton } from "@/components/ui/ActionButton";
 import { CenteredState } from "@/components/ui/CenteredState";
 import { Dropdown } from "@/components/ui/Dropdown";
-import { MultiSelect } from "@/components/ui/MultiSelect";
 import { Pill } from "@/components/ui/Pill";
+import { SearchField } from "@/components/ui/SearchField";
 import { VuiBox, VuiTypography } from "@/components/vision";
 import { api, type TableDetailOut, type TableSummary } from "@/lib/api";
 import { resolveTable, type TableProps } from "@/lib/contract";
 import { capitalize } from "@/lib/format";
-import { sortRows } from "@/lib/table-filter";
+import { applyFilters, EMPTY_FILTERS, sortRows, type FilterState } from "@/lib/table-filter";
+import { searchTables } from "@/lib/table-search";
 import { useBankLabels } from "@/lib/use-bank-labels";
 import { useTableSort } from "@/lib/use-table-sort";
 
 import { useAttachTable } from "@/lib/chat/use-attach-table";
 import { ProducedTable } from "./ProducedTable";
+import { TableOverview } from "./TableOverview";
+import { TableFilters } from "./TableFilters";
 
 /** Same glyphs `vision/routes.js` uses for these two nav entries — the
     picker header repeats the sidebar's own icon so the two stay linked. */
@@ -40,45 +43,25 @@ const CATEGORY_ICON = { ürün: IoPricetags, kampanya: IoMegaphone } as const;
 
 type RowOut = TableDetailOut["rows"][number];
 
-/**
- * The pipeline's two sentinel strings — a field it found nothing for
- * (`belirtilmemiş`, "not specified") and a bank that does not offer this
- * product/campaign at all (`sunulmuyor`, "not offered"). Matched trimmed and
- * Turkish-lowercased, the same fold `lib/format.ts` uses for bank/product
- * names, so stray capitalisation or whitespace in the source data cannot slip
- * one through as ordinary content.
- */
-const NOT_OFFERED = "sunulmuyor";
-const NOT_SPECIFIED = "belirtilmemiş";
-
 /** The column key for the citation link — same hardcoded-Turkish-label
-    convention the backend already uses for `Banka` (`compare_tables.py`),
-    since this whole data domain has no English translation to draw from. */
+    convention the backend already uses for `Banka`, `Geçerlilik` and `Bitiş`
+    (`compare_tables.py`), since this whole data domain has no English
+    translation to draw from. */
 const KAYNAK_KEY = "Kaynak";
-
-function fold(value: string): string {
-  return value.trim().toLocaleLowerCase("tr-TR");
-}
-
-/** True once every populated field in this bank's row says the same single
-    thing: nothing is offered. A row like that carries no information to
-    compare, so it is split out rather than rendered as a row of dashes. */
-function isFullyUnoffered(cells: RowOut["cells"]): boolean {
-  const values = Object.entries(cells)
-    .filter(([key]) => key !== "Banka")
-    .map(([, v]) => v);
-  const present = values.filter((v) => v !== null && v !== undefined && v !== "");
-  return present.length > 0 && present.every((v) => typeof v === "string" && fold(v) === NOT_OFFERED);
-}
 
 /**
  * Splits one table's rows into banks worth comparing and banks that do not
  * offer it at all — the same shape `Comparator` uses for banks it could not
  * price (`unavailable`, rendered in their own card below the results table
- * rather than as blank cells inside it). A row that mixes real content with
- * an occasional `sunulmuyor`/`belirtilmemiş` field stays in the table, with
- * just that field nulled out to the contract's existing "producer did not
- * find this" dash — the fact still shown, just not invented text.
+ * rather than as blank cells inside it).
+ *
+ * The verdict is `row.offers`, decided by the API. It used to be decided here,
+ * by checking whether every populated cell said `sunulmuyor` — which was true
+ * of the previous dataset and is true of only 88 rows in the current one. The
+ * producer now answers the question in a column it names itself, and it has
+ * used 93 different names for that column across the pool, so the check moved
+ * to the one place that can hold that knowledge without shipping it to the
+ * browser. `null` is not `false`: a row nothing settled stays in the table.
  */
 function splitRows(
   rows: RowOut[],
@@ -86,7 +69,7 @@ function splitRows(
   const offering: RowOut[] = [];
   const absent: { bank: string; cite_url?: string; cite_note?: string }[] = [];
   for (const row of rows) {
-    if (isFullyUnoffered(row.cells)) {
+    if (row.offers === false) {
       absent.push({
         bank: String(row.cells.Banka ?? ""),
         cite_url: row.cite_url ?? undefined,
@@ -94,14 +77,7 @@ function splitRows(
       });
       continue;
     }
-    const cells = Object.fromEntries(
-      Object.entries(row.cells).map(([key, value]) => {
-        if (key === "Banka" || typeof value !== "string") return [key, value];
-        const folded = fold(value);
-        return folded === NOT_OFFERED || folded === NOT_SPECIFIED ? [key, null] : [key, value];
-      }),
-    ) as RowOut["cells"];
-    offering.push({ ...row, cells });
+    offering.push(row);
   }
   return { offering, absent };
 }
@@ -126,6 +102,12 @@ function splitRows(
  * does not include `bank`, because most producers never send one — but this
  * table always does, and alphabetical-by-bank is exactly the sort Comparator
  * itself offers for free on every one of its tables.
+ *
+ * The `Geçerlilik` and `Bitiş` columns need no override at all, which is why
+ * the API types them the way it does: `resolveTable` makes a `badge` filterable
+ * and a `date` sortable on its own, so "show me only the live ones" and "order
+ * by when they end" both fall out of the generic machinery rather than out of
+ * anything written on this page.
  */
 function toTableProps(detail: TableDetailOut, rows: RowOut[]): TableProps {
   return {
@@ -146,6 +128,9 @@ function toTableProps(detail: TableDetailOut, rows: RowOut[]): TableProps {
       cells: { ...r.cells, [KAYNAK_KEY]: r.cite_url ?? null },
       cite_url: r.cite_url ?? undefined,
       cite_note: r.cite_note ?? undefined,
+      cell_notes: r.cell_notes ?? undefined,
+      cell_tones: r.cell_tones ?? undefined,
+      offers: r.offers ?? undefined,
     })),
   };
 }
@@ -165,12 +150,13 @@ function toTableProps(detail: TableDetailOut, rows: RowOut[]): TableProps {
 export function CompareTablesBrowser({ category }: { category: "ürün" | "kampanya" }) {
   const t = useTranslations("compareTables");
   const tc = useTranslations("components");
-  // Reusing `comparator`'s own strings for the bank picker below (`Bankalar`,
-  // `Tümünü seç`, `Tümü`) rather than adding a second set of translations for
-  // the same three words.
-  const tComp = useTranslations("comparator");
   const locale = useLocale() as "tr" | "en";
   const [subcategory, setSubcategory] = useState<string>("");
+  // Free text over the picker grid, not over any table's rows -- `TableFilters`
+  // does the second job once a table is open. Held here rather than inside
+  // `SearchField` because the count beside it and the empty state below both
+  // have to agree with it.
+  const [query, setQuery] = useState("");
   const [tableId, setTableId] = useState<string | null>(null);
   // Local sort state, reset per table. The three-click asc/desc/off toggle is
   // `useTableSort`, the same hook `Comparator` and `TableWidget` call, so this
@@ -179,10 +165,19 @@ export function CompareTablesBrowser({ category }: { category: "ürün" | "kampa
   // `ProducedTable` because only this component knows when it has to go:
   // opening a different table.
   const { sort, toggleSort, resetSort } = useTableSort();
-  // `null` means "every bank offering this table" -- the same convention
-  // `Comparator` uses for its own bank selection, so "nothing excluded yet"
-  // does not have to be recomputed as an explicit list of every value.
-  const [selectedBanks, setSelectedBanks] = useState<string[] | null>(null);
+  /**
+   * Row filters, reset per table.
+   *
+   * This page used to hold a hand-built bank `MultiSelect` of its own and no
+   * other filter. `TableFilters` builds one tick-list per column that earns one
+   * — which for these tables is exactly two, the `bank` column and the
+   * `badge` validity column — so the hand-built picker was a second component
+   * doing the first half of that job, and the second half did not exist. The
+   * new validity filter is the reason it had to go either way: two pickers
+   * side by side, one generic and one not, is the drift this app has a rule
+   * against.
+   */
+  const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
 
   const list = useQuery({
     queryKey: ["compare-tables", category],
@@ -197,10 +192,18 @@ export function CompareTablesBrowser({ category }: { category: "ürün" | "kampa
 
   const bankLabels = useBankLabels();
 
-  const filtered = useMemo<TableSummary[]>(() => {
+  const inSubcategory = useMemo<TableSummary[]>(() => {
     const tables = list.data?.tables ?? [];
     return subcategory ? tables.filter((table) => table.subcategory === subcategory) : tables;
   }, [list.data, subcategory]);
+
+  // Two steps, kept apart: the subcategory picker decides what the pool is and
+  // the keyword box narrows it, so a search that matches nothing can say so
+  // without the page pretending the subcategory is empty.
+  const filtered = useMemo<TableSummary[]>(
+    () => searchTables(inSubcategory, query, locale),
+    [inSubcategory, query, locale],
+  );
 
   const subcategoryOptions = useMemo(
     () => [
@@ -222,29 +225,14 @@ export function CompareTablesBrowser({ category }: { category: "ürün" | "kampa
     [detail.data, offering],
   );
 
-  // The banks actually in this table's rows -- not the full bank registry,
-  // since a table with 3 offering banks should offer a 3-item picker, not
-  // one padded with 7 banks that would immediately show empty if ticked.
-  const bankOptions = useMemo(() => {
-    if (!table) return [];
-    const seen = new Set<string>();
-    const options: { value: string; label: string }[] = [];
-    for (const row of table.rows) {
-      const key = String(row.cells.Banka ?? "");
-      if (key && !seen.has(key)) {
-        seen.add(key);
-        options.push({ value: key, label: bankLabels[key] ?? key });
-      }
-    }
-    return options.sort((a, b) => a.label.localeCompare(b.label, locale === "tr" ? "tr" : "en"));
-  }, [table, bankLabels, locale]);
-  const chosenBanks = selectedBanks ?? bankOptions.map((o) => o.value);
-
+  // Filter, then sort — the same order and the same two functions `TableWidget`
+  // and `Comparator` use. The tick-lists themselves are built from the columns
+  // by `TableFilters`, so nothing here names a bank or a validity value.
   const rows = useMemo(() => {
     if (!table) return [];
-    const visible = table.rows.filter((r) => chosenBanks.includes(String(r.cells.Banka ?? "")));
-    return sortRows(visible, sort, table.columns, locale, bankLabels);
-  }, [table, chosenBanks, sort, locale, bankLabels]);
+    const matched = applyFilters(table.rows, table.columns, filters, locale);
+    return sortRows(matched, sort, table.columns, locale, bankLabels);
+  }, [table, filters, sort, locale, bankLabels]);
   /**
    * What this table is, for anything reading the page afterwards.
    *
@@ -270,13 +258,28 @@ export function CompareTablesBrowser({ category }: { category: "ürün" | "kampa
 
   const openTable = (id: string) => {
     resetSort();
-    setSelectedBanks(null);
+    setFilters(EMPTY_FILTERS);
     setTableId(id);
   };
 
   if (tableId) {
     return (
       <VuiBox display="flex" flexDirection="column" gap="24px">
+        {/* Above the table, not inside it: it answers "is this worth reading"
+            before the reader has to work that out from the columns. `ready`
+            gates the screenshot on the rows actually being on screen -- a
+            capture taken while the table is still loading shows the model a
+            spinner and asks it what the table means. */}
+        <TableOverview
+          // Keyed, so opening a second table gets a second component rather
+          // than the first one's state: the generation result and its error
+          // both live in the card, and without this the previous table's
+          // overview stays on screen under the new table's heading.
+          key={tableId}
+          tableId={tableId}
+          ready={Boolean(table) && !detail.isLoading}
+        />
+
         <Card>
           <VuiBox display="flex" alignItems="center" justifyContent="space-between" mb="16px" flexWrap="wrap" gap="12px">
             <VuiTypography variant="lg" color="white">
@@ -287,20 +290,20 @@ export function CompareTablesBrowser({ category }: { category: "ürün" | "kampa
             </ActionButton>
           </VuiBox>
 
-          {/* Same component Comparator uses for its own bank picker --
-              select-all row, tick individual banks, "chosen / total" on the
-              trigger. There, it decides who gets queried; here, it narrows
-              which of the already-loaded rows show, but it is the identical
-              control either way. */}
-          {bankOptions.length > 1 && (
+          {/* One tick-list per column that earns one, built from the columns
+              themselves: `Banka`, and the validity chip. Given the *unfiltered*
+              rows on purpose -- a tick-list that only offered the values still
+              showing could never be used to widen a selection back out. */}
+          {table && (
             <VuiBox mb={2}>
-              <MultiSelect
-                label={tComp("banks")}
-                options={bankOptions}
-                selected={chosenBanks}
-                onChange={setSelectedBanks}
-                allLabel={tComp("allBanks")}
-                allSelectedLabel={tComp("allSelected")}
+              <TableFilters
+                columns={table.columns}
+                rows={table.rows}
+                state={filters}
+                onChange={setFilters}
+                bankLabels={bankLabels}
+                matched={rows.length}
+                total={table.rows.length}
               />
             </VuiBox>
           )}
@@ -335,7 +338,19 @@ export function CompareTablesBrowser({ category }: { category: "ürün" | "kampa
                 {t(category === "ürün" ? "notOfferedTitleUrun" : "notOfferedTitleKampanya")}
               </VuiTypography>
             </VuiBox>
-            <VuiBox display="flex" flexDirection="column" gap="10px">
+            {/* Marked so the page outline carries it: each line here is under
+                the outline's minimum text length, so without this the whole
+                card is invisible to anything reading the page as text -- which
+                is how the overview agent stopped knowing which banks do not
+                offer the product. */}
+            <VuiBox
+              display="flex"
+              flexDirection="column"
+              gap="10px"
+              data-outline-list={t(
+                category === "ürün" ? "notOfferedTitleUrun" : "notOfferedTitleKampanya",
+              )}
+            >
               {absent.map(({ bank, cite_url, cite_note }) => (
                 <VuiBox key={bank} display="flex" gap="10px" alignItems="center" flexWrap="wrap">
                   <VuiTypography variant="button" color="white" fontWeight="medium">
@@ -420,24 +435,52 @@ export function CompareTablesBrowser({ category }: { category: "ürün" | "kampa
         {list.isError && (
           <CenteredState icon={<IoAlertCircleOutline size="28px" />} label={t("loadFailed")} tone="error" />
         )}
-        {list.data && filtered.length === 0 && (
+        {list.data && inSubcategory.length === 0 && (
           <CenteredState icon={<IoDocumentTextOutline size="28px" />} label={t("noTablesMatch")} />
         )}
 
-        {list.data && filtered.length > 0 && (
+        {list.data && inSubcategory.length > 0 && (
           <>
-            <VuiBox mb="16px">
+            {/* Count and search share the row: the count is what the search
+                changes, and reading "3 tablo" next to the box that produced
+                the 3 is the whole feedback loop. */}
+            <VuiBox
+              mb="16px"
+              display="flex"
+              alignItems="center"
+              justifyContent="space-between"
+              gap="12px"
+              flexWrap="wrap"
+            >
               <VuiTypography variant="caption" color="text">
                 {t("tableCount", { count: filtered.length })}
               </VuiTypography>
+              <SearchField
+                value={query}
+                onChange={setQuery}
+                label={t("searchTables")}
+                placeholder={t("searchPlaceholder")}
+                clearLabel={t("clearSearch")}
+              />
             </VuiBox>
-            <Grid container spacing={3}>
-              {filtered.map((summary) => (
-                <Grid item xs={12} sm={6} lg={4} key={summary.id}>
-                  <TableCard table={summary} locale={locale} onClick={() => openTable(summary.id)} />
-                </Grid>
-              ))}
-            </Grid>
+
+            {/* The search box stays on screen when nothing matches -- it is
+                mounted above this branch, not inside the grid -- so a query
+                that finds nothing can be edited rather than started over. */}
+            {filtered.length === 0 ? (
+              <CenteredState
+                icon={<IoDocumentTextOutline size="28px" />}
+                label={t("noTablesMatchSearch", { query })}
+              />
+            ) : (
+              <Grid container spacing={3}>
+                {filtered.map((summary) => (
+                  <Grid item xs={12} sm={6} lg={4} key={summary.id}>
+                    <TableCard table={summary} locale={locale} onClick={() => openTable(summary.id)} />
+                  </Grid>
+                ))}
+              </Grid>
+            )}
           </>
         )}
       </Card>

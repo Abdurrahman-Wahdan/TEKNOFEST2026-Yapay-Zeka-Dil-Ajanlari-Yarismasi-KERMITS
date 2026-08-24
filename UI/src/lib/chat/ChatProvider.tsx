@@ -69,6 +69,9 @@ type ChatContextValue = {
   setPopupOpen: (open: boolean) => void;
   think: boolean;
   setThink: (on: boolean) => void;
+  /** Whether the user wants web search enabled for upcoming turns. */
+  webSearch: boolean;
+  setWebSearch: (on: boolean) => void;
   /**
    * The model answering, as a key from `GET /api/models`. `undefined` means the
    * server's configured default -- the composer never has to know what that is.
@@ -129,6 +132,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [popupOpen, setPopupOpen] = useState(false);
   const queryClient = useQueryClient();
   const [think, setThink] = useState(false);
+  const [webSearch, setWebSearch] = useState(false);
   // Undefined, not a hardcoded "gemma": the default belongs to the server, and
   // pinning it here would silently override a change made in settings.
   const [model, setModel] = useState<string | undefined>();
@@ -475,6 +479,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       setPopupOpen,
       think,
       setThink,
+      webSearch,
+      setWebSearch,
       model,
       setModel,
       attachments,
@@ -492,6 +498,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       newChat,
       popupOpen,
       think,
+      webSearch,
       model,
       attachments,
       history,

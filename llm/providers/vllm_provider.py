@@ -10,10 +10,8 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
-import httpx
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_openai import ChatOpenAI
-from openai import APIConnectionError, APITimeoutError
 
 from config.settings import settings
 from config import tunnel
@@ -32,40 +30,12 @@ THINKING_ON = {"chat_template_kwargs": {"enable_thinking": True}}
 class TunnelAwareChatOpenAI(ChatOpenAI):
     """Retry tunnel failures until the configured request window expires."""
 
-    @staticmethod
-    def _is_tunnel_failure(exc: Exception) -> bool:
-        """Whether retrying against a newly published tunnel can help.
-
-        Do not fetch the Gist for validation/authentication errors: those are
-        application failures, not evidence that the reverse-proxy URL rotated.
-        A stale tunnel is observed as 404; reverse-proxy outages use the listed
-        gateway statuses or a transport failure.
-        """
-        # The OpenAI SDK wraps httpx connection/reset/timeout exceptions in its
-        # own APIConnectionError hierarchy.  Looking only for httpx exceptions
-        # therefore misses the exact error LangChain gives us and skips tunnel
-        # refresh entirely.  Walk the exception chain as well so this remains
-        # correct if another client wrapper adds one more layer later.
-        current: BaseException | None = exc
-        seen: set[int] = set()
-        while current is not None and id(current) not in seen:
-            seen.add(id(current))
-            if isinstance(
-                current,
-                (
-                    APIConnectionError,
-                    APITimeoutError,
-                    ConnectionError,
-                    TimeoutError,
-                    OSError,
-                    httpx.TransportError,
-                ),
-            ):
-                return True
-            if getattr(current, "status_code", None) in {404, 502, 503, 504}:
-                return True
-            current = current.__cause__ or current.__context__
-        return False
+    # The detector moved to `config/tunnel.py`: the embeddings client reached
+    # through the same reverse proxy needs the identical answer, and two copies
+    # of the list would drift until the half that fell behind stopped
+    # recovering. Kept as a static method here because that is the name the
+    # retry paths below and the tests both call.
+    _is_tunnel_failure = staticmethod(tunnel.is_tunnel_failure)
 
     def _recover_tunnel(self, exc: Exception) -> None:
         if not self._is_tunnel_failure(exc):
@@ -118,10 +88,20 @@ class TunnelAwareChatOpenAI(ChatOpenAI):
         ):
             object.__setattr__(self, name, getattr(replacement, name))
         # A stream that failed mid-connect can leave a dead pooled connection
-        # behind. Close the old synchronous client after replacement so every
-        # retry starts from a new TCP/TLS connection.
+        # behind, so the old client is closed after replacement -- but only if
+        # the replacement is not standing on it.
+        #
+        # `ChatOpenAI` instances built with the same base URL and timeout share
+        # one underlying httpx client (langchain-openai caches it), so a plain
+        # `close()` here shut the connection pool that every *other* model
+        # object in the process was using: one tunnel hiccup during a table
+        # overview and the next chat answer died on "Cannot send a request, as
+        # the client has been closed". Concurrent callers are what made it
+        # visible; it was always wrong.
+        old_http = getattr(old_root_client, "_client", None)
+        new_http = getattr(self.root_client, "_client", None)
         close = getattr(old_root_client, "close", None)
-        if callable(close):
+        if callable(close) and old_http is not None and old_http is not new_http:
             close()
 
     def _retry_after_tunnel_refresh(self, operation, *args, **kwargs):

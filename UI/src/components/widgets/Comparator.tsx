@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ActionButton } from "@/components/ui/ActionButton";
 import { AmountField, IntegerField } from "@/components/ui/AmountField";
+import { CollapsibleCard } from "@/components/ui/CollapsibleCard";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { MultiSelect } from "@/components/ui/MultiSelect";
 import { Pill } from "@/components/ui/Pill";
@@ -936,15 +937,15 @@ export function Comparator() {
           complete set of bank-published options, while the picker remains the
           subset that can be ranked. */}
       {(category === "finance" || category === "profit_share") && (
-        <Card>
-          <VuiBox mb="8px">
-            <VuiTypography variant="lg" color="white">
-              {t("catalogueTitle")}
-            </VuiTypography>
-          </VuiBox>
-          <VuiTypography variant="caption" color="text">
-            {t("catalogueDescription")}
-          </VuiTypography>
+        // Folded on arrival: it is the longest card on the page and the one
+        // nobody came for -- the ranking above answers the question, this
+        // answers "what else does that bank sell". Its description stays
+        // visible while folded, so the heading still says what is inside.
+        <CollapsibleCard
+          title={t("catalogueTitle")}
+          description={t("catalogueDescription")}
+          defaultCollapsed
+        >
           <VuiBox mt={2}>
             <Dropdown
               label={t("bank")}
@@ -980,7 +981,7 @@ export function Comparator() {
               <VuiTypography variant="caption" color="text">{t("noResults")}</VuiTypography>
             )}
           </VuiBox>
-        </Card>
+        </CollapsibleCard>
       )}
     </VuiBox>
   );

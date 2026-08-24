@@ -51,6 +51,11 @@ argon2-cffi==25.1.0
 pyjwt==2.13.0
 # EmailStr's validator. pydantic does not pull it in on its own.
 email-validator==2.3.0
+# Browser voice input posts multipart audio. `mlx-whisper` is conditional: it
+# uses Metal and only publishes a useful runtime for Apple Silicon, while the
+# rest of the API remains importable on Linux CI and non-Mac deployments.
+python-multipart==0.0.20
+mlx-whisper==0.4.3; platform_system == "Darwin" and platform_machine == "arm64"
 
 # Dataprep (agentic crawl + VLM extraction + embed)
 pypdf==6.16.0

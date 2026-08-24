@@ -23,6 +23,30 @@ describe("outlineToMarkdown", () => {
     assert.match(out, /<\/page-snapshot>$/);
   });
 
+  it("keeps a marked list whole, under its own heading", () => {
+    // Why this node type exists: every line here is shorter than MIN_TEXT, so
+    // as loose text the whole card vanishes from the snapshot. That is what
+    // happened to "banks that do not offer this" -- the agent only knew about
+    // those banks from a screenshot, and stopped knowing when it went away.
+    const out = outlineToMarkdown(
+      outline([
+        {
+          type: "list",
+          label: "Bu ürünü sunmayan bankalar",
+          items: ["Dünya Katılım Bankası Sunulmuyor", "T.O.M. Katılım Bankası Sunulmuyor"],
+        },
+      ]),
+    );
+    assert.match(out, /### Bu ürünü sunmayan bankalar/);
+    assert.match(out, /- Dünya Katılım Bankası Sunulmuyor/);
+    assert.match(out, /- T\.O\.M\. Katılım Bankası Sunulmuyor/);
+  });
+
+  it("draws a labelless list as plain items", () => {
+    const out = outlineToMarkdown(outline([{ type: "list", items: ["one", "two"] }]));
+    assert.match(out, /- one\n- two/);
+  });
+
   it("names the page when it knows it", () => {
     const out = outlineToMarkdown(outline([], { page: "Compare" }));
     assert.match(out, /page="Compare"/);

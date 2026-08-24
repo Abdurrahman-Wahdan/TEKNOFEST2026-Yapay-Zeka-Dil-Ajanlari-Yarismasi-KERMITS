@@ -1,8 +1,24 @@
-"""Create a bank specialist's constrained live-tool surface.
+"""Create a bank specialist's constrained tool surface.
 
 The public ``banks.tools`` API remains generic for existing callers.  This
 module is deliberately separate: it binds a bank before LangChain sees a tool,
-so a specialist cannot redirect a live request to another bank.
+so a specialist cannot redirect a request to another bank.
+
+Two kinds of tool are built here and they answer different questions:
+
+    live endpoints   what the bank's calculator says right now -- a quote, a
+                     rate, an instalment. Gated on ``bank.capabilities``,
+                     because a bank that publishes no calculator must not be
+                     given one.
+    corpus retrieval what the bank has published -- campaign conditions,
+                     eligibility rules, fee schedules, validity windows. Not
+                     gated: every bank's site was crawled, and having no live
+                     calculator has nothing to do with having no documents.
+                     Built in ``corpus.search``.
+
+The retrieval tools are documentation, not live data, and the specialist prompt
+says so: a figure read out of a published page is not a quote and must not be
+reported with a live retrieval time.
 """
 
 from typing import Callable
@@ -13,8 +29,11 @@ from pydantic import BaseModel, Field, model_validator
 from banks.factory import get_bank
 from banks import tools as generic
 from banks.health import run as run_health
+from corpus.search import build_bank_retrieval_tools
+from corpus.sites import get_site
 
 from .results import live_result
+from .retrieval_memory import RetrievalMemory
 
 
 class ProductsInput(BaseModel):
@@ -94,8 +113,18 @@ def build_bank_tools(
     bank_name: str,
     *,
     enforced_monthly_profit_rate: float | None = None,
+    retrieval: RetrievalMemory | None = None,
 ) -> list[BaseTool]:
-    """Return only the live tools the named bank truthfully supports."""
+    """The named bank's tools: the live endpoints it truthfully supports, plus
+    corpus retrieval over what it has published.
+
+    Args:
+        retrieval: where this specialist's keep/drop decisions are recorded, so
+            ``RetrievalPruning`` can act on them. Defaults to a private one,
+            which leaves the tools working and the decisions inert -- fine for a
+            caller that only wants to inspect the tool surface, wrong for a
+            running specialist, which always passes its own.
+    """
     bank = get_bank(bank_name)
     capabilities = bank.capabilities
     tools: list[BaseTool] = []
@@ -231,6 +260,17 @@ def build_bank_tools(
                 return [generic._mile(row) for row in rows]
             return live_result(bank.name, "mile_earning_rates", call)
         tools.append(_tool("mile_earning_rates", f"Get {bank.display_name}'s live reward rates.", MileInput, miles))
+
+    # What this bank has published, as opposed to what its calculator answers.
+    #
+    # `corpus_slug`, not `bank_name`: the store stamps chunks with the name the
+    # crawl used ("vakifkatilim"), which differs from the provider key ("vakif")
+    # for seven of the ten banks. A filter on the wrong name matches nothing and
+    # raises nothing, so getting this wrong would leave those seven specialists
+    # searching forever and being told their bank has published nothing.
+    memory = retrieval or RetrievalMemory()
+    tools.extend(build_bank_retrieval_tools(
+        get_site(bank_name).corpus_slug, memory.marked, memory.discarded))
 
     # Health is intentionally scoped to this provider and is a diagnostic tool,
     # never a way for one specialist to inspect another bank.

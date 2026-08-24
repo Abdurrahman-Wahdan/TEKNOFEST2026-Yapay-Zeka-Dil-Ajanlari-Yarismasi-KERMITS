@@ -7,7 +7,7 @@ import pytest
 import httpx
 from langchain_core.messages import AIMessageChunk
 from langchain_core.outputs import ChatGenerationChunk
-from openai import APIConnectionError, APITimeoutError
+from openai import APIConnectionError, APITimeoutError, NotFoundError
 
 from config.settings import settings
 from config import tunnel
@@ -289,3 +289,145 @@ def test_thinking_is_not_offered_where_the_model_ignores_it():
     assert MODELS["gpt"].supports_thinking is False
     assert get_llm("gpt", thinking=True).extra_body is None
     assert get_llm("gpt").extra_body is None
+
+
+# --- the embeddings client survives a tunnel rotation -------------------------
+class TestTunnelAwareEmbeddings:
+    """The embeddings client is reached through the same rotating reverse proxy
+    as the chat models, and used to be the only thing that could not follow it.
+
+    It pinned `VLLM_BASE_URL` at construction and was then cached for the life
+    of the process, so the first rotation did not cost one request -- it broke
+    every embedding until a restart: search, indexing, table lookup, all 404.
+    """
+
+    @staticmethod
+    def _embeddings(monkeypatch, responses):
+        """A client whose inner embed_documents plays `responses` in order."""
+        from embeddings.providers import remote_provider
+
+        calls = []
+
+        class FakeClient:
+            def __init__(self, base_url):
+                self.base_url = base_url
+
+            def embed_documents(self, texts):
+                calls.append(self.base_url)
+                outcome = responses.pop(0)
+                if isinstance(outcome, Exception):
+                    raise outcome
+                return outcome
+
+            def embed_query(self, text):
+                return self.embed_documents([text])[0]
+
+        emb = remote_provider.TunnelAwareEmbeddings.__new__(
+            remote_provider.TunnelAwareEmbeddings
+        )
+        emb._model = "m"
+        emb._client_kwargs = {}
+        emb._base_url = "https://stale.example"
+        monkeypatch.setattr(emb, "_build", lambda: FakeClient(emb._base_url), raising=False)
+        emb._client = emb._build()
+        # No real sleeping between attempts.
+        monkeypatch.setattr(remote_provider.time, "sleep", lambda _s: None)
+        return emb, calls
+
+    def test_a_rotated_tunnel_is_refreshed_and_the_call_retried(self, monkeypatch):
+        from config import settings as settings_module
+        from config import tunnel
+        from embeddings.providers import remote_provider
+
+        # The exception the OpenAI SDK actually raises for a rotated tunnel --
+        # ngrok answers 404 for an address that no longer exists. Not
+        # httpx.HTTPStatusError: that one carries its code on `.response`, and
+        # the SDK never surfaces it to LangChain anyway.
+        request = httpx.Request("POST", "https://stale.example/embed/v1/embeddings")
+        stale = NotFoundError(
+            "ERR_NGROK_3200",
+            response=httpx.Response(404, request=request),
+            body=None,
+        )
+        emb, calls = self._embeddings(monkeypatch, [stale, [[0.1, 0.2]]])
+
+        def fake_refresh(failed):
+            settings_module.settings.VLLM_BASE_URL = "https://fresh.example"
+            return True
+
+        monkeypatch.setattr(tunnel, "refresh_after_failure", fake_refresh)
+        monkeypatch.setattr(remote_provider.tunnel, "refresh_after_failure", fake_refresh)
+
+        assert emb.embed_documents(["x"]) == [[0.1, 0.2]]
+        # First attempt against the stale URL, retry against the refreshed one.
+        assert calls == ["https://stale.example", "https://fresh.example"]
+        assert emb._base_url == "https://fresh.example"
+
+    def test_an_application_error_is_not_treated_as_a_rotation(self, monkeypatch):
+        """A 400 is the request being wrong, not the URL having moved. Fetching
+        the Gist for it would turn every bad payload into a tunnel round-trip."""
+        from config import tunnel
+        from embeddings.providers import remote_provider
+
+        boom = ValueError("bad input")
+        emb, calls = self._embeddings(monkeypatch, [boom])
+
+        called = []
+        monkeypatch.setattr(
+            remote_provider.tunnel, "refresh_after_failure",
+            lambda failed: called.append(failed),
+        )
+        with pytest.raises(ValueError):
+            emb.embed_documents(["x"])
+        assert called == []
+        assert calls == ["https://stale.example"]
+
+    def test_the_inner_client_never_retries_on_its_own(self):
+        """SDK retries would spend the whole budget re-hitting the stale URL
+        before the refresh that fixes it ever runs."""
+        import inspect
+
+        from embeddings.providers.remote_provider import TunnelAwareEmbeddings
+
+        assert "max_retries=0" in inspect.getsource(TunnelAwareEmbeddings._build)
+
+    def test_the_cached_instance_follows_the_new_url(self, monkeypatch):
+        """The cache holds the wrapper, not the pinned client, so every existing
+        holder follows a rotation without knowing it happened."""
+        from embeddings.providers import remote_provider
+
+        remote_provider.clear_remote_cache()
+        monkeypatch.setattr(
+            remote_provider.TunnelAwareEmbeddings, "_build", lambda self: object()
+        )
+        a = remote_provider.RemoteProvider().create("m")
+        b = remote_provider.RemoteProvider().create("m")
+        assert a is b
+        assert isinstance(a, remote_provider.TunnelAwareEmbeddings)
+        remote_provider.clear_remote_cache()
+
+
+def test_both_clients_share_one_tunnel_failure_detector():
+    """Two copies of the retryable-error list would drift, and the half that
+    fell behind would stop recovering."""
+    from config import tunnel
+    from llm.providers.vllm_provider import TunnelAwareChatOpenAI
+
+    assert TunnelAwareChatOpenAI._is_tunnel_failure is tunnel.is_tunnel_failure
+
+
+def test_refreshing_clients_does_not_close_a_shared_connection_pool():
+    """The old client is only closed when the new one is not standing on it.
+
+    `ChatOpenAI` instances sharing a base URL share one underlying httpx
+    client, so closing the old one unconditionally shut the pool every other
+    model object in the process was using -- one tunnel hiccup in a background
+    call, and the next chat answer died on "the client has been closed".
+    """
+    model = get_llm("gemma")
+    shared = model.root_client._client
+
+    model._refresh_clients()
+
+    assert model.root_client._client is shared
+    assert not shared.is_closed

@@ -19,6 +19,49 @@ _GIST_URL = (
 _refresh_lock = Lock()
 
 
+def is_tunnel_failure(exc: BaseException) -> bool:
+    """Whether retrying against a newly published tunnel can help.
+
+    Do not fetch the Gist for validation/authentication errors: those are
+    application failures, not evidence that the reverse-proxy URL rotated. A
+    stale tunnel is observed as 404; reverse-proxy outages use the listed
+    gateway statuses or a transport failure.
+
+    Lives here rather than on the chat model because it is about the *tunnel*,
+    not about chat: everything reached through this reverse proxy fails the same
+    way when it rotates, and the embeddings client needs the identical answer.
+    Two copies of this list would drift, and the half that fell behind would
+    stop recovering.
+    """
+    # The OpenAI SDK wraps httpx connection/reset/timeout exceptions in its own
+    # APIConnectionError hierarchy. Looking only for httpx exceptions therefore
+    # misses the exact error LangChain gives us and skips tunnel refresh
+    # entirely. Walk the exception chain as well so this remains correct if
+    # another client wrapper adds one more layer later.
+    from openai import APIConnectionError, APITimeoutError
+
+    current: BaseException | None = exc
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if isinstance(
+            current,
+            (
+                APIConnectionError,
+                APITimeoutError,
+                ConnectionError,
+                TimeoutError,
+                OSError,
+                httpx.TransportError,
+            ),
+        ):
+            return True
+        if getattr(current, "status_code", None) in {404, 502, 503, 504}:
+            return True
+        current = current.__cause__ or current.__context__
+    return False
+
+
 def refresh_after_failure(failed_base_url: str | None = None) -> bool:
     """Refresh a failed tunnel URL once and share the result with other callers.
 

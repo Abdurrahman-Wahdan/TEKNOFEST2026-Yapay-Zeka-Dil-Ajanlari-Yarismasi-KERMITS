@@ -1504,7 +1504,7 @@
           "compare-tables"
         ],
         "summary": "Get Table",
-        "description": "One table, shaped for `<TableWidget />` -- a 'Banka' column first (bank\nkeys the frontend already knows how to render), then every column the\ntable itself declared, in the order the producer chose.",
+        "description": "One table, shaped for `<ProducedTable />`.\n\nColumn order is: a `Banka` column first (bank keys the frontend already\nknows how to render), then every column the table itself declared in the\norder the producer chose, then the two derived validity columns.\n\nThe validity pair is split rather than shown as one range string because the\ntwo halves are read differently: the verdict is a `badge`, which\n`resolveTable` makes filterable, and the end date is a `date`, which it makes\nsortable. One combined column would be neither — and filtering by whether an\noffer is still live, and sorting by when it ends, are the two things this\ndata is for.",
         "operationId": "get_table",
         "parameters": [
           {
@@ -1526,6 +1526,116 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TableDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/compare-tables/{table_id}/overview": {
+      "get": {
+        "tags": [
+          "compare-tables"
+        ],
+        "summary": "Get Overview",
+        "description": "The overview, or what is happening instead.\n\nDeliberately not \"generate one if it is missing\". Writing an overview needs\nthe page as the browser sees it — an outline and a screenshot this endpoint\nhas no way to produce — so the client asks here first and only pays for a\ncapture when the answer is `missing`. A GET that quietly cost a\nvision-model call would also be a GET that is not safe to retry.\n\n`generating` is the reason this returns a wrapper instead of a 404. A model\nreading a screenshot takes a minute on a quiet host and several on a busy\none, and a client that cannot tell \"still working\" from \"nothing here\" has\nto guess a timeout — which is either too short for the busy host or leaves\na card spinning at a dead one.",
+        "operationId": "get_overview",
+        "parameters": [
+          {
+            "name": "table_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "An id from GET /api/compare-tables.",
+              "title": "Table Id"
+            },
+            "description": "An id from GET /api/compare-tables."
+          },
+          {
+            "name": "locale",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "'tr' or 'en'.",
+              "default": "tr",
+              "title": "Locale"
+            },
+            "description": "'tr' or 'en'."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableOverviewState"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "compare-tables"
+        ],
+        "summary": "Create Overview",
+        "description": "Start writing the overview for one table. Poll the GET for the result.\n\n**Accepted, not written.** A generation takes 70-120 seconds, which is\nlonger than the things between this and the browser are willing to hold a\nsocket open -- the dev server's `/api` proxy cuts it at 30. So the work\nstarts in a thread and the client polls the GET it already calls on\narrival, which is the same row every later visitor will read.\n\nThe table the agent reads is `get_table`'s own output, not the payload the\ncaller sent: the browser supplies what it *saw* -- the outline and the\nscreenshot -- and the figures come from the same function that rendered\nthem, so nothing on the wire can talk the agent into summarising a table\nthe server does not have.\n\nNo authentication, like the rest of this router: the pool is public data.\nThe cost of that is bounded by the cache, which answers every repeat for\nfree, and by the single-flight lock, which collapses a stampede on one\ntable into one call. If it ever needs a gate, it needs a rate limit rather\nthan a login.",
+        "operationId": "create_overview",
+        "parameters": [
+          {
+            "name": "table_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "An id from GET /api/compare-tables.",
+              "title": "Table Id"
+            },
+            "description": "An id from GET /api/compare-tables."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TableOverviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableOverviewStarted"
                 }
               }
             }
@@ -2016,6 +2126,53 @@
         }
       }
     },
+    "/api/voice/transcriptions": {
+      "post": {
+        "tags": [
+          "voice"
+        ],
+        "summary": "Create Voice Transcription",
+        "description": "Create a Turkish transcript without sending audio off the machine.",
+        "operationId": "create_voice_transcription",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_create_voice_transcription"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceTranscriptionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/health": {
       "get": {
         "tags": [
@@ -2309,6 +2466,21 @@
         ],
         "title": "BankOut",
         "description": "One bank, what it publishes, and what is currently down.\n\n`publishes` and `maintenance` are different absences and are reported\nseparately: a bank that does not sell car finance and a bank whose car\nfinance endpoint is broken this morning must never look alike in the UI."
+      },
+      "Body_create_voice_transcription": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "description": "One complete browser voice recording."
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_create_voice_transcription"
       },
       "CapturePayload": {
         "properties": {
@@ -3356,6 +3528,25 @@
         "title": "ModelsResponse",
         "description": "Every selectable model, plus which one answers when none is chosen."
       },
+      "PageContext": {
+        "properties": {
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text",
+            "description": "The page as a semantic outline, in markdown, wrapped in a `<page-snapshot>` element. Deliberately unbounded, like every other payload on its way to a model in this app: half a page answers a question about the other half wrongly."
+          }
+        },
+        "type": "object",
+        "title": "PageContext",
+        "description": "What the browser saw, for the overview agent to read.\n\nText only. A screenshot used to travel here too, and it was dropped: it cost\nminutes of vision prefill per table and carried nothing the outline does not\n— once `data-outline-list` taught the outline to keep short-line cards like\n\"banks that do not offer this\", which is the one thing the picture had been\ncovering for."
+      },
       "PaymentRowOut": {
         "properties": {
           "order": {
@@ -3730,6 +3921,24 @@
         ],
         "title": "ProfitShareQuoteOut"
       },
+      "RankedBankOut": {
+        "properties": {
+          "bank": {
+            "type": "string",
+            "title": "Bank"
+          },
+          "why": {
+            "type": "string",
+            "title": "Why"
+          }
+        },
+        "type": "object",
+        "required": [
+          "bank",
+          "why"
+        ],
+        "title": "RankedBankOut"
+      },
       "RateOut": {
         "properties": {
           "code": {
@@ -3899,6 +4108,34 @@
             ],
             "title": "Cite Note",
             "description": "The pipeline's own note on why this source supports the row — shown as a hover title on the citation link, not a second dashboard."
+          },
+          "offers": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Offers",
+            "description": "Whether this bank offers the thing at all. Read here rather than in the browser because the producer answers it in a column it names itself — 93 different names across the pool, and in some tables no column at all. `null` means nothing in the row settles it, which is not the same as `false`: an unclassified row stays in the table."
+          },
+          "cell_notes": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Cell Notes",
+            "description": "Column key -> a note to hover on that one cell. Carries the full validity window behind the verdict chip, so a table already running to 22 columns does not need a second date column to show a start date."
+          },
+          "cell_tones": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Cell Tones",
+            "description": "Column key -> the tone its badge cell carries ('neutral' | 'ok' | 'warn' | 'bad'). Sent as data because only this layer knows which of its own values is the good one; the table renderer draws badges for every producer and cannot infer it from the string."
           }
         },
         "type": "object",
@@ -4423,6 +4660,126 @@
         "title": "TableMetadataSnapshot",
         "description": "The exact table selected in the browser, without inferred prose."
       },
+      "TableOverviewOut": {
+        "properties": {
+          "table_id": {
+            "type": "string",
+            "title": "Table Id"
+          },
+          "locale": {
+            "type": "string",
+            "title": "Locale"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "recommended": {
+            "items": {
+              "$ref": "#/components/schemas/RankedBankOut"
+            },
+            "type": "array",
+            "title": "Recommended",
+            "description": "At most two, best first. Empty when the page supports no pick."
+          },
+          "not_recommended": {
+            "items": {
+              "$ref": "#/components/schemas/RankedBankOut"
+            },
+            "type": "array",
+            "title": "Not Recommended",
+            "description": "At most two: weakest terms, or banks that do not offer this."
+          },
+          "caveat": {
+            "type": "string",
+            "title": "Caveat",
+            "default": ""
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "table_id",
+          "locale",
+          "summary",
+          "generated_at"
+        ],
+        "title": "TableOverviewOut",
+        "description": "One table, as the overview agent read it."
+      },
+      "TableOverviewRequest": {
+        "properties": {
+          "locale": {
+            "type": "string",
+            "title": "Locale",
+            "description": "'tr' or 'en'. Anything else is Turkish.",
+            "default": "tr"
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageContext"
+          }
+        },
+        "type": "object",
+        "title": "TableOverviewRequest",
+        "description": "Ask for an overview of one table, offering the page as evidence."
+      },
+      "TableOverviewStarted": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "generating",
+              "already_running"
+            ],
+            "title": "Status",
+            "description": "`already_running` means another reader asked first and the same row will answer both. Either way the client polls the GET."
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "TableOverviewStarted",
+        "description": "The answer to \"please write one\": it is being written."
+      },
+      "TableOverviewState": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "generating",
+              "missing"
+            ],
+            "title": "Status"
+          },
+          "overview": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TableOverviewOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "TableOverviewState",
+        "description": "Whether there is an overview for this table, and if not, why not.\n\nA wrapper rather than \"200 or 404\", because \"nobody has asked for one\" and\n\"one is being written right now\" are different answers and the client acts\non each differently: the first means start one, the second means keep\nwaiting. Told apart by a 404 alone, a card either gives up on a slow model\nor spins forever on a dead one."
+      },
       "TableSummaryOut": {
         "properties": {
           "id": {
@@ -4635,6 +4992,33 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VoiceTranscriptionOut": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 5,
+            "minLength": 2,
+            "title": "Language"
+          },
+          "processing_ms": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Processing Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "language",
+          "processing_ms"
+        ],
+        "title": "VoiceTranscriptionOut",
+        "description": "A completed Turkish transcription."
       }
     },
     "securitySchemes": {

@@ -201,3 +201,61 @@ def test_deleting_a_chat_removes_main_and_every_private_specialist_memory(monkey
     assert deleted == [
         "chat-1:main", *[f"chat-1:bank:{spec.bank}" for spec in SPECS]
     ]
+
+
+# --- compare/retrieval: the live collection's metadata names -------------------
+class TestCompareRetrievalMetadata:
+    """`search_bank` reads the chunk payloads the corpus embedder wrote.
+
+    Two naming generations exist. Every one of the 7030 points in the live
+    `campaigns` collection carries `url` / `validity_status` /
+    `gecerlilik_bitis`; **none** carries the `source_url` / `campaign_end` /
+    `campaign_status` names `dataprep/embed.py` writes. Reading only the latter
+    returned an empty url on every hit and made the expired-campaign filter a
+    no-op that hid nothing -- 905 expired chunks, 13% of the collection, were
+    being offered to the research subagents as current.
+    """
+
+    def test_url_is_read_from_either_generation(self):
+        from dataprep.compare.retrieval import _source_url
+
+        assert _source_url({"url": "https://a/new"}) == "https://a/new"
+        assert _source_url({"source_url": "https://a/old"}) == "https://a/old"
+        assert _source_url({"pdf_url": "https://a/pdf"}) == "https://a/pdf"
+        assert _source_url({"source_page": "https://a/page"}) == "https://a/page"
+        assert _source_url({}) == ""
+
+    def test_new_name_wins_when_both_are_present(self):
+        from dataprep.compare.retrieval import _source_url
+
+        assert _source_url({"url": "https://new", "source_url": "https://old"}) == "https://new"
+
+    def test_an_expired_end_date_is_filtered(self):
+        from dataprep.compare.retrieval import _end_date, _expired
+
+        meta = {"gecerlilik_bitis": "2020-01-01"}
+        assert _expired(meta, _end_date(meta)) is True
+
+    def test_a_future_end_date_is_kept(self):
+        from dataprep.compare.retrieval import _end_date, _expired
+
+        meta = {"gecerlilik_bitis": "2099-12-31"}
+        assert _expired(meta, _end_date(meta)) is False
+
+    def test_no_date_falls_back_to_the_producer_verdict(self):
+        """Both generations spell it differently, and neither means 'no date is
+        an expiry' -- a page that never stated a deadline stays."""
+        from dataprep.compare.retrieval import _end_date, _expired
+
+        for meta in ({"validity_status": "suresi_gecmis"}, {"campaign_status": "bitti"}):
+            assert _expired(meta, _end_date(meta)) is True
+        for meta in ({"validity_status": "bilinmiyor"}, {"validity_status": "gecerli"}, {}):
+            assert _expired(meta, _end_date(meta)) is False
+
+    def test_a_live_date_outranks_a_stale_expiry_stamp(self):
+        """The stamp was written when the crawl ran; the date keeps being true
+        afterwards, so the date decides."""
+        from dataprep.compare.retrieval import _end_date, _expired
+
+        meta = {"gecerlilik_bitis": "2099-12-31", "validity_status": "suresi_gecmis"}
+        assert _expired(meta, _end_date(meta)) is False

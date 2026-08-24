@@ -27,6 +27,18 @@ import type { CapturePayload } from "./types";
  */
 export const MAX_CAPTURE_WIDTH = 1280;
 
+/**
+ * The widest image worth sending when nobody is waiting on a conversation.
+ *
+ * Gemma encodes vision input in 896x896 tiles, so width above that buys extra
+ * tiles rather than extra legibility, and tiles are what the model spends time
+ * on. Measured on this pool: a 1280-wide page capture took the overview call
+ * past 139 seconds, at which point the tunnel in front of the model host
+ * disconnects; the same page at 896 stays inside it. The chat keeps the larger
+ * cap — a person is watching that one, and it is one image per question.
+ */
+export const OVERVIEW_CAPTURE_WIDTH = 896;
+
 /** Enough that text stays sharp; more is bytes nobody reads. */
 export const CAPTURE_QUALITY = 0.85;
 
@@ -80,6 +92,7 @@ export type CaptureOptions = {
 export function captureOptions(
   elementWidth: number,
   backgroundColor?: string,
+  maxWidth: number = MAX_CAPTURE_WIDTH,
 ): CaptureOptions {
   const width = Math.max(1, Math.round(elementWidth));
   // A ceiling but no floor. A floor of 0.5 was here and it silently broke the
@@ -87,7 +100,7 @@ export function captureOptions(
   // a 2000px image -- larger than the cap exists to prevent. Very wide layouts do
   // end up small, and that is the right trade: unreadably small is what
   // `read_page` is for.
-  const scale = Math.min(2, MAX_CAPTURE_WIDTH / width);
+  const scale = Math.min(2, maxWidth / width);
   return {
     format: "webp",
     quality: CAPTURE_QUALITY,
@@ -160,7 +173,7 @@ export function dataUrlBytes(dataUrl: string): number {
  * Imported lazily: snapdom is only needed the first time anything asks for a
  * capture, and most sessions never will.
  */
-export async function capturePage(): Promise<Capture | null> {
+export async function capturePage(maxWidth: number = MAX_CAPTURE_WIDTH): Promise<Capture | null> {
   if (typeof window === "undefined") return null;
   const root = document.querySelector("[data-page-root]");
   if (!root) return null;
@@ -177,6 +190,7 @@ export async function capturePage(): Promise<Capture | null> {
   const options = captureOptions(
     Math.max(element.scrollWidth, element.getBoundingClientRect().width),
     background,
+    maxWidth,
   );
   const image = await snapdom.toWebp(element, options);
 

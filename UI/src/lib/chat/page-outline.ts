@@ -74,6 +74,7 @@ export type OutlineNode =
   | { type: "heading"; text: string }
   | { type: "text"; text: string }
   | { type: "control"; label: string; value: string }
+  | { type: "list"; label?: string; items: string[] }
   | { type: "table"; title?: string; about?: string; headers: string[]; rows: string[][] };
 
 export type PageOutline = {
@@ -126,6 +127,14 @@ export function outlineToMarkdown(outline: PageOutline): string {
       continue;
     }
 
+    // A marked list, whole.
+    if (node.type === "list") {
+      if (node.label) push(`### ${escape(node.label)}`);
+      for (const item of node.items) push(`- ${escape(item)}`);
+      push("");
+      continue;
+    }
+
     // A table, whole.
     if (node.title) push(`### ${escape(node.title)}`);
     if (node.about) push(`_${escape(node.about)}_`);
@@ -152,7 +161,16 @@ export function outlineSummary(outline: PageOutline): { tables: number; controls
   return { tables, controls };
 }
 
-/** Text worth carrying: long enough to be prose, short enough not to be a dump. */
+/**
+ * Text worth carrying: long enough to be prose, short enough not to be a dump.
+ *
+ * The floor is why `data-outline-list` exists. A card whose content is a column
+ * of short labels — "Dünya Katılım Bankası" is 21 characters — falls entirely
+ * through this filter, and the page reads as though the card were not there.
+ * That is exactly what happened to "banks that do not offer this": the model
+ * only knew about them from the screenshot, and stopped knowing when the
+ * screenshot went away.
+ */
 const MIN_TEXT = 24;
 const MAX_TEXT = 400;
 
@@ -245,6 +263,10 @@ export function outlinePage(root: Element, path: string): PageOutline {
     acceptNode: (node) => {
       const el = node as Element;
       if (el.closest(SKIP_TEXT)) return NodeFilter.FILTER_REJECT;
+      // A marked list is taken whole, like a table, and for the same reason:
+      // its lines belong together and each is too short to survive alone.
+      if (el.hasAttribute("data-outline-list")) return NodeFilter.FILTER_ACCEPT;
+      if (el.closest("[data-outline-list]")) return NodeFilter.FILTER_REJECT;
       if (el.tagName === "TABLE") return NodeFilter.FILTER_ACCEPT;
       // Skip inside a table: it is taken whole above.
       if (el.closest("table")) return NodeFilter.FILTER_REJECT;
@@ -258,6 +280,20 @@ export function outlinePage(root: Element, path: string): PageOutline {
   const seenText = new Set<string>();
   while (walker.nextNode()) {
     const el = walker.currentNode as Element;
+
+    if (el.hasAttribute("data-outline-list")) {
+      const items = Array.from(el.children)
+        .map((child) => (child.textContent ?? "").replace(/\s+/g, " ").trim())
+        .filter(Boolean);
+      if (items.length > 0) {
+        nodes.push({
+          type: "list",
+          label: el.getAttribute("data-outline-list") || undefined,
+          items,
+        });
+      }
+      continue;
+    }
 
     if (el.tagName === "TABLE") {
       const table = el as HTMLTableElement;

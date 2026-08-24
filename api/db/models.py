@@ -1,4 +1,4 @@
-"""The tables. Five of them, and no more than the dashboard actually needs.
+"""The tables. Six of them, and no more than the dashboard actually needs.
 
     User            an account
     Profile         what the onboarding produced: which banks and products
@@ -7,10 +7,15 @@
                     page) composed, stored as a component list
     ChatSession     one conversation
     ChatMessage     one turn in it, with the citations that backed the answer
+    TableOverview   what the overview agent said about one offline comparison
+                    table, kept so the model is asked once and not per visit
 
 Nothing here caches bank data. Rates and campaigns come from `banks/` and the
 Qdrant index at request time; a cached quote in Postgres would be a second,
 staler source of truth for the one thing that must never be stale.
+`TableOverview` is not an exception: it describes the *offline* pool
+(`data/_tables/`), which changes only when the producer reruns, and it stores a
+hash of the exact table it read so a stale summary is detected, not served.
 """
 
 import uuid
@@ -167,3 +172,36 @@ class ChatMessage(UUIDMixin, TimestampMixin, Base):
     citations: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
 
     session: Mapped[ChatSession] = relationship(back_populates="messages")
+
+
+class TableOverview(UUIDMixin, TimestampMixin, Base):
+    """What the overview agent said about one table in the offline pool.
+
+    Cached because generating it costs a vision-model call with a screenshot
+    attached, and the answer cannot change while the table does not: the pool is
+    produced offline, so the same table tomorrow is the same table.
+
+    `source_hash` is what makes that safe. It is a digest of the exact payload
+    the agent was shown, so a rerun of the producer -- a new row, a corrected
+    figure, a renamed column -- no longer matches and the row is regenerated
+    instead of served.
+
+    One row per (table, language): the overview is written in the reader's
+    language, and translating a cached Turkish summary into English afterwards
+    would be a second model call to save the first.
+    """
+
+    __tablename__ = "table_overviews"
+    __table_args__ = (
+        UniqueConstraint("table_id", "locale", name="uq_table_overviews_table_locale"),
+    )
+
+    table_id: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    locale: Mapped[str] = mapped_column(String(5), nullable=False)
+    #: Digest of the table payload the agent read. A mismatch means regenerate.
+    source_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    #: Which model wrote it, so a model change can be told from a data change.
+    model: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    #: The agent's validated output, as `agents.table_overview.TableOverview`
+    #: serialises it.
+    body: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)

@@ -598,13 +598,76 @@ export interface paths {
         };
         /**
          * Get Table
-         * @description One table, shaped for `<TableWidget />` -- a 'Banka' column first (bank
-         *     keys the frontend already knows how to render), then every column the
-         *     table itself declared, in the order the producer chose.
+         * @description One table, shaped for `<ProducedTable />`.
+         *
+         *     Column order is: a `Banka` column first (bank keys the frontend already
+         *     knows how to render), then every column the table itself declared in the
+         *     order the producer chose, then the two derived validity columns.
+         *
+         *     The validity pair is split rather than shown as one range string because the
+         *     two halves are read differently: the verdict is a `badge`, which
+         *     `resolveTable` makes filterable, and the end date is a `date`, which it makes
+         *     sortable. One combined column would be neither — and filtering by whether an
+         *     offer is still live, and sorting by when it ends, are the two things this
+         *     data is for.
          */
         get: operations["get_table"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/compare-tables/{table_id}/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Overview
+         * @description The overview, or what is happening instead.
+         *
+         *     Deliberately not "generate one if it is missing". Writing an overview needs
+         *     the page as the browser sees it — an outline and a screenshot this endpoint
+         *     has no way to produce — so the client asks here first and only pays for a
+         *     capture when the answer is `missing`. A GET that quietly cost a
+         *     vision-model call would also be a GET that is not safe to retry.
+         *
+         *     `generating` is the reason this returns a wrapper instead of a 404. A model
+         *     reading a screenshot takes a minute on a quiet host and several on a busy
+         *     one, and a client that cannot tell "still working" from "nothing here" has
+         *     to guess a timeout — which is either too short for the busy host or leaves
+         *     a card spinning at a dead one.
+         */
+        get: operations["get_overview"];
+        put?: never;
+        /**
+         * Create Overview
+         * @description Start writing the overview for one table. Poll the GET for the result.
+         *
+         *     **Accepted, not written.** A generation takes 70-120 seconds, which is
+         *     longer than the things between this and the browser are willing to hold a
+         *     socket open -- the dev server's `/api` proxy cuts it at 30. So the work
+         *     starts in a thread and the client polls the GET it already calls on
+         *     arrival, which is the same row every later visitor will read.
+         *
+         *     The table the agent reads is `get_table`'s own output, not the payload the
+         *     caller sent: the browser supplies what it *saw* -- the outline and the
+         *     screenshot -- and the figures come from the same function that rendered
+         *     them, so nothing on the wire can talk the agent into summarising a table
+         *     the server does not have.
+         *
+         *     No authentication, like the rest of this router: the pool is public data.
+         *     The cost of that is bounded by the cache, which answers every repeat for
+         *     free, and by the single-flight lock, which collapses a stampede on one
+         *     table into one call. If it ever needs a gate, it needs a rate limit rather
+         *     than a login.
+         */
+        post: operations["create_overview"];
         delete?: never;
         options?: never;
         head?: never;
@@ -779,6 +842,26 @@ export interface paths {
         get: operations["list_models"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/voice/transcriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Voice Transcription
+         * @description Create a Turkish transcript without sending audio off the machine.
+         */
+        post: operations["create_voice_transcription"];
         delete?: never;
         options?: never;
         head?: never;
@@ -976,6 +1059,14 @@ export interface components {
              * @default
              */
             notes: string;
+        };
+        /** Body_create_voice_transcription */
+        Body_create_voice_transcription: {
+            /**
+             * File
+             * @description One complete browser voice recording.
+             */
+            file: string;
         };
         /**
          * CapturePayload
@@ -1546,6 +1637,23 @@ export interface components {
              */
             default: string;
         };
+        /**
+         * PageContext
+         * @description What the browser saw, for the overview agent to read.
+         *
+         *     Text only. A screenshot used to travel here too, and it was dropped: it cost
+         *     minutes of vision prefill per table and carried nothing the outline does not
+         *     — once `data-outline-list` taught the outline to keep short-line cards like
+         *     "banks that do not offer this", which is the one thing the picture had been
+         *     covering for.
+         */
+        PageContext: {
+            /**
+             * Text
+             * @description The page as a semantic outline, in markdown, wrapped in a `<page-snapshot>` element. Deliberately unbounded, like every other payload on its way to a model in this app: half a page answers a question about the other half wrongly.
+             */
+            text?: string | null;
+        };
         /** PaymentRowOut */
         PaymentRowOut: {
             /** Order */
@@ -1665,6 +1773,13 @@ export interface components {
              */
             general: boolean;
         };
+        /** RankedBankOut */
+        RankedBankOut: {
+            /** Bank */
+            bank: string;
+            /** Why */
+            why: string;
+        };
         /** RateOut */
         RateOut: {
             /** Code */
@@ -1747,6 +1862,25 @@ export interface components {
              * @description The pipeline's own note on why this source supports the row — shown as a hover title on the citation link, not a second dashboard.
              */
             cite_note?: string | null;
+            /**
+             * Offers
+             * @description Whether this bank offers the thing at all. Read here rather than in the browser because the producer answers it in a column it names itself — 93 different names across the pool, and in some tables no column at all. `null` means nothing in the row settles it, which is not the same as `false`: an unclassified row stays in the table.
+             */
+            offers?: boolean | null;
+            /**
+             * Cell Notes
+             * @description Column key -> a note to hover on that one cell. Carries the full validity window behind the verdict chip, so a table already running to 22 columns does not need a second date column to show a start date.
+             */
+            cell_notes?: {
+                [key: string]: string;
+            };
+            /**
+             * Cell Tones
+             * @description Column key -> the tone its badge cell carries ('neutral' | 'ok' | 'warn' | 'bad'). Sent as data because only this layer knows which of its own values is the good one; the table renderer draws badges for every producer and cannot infer it from the string.
+             */
+            cell_tones?: {
+                [key: string]: string;
+            };
         };
         /** SavedViewIn */
         SavedViewIn: {
@@ -1979,6 +2113,86 @@ export interface components {
             rows: components["schemas"]["TableMetadataRow"][];
         };
         /**
+         * TableOverviewOut
+         * @description One table, as the overview agent read it.
+         */
+        TableOverviewOut: {
+            /** Table Id */
+            table_id: string;
+            /** Locale */
+            locale: string;
+            /** Summary */
+            summary: string;
+            /**
+             * Recommended
+             * @description At most two, best first. Empty when the page supports no pick.
+             */
+            recommended?: components["schemas"]["RankedBankOut"][];
+            /**
+             * Not Recommended
+             * @description At most two: weakest terms, or banks that do not offer this.
+             */
+            not_recommended?: components["schemas"]["RankedBankOut"][];
+            /**
+             * Caveat
+             * @default
+             */
+            caveat: string;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /**
+             * Model
+             * @default
+             */
+            model: string;
+        };
+        /**
+         * TableOverviewRequest
+         * @description Ask for an overview of one table, offering the page as evidence.
+         */
+        TableOverviewRequest: {
+            /**
+             * Locale
+             * @description 'tr' or 'en'. Anything else is Turkish.
+             * @default tr
+             */
+            locale: string;
+            page?: components["schemas"]["PageContext"];
+        };
+        /**
+         * TableOverviewStarted
+         * @description The answer to "please write one": it is being written.
+         */
+        TableOverviewStarted: {
+            /**
+             * Status
+             * @description `already_running` means another reader asked first and the same row will answer both. Either way the client polls the GET.
+             * @enum {string}
+             */
+            status: "generating" | "already_running";
+        };
+        /**
+         * TableOverviewState
+         * @description Whether there is an overview for this table, and if not, why not.
+         *
+         *     A wrapper rather than "200 or 404", because "nobody has asked for one" and
+         *     "one is being written right now" are different answers and the client acts
+         *     on each differently: the first means start one, the second means keep
+         *     waiting. Told apart by a 404 alone, a card either gives up on a slow model
+         *     or spins forever on a dead one.
+         */
+        TableOverviewState: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "generating" | "missing";
+            overview?: components["schemas"]["TableOverviewOut"] | null;
+        };
+        /**
          * TableSummaryOut
          * @description One table, without its rows — enough to list and pick from.
          */
@@ -2107,6 +2321,18 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /**
+         * VoiceTranscriptionOut
+         * @description A completed Turkish transcription.
+         */
+        VoiceTranscriptionOut: {
+            /** Text */
+            text: string;
+            /** Language */
+            language: string;
+            /** Processing Ms */
+            processing_ms: number;
         };
     };
     responses: never;
@@ -2987,6 +3213,77 @@ export interface operations {
             };
         };
     };
+    get_overview: {
+        parameters: {
+            query?: {
+                /** @description 'tr' or 'en'. */
+                locale?: string;
+            };
+            header?: never;
+            path: {
+                /** @description An id from GET /api/compare-tables. */
+                table_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TableOverviewState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_overview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description An id from GET /api/compare-tables. */
+                table_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TableOverviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TableOverviewStarted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     search_corpus: {
         parameters: {
             query: {
@@ -3253,6 +3550,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ModelsResponse"];
+                };
+            };
+        };
+    };
+    create_voice_transcription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_create_voice_transcription"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VoiceTranscriptionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from config.settings import settings
 
 from .routers import ROUTERS
+from .voice_transcription import VoiceTranscriptionUnavailable, warm_voice_model
 from agents.shared.checkpoints import close_checkpointer, get_checkpointer
 
 logging.basicConfig(
@@ -52,6 +53,23 @@ for router in ROUTERS:
 def start_agent_checkpointer() -> None:
     """Create LangGraph's durable checkpoint tables before serving chat."""
     get_checkpointer()
+
+
+@app.on_event("startup")
+def start_voice_transcription() -> None:
+    """Warm Metal inference before the first user waits for a transcript."""
+    if not settings.VOICE_WARM_ON_STARTUP:
+        return
+    try:
+        warm_voice_model()
+    except VoiceTranscriptionUnavailable as exc:
+        # Banking and text chat remain useful while a workstation is downloading
+        # the optional local checkpoint; the voice endpoint reports the same 503.
+        logger.warning("Voice model was not warmed: %s", exc)
+    except Exception:
+        # A corrupt/incompatible optional checkpoint must be loud in the logs,
+        # but it must not take banking, comparison and text chat down with it.
+        logger.exception("Voice model warm-up failed")
 
 
 @app.on_event("shutdown")

@@ -81,3 +81,97 @@ def test_live_result_is_compact_timestamped_and_keeps_refusals_honest():
     assert unavailable["status"] == "unavailable"
     assert unavailable["bank"] == "adil"
     assert "does not publish" in unavailable["message"]
+
+
+# --- corpus retrieval on the specialist surface ------------------------------
+
+
+class _Recorder:
+    """A Qdrant stand-in that keeps the filter it was handed."""
+
+    def __init__(self):
+        self.filters = []
+
+    def query_points(self, **kwargs):
+        self.filters.append(kwargs.get("query_filter"))
+        return type("R", (), {"points": []})()
+
+    def scroll(self, **kwargs):
+        self.filters.append(kwargs.get("scroll_filter"))
+        return [], None
+
+
+def _bank_values(condition) -> set[str]:
+    """Every value a filter demands of `metadata.bank`, at any depth."""
+    from qdrant_client import models
+
+    if condition is None:
+        return set()
+    if isinstance(condition, models.Filter):
+        return set().union(*(
+            _bank_values(c) for c in (*(condition.must or ()), *(condition.should or ()))
+        ), set())
+    key = getattr(condition, "key", None)
+    match = getattr(condition, "match", None)
+    return {match.value} if key == "metadata.bank" and match is not None else set()
+
+
+def test_every_specialist_can_read_what_its_own_bank_published():
+    for spec in SPECS:
+        names = {tool.name for tool in build_bank_tools(spec.bank)}
+        assert {"search_bank", "expand_chunk", "read_full_page"} <= names, spec.bank
+
+
+def test_retrieval_is_bound_to_the_name_the_store_holds_not_the_provider_key(monkeypatch):
+    """The two disagree for seven of the ten banks, and a wrong filter here
+    returns nothing rather than raising -- so the specialist would be told,
+    forever and plausibly, that its bank has published nothing."""
+    from corpus import search
+    from corpus.sites import get_site
+
+    for spec in SPECS:
+        recorder = _Recorder()
+        monkeypatch.setattr(search, "_shared", lambda: (None, recorder))
+        monkeypatch.setattr(search, "embed_query", lambda q, task=None: [0.0] * 1024)
+
+        tools = {tool.name: tool for tool in build_bank_tools(spec.bank)}
+        tools["search_bank"].invoke({"query": "kâr payı", "intent": "oran bul"})
+        tools["expand_chunk"].invoke({"point_id": "whatever"})
+        tools["read_full_page"].invoke({"url": "https://example.test/x"})
+
+        expected = get_site(spec.bank).corpus_slug
+        assert recorder.filters, spec.bank
+        for used in recorder.filters:
+            assert _bank_values(used) == {expected}, f"{spec.bank}: {_bank_values(used)}"
+
+
+def test_a_specialist_prunes_before_it_compacts(monkeypatch):
+    """Order is load-bearing: compaction must measure the thread the model
+    actually keeps, not one still carrying passages it asked to drop."""
+    from agents.shared import specialists
+    from agents.shared.retrieval_memory import RetrievalPruning
+
+    captured = {}
+    monkeypatch.setattr(specialists, "get_llm", lambda *a, **k: object())
+    monkeypatch.setattr(specialists, "get_checkpointer", lambda: None)
+    monkeypatch.setattr(specialists, "resolve_model_key", lambda key: "gemma")
+    monkeypatch.setattr(specialists, "usable_context_window", lambda *a, **k: 100_000)
+    monkeypatch.setattr(specialists, "build_compaction",
+                        lambda window, specialist: "COMPACTION")
+    monkeypatch.setattr(specialists, "create_agent",
+                        lambda **kwargs: captured.update(kwargs))
+
+    specialists.build_specialist("vakif")
+    order = captured["middleware"]
+    assert isinstance(order[0], RetrievalPruning)
+    assert order[-1] == "COMPACTION"
+    assert [m.tool_name for m in order[1:-1]] == [
+        "search_bank", "expand_chunk", "read_full_page"]
+
+
+def test_the_specialist_prompt_says_a_published_page_is_not_a_live_quote():
+    from agents.shared.specialists import CORPUS_GUIDANCE
+
+    assert "not live data" in CORPUS_GUIDANCE
+    assert "expand_chunk" in CORPUS_GUIDANCE
+    assert "not_useful" in CORPUS_GUIDANCE

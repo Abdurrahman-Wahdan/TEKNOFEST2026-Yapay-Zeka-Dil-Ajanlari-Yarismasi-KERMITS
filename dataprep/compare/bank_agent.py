@@ -38,7 +38,9 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, Tool
 from llm import get_llm
 
 from ..net_limit import NET_SEM
-from .retrieval import make_bank_search_tool, make_full_page_tool
+from corpus.search import prune_entries
+
+from .retrieval import build_bank_retrieval_tools
 
 log = logging.getLogger("dataprep.compare.bank_agent")
 
@@ -70,8 +72,10 @@ _SYSTEM = (
     "search_bank aracıyla araştırmak. Sorguyu nasıl kuracağına, kaç kez arayacağına "
     "ve ne zaman yeterli bilgiye sahip olduğuna SEN karar ver — her çağrı 5 sonuç "
     "getirir, ama bunlar sayfanın küçük PARÇALARIDIR (chunk). Bir sonuç kesilmiş/"
-    "yarım/yetersiz görünüyorsa read_full_page(url) ile o sayfanın/PDF'in TÜM "
-    "parçalarını birleştirilmiş, TAM metin olarak okuyabilirsin. AYNI query'yi "
+    "yarım/yetersiz görünüyorsa expand_chunk(point_id) ile o parçanın KOMŞULARINI "
+    "okuyabilirsin (belgeler üst üste binmeden bölündüğü için devamı komşu "
+    "parçadadır; yetmezse before/after artırıp genişlet). Elinde point_id değil "
+    "sadece bir url varsa read_full_page(url) belgenin tamamını verir. AYNI query'yi "
     "next=false ile tekrar göndermek YENİ BİR ŞEY GETİRMEZ (deterministik, birebir "
     "aynı 5 sonuç döner) — aynı konuda SONRAKİ 5 sonucu görmek istersen query'yi "
     "DEĞİŞTİRMEDEN next=true gönder, farklı bir konuya geçiyorsan yeni query yaz. "
@@ -110,34 +114,21 @@ def _block_has_marked(block: list, marked: set[str]) -> bool:
     return False
 
 
-_ENTRY_SEP = "\n---\n"
-
-
 def _prune_discarded(messages: list, discarded: set[str]) -> list:
-    """CHUNK bazlı budama — search_bank cevapları birden çok chunk içerir
-    ([1] point_id=..., [2] point_id=..., ...); model mark_useful ile HER
-    chunk için ayrı karar verir. Burada, model 'gereksiz' dediği tek tek
-    chunk'ları o ToolMessage içinden çıkarırız (kalanlara dokunmadan) —
-    bloğun tamamını atmıyoruz, sadece istenmeyen satırları."""
+    """CHUNK bazlı budama — model 'gereksiz' dediği tek tek parçaları o
+    ToolMessage'ın içinden çıkarır (kalanlara dokunmadan). Karar mantığı
+    corpus.search.prune_entries'te: canlı banka uzmanları da AYNI budamayı
+    kullanıyor, iki ayrı uygulama olmamalı."""
     if not discarded:
         return messages
-    out = []
     for m in messages:
         if not isinstance(m, ToolMessage):
-            out.append(m)
             continue
         c = m.content if isinstance(m.content, str) else str(m.content)
-        if _ENTRY_SEP not in c and "point_id=" not in c:
-            out.append(m)
-            continue
-        kept = [e for e in c.split(_ENTRY_SEP)
-                if not any(f"point_id={pid}" in e for pid in discarded)]
-        if not kept:
-            m.content = "(model bu grubu gereksiz bulup sildi)"
-        elif len(kept) != len(c.split(_ENTRY_SEP)):
-            m.content = _ENTRY_SEP.join(kept)
-        out.append(m)
-    return out
+        pruned = prune_entries(c, discarded)
+        if pruned is not None:
+            m.content = pruned
+    return messages
 
 
 def _trim_history(messages: list, marked: set[str], discarded: set[str] = frozenset()) -> list:
@@ -238,15 +229,13 @@ def _parse_json_ladder(messages: list, first_content: str) -> dict:
 def _research_bank(topic: str, bank: str, max_calls: int) -> dict:
     marked: set[str] = set()
     discarded: set[str] = set()
-    search_tool = make_bank_search_tool(bank, marked, discarded)
-    full_page_tool = make_full_page_tool(bank)
+    tools = build_bank_retrieval_tools(bank, marked, discarded)
     # BİLİNÇLİ OLARAK bağımsız bir mark_useful tool'u YOK — marking'in tek işlevi
     # gelecekteki context-trim'de bir chunk'ı korumak; son turdaysa (artık
     # aramayacaksa) zaten "gelecek" kalmıyor, marking'in hiçbir anlamı olmaz.
     # Bağımsız mark_useful varken model onu tek başına, boş boş tekrar tekrar
     # çağırıp döngüye giriyordu (kanıtlı bug). Marking SADECE search_bank'a
     # gömülü — üçüncü bir "ilerlemesiz" tool-çağrı yolu fiziksel olarak yok.
-    tools = [search_tool, full_page_tool]
     by_name = {t.name: t for t in tools}
 
     base_system = _SYSTEM.format(bank=bank, topic=topic)

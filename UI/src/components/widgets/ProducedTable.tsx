@@ -6,7 +6,7 @@ import { useTheme } from "@mui/material/styles";
 import type { Theme } from "@mui/material/styles";
 import { useLocale, useTranslations } from "next-intl";
 
-import { Pill } from "@/components/ui/Pill";
+import { Pill, type PillTone } from "@/components/ui/Pill";
 import { VuiBox, VuiTypography } from "@/components/vision";
 import type { CellValue, ResolvedColumn, Row } from "@/lib/contract";
 import { BLANK_CELL, cellDisplayText, isBlankCell } from "@/lib/cell-display";
@@ -333,7 +333,12 @@ export function ProducedTable({
                     bankLabels={bankLabels}
                     moved={moved}
                     best={isBest}
-                    title={row.cite_note}
+                    // A note on this one cell wins over the row's citation note:
+                    // it was written about this value, and the row note is about
+                    // where the row came from. Only the `link` cell falls back to
+                    // the row note, which is the cell that citation belongs to.
+                    title={row.cell_notes?.[column.key] ?? row.cite_note}
+                    tone={row.cell_tones?.[column.key]}
                   />
                 </VuiBox>
                 );
@@ -414,6 +419,9 @@ function AttachButton({
   );
 }
 
+/** The tones `Pill` knows. Anything else a producer sends is drawn neutral. */
+const PILL_TONES = new Set<PillTone>(["neutral", "ok", "warn", "bad"]);
+
 function Cell({
   value,
   column,
@@ -422,6 +430,7 @@ function Cell({
   moved,
   best,
   title,
+  tone,
 }: {
   value: CellValue | undefined;
   column: ResolvedColumn;
@@ -431,9 +440,11 @@ function Cell({
   moved?: "up" | "down";
   /** Set when this figure is the best on its row. */
   best?: boolean;
-  /** The row's own `cite_note`, if any — shown as a native hover title on a
-      `link`-type cell only; every other cell type ignores it. */
+  /** A note about this cell, or failing that the row's own `cite_note`. Shown
+      as an instant tooltip on `link` and `badge` cells; other types ignore it. */
   title?: string;
+  /** What this `badge` cell's state means, from the row's `cell_tones`. */
+  tone?: string;
 }) {
   const t = useTranslations("components");
 
@@ -562,8 +573,23 @@ function Cell({
         </VuiTypography>
       );
 
-    case "badge":
-      return <Pill>{text}</Pill>;
+    case "badge": {
+      // An unrecognised tone is drawn `neutral` rather than dropping the cell —
+      // the same forgiveness `resolveTable` gives an unrecognised column type.
+      const pill = <Pill tone={PILL_TONES.has(tone as PillTone) ? (tone as PillTone) : "neutral"}>{text}</Pill>;
+      // Same instant tooltip the citation link uses, and for the same reason:
+      // the note is what explains the chip, and a hover that takes the browser's
+      // own second and a half to appear may as well not be there. Wrapped in a
+      // span because `Pill` is a plain function component and cannot hold the
+      // ref `Tooltip` hands its child.
+      return title ? (
+        <Tooltip title={title} arrow enterDelay={0} enterNextDelay={0} leaveDelay={0}>
+          <span style={{ display: "inline-block" }}>{pill}</span>
+        </Tooltip>
+      ) : (
+        pill
+      );
+    }
 
     default:
       return (

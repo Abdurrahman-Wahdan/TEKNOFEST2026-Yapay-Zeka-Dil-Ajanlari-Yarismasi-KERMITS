@@ -18,7 +18,7 @@ a live figure never arrives as a component or a comparison-table row.
 
 from . import (
     auth, banks, chat, compare, compare_tables, components, models, profile, search,
-    system,
+    system, voice,
 )
 
 ROUTERS = (
@@ -31,6 +31,7 @@ ROUTERS = (
     search.router,
     chat.router,
     models.router,
+    voice.router,
     system.router,
 )
 
