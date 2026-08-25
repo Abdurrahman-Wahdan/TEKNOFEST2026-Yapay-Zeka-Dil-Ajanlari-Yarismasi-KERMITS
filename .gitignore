@@ -64,6 +64,7 @@ $RECYCLE.BIN/
 # ===== Editors and IDEs =====
 .vscode/
 .idea/
+.claude/
 *.iml
 *.swp
 *.swo
@@ -93,6 +94,10 @@ corpus_data/
 *.jpeg
 !docs/**/*.png
 !docs/**/*.jpg
+# The production logo is a real application asset, not a generated screenshot.
+!UI/public/vision/images/kermits-logo.png
+# Curated contributor portraits used by the public README.
+!assets/*.jpeg
 
 # ===== Notebooks =====
 .ipynb_checkpoints/
@@ -114,3 +119,10 @@ data/
 # Endpoint keşfi üretilen çıktıları (lokalde kalır)
 dataprep/discovery/out/
 TF26_data/
+
+# ===== Local reference and accidental duplicate files =====
+# These remain on the workstation but are not part of the public project.
+README-example.md
+example-LICENSE
+config/settings 2.py
+llm/providers/vllm_provider 2.py

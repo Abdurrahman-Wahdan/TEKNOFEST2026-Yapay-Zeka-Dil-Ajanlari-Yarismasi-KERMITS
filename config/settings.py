@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     )
 
     # ===== LLM (local vLLM) =====
-    VLLM_BASE_URL: str = "https://unbundle-semisoft-mouth.ngrok-free.dev"
+    VLLM_BASE_URL: str = "http://127.0.0.1:9000"
     VLLM_API_KEY: str = Field(
         default="EMPTY",
         description="vLLM needs no auth, but the OpenAI client rejects an empty key.",

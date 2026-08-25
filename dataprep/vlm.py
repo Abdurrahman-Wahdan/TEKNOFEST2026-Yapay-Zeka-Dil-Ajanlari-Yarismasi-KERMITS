@@ -27,7 +27,7 @@ from dataprep.net_limit import NET_SEM
 
 log = logging.getLogger("dataprep.vlm")
 
-BASE_URL = "https://unbundle-semisoft-mouth.ngrok-free.dev"
+BASE_URL = os.environ.get("VLLM_BASE_URL", "http://127.0.0.1:9000").rstrip("/")
 VLM_PATH = "/gemma/v1/chat/completions"
 VLM_MODEL = "google/gemma-4-31B-it"
 TEMP_LADDER = (0.0, 0.3, 0.6, 1.0)

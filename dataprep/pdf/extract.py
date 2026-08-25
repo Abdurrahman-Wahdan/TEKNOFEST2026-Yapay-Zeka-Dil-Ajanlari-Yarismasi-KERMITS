@@ -32,7 +32,7 @@ from dataprep.vlm import ImageCache
 
 log = logging.getLogger("dataprep.pdf.extract")
 
-BASE_URL = "https://unbundle-semisoft-mouth.ngrok-free.dev"
+BASE_URL = "http://127.0.0.1:9000"
 VLM_PATH = "/gemma/v1/chat/completions"
 VLM_MODEL = "google/gemma-4-31B-it"
 
