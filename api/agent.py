@@ -660,6 +660,33 @@ def _legacy_answer(
             return
 
 
+#: Which supervisor tool produced a change, and what to call it on the wire.
+AUTOMATION_TOOLS = {
+    "create_automation": "created",
+    "update_automation": "updated",
+}
+
+#: What the two tools say when they succeeded. Matched because the tools return
+#: prose for the model rather than a status -- deliberately, since
+#: `api/routers/chat.py` discards a whole answer on an `error` frame, so a tool
+#: here may never raise and never returns anything but a sentence.
+#:
+#: Matching the success sentence rather than excluding the failure ones is the
+#: safe direction: a refusal wording that nobody thought of shows up as "no
+#: change announced", which costs a stale list until the next page load. The
+#: other way round, a new refusal would announce a write that never happened.
+_AUTOMATION_WROTE = ("Otomasyon kuruldu", "Otomasyon güncellendi", "Otomasyon durduruldu")
+
+
+def _automation_changed(message: ToolMessage) -> str | None:
+    """`"created"`, `"updated"`, or None if this tool message is not a write."""
+    action = AUTOMATION_TOOLS.get(getattr(message, "name", "") or "")
+    if action is None:
+        return None
+    text = message.content if isinstance(message.content, str) else ""
+    return action if text.startswith(_AUTOMATION_WROTE) else None
+
+
 def _agent_answer(
     question: str,
     history: list[tuple[str, str]] | None,
@@ -743,6 +770,21 @@ def _agent_answer(
             # nested tool traces contain every search result before the bank
             # specialist decides what actually supports its answer.
             if isinstance(message, ToolMessage):
+                # A standing order the agent just wrote or changed. Announced so
+                # the browser can refetch the list -- without this the write is
+                # invisible: it happens inside the graph, the profile page keeps
+                # showing its cached list, and the user concludes the assistant
+                # only *said* it had set one up.
+                #
+                # Read off the tool's name rather than its text. The tool returns
+                # Turkish prose for the model, and a refusal ("bu oturumda
+                # otomasyon kuramıyorum") is a normal outcome that must not be
+                # reported as a change -- so the frame is gated on the tool
+                # having actually written, which `AUTOMATION_TOOLS` maps and
+                # `_automation_changed` checks.
+                action = _automation_changed(message)
+                if action is not None:
+                    yield StreamEvent(type="automation", automation_action=action)
                 for source in used_sources_from_tool_message(message):
                     url = str(source.get("url") or "").strip()
                     if not url:

@@ -106,6 +106,15 @@ export async function* fetchChat(
         name: event.tool_name,
         mode: event.mode ?? undefined,
       };
+    } else if (event.type === "automation") {
+      yield {
+        type: "automation",
+        // The server sends "created" | "updated"; anything else is a frame from
+        // a newer API than this client, and "updated" is the safe reading of it
+        // -- both actions mean the same thing to the only consumer, which is a
+        // refetch of the list.
+        action: event.automation_action === "created" ? "created" : "updated",
+      };
     } else if (event.type === "done" && event.session_id) {
       request.onSessionId?.(event.session_id);
     }

@@ -59,12 +59,10 @@ const GlassInputWrapper = ({ children }: { children: React.ReactNode }) => (
 
 const TestimonialCard = ({ testimonial, delay }: { testimonial: Testimonial, delay: string }) => (
   <div className={`animate-testimonial ${delay} flex items-start gap-3 rounded-3xl bg-card/40 dark:bg-zinc-800/40 backdrop-blur-xl border border-white/10 p-5 w-64`}>
-    {/* A 40px decorative avatar, never the LCP element, loaded from a
-        third-party placeholder host. next/image would mean allowlisting that
-        host in next.config and routing a thumbnail through the optimizer for
-        no measurable gain, so the rule is answered rather than obeyed. */}
+    {/* A small local brand mark; object-contain preserves its transparent,
+        non-square artwork without cropping it into a portrait. */}
     {/* eslint-disable-next-line @next/next/no-img-element */}
-    <img src={testimonial.avatarSrc} className="h-10 w-10 object-cover rounded-2xl" alt="avatar" />
+    <img src={testimonial.avatarSrc} className="h-10 w-10 shrink-0 object-contain" alt={`${testimonial.name} logosu`} />
     <div className="text-sm leading-snug">
       <p className="flex items-center gap-1 font-medium">{testimonial.name}</p>
       <p className="text-muted-foreground">{testimonial.handle}</p>

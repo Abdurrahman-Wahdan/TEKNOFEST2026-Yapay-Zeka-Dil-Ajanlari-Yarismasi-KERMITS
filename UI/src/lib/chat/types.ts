@@ -277,7 +277,20 @@ export type ChatChunk =
    * request is re-issued with the answer attached -- the ordinary tool-use
    * round trip, with the tool running here.
    */
-  | { type: "tool-call"; id: string; name: ClientToolName; mode?: PageViewMode };
+  | { type: "tool-call"; id: string; name: ClientToolName; mode?: PageViewMode }
+  /**
+   * The agent created or changed one of the user's standing orders.
+   *
+   * Carries the verb and nothing else. The automations list is already an
+   * endpoint, so the client refetches it rather than rendering a title from a
+   * frame that could disagree with the row -- and the agent's own prose has
+   * already told the user what it did.
+   *
+   * It exists because the write was otherwise invisible: it happens inside the
+   * supervisor's graph, so the profile page kept showing its cached list and the
+   * user reasonably concluded the assistant had only *claimed* to set one up.
+   */
+  | { type: "automation"; action: "created" | "updated" };
 
 /**
  * What the agent is allowed to ask the browser to do.

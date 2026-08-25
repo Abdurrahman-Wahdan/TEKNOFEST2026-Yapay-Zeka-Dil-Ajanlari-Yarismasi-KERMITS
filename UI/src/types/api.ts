@@ -2514,7 +2514,7 @@ export interface components {
              * Type
              * @enum {string}
              */
-            type: "status" | "token" | "citation" | "tool_call" | "saved_view" | "done" | "error";
+            type: "status" | "token" | "citation" | "tool_call" | "saved_view" | "automation" | "done" | "error";
             /**
              * Stage
              * @description status only: retrieving | pricing | writing.
@@ -2567,6 +2567,11 @@ export interface components {
              * @description saved_view only: the table's heading, as stored.
              */
             view_title?: string | null;
+            /**
+             * Automation Action
+             * @description automation only: which tool the agent used.
+             */
+            automation_action?: ("created" | "updated") | null;
         };
         /**
          * TableDetailOut

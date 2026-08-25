@@ -30,6 +30,7 @@ import {
   type ReusableAttachment,
 } from "./attachment-mentions";
 import { api } from "@/lib/api";
+import { AUTOMATIONS_KEY } from "@/lib/automations";
 import { useAuth } from "@/lib/auth";
 import { usePathname } from "@/i18n/navigation";
 import { useLocale } from "next-intl";
@@ -528,6 +529,18 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                 // and running them as they arrive would serialise what can go
                 // together.
                 pending.push({ id: chunk.id, name: chunk.name, mode: chunk.mode });
+                continue;
+              }
+
+              if (chunk.type === "automation") {
+                // The agent wrote to the user's standing orders. Refetch the
+                // list, so a profile page open in this or any other tab stops
+                // showing a version of it that predates the write.
+                //
+                // Invalidated rather than optimistically appended: the row's
+                // real title, schedule and next-run time come from the server,
+                // and this frame deliberately carries none of them.
+                queryClient.invalidateQueries({ queryKey: AUTOMATIONS_KEY });
                 continue;
               }
 

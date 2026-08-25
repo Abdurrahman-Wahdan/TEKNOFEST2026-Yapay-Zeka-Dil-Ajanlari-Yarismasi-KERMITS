@@ -17,6 +17,7 @@ actually chooses the tool or fills it correctly. That is unknowable until the vL
 host is reachable.
 """
 
+import pathlib
 import uuid
 
 import pytest
@@ -324,3 +325,84 @@ def test_tool_call_arguments_split_across_chunks_still_parse(harness):
     _, _, saves = harness([[first, second], [_chunk("ok")]])
     assert len(saves) == 1
     assert saves[0]["args"] == {"title": "Konut", "columns": ["a"], "rows": [["1"]]}
+
+
+class TestAutomationAnnouncement:
+    """Telling the browser that a standing order changed.
+
+    `create_automation` runs inside the supervisor's graph, so nothing on the
+    wire used to say an automation had appeared. The profile page went on showing
+    its cached list, and the user reasonably concluded the assistant had only
+    *claimed* to set one up -- it had actually written the row. This is the frame
+    that closes that gap, and it must fire on a write and never on a refusal.
+    """
+
+    def message(self, name, content):
+        return ToolMessage(content=content, name=name, tool_call_id="c1")
+
+    def test_a_created_automation_is_announced(self):
+        assert agent_mod._automation_changed(
+            self.message(
+                "create_automation",
+                "Otomasyon kuruldu: 'Sabah altın raporu', her gün 09:00.",
+            )
+        ) == "created"
+
+    def test_an_updated_automation_is_announced(self):
+        assert agent_mod._automation_changed(
+            self.message("update_automation", "Otomasyon güncellendi: 'x', artık 19:30.")
+        ) == "updated"
+
+    def test_pausing_counts_as_an_update(self):
+        """The list has to be refetched either way -- a paused row renders
+        differently."""
+        assert agent_mod._automation_changed(
+            self.message("update_automation", "Otomasyon durduruldu: 'x'. Silinmedi")
+        ) == "updated"
+
+    def test_a_refusal_announces_nothing(self):
+        """The tools return prose and never raise, so "I could not" and "I did"
+        arrive through the same channel. Announcing a refusal would tell the UI
+        to refetch after a write that never happened -- and, worse, would make
+        the frame evidence of something that did not occur."""
+        for refusal in (
+            "Bu oturumda otomasyon kuramıyorum çünkü hesap bilgisi yok.",
+            "Otomasyon kaydedilemedi (RuntimeError).",
+            "Otomasyon güncellenemedi (OperationalError).",
+            "'altın' birden fazla otomasyona uyuyor: 'a', 'b'.",
+            "Kullanıcının hiç otomasyonu yok, dolayısıyla değiştirecek bir şey de yok.",
+            "Değiştirilecek bir alan verilmedi.",
+        ):
+            assert agent_mod._automation_changed(
+                self.message("create_automation", refusal)
+            ) is None, refusal
+
+    def test_the_ceiling_refusal_announces_nothing(self):
+        assert agent_mod._automation_changed(
+            self.message(
+                "create_automation",
+                "Kullanıcının zaten 20 otomasyonu var, üst sınır 20.",
+            )
+        ) is None
+
+    def test_another_tool_saying_the_same_words_announces_nothing(self):
+        """Gated on the tool name first, so a bank specialist quoting a page
+        cannot forge this frame."""
+        assert agent_mod._automation_changed(
+            self.message("ask_vakif", "Otomasyon kuruldu")
+        ) is None
+
+    def test_listing_is_not_a_change(self):
+        assert agent_mod._automation_changed(
+            self.message("list_automations", "1. Sabah altın raporu -- her gün 09:00")
+        ) is None
+
+    def test_every_success_string_the_tools_return_is_recognised(self):
+        """Pins the two modules together. The tools' wording is the protocol
+        here, so a reworded success sentence must fail loudly rather than
+        silently stop announcing writes."""
+        from agents.shared import automation_tools
+
+        source = pathlib.Path(automation_tools.__file__).read_text(encoding="utf-8")
+        for phrase in agent_mod._AUTOMATION_WROTE:
+            assert f'f"{phrase}' in source or f'"{phrase}' in source, phrase

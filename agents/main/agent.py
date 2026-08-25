@@ -64,13 +64,15 @@ def supervisor_tools():
     would make the measured list differ from the list the model was given, which
     is exactly the disagreement the paragraph above exists to prevent.
 
-    Three of these are not banks and none of the three carries a bank fact:
+    Four of these are not banks and none of the four carries a bank fact:
 
     - `find_comparison_table` answers "does this site already publish a table on
       this topic, and what is its address", so the assistant can link to a page
       the product already has.
-    - `create_automation` / `list_automations` store and read back a standing
-      order -- a question to be asked again on a schedule.
+    - `create_automation` / `update_automation` / `list_automations` store,
+      change and read back a standing order -- a question to be asked again on a
+      schedule. There is no delete: `update_automation` can pause one, which is
+      reversible, and permanent removal stays a human click in the UI.
 
     Everything factual still comes from the specialists.
     """

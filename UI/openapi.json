@@ -5509,6 +5509,7 @@
               "citation",
               "tool_call",
               "saved_view",
+              "automation",
               "done",
               "error"
             ],
@@ -5652,6 +5653,22 @@
             ],
             "title": "View Title",
             "description": "saved_view only: the table's heading, as stored."
+          },
+          "automation_action": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "created",
+                  "updated"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Automation Action",
+            "description": "automation only: which tool the agent used."
           }
         },
         "type": "object",

@@ -10,7 +10,7 @@ import { ActionButton } from "@/components/ui/ActionButton";
 import { RoundButton } from "@/components/ui/RoundButton";
 import { VuiBox, VuiTypography } from "@/components/vision";
 import { api, ApiError } from "@/lib/api";
-import { type Weekday } from "@/lib/automations";
+import { AUTOMATIONS_KEY, type Weekday } from "@/lib/automations";
 import { useVoiceSession } from "@/lib/chat/useVoiceSession";
 
 import {
@@ -20,7 +20,6 @@ import {
   type Chosen,
 } from "./AutomationFields";
 
-import { AUTOMATIONS_KEY } from "./AutomationsBoard";
 import { STATS_KEY } from "./ProfileStats";
 
 /**

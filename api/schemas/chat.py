@@ -368,7 +368,8 @@ class StreamEvent(BaseModel):
     """
 
     type: Literal[
-        "status", "token", "citation", "tool_call", "saved_view", "done", "error"
+        "status", "token", "citation", "tool_call", "saved_view", "automation",
+        "done", "error",
     ]
     stage: str | None = Field(
         default=None,
@@ -411,4 +412,23 @@ class StreamEvent(BaseModel):
     )
     view_title: str | None = Field(
         default=None, description="saved_view only: the table's heading, as stored."
+    )
+
+    # --- automation only --------------------------------------------------
+    #
+    # The agent created or changed one of the user's standing orders. Carries no
+    # payload beyond the verb, and that is deliberate: the automations list is
+    # already an endpoint, so the client refetches it and shows the truth rather
+    # than rendering a title from a frame that could disagree with the row.
+    #
+    # It exists because the write is invisible otherwise. `create_automation`
+    # runs inside the supervisor's graph, so nothing on the wire said an
+    # automation had appeared -- the profile page went on showing its cached
+    # list, and the user reasonably concluded the assistant had only claimed to
+    # set one up. It had actually written the row.
+    #
+    # Like `saved_view` and unlike `tool_call`, this does not end the stream: the
+    # write already happened and the answer continues in the same response.
+    automation_action: Literal["created", "updated"] | None = Field(
+        default=None, description="automation only: which tool the agent used."
     )

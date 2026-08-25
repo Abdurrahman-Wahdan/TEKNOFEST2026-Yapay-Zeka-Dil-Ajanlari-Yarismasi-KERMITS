@@ -12,6 +12,21 @@
  */
 export const REPORT_PARAM = "rapor";
 
+/**
+ * The cache key for the user's automations list.
+ *
+ * Here rather than in `AutomationsBoard`, where it started, because it is no
+ * longer only the profile page's business: the assistant can create and change
+ * automations from a chat turn, so `ChatProvider` has to invalidate this list
+ * too. Importing it from the board would have pulled that whole widget -- and
+ * its MUI subtree -- into the provider that is mounted on every page.
+ *
+ * Keeping it in one place is the point. While the chat path had no way to say
+ * "an automation appeared", the profile page went on showing its cached list and
+ * the user reasonably concluded the assistant had only claimed to set one up.
+ */
+export const AUTOMATIONS_KEY = ["automations"];
+
 /** Where the Reports tab lives. One constant, because three files link to it. */
 export const REPORTS_PATH = "/profile/reports";
 

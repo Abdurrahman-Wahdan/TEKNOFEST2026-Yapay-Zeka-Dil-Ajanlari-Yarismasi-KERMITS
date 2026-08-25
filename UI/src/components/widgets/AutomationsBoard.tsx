@@ -13,7 +13,11 @@ import { RoundButton } from "@/components/ui/RoundButton";
 import { Toggle } from "@/components/ui/Toggle";
 import { VuiBox, VuiButton, VuiTypography } from "@/components/vision";
 import { api, type Automation } from "@/lib/api";
-import { describeSchedule, type Weekday } from "@/lib/automations";
+import {
+  AUTOMATIONS_KEY,
+  describeSchedule,
+  type Weekday,
+} from "@/lib/automations";
 import { formatDateTime } from "@/lib/format";
 
 import {
@@ -28,9 +32,6 @@ import { REPORTS_KEY } from "./ReportsBrowser";
 import { STATS_KEY } from "./ProfileStats";
 
 type Locale = "tr" | "en";
-
-/** The one cache key for this list. Read by the composer to invalidate it. */
-export const AUTOMATIONS_KEY = ["automations"];
 
 /**
  * The user's standing orders, and the controls for them.

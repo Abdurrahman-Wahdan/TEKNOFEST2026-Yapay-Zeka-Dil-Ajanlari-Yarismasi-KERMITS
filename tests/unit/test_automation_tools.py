@@ -20,7 +20,11 @@ from contextlib import contextmanager
 
 import pytest
 
-from agents.shared.automation_tools import MAX_PER_USER, build_automation_tools
+from agents.shared.automation_tools import (
+    MAX_PER_USER,
+    TITLE_CHARS,
+    build_automation_tools,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -53,12 +57,18 @@ class _Store:
 
 
 class _Existing:
+    """A stored automation, mutable, so an update can be asserted on it."""
+
     def __init__(self, title, hour=9, minute=0, weekdays=None, enabled=True):
+        self.id = uuid.uuid4()
         self.title = title
+        self.prompt = f"{title} sorusu"
         self.hour = hour
         self.minute = minute
         self.weekdays = weekdays or []
         self.enabled = enabled
+        self.web_search = True
+        self.next_run_at = None
 
 
 @pytest.fixture
@@ -78,8 +88,15 @@ def store(monkeypatch):
 
 @pytest.fixture
 def tools():
-    create, listing = build_automation_tools()
+    """`(create, listing)`, the pair the older tests were written against."""
+    create, _update, listing = build_automation_tools()
     return create, listing
+
+
+@pytest.fixture
+def update():
+    _create, updater, _listing = build_automation_tools()
+    return updater
 
 
 USER = {"session_id": "s", "user_id": str(uuid.uuid4())}
@@ -223,17 +240,199 @@ class TestList:
         store.existing = [_Existing("Duran", enabled=False)]
         assert "DURDURULMUŞ" in listing.func(runtime=_Runtime(USER))
 
-    def test_says_it_cannot_delete(self, tools, store):
-        """There is no delete tool, and the model must not imply there is."""
+    def test_says_it_cannot_delete_but_can_change(self, tools, store):
+        """The list used to tell the model it had no power to change anything.
+
+        It said "saatini değiştirmek Profil sayfasından yapılır" -- true when
+        written, and afterwards the exact reason the model kept sending users to
+        the profile page to fix an hour it could have fixed itself.
+        """
         _, listing = tools
         store.existing = [_Existing("x")]
-        assert "silme yetkin yok" in listing.func(runtime=_Runtime(USER))
+        answer = listing.func(runtime=_Runtime(USER))
+        assert "SİLME yetkin yok" in answer
+        assert "update_automation" in answer
+
+
+class TestUpdate:
+    """Changing one that exists.
+
+    The tool the assistant was missing while it was already inviting the
+    correction: `create_automation` tells the model to say it may have misread
+    the hour, and for a while the only thing it could do when the user said "no,
+    19:00" was point at the profile page.
+    """
+
+    def test_no_user_id_refuses_without_writing(self, update, store):
+        store.existing = [_Existing("Sabah altın raporu")]
+        answer = update.func(title="Sabah altın raporu", hour=19, runtime=_Runtime({}))
+        assert "hesap bilgisi yok" in answer
+        assert store.existing[0].hour == 9
+
+    def test_changing_the_hour_moves_the_next_run(self, update, store):
+        row = _Existing("Sabah altın raporu", hour=9)
+        store.existing = [row]
+        answer = update.func(
+            title="Sabah altın raporu", hour=19, minute=30, runtime=_Runtime(USER)
+        )
+        assert row.hour == 19 and row.minute == 30
+        # Recomputed from now, exactly as PATCH /me/automations/{id} does.
+        # Keeping the old value would fire it once more at the time the user was
+        # correcting away from.
+        assert row.next_run_at is not None
+        assert "19:30" in answer
+        assert "güncellendi" in answer
+
+    def test_a_partial_title_is_enough(self, update, store):
+        row = _Existing("Günlük Aidatsız Kart Avantaj Raporu")
+        store.existing = [row]
+        update.func(title="aidatsız", hour=18, minute=30, runtime=_Runtime(USER))
+        assert (row.hour, row.minute) == (18, 30)
+
+    def test_matching_ignores_case(self, update, store):
+        row = _Existing("Sabah Altın Raporu")
+        store.existing = [row]
+        update.func(title="sabah altın raporu", hour=7, runtime=_Runtime(USER))
+        assert row.hour == 7
+
+    def test_a_longer_phrase_than_the_title_still_matches(self, update, store):
+        """The model often names the thing rather than quoting the row."""
+        row = _Existing("altın")
+        store.existing = [row]
+        update.func(title="altın raporu otomasyonu", hour=8, runtime=_Runtime(USER))
+        assert row.hour == 8
+
+    def test_an_exact_title_wins_over_a_substring(self, update, store):
+        """Two rows where one title contains the other must not be ambiguous."""
+        exact = _Existing("Altın", hour=9)
+        longer = _Existing("Altın ve döviz raporu", hour=9)
+        store.existing = [exact, longer]
+        update.func(title="Altın", hour=11, runtime=_Runtime(USER))
+        assert exact.hour == 11
+        assert longer.hour == 9
+
+    def test_an_ambiguous_title_refuses_and_names_the_candidates(self, update, store):
+        """Two automations about gold differ only in their wording. Editing the
+        wrong one is a silent change to something the user never mentioned."""
+        first = _Existing("Sabah altın raporu", hour=9)
+        second = _Existing("Akşam altın raporu", hour=20)
+        store.existing = [first, second]
+        answer = update.func(title="altın raporu", hour=11, runtime=_Runtime(USER))
+        assert "birden fazla" in answer
+        assert "Sabah altın raporu" in answer and "Akşam altın raporu" in answer
+        assert (first.hour, second.hour) == (9, 20)
+
+    def test_an_unknown_title_refuses_and_lists_what_exists(self, update, store):
+        row = _Existing("Sabah altın raporu")
+        store.existing = [row]
+        answer = update.func(title="dolar", hour=11, runtime=_Runtime(USER))
+        assert "bulamadım" in answer
+        assert "Sabah altın raporu" in answer
+
+    def test_with_nothing_stored_it_says_so(self, update, store):
+        answer = update.func(title="herhangi", hour=11, runtime=_Runtime(USER))
+        assert "hiç otomasyonu yok" in answer
+
+    def test_no_fields_given_is_a_question_not_a_write(self, update, store):
+        row = _Existing("Sabah altın raporu", hour=9)
+        store.existing = [row]
+        answer = update.func(title="Sabah altın raporu", runtime=_Runtime(USER))
+        assert "Değiştirilecek bir alan verilmedi" in answer
+        assert row.hour == 9
+
+    def test_pausing_says_paused_not_deleted(self, update, store):
+        """The model has no delete tool, so "iptal et" lands here. It must not
+        tell the user their automation is gone -- it is not, and the past reports
+        are not either."""
+        row = _Existing("Sabah altın raporu")
+        store.existing = [row]
+        answer = update.func(
+            title="Sabah altın raporu", enabled=False, runtime=_Runtime(USER)
+        )
+        assert row.enabled is False
+        assert "durduruldu" in answer
+        assert "Silinmedi" in answer
+
+    def test_resuming_reports_the_next_run(self, update, store):
+        row = _Existing("Sabah altın raporu", enabled=False)
+        store.existing = [row]
+        answer = update.func(
+            title="Sabah altın raporu", enabled=True, runtime=_Runtime(USER)
+        )
+        assert row.enabled is True
+        assert "güncellendi" in answer
+
+    def test_an_empty_weekday_list_means_every_day(self, update, store):
+        """Absent and empty differ on this field alone: `[]` is the user asking
+        for every day, and omitting it means leave the days alone."""
+        row = _Existing("x", weekdays=[0, 4])
+        store.existing = [row]
+        update.func(title="x", weekdays=[], runtime=_Runtime(USER))
+        assert row.weekdays == []
+
+    def test_omitting_weekdays_leaves_them_alone(self, update, store):
+        row = _Existing("x", weekdays=[0, 4])
+        store.existing = [row]
+        update.func(title="x", hour=7, runtime=_Runtime(USER))
+        assert row.weekdays == [0, 4]
+
+    def test_weekdays_are_cleaned_before_storage(self, update, store):
+        row = _Existing("x")
+        store.existing = [row]
+        update.func(title="x", weekdays=[4, 0, 7, 4, -1], runtime=_Runtime(USER))
+        assert row.weekdays == [0, 4]
+
+    def test_renaming_reports_the_new_name(self, update, store):
+        row = _Existing("Eski ad")
+        store.existing = [row]
+        answer = update.func(
+            title="Eski ad", new_title="Yeni ad", runtime=_Runtime(USER)
+        )
+        assert row.title == "Yeni ad"
+        assert "Yeni ad" in answer
+
+    def test_a_new_title_is_clipped_to_the_column(self, update, store):
+        row = _Existing("x")
+        store.existing = [row]
+        update.func(title="x", new_title="ç" * 400, runtime=_Runtime(USER))
+        assert len(row.title) == TITLE_CHARS
+
+    def test_the_prompt_can_be_replaced(self, update, store):
+        row = _Existing("x")
+        store.existing = [row]
+        update.func(
+            title="x", prompt="Dolar ve altın fiyatlarını karşılaştır",
+            runtime=_Runtime(USER),
+        )
+        assert row.prompt == "Dolar ve altın fiyatlarını karşılaştır"
+
+    def test_a_database_failure_comes_back_as_prose(self, update, monkeypatch):
+        """Never an exception: the router discards the whole assembled answer on
+        an `error` frame, so a raise here would delete a good answer."""
+        import api.db.session as session_module
+
+        def broken():
+            raise RuntimeError("connection reset")
+
+        monkeypatch.setattr(session_module, "session_scope", broken)
+        answer = update.func(title="x", hour=9, runtime=_Runtime(USER))
+        assert "güncellenemedi" in answer
+        assert "RuntimeError" in answer
+        assert "tekrar DENEME" in answer
+
+    def test_the_runtime_annotation_is_a_resolved_type(self):
+        """Same trap as `create_automation`. See the note in the module."""
+        import inspect
+
+        _create, updater, _listing = build_automation_tools()
+        annotation = inspect.signature(updater.func).parameters["runtime"].annotation
+        assert not isinstance(annotation, str), annotation
 
 
 class TestSchemas:
     def test_create_takes_no_cron_string(self):
         """The schedule is three integers. A wrong cron fails by never firing."""
-        create, _ = build_automation_tools()
+        create, _update, _listing = build_automation_tools()
         props = create.args_schema.model_json_schema()["properties"]
         assert set(props) == {
             "title", "prompt", "hour", "minute", "weekdays", "web_search"
@@ -243,13 +442,30 @@ class TestSchemas:
 
     def test_list_declares_an_empty_schema(self):
         """Inference would hit `runtime: ToolRuntime`, which has no JSON schema."""
-        _, listing = build_automation_tools()
+        *_, listing = build_automation_tools()
         assert listing.args_schema is not None
         assert listing.args_schema.model_json_schema().get("properties", {}) == {}
 
     def test_there_is_no_delete_tool(self):
+        """Pausing is the reversible half of "cancel"; deleting is not offered."""
         names = {t.name for t in build_automation_tools()}
-        assert names == {"create_automation", "list_automations"}
+        assert names == {
+            "create_automation", "update_automation", "list_automations",
+        }
+
+    def test_update_selects_by_title_not_by_id(self):
+        """A model cannot verify a UUID, and one wrong character edits the wrong
+        row -- or nothing at all. A title is something it already knows: it
+        either just wrote it or read it out of `list_automations`."""
+        _create, updater, _listing = build_automation_tools()
+        props = updater.args_schema.model_json_schema()["properties"]
+        assert "title" in props
+        assert not any("id" == name for name in props)
+        assert props["hour"]["anyOf"][0]["maximum"] == 23
+        assert set(props) == {
+            "title", "new_title", "prompt", "hour", "minute", "weekdays",
+            "enabled", "web_search",
+        }
 
     def test_the_runtime_annotation_is_a_resolved_type(self):
         """`from __future__ import annotations` in this module breaks injection.
