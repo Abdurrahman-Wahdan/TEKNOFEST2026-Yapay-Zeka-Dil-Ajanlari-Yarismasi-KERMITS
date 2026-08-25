@@ -31,12 +31,18 @@ export default async function UrunlerPage({
   setRequestLocale(locale);
 
   const table = (await searchParams)[TABLE_PARAM];
+  const tableId = typeof table === "string" ? table : null;
 
   return (
     <AppPage>
       <CompareTablesBrowser
+        // React preserves client state when a Link navigates from
+        // `/urunler?tablo=...` to `/urunler`. Keying the state boundary by the
+        // canonical URL view makes the active navbar item return to the list
+        // instead of leaving the old detail mounted under the new address.
+        key={`ürün:${tableId ?? "list"}`}
         category="ürün"
-        initialTableId={typeof table === "string" ? table : null}
+        initialTableId={tableId}
       />
     </AppPage>
   );

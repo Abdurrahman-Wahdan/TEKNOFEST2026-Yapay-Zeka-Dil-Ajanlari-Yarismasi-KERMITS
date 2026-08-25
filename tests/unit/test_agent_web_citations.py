@@ -5,12 +5,26 @@ import uuid
 from types import SimpleNamespace
 
 import pytest
-from langchain_core.messages import AIMessageChunk, ToolMessage
+from langchain_core.messages import AIMessage, AIMessageChunk, ToolMessage
 
 from agents.main import agent as main_agent
+from agents.output_guard.models import GuardedOutput
+from api import agent as agent_module
 from api.agent import _agent_answer, _searchable_text
 
 pytestmark = pytest.mark.unit
+
+
+@pytest.fixture(autouse=True)
+def pass_public_output_guard(monkeypatch):
+    """Citation tests isolate source selection from the separately tested guard."""
+    monkeypatch.setattr(
+        agent_module,
+        "guard_output",
+        lambda text, **kwargs: GuardedOutput(
+            text=text, changed=False, checks=[], patches=[], passes=1
+        ),
+    )
 
 
 def test_citation_audit_folds_turkish_bank_names_to_ascii_aliases():
@@ -20,8 +34,11 @@ def test_citation_audit_folds_turkish_bank_names_to_ascii_aliases():
 
 
 class _CitationAgent:
+    def __init__(self):
+        self.final: AIMessage | None = None
+
     def get_state(self, config):
-        return SimpleNamespace(values={})
+        return SimpleNamespace(values={"messages": [self.final] if self.final else []})
 
     def stream(self, payload, config, context, stream_mode):
         ledger = [
@@ -69,12 +86,14 @@ class _CitationAgent:
         yield ToolMessage(
             name="ask_vakif", tool_call_id="call-2", content=handoff
         ), {"langgraph_node": "tools"}
-        yield AIMessageChunk(content=(
+        answer = (
             "Answer with [online source]"
             "(https://www.vakifkatilim.com.tr/tr/musteri-ol) and "
             "[knowledge source]"
             "(https://www.vakifkatilim.com.tr/tr/bilgi-bankasi)."
-        )), {
+        )
+        self.final = AIMessage(content=answer, id="citation-answer")
+        yield AIMessageChunk(content=answer), {
             "langgraph_node": "model"
         }
 
@@ -121,8 +140,11 @@ def test_agent_stream_emits_one_clickable_citation_per_web_url(monkeypatch):
 
 
 class _UncitedEvidenceAgent:
+    def __init__(self):
+        self.final: AIMessage | None = None
+
     def get_state(self, config):
-        return SimpleNamespace(values={})
+        return SimpleNamespace(values={"messages": [self.final] if self.final else []})
 
     def stream(self, payload, config, context, stream_mode):
         ledger = [
@@ -156,7 +178,9 @@ class _UncitedEvidenceAgent:
                 + json.dumps(ledger)
             ),
         ), {"langgraph_node": "tools"}
-        yield AIMessageChunk(content="Vakıf Katılım ürünlerini karşılaştırdım."), {
+        answer = "Vakıf Katılım ürünlerini karşılaştırdım."
+        self.final = AIMessage(content=answer, id="uncited-answer")
+        yield AIMessageChunk(content=answer), {
             "langgraph_node": "model"
         }
 
@@ -188,6 +212,9 @@ def test_evidence_bearing_answer_gets_audited_sources_when_model_drops_links(
 class _HistoricalCitationAgent:
     url = "https://www.kuveytturk.com.tr/tr/gecmis-kaynak"
 
+    def __init__(self):
+        self.final: AIMessage | None = None
+
     def get_state(self, config):
         ledger = [{
             "tool": "search_bank",
@@ -199,7 +226,7 @@ class _HistoricalCitationAgent:
                 "provenance": "knowledge_base",
             }],
         }]
-        return SimpleNamespace(values={"messages": [ToolMessage(
+        messages = [ToolMessage(
             name="ask_kuveytturk",
             tool_call_id="old-call",
             content=(
@@ -207,12 +234,15 @@ class _HistoricalCitationAgent:
                 "TF26_TOOL_EVIDENCE (machine-preserved from actual specialist calls):\n"
                 + json.dumps(ledger)
             ),
-        )]})
+        )]
+        if self.final:
+            messages.append(self.final)
+        return SimpleNamespace(values={"messages": messages})
 
     def stream(self, payload, config, context, stream_mode):
-        yield AIMessageChunk(
-            content=f"Önceki [kaynak]({self.url})."
-        ), {"langgraph_node": "model"}
+        answer = f"Önceki [kaynak]({self.url})."
+        self.final = AIMessage(content=answer, id="historical-answer")
+        yield AIMessageChunk(content=answer), {"langgraph_node": "model"}
 
 
 def test_followup_can_render_a_citation_from_checkpointed_evidence(monkeypatch):
@@ -236,11 +266,16 @@ def test_followup_can_render_a_citation_from_checkpointed_evidence(monkeypatch):
 
 
 class _PlainConversationAgent:
+    def __init__(self):
+        self.final: AIMessage | None = None
+
     def get_state(self, config):
-        return SimpleNamespace(values={})
+        return SimpleNamespace(values={"messages": [self.final] if self.final else []})
 
     def stream(self, payload, config, context, stream_mode):
-        yield AIMessageChunk(content="Merhaba, nasıl yardımcı olabilirim?"), {
+        answer = "Merhaba, nasıl yardımcı olabilirim?"
+        self.final = AIMessage(content=answer, id="plain-answer")
+        yield AIMessageChunk(content=answer), {
             "langgraph_node": "model"
         }
 

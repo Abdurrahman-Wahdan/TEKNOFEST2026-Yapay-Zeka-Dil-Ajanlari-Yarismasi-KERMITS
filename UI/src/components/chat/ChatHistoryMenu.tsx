@@ -159,6 +159,13 @@ export function ChatHistoryMenu() {
             return (
               <VuiBox
                 key={conversation.id}
+                // MUI portals the menu outside the assistant dialog. This marker
+                // lets the popup treat presses on its history rows as internal.
+                className={
+                  panelWidth === null
+                    ? undefined
+                    : "tf26-agent-popup-owned-overlay"
+                }
                 display="flex"
                 alignItems="center"
                 gap={1}

@@ -102,19 +102,32 @@ export function AgentPopup() {
     wasOpen.current = popupOpen;
   }, [popupOpen]);
 
-  // Click-outside. Skipped while full-screen, where there is no outside to click.
+  /**
+   * Close on a genuine press outside the assistant and any overlay it owns.
+   *
+   * `ChatHistoryMenu` is a descendant in React, but MUI portals its paper under
+   * `document.body`. DOM containment alone therefore calls a history-row press
+   * "outside" and unmounts the popup before the selected transcript can remain
+   * visible. Owned overlays carry a stable marker class, making the boundary
+   * explicit instead of relying on where a component library mounts a portal.
+   */
   useEffect(() => {
     if (!popupOpen || fullScreen) return;
-    const onPointerDown = (event: MouseEvent) => {
-      const target = event.target as Node;
+
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
       if (panelRef.current?.contains(target)) return;
-      // The launcher has its own handler; letting this one fire too would close
-      // and reopen in the same gesture.
-      if (launcherRef.current?.contains(target)) return;
+
+      const element =
+        target instanceof Element ? target : target.parentElement;
+      if (element?.closest(".tf26-agent-popup-owned-overlay")) return;
+
       setPopupOpen(false);
     };
-    document.addEventListener("mousedown", onPointerDown);
-    return () => document.removeEventListener("mousedown", onPointerDown);
+
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [popupOpen, fullScreen, setPopupOpen]);
 
   // Signed out, there is nobody to ask on behalf of. The auth pages render

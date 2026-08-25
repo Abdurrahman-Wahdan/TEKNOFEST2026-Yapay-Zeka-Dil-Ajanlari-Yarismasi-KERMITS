@@ -26,8 +26,11 @@ import unicodedata
 import uuid
 from typing import Iterator
 
-from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, ToolMessage
+from langchain_core.messages import (
+    AIMessage, AIMessageChunk, HumanMessage, RemoveMessage, ToolMessage,
+)
 
+from agents.output_guard import OutputGuardError, guard_output
 from config.settings import settings
 from index.retrieve import search
 from llm import get_llm
@@ -687,6 +690,46 @@ def _automation_changed(message: ToolMessage) -> str | None:
     return action if text.startswith(_AUTOMATION_WROTE) else None
 
 
+def _last_ai_message(messages) -> AIMessage | None:
+    return next(
+        (message for message in reversed(messages) if isinstance(message, AIMessage)),
+        None,
+    )
+
+
+def _checkpointed_final_answer(
+    agent, config, previous_id: str | None
+) -> AIMessage:
+    """The new final supervisor turn, excluding prior history and tool preambles."""
+    state = agent.get_state(config)
+    messages = list((state.values or {}).get("messages") or [])
+    final = _last_ai_message(messages)
+    if final is None or not final.id:
+        raise OutputGuardError("The supervisor checkpoint has no final answer.")
+    if final.id == previous_id:
+        raise OutputGuardError("The supervisor checkpoint has no new final answer.")
+    if not isinstance(final.content, str) or not final.content.strip():
+        raise OutputGuardError("The supervisor checkpointed an empty final answer.")
+    return final
+
+
+def _replace_checkpointed_answer(agent, config, original: AIMessage, text: str) -> None:
+    """Make the guarded wording the supervisor's durable conversation memory."""
+    agent.update_state(config, {
+        "messages": [original.model_copy(update={"content": text})]
+    })
+
+
+def _discard_checkpointed_answer(agent, config, original: AIMessage | None) -> None:
+    """Fail closed without leaving a private draft in future conversation context."""
+    if original is None or not original.id:
+        return
+    try:
+        agent.update_state(config, {"messages": [RemoveMessage(id=original.id)]})
+    except Exception:  # noqa: BLE001 - retain the original guard failure in logs
+        logger.exception("Could not remove a rejected supervisor draft")
+
+
 def _agent_answer(
     question: str,
     history: list[tuple[str, str]] | None,
@@ -719,6 +762,10 @@ def _agent_answer(
         agent = build_main_agent(model=model, thinking=think)
         state = agent.get_state(config)
         seeded = bool((state.values or {}).get("messages"))
+        prior_answer = _last_ai_message(
+            list((state.values or {}).get("messages") or [])
+        )
+        prior_answer_id = prior_answer.id if prior_answer is not None else None
         # The whole stored conversation, however long it is. Nothing is dropped
         # to make it fit: compaction runs in `before_model`, so a history longer
         # than the window is summarised before the model is ever called, and a
@@ -749,7 +796,8 @@ def _agent_answer(
                 candidate_sources.setdefault((source_key(url), provenance), source)
 
         fresh_candidate_sources: dict[tuple[str, str], dict] = {}
-        answer_text: list[str] = []
+        guard_evidence: list[str] = []
+        guard_evidence_seen: set[str] = set()
         # `user_id` only when there is one. `AgentContext` declares it
         # NotRequired, and passing an empty string would make
         # `create_automation` write an automation nobody owns rather than
@@ -785,6 +833,20 @@ def _agent_answer(
                 action = _automation_changed(message)
                 if action is not None:
                     yield StreamEvent(type="automation", automation_action=action)
+                # The output guard needs the factual handoff to detect a
+                # supervisor claim that none of its bank sources supported.
+                # Keep it private and de-duplicate callback echoes. Other tool
+                # results (page directory and automation writes) are actions,
+                # not bank evidence.
+                if (message.name or "").startswith("ask_"):
+                    handoff = (
+                        message.content
+                        if isinstance(message.content, str)
+                        else str(message.content)
+                    )
+                    if handoff and handoff not in guard_evidence_seen:
+                        guard_evidence_seen.add(handoff)
+                        guard_evidence.append(handoff)
                 for source in used_sources_from_tool_message(message):
                     url = str(source.get("url") or "").strip()
                     if not url:
@@ -801,9 +863,44 @@ def _agent_answer(
             if not isinstance(message, (AIMessage, AIMessageChunk)):
                 continue
             if isinstance(message.content, str) and message.content:
-                answer_text.append(message.content)
-                yield StreamEvent(type="token", text=message.content)
-        final_answer = "".join(answer_text)
+                # Keep every model chunk private. The graph's newly checkpointed
+                # final AIMessage is read below; unlike concatenating chunks, it
+                # excludes prose from intermediate tool-calling turns.
+                continue
+        yield StreamEvent(type="status", stage="reviewing")
+        checkpointed: AIMessage | None = None
+        try:
+            checkpointed = _checkpointed_final_answer(
+                agent, config, prior_answer_id
+            )
+            final_answer = checkpointed.content
+            guarded = guard_output(
+                final_answer,
+                user_request=question,
+                evidence=guard_evidence,
+            )
+            if guarded.changed:
+                _replace_checkpointed_answer(
+                    agent, config, checkpointed, guarded.text
+                )
+            final_answer = guarded.text
+        except Exception as exc:  # noqa: BLE001 - the public boundary fails closed
+            _discard_checkpointed_answer(agent, config, checkpointed)
+            logger.exception(
+                "Output guard rejected chat answer session=%s type=%s",
+                session_id,
+                type(exc).__name__,
+            )
+            yield StreamEvent(
+                type="error",
+                detail="The answer could not be safely verified. Please try again.",
+            )
+            return
+
+        # Only the accepted answer crosses the public SSE boundary. The router
+        # assembles this exact text for PostgreSQL and the browser uses it for
+        # the visible turn, so all three histories stay identical.
+        yield StreamEvent(type="token", text=final_answer)
         final_source_keys = cited_sources_from_text(final_answer)
         for source in _audited_sources(
             final_answer,

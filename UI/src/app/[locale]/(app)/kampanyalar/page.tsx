@@ -30,12 +30,16 @@ export default async function KampanyalarPage({
   setRequestLocale(locale);
 
   const table = (await searchParams)[TABLE_PARAM];
+  const tableId = typeof table === "string" ? table : null;
 
   return (
     <AppPage>
       <CompareTablesBrowser
+        // A campaign detail and the campaign list are different state
+        // identities even though they share one route component.
+        key={`kampanya:${tableId ?? "list"}`}
         category="kampanya"
-        initialTableId={typeof table === "string" ? table : null}
+        initialTableId={tableId}
       />
     </AppPage>
   );

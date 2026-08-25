@@ -7,6 +7,7 @@ import Skeleton from "@mui/material/Skeleton";
 import type { Theme } from "@mui/material/styles";
 import Tooltip from "@mui/material/Tooltip";
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -154,10 +155,10 @@ function toTableProps(detail: TableDetailOut, rows: RowOut[]): TableProps {
  * the reader the table itself. That makes one table worth bookmarking where a
  * subcategory still is not — so it is the only one of the three states in the URL.
  *
- * `initialTableId` comes from the page's `searchParams` rather than being read here
- * with `useSearchParams`, so a link opens on the table in the first paint instead of
- * rendering the grid and swapping. After mount the state below owns it, and
- * `pushState` keeps the URL in step -- see `select`.
+ * `initialTableId` comes from the server page for the first render. After that,
+ * the current URL is authoritative: Next wires native history changes into
+ * `useSearchParams`, so opening a table, using Back/Forward, or clicking the
+ * active navbar item all render the view named by the address bar.
  */
 export function CompareTablesBrowser({
   category,
@@ -169,13 +170,18 @@ export function CompareTablesBrowser({
   const t = useTranslations("compareTables");
   const tc = useTranslations("components");
   const locale = useLocale() as "tr" | "en";
+  const searchParams = useSearchParams();
   const [subcategory, setSubcategory] = useState<string>("");
   // Free text over the picker grid, not over any table's rows -- `TableFilters`
   // does the second job once a table is open. Held here rather than inside
   // `SearchField` because the count beside it and the empty state below both
   // have to agree with it.
   const [query, setQuery] = useState("");
-  const [tableId, setTableId] = useState<string | null>(initialTableId);
+  const routeTableId = searchParams.get(TABLE_PARAM);
+  // The server prop preserves the correct first paint. In the browser, absence
+  // of `?tablo=` is meaningful and must never fall back to a stale server prop.
+  const tableId =
+    routeTableId ?? (typeof window === "undefined" ? initialTableId : null);
   // Local sort state, reset per table. The three-click asc/desc/off toggle is
   // `useTableSort`, the same hook `Comparator` and `TableWidget` call, so this
   // table is driven by the exact same mechanism rather than a lookalike -- it
@@ -183,6 +189,7 @@ export function CompareTablesBrowser({
   // `ProducedTable` because only this component knows when it has to go:
   // opening a different table.
   const { sort, toggleSort, resetSort } = useTableSort();
+
   /**
    * Row filters, reset per table.
    *
@@ -292,7 +299,6 @@ export function CompareTablesBrowser({
   const select = (id: string | null) => {
     resetSort();
     setFilters(EMPTY_FILTERS);
-    setTableId(id);
     const search = tableSearch(window.location.search, id);
     window.history.pushState(null, "", search ? `?${search}` : window.location.pathname);
   };
@@ -309,7 +315,6 @@ export function CompareTablesBrowser({
     const onPopState = () => {
       resetSort();
       setFilters(EMPTY_FILTERS);
-      setTableId(new URLSearchParams(window.location.search).get(TABLE_PARAM));
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);

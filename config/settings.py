@@ -59,6 +59,21 @@ class Settings(BaseSettings):
     EXTRACTOR_MODEL: str = Field(default="qwen", description="Best structured output.")
     REASONER_MODEL: str = "gpt"
 
+    # ===== Public answer output guard =====
+    OUTPUT_GUARD_MODEL: str = Field(
+        default="gemma",
+        description="Fast local model used for the final policy checklist.",
+    )
+    OUTPUT_GUARD_MAX_TOKENS: int = Field(
+        default=1400,
+        ge=300,
+        description="Small structured checklist/patch budget; never an answer rewrite.",
+    )
+    OUTPUT_GUARD_POLICY_FILE: Path = Field(
+        default=PROJECT_ROOT / "agents" / "output_guard" / "policies.json",
+        description="Editable public-answer policy set, reloaded for every turn.",
+    )
+
     # ===== Compaction (summarising a thread before it fills its window) =====
     #
     # Every agent is compacted the same way -- the supervisor and all ten bank
@@ -644,6 +659,7 @@ class Settings(BaseSettings):
             "CHAT_MODEL": self.CHAT_MODEL,
             "EXTRACTOR_MODEL": self.EXTRACTOR_MODEL,
             "REASONER_MODEL": self.REASONER_MODEL,
+            "OUTPUT_GUARD_MODEL": self.OUTPUT_GUARD_MODEL,
         }
         for field, value in roles.items():
             if value not in MODEL_KEYS:

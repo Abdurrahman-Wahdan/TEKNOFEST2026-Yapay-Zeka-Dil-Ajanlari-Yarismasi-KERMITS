@@ -373,7 +373,7 @@ class StreamEvent(BaseModel):
     ]
     stage: str | None = Field(
         default=None,
-        description="status only: retrieving | pricing | writing.",
+        description="status only: retrieving | pricing | writing | reviewing.",
     )
     text: str | None = Field(default=None, description="token only.")
     citation: ChunkOut | None = Field(default=None, description="citation only.")
