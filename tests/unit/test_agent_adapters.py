@@ -122,12 +122,21 @@ def test_explicit_web_requirement_reaches_the_specialist_prompt(monkeypatch):
     assert "search_bank_web" in result
 
 
-def test_required_web_research_refuses_to_fall_back_when_toggle_is_off(monkeypatch):
-    monkeypatch.setattr(
-        agent_tools,
-        "build_specialist",
-        lambda *args, **kwargs: pytest.fail("specialist must not run"),
-    )
+def test_required_web_research_uses_available_sources_when_toggle_is_off(monkeypatch):
+    class _AvailableSourcesSpecialist:
+        def invoke(self, payload, config, context):
+            request = payload["messages"][0][1]
+            assert "Do not refuse or stop" in request
+            return {"messages": [
+                ToolMessage(
+                    name="search_bank",
+                    tool_call_id="search-1",
+                    content="Indexed sukuk evidence.",
+                ),
+                AIMessage(content="Useful indexed sukuk answer."),
+            ]}
+
+    monkeypatch.setattr(agent_tools, "build_specialist", lambda *args, **kwargs: _AvailableSourcesSpecialist())
     spec = next(spec for spec in SPECS if spec.bank == "kuveytturk")
     tool = agent_tools.build_specialist_tool(spec)
 
@@ -135,8 +144,10 @@ def test_required_web_research_refuses_to_fall_back_when_toggle_is_off(monkeypat
         "Search the internet.", _Runtime(), web_research_required=True
     )
 
-    assert "Web search is disabled" in result
-    assert "indexed retrieval does not satisfy" in result
+    assert "Useful indexed sukuk answer" in result
+    assert "search_bank" in result
+
+
 
 
 def test_all_bank_coverage_does_not_require_web_when_toggle_is_off(monkeypatch):
@@ -384,6 +395,93 @@ def test_qdrant_and_web_sources_keep_separate_machine_provenance():
     assert next(
         source for source in sources if source["url"] == indexed_url
     )["source_type"] == "indexed_document"
+
+
+def test_live_endpoint_source_crosses_the_specialist_handoff():
+    url = "https://www.kuveytturk.com.tr/hesaplama-araclari/"
+    messages = [
+        ToolMessage(
+            name="profit_share_quote",
+            tool_call_id="live-1",
+            content=json.dumps({
+                "bank": "kuveytturk",
+                "tool": "profit_share_quote",
+                "status": "ok",
+                "source_type": "live_endpoint",
+                "source_url": url,
+                "source_title": "Kuveyt Türk Hesaplama Araçları",
+                "data": {"net_profit": 1000},
+            }),
+        ),
+        AIMessage(content=f"Net kâr 1.000 TL [hesaplama aracı]({url})."),
+    ]
+    handoff = agent_tools._final_text({"messages": messages})
+    public_message = ToolMessage(
+        name="ask_kuveytturk", tool_call_id="delegate-1", content=handoff
+    )
+
+    assert agent_tools.used_sources_from_tool_message(public_message) == [{
+        "url": url,
+        "title": "hesaplama aracı",
+        "bank": "kuveytturk",
+        "source_type": "live_endpoint",
+        "provenance": "live_endpoint",
+    }]
+
+
+def test_uncited_source_bearing_answer_gets_one_citation_retry(monkeypatch):
+    url = "https://www.kuveytturk.com.tr/tr/yatirim/kira-sertifikalari"
+    calls = 0
+
+    class _CitationRetrySpecialist:
+        def invoke(self, payload, config, context):
+            nonlocal calls
+            calls += 1
+            evidence = ToolMessage(
+                name="search_bank",
+                tool_call_id="search-1",
+                content=f"[1] url={url}\nKira sertifikası bilgisi",
+            )
+            if calls == 1:
+                return {"messages": [evidence, AIMessage(content="Kira sertifikası bilgisi.")]}
+            assert "did not cite any exact returned URL" in payload["messages"][0][1]
+            return {"messages": [
+                evidence,
+                AIMessage(content="Kira sertifikası bilgisi."),
+                AIMessage(content=f"Kira sertifikası bilgisi [ürün sayfası]({url})."),
+            ]}
+
+    monkeypatch.setattr(
+        agent_tools, "build_specialist", lambda *args, **kwargs: _CitationRetrySpecialist()
+    )
+    spec = next(spec for spec in SPECS if spec.bank == "kuveytturk")
+    result = agent_tools.build_specialist_tool(spec).func("Araştır.", _Runtime())
+
+    assert calls == 2
+    assert url in result
+    assert "used_sources" in result
+
+
+def test_uncited_source_bearing_answer_fails_closed_after_retry(monkeypatch):
+    class _NeverCitesSpecialist:
+        def invoke(self, payload, config, context):
+            return {"messages": [
+                ToolMessage(
+                    name="search_bank",
+                    tool_call_id="search-1",
+                    content="url=https://www.kuveytturk.com.tr/tr/urun\nFact",
+                ),
+                AIMessage(content="Uncited factual answer."),
+            ]}
+
+    monkeypatch.setattr(
+        agent_tools, "build_specialist", lambda *args, **kwargs: _NeverCitesSpecialist()
+    )
+    spec = next(spec for spec in SPECS if spec.bank == "kuveytturk")
+    result = agent_tools.build_specialist_tool(spec).func("Araştır.", _Runtime())
+
+    assert "could not produce an evidence-bound answer" in result
+    assert "Uncited factual answer" not in result
 
 
 def test_specialists_are_rebuilt_with_fresh_non_streaming_models(monkeypatch):

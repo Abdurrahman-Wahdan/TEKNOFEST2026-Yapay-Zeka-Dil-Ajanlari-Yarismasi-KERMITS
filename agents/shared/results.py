@@ -5,13 +5,24 @@ from datetime import UTC, datetime
 from typing import Any, Callable
 
 
-def live_result(bank: str, tool: str, call: Callable[[], Any]) -> str:
+def live_result(
+    bank: str,
+    tool: str,
+    call: Callable[[], Any],
+    *,
+    source_url: str = "",
+    source_title: str = "",
+) -> str:
     """Run one provider call and serialize a model-safe live-result envelope."""
     base = {
         "bank": bank,
         "tool": tool,
         "retrieved_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        "source_type": "live_endpoint",
     }
+    if source_url:
+        base["source_url"] = source_url
+        base["source_title"] = source_title
     try:
         return json.dumps(
             {**base, "status": "ok", "data": call()},

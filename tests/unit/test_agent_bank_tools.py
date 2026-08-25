@@ -64,11 +64,20 @@ def test_only_calculators_that_accept_a_custom_rate_expose_that_input():
 
 
 def test_live_result_is_compact_timestamped_and_keeps_refusals_honest():
-    good = json.loads(live_result("vakif", "exchange_rates", lambda: [{"code": "USD"}]))
+    good = json.loads(live_result(
+        "vakif",
+        "exchange_rates",
+        lambda: [{"code": "USD"}],
+        source_url="https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari",
+        source_title="Vakıf Katılım Hesaplama Araçları",
+    ))
     assert good == {
         "bank": "vakif",
         "tool": "exchange_rates",
         "retrieved_at": good["retrieved_at"],
+        "source_type": "live_endpoint",
+        "source_url": "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari",
+        "source_title": "Vakıf Katılım Hesaplama Araçları",
         "status": "ok",
         "data": [{"code": "USD"}],
     }
@@ -81,6 +90,26 @@ def test_live_result_is_compact_timestamped_and_keeps_refusals_honest():
     assert unavailable["status"] == "unavailable"
     assert unavailable["bank"] == "adil"
     assert "does not publish" in unavailable["message"]
+
+
+def test_every_live_capability_has_an_official_public_source_page():
+    from agents.shared.bank_tools import _live_source
+
+    capability_tools = {
+        "products": "list_products",
+        "finance": "finance_quote",
+        "profit_share": "profit_share_quote",
+        "rates": "exchange_rates",
+        "card": "card_installment_quote",
+        "convert": "convert_currency",
+        "mile_rates": "mile_earning_rates",
+    }
+    for spec in SPECS:
+        bank = get_bank(spec.bank)
+        for capability in bank.capabilities:
+            url, title = _live_source(spec.bank, capability_tools[capability])
+            assert url.startswith("https://"), (spec.bank, capability)
+            assert title, (spec.bank, capability)
 
 
 # --- corpus retrieval on the specialist surface ------------------------------

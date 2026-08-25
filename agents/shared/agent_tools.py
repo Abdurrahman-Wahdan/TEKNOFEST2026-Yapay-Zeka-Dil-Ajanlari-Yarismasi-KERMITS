@@ -124,7 +124,21 @@ def _tool_evidence(messages: list, cited: dict[str, str] | None = None) -> list[
             if message.name in _LIVE_ENDPOINT_TOOLS and "source_type" not in evidence:
                 evidence["source_type"] = "live_endpoint"
             used_sources: list[dict] = []
-            if message.name == "search_bank_web":
+            if (
+                message.name in _LIVE_ENDPOINT_TOOLS
+                and payload.get("status") == "ok"
+                and payload.get("source_url")
+            ):
+                source = _used_source(
+                    url=str(payload["source_url"]),
+                    title=str(payload.get("source_title") or ""),
+                    cited=cited,
+                    source_type="live_endpoint",
+                    provenance="live_endpoint",
+                )
+                if source:
+                    used_sources.append(source)
+            elif message.name == "search_bank_web":
                 evidence["result_count"] = len(payload.get("results") or [])
                 for row in (payload.get("results") or []):
                     if not isinstance(row, dict) or not row.get("url"):
@@ -177,6 +191,63 @@ def _tool_evidence(messages: list, cited: dict[str, str] | None = None) -> list[
                 evidence["used_sources"] = used_sources[:8]
         ledger.append(evidence)
     return ledger
+
+
+def _has_source_candidates(messages: list) -> bool:
+    """Whether successful tool output gave the specialist something citable.
+
+    This intentionally does not decide which source supported the answer. The
+    specialist makes that semantic choice by citing an exact returned URL; this
+    check only detects the invalid state where it used source-bearing tools and
+    then returned no source choice at all.
+    """
+    for message in messages:
+        if not isinstance(message, ToolMessage):
+            continue
+        content = message.content if isinstance(message.content, str) else str(message.content)
+        try:
+            payload = json.loads(content)
+        except (TypeError, json.JSONDecodeError):
+            payload = None
+        if isinstance(payload, dict):
+            if (
+                message.name in _LIVE_ENDPOINT_TOOLS
+                and payload.get("status") == "ok"
+                and payload.get("source_url")
+            ):
+                return True
+            if message.name == "search_bank_web" and any(
+                isinstance(row, dict) and row.get("url")
+                for row in (payload.get("results") or [])
+            ):
+                return True
+            if (
+                message.name == "read_bank_source"
+                and payload.get("status") == "ok"
+                and payload.get("url")
+            ):
+                return True
+        elif (
+            message.name in {"search_bank", "expand_chunk", "read_full_page"}
+            and _URL.search(content)
+        ):
+            return True
+    return False
+
+
+def _has_used_sources(result: dict, evidence_messages: list) -> bool:
+    messages = result.get("messages") or []
+    if not messages:
+        return False
+    content = messages[-1].content
+    final = content if isinstance(content, str) else str(content)
+    return any(
+        row.get("used_sources")
+        for row in _tool_evidence(
+            evidence_messages,
+            cited=cited_sources_from_text(final),
+        )
+    )
 
 
 def used_sources_from_tool_message(message: ToolMessage) -> list[dict]:
@@ -268,11 +339,14 @@ def build_specialist_tool(spec: SpecialistSpec) -> BaseTool:
             web_search_enabled,
             web_research_required,
         )
+        delegated_request = request
         if web_research_required and not web_search_enabled:
-            return (
-                f"{spec.display_name} web research was explicitly requested, but Web "
-                "search is disabled for this turn. Ask the user to enable Web search "
-                "in Advanced; indexed retrieval does not satisfy this request."
+            delegated_request += (
+                "\n\nThe user explicitly requested internet research, but live web "
+                "research is unavailable for this turn. Do not refuse or stop. First "
+                "answer as fully as possible with this bank's live endpoints and "
+                "indexed Qdrant tools. State only the remaining online-verification "
+                "limitation after presenting the useful facts those sources supply."
             )
         if (
             monthly_profit_rate is not None
@@ -331,7 +405,7 @@ def build_specialist_tool(spec: SpecialistSpec) -> BaseTool:
                 # readable state. Their result contains only this invocation.
                 previous_count = 0
             result = specialist.invoke(
-                {"messages": [("user", request)]},
+                {"messages": [("user", delegated_request)]},
                 config=specialist_config,
                 context=specialist_context,
             )
@@ -342,7 +416,11 @@ def build_specialist_tool(spec: SpecialistSpec) -> BaseTool:
                 for message in turn_messages
                 if isinstance(message, ToolMessage)
             ]
-            if web_research_required and "search_bank_web" not in tools_used:
+            if (
+                web_research_required
+                and web_search_enabled
+                and "search_bank_web" not in tools_used
+            ):
                 logger.warning(
                     "bank_specialist corrective_retry bank=%s missing_tool=search_bank_web",
                     spec.bank,
@@ -366,16 +444,61 @@ def build_specialist_tool(spec: SpecialistSpec) -> BaseTool:
                     for message in turn_messages
                     if isinstance(message, ToolMessage)
                 ]
+            if (
+                _has_source_candidates(turn_messages)
+                and not _has_used_sources(result, turn_messages)
+            ):
+                logger.warning(
+                    "bank_specialist corrective_retry bank=%s missing_citations",
+                    spec.bank,
+                )
+                retry_count = len(result.get("messages") or [])
+                result = specialist.invoke(
+                    {"messages": [("user", (
+                        "Your answer contains factual findings from tools that returned "
+                        "official source URLs, but your answer did not cite any exact "
+                        "returned URL. Rewrite the complete answer now. Put a clickable "
+                        "Markdown citation immediately after every factual claim, using "
+                        "only the exact source_url/url values present in the tool results. "
+                        "For live endpoint facts cite the supplied official calculator or "
+                        "feed source_url. For indexed or web research cite only documents "
+                        "that actually supplied facts you kept; do not dump unused results."
+                    ))]},
+                    config=specialist_config,
+                    context=specialist_context,
+                )
+                retried_messages = result.get("messages") or []
+                retry_messages = retried_messages[retry_count:]
+                turn_messages = [*turn_messages, *retry_messages]
+                tools_used = [
+                    message.name or "unknown"
+                    for message in turn_messages
+                    if isinstance(message, ToolMessage)
+                ]
             logger.info(
                 "bank_specialist completed bank=%s tools_used=%s",
                 spec.bank,
                 ",".join(tools_used) or "none",
             )
-            if web_research_required and "search_bank_web" not in tools_used:
+            if (
+                web_research_required
+                and web_search_enabled
+                and "search_bank_web" not in tools_used
+            ):
                 return (
                     f"{spec.display_name} could not fulfill the mandatory web-search "
                     "requirement after a corrective retry. Do not present its indexed "
                     "information as comprehensive internet research."
+                )
+            if (
+                _has_source_candidates(turn_messages)
+                and not _has_used_sources(result, turn_messages)
+            ):
+                return (
+                    f"{spec.display_name} found source-bearing information but could not "
+                    "produce an evidence-bound answer after a corrective retry. Do not "
+                    "repeat its uncited factual claims; report that source attribution "
+                    "failed for this bank."
                 )
             return _final_text(result, evidence_messages=turn_messages)
         except Exception as exc:  # noqa: BLE001 - a single bank must not end the supervisor turn

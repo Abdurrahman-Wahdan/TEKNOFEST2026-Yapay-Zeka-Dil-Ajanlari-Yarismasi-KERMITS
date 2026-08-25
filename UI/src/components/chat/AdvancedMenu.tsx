@@ -21,17 +21,14 @@ import { api, type ChatModel } from "@/lib/api";
  * is read from the server rather than pinned in a constant.
  */
 
-/**
- * Model names are proper nouns and do not translate, so they are not i18n keys.
- *
- * Written out rather than built from `key` because an unknown model must still
- * render: it falls through to the id vLLM serves it as, which is factual and
- * always present, instead of a blank row or a missing-message error.
+/** Human-readable names for the exact models behind the stable API keys.
+ * Keep the served identifier as the fallback so a newly deployed model still
+ * appears even before a polished display label is added here.
  */
 function modelName(model: ChatModel): string {
-  if (model.key === "gemma") return "Gemma";
-  if (model.key === "qwen") return "Qwen";
-  if (model.key === "gpt") return "GPT";
+  if (model.model_id === "google/gemma-4-31B-it") return "Gemma 4 31B IT";
+  if (model.model_id === "Qwen/Qwen3.6-27B") return "Qwen 3.6 27B";
+  if (model.model_id === "openai/gpt-oss-20b") return "GPT-OSS 20B";
   return model.model_id;
 }
 

@@ -67,8 +67,10 @@ def _searchable_text(value: str) -> str:
 
 
 def _source_priority(source: dict) -> int:
-    """Prefer an opened live page over a search hint, then indexed evidence."""
+    """Prefer a live bank feed, then an opened page, search hint, and index."""
     source_type = str(source.get("source_type") or "")
+    if source_type == "live_endpoint":
+        return 4
     if source_type.startswith("live_web_"):
         return 3
     if source.get("provenance") == "live_web":

@@ -40,6 +40,92 @@ from .retrieval_memory import RetrievalMemory
 from .web_research import build_bank_web_tools
 
 
+# Public pages that expose or explain each bank's live calculators/feeds. The
+# JSON service URL is an implementation detail and is often opaque; this is the
+# stable, user-checkable bank page whose UI calls that service. A live result
+# carries this page through the specialist and supervisor citation pipeline.
+_LIVE_SOURCE_PAGES: dict[str, dict[str, tuple[str, str]]] = {
+    "kuveytturk": {
+        "default": (
+            "https://www.kuveytturk.com.tr/hesaplama-araclari/",
+            "Kuveyt Türk Hesaplama Araçları",
+        ),
+        "mile_earning_rates": (
+            "https://milesandsmiles.kuveytturk.com.tr/",
+            "Kuveyt Türk Miles&Smiles",
+        ),
+    },
+    "albaraka": {
+        "default": (
+            "https://www.albaraka.com.tr/tr/hesaplama-araclari",
+            "Albaraka Türk Hesaplama Araçları",
+        ),
+    },
+    "vakif": {
+        "default": (
+            "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari",
+            "Vakıf Katılım Hesaplama Araçları",
+        ),
+    },
+    "emlak": {
+        "default": (
+            "https://www.emlakkatilim.com.tr/tr/hesaplama-araclari",
+            "Emlak Katılım Hesaplama Araçları",
+        ),
+        "exchange_rates": (
+            "https://www.emlakkatilim.com.tr/tr/tum-kurlarimiz",
+            "Emlak Katılım Tüm Kurlarımız",
+        ),
+    },
+    "dunya": {
+        "default": (
+            "https://dunyakatilim.com.tr/",
+            "Dünya Katılım Hesaplama Araçları",
+        ),
+        "exchange_rates": (
+            "https://dunyakatilim.com.tr/gunluk-kurlar",
+            "Dünya Katılım Günlük Kurlar",
+        ),
+    },
+    "ziraat": {
+        "default": (
+            "https://www.ziraatkatilim.com.tr/anasayfa",
+            "Ziraat Katılım Hesaplama Araçları",
+        ),
+    },
+    "turkiyefinans": {
+        "default": (
+            "https://www.turkiyefinans.com.tr/tr-tr/hesaplama-araclari/Sayfalar/hesaplama-araclari.aspx",
+            "Türkiye Finans Hesaplama Araçları",
+        ),
+        "card_installment_quote": (
+            "https://www.turkiyefinans.com.tr/tr-tr/hesaplama-araclari/Sayfalar/taksitle-hesaplama-araci.aspx",
+            "Türkiye Finans Taksitle Hesaplama Aracı",
+        ),
+    },
+    "hayat": {
+        "default": (
+            "https://hayatfinans.com.tr/",
+            "Hayat Finans Hesaplama Araçları",
+        ),
+    },
+    "tom": {
+        "default": (
+            "https://www.tombank.com.tr/hesaplama-araclari.html",
+            "T.O.M. Katılım Hesaplama Araçları",
+        ),
+    },
+}
+
+
+def _live_source(bank: str, tool: str) -> tuple[str, str]:
+    sources = _LIVE_SOURCE_PAGES.get(bank, {})
+    return sources.get(tool) or sources.get("default") or (
+        get_site(bank).base,
+        f"{get_site(bank).display_name} resmi sitesi",
+    )
+
+
 class ProductsInput(BaseModel):
     category: str = Field(description="finance, profit_share, or card")
 
@@ -134,12 +220,22 @@ def build_bank_tools(
     capabilities = bank.capabilities
     tools: list[BaseTool] = []
 
+    def run_live(tool: str, call: Callable[[], object]) -> str:
+        source_url, source_title = _live_source(bank.name, tool)
+        return live_result(
+            bank.name,
+            tool,
+            call,
+            source_url=source_url,
+            source_title=source_title,
+        )
+
     if "products" in capabilities:
         tools.append(_tool(
             "list_products",
             f"List {bank.display_name}'s live products in one category.",
             ProductsInput,
-            lambda category: live_result(bank.name, "list_products", lambda: [
+            lambda category: run_live("list_products", lambda: [
                 generic._product(item) for item in bank.products(category)
             ]),
         ))
@@ -191,7 +287,7 @@ def build_bank_tools(
                     data["requested_monthly_profit_rate"] = effective_rate
                 return data
 
-            return live_result(bank.name, "finance_quote", quote_data)
+            return run_live("finance_quote", quote_data)
 
         tools.append(_tool(
             "finance_quote",
@@ -211,8 +307,8 @@ def build_bank_tools(
             "profit_share_quote",
             f"Get a live profit-share quote from {bank.display_name}. Use only for this bank.",
             ProfitShareInput,
-            lambda product, amount, term_months=0, term_days=0, currency="TRY": live_result(
-                bank.name, "profit_share_quote", lambda: generic._profit_share(
+            lambda product, amount, term_months=0, term_days=0, currency="TRY": run_live(
+                "profit_share_quote", lambda: generic._profit_share(
                     bank.profit_share_quote(
                         product,
                         amount,
@@ -228,7 +324,7 @@ def build_bank_tools(
             "exchange_rates",
             f"Get {bank.display_name}'s live FX and precious-metal rates.",
             RatesInput,
-            lambda codes=None: live_result(bank.name, "exchange_rates", lambda: [
+            lambda codes=None: run_live("exchange_rates", lambda: [
                 generic._rate(row) for row in bank.find_rates(codes)
             ]),
         ))
@@ -237,8 +333,8 @@ def build_bank_tools(
             "card_installment_quote",
             f"Get a live card instalment quote from {bank.display_name}.",
             CardInput,
-            lambda card, amount, installments: live_result(
-                bank.name, "card_installment_quote", lambda: generic._card(
+            lambda card, amount, installments: run_live(
+                "card_installment_quote", lambda: generic._card(
                     bank.card_installment_quote(card, amount, installments)
                 )
             ),
@@ -248,8 +344,8 @@ def build_bank_tools(
             "convert_currency",
             f"Convert currencies using {bank.display_name}'s live calculator or rate feed.",
             ConversionInput,
-            lambda source, target, amount: live_result(
-                bank.name, "convert_currency", lambda: generic._conversion(
+            lambda source, target, amount: run_live(
+                "convert_currency", lambda: generic._conversion(
                     bank.convert(source, target, amount)
                 )
             ),
@@ -263,7 +359,7 @@ def build_bank_tools(
                 if category:
                     rows = [row for row in rows if category.lower() in row.category.lower()]
                 return [generic._mile(row) for row in rows]
-            return live_result(bank.name, "mile_earning_rates", call)
+            return run_live("mile_earning_rates", call)
         tools.append(_tool("mile_earning_rates", f"Get {bank.display_name}'s live reward rates.", MileInput, miles))
 
     # What this bank has published, as opposed to what its calculator answers.
@@ -289,7 +385,7 @@ def build_bank_tools(
         "check_live_endpoint_health",
         f"Check whether {bank.display_name}'s advertised live endpoints respond now.",
         EmptyInput,
-        lambda: live_result(bank.name, "check_live_endpoint_health", lambda: run_health(
+        lambda: run_live("check_live_endpoint_health", lambda: run_health(
             banks=[bank.name]
         ).as_dict()),
     ))
