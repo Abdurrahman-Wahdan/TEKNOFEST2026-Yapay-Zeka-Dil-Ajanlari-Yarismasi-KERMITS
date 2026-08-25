@@ -31,6 +31,7 @@ import PropTypes from "prop-types";
 
 // @mui material components
 import IconButton from "@mui/material/IconButton";
+import Badge from "@mui/material/Badge";
 import List from "@mui/material/List";
 import Divider from "@mui/material/Divider";
 import Link from "@mui/material/Link";
@@ -59,7 +60,7 @@ import { useTranslations } from "next-intl";
 // Served from /public rather than imported: Next resolves a static image
 // import to a StaticImageData object, and this template interpolates the
 // value straight into an <img src>, which expects a plain string.
-const kermitsLogo = "/vision/images/kermits-logo.png";
+import { BRAND_LOGO as kermitsLogo } from "@/components/ui/brand";
 
 // function Sidenav({ color = "info", brand, brandName, routes, ...rest }) {
 function Sidenav({ color, brandName, routes, ...rest }) {
@@ -336,15 +337,40 @@ function Sidenav({ color, brandName, routes, ...rest }) {
               */}
               {isPhone && (
                 <NotificationsMenu
-                  renderTrigger={(triggerProps) => (
+                  renderTrigger={(triggerProps, unread) => (
                     <IconButton
                       {...triggerProps}
                       size="small"
-                      aria-label={t("notifications")}
-                      title={t("notifications")}
+                      aria-label={
+                        unread
+                          ? t("notificationsUnread", { count: unread })
+                          : t("notifications")
+                      }
+                      title={
+                        unread
+                          ? t("notificationsUnread", { count: unread })
+                          : t("notifications")
+                      }
                       sx={{ color: "white.main", p: 0.5 }}
                     >
-                      <Bell size={20} aria-hidden="true" />
+                      {/* Same badge as the navbar's, which is the point: one
+                          unread count, drawn the same way wherever the bell is. */}
+                      <Badge
+                        badgeContent={unread}
+                        max={99}
+                        overlap="circular"
+                        sx={{
+                          "& .MuiBadge-badge": {
+                            backgroundColor: "var(--primary)",
+                            color: "var(--on-brand)",
+                            fontSize: "0.625rem",
+                            minWidth: 16,
+                            height: 16,
+                          },
+                        }}
+                      >
+                        <Bell size={20} aria-hidden="true" />
+                      </Badge>
                     </IconButton>
                   )}
                 />

@@ -90,6 +90,31 @@ export function formatDate(value: string | Date, locale: Locale) {
 }
 
 /**
+ * A moment, with the time of day: "26 Ağustos 2026 09:00".
+ *
+ * Separate from `formatDate` rather than a flag on it, because the two answer
+ * different questions and almost every caller wants the date alone. The ones
+ * that want this are about a *clock*: when an automation runs next, when a
+ * report was written. For those the hour is the whole point, and a date with no
+ * time reads as though the schedule were a day rather than a moment.
+ *
+ * Istanbul, like every other date in this app. An automation's hour is stored as
+ * Turkish wall clock (`api/automations/schedule.py::TZ`), so rendering it in the
+ * browser's zone would show a user abroad a schedule they never set.
+ */
+export function formatDateTime(value: string | Date, locale: Locale) {
+  const date = typeof value === "string" ? new Date(value) : value;
+  return new Intl.DateTimeFormat(tag(locale), {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Europe/Istanbul",
+  }).format(date);
+}
+
+/**
  * Days until a campaign ends. Negative means it already has.
  *
  * Compared at Istanbul midnight, not the browser's: a campaign ending "today"

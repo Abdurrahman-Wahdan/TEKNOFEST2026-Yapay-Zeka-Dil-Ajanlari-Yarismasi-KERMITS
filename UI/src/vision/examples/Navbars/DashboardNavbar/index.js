@@ -29,6 +29,7 @@ import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
 import IconButton from "@mui/material/IconButton";
 import Icon from "@mui/material/Icon";
+import Badge from "@mui/material/Badge";
 
 // Vision UI Dashboard React components
 import VuiBox from "components/VuiBox";
@@ -224,21 +225,51 @@ function DashboardNavbar({
             */}
             <VuiBox color={light ? "white" : "inherit"}>
               <NotificationsMenu
-                renderTrigger={(triggerProps) => (
+                renderTrigger={(triggerProps, unread) => (
                   <IconButton
                     {...triggerProps}
                     size="small"
                     color="inherit"
                     sx={navbarIconButton}
                     variant="contained"
+                    aria-label={
+                      unread ? t("notificationsUnread", { count: unread }) : t("notifications")
+                    }
+                    title={
+                      unread ? t("notificationsUnread", { count: unread }) : t("notifications")
+                    }
                   >
-                    <Icon
-                      sx={({ palette: { dark, white } }) => ({
-                        color: light ? white.main : dark.main,
-                      })}
+                    {/*
+                      The count is on the bell rather than beside it: this row is
+                      three icons wide and a number added to it would push the
+                      cluster off the toolbar's right edge on a tablet.
+
+                      `--primary`, not MUI's `error`. An unread report is
+                      something waiting, not something wrong, and the template's
+                      error red on a bell reads as a failure.
+                    */}
+                    <Badge
+                      badgeContent={unread}
+                      max={99}
+                      overlap="circular"
+                      sx={{
+                        "& .MuiBadge-badge": {
+                          backgroundColor: "var(--primary)",
+                          color: "var(--on-brand)",
+                          fontSize: "0.625rem",
+                          minWidth: 16,
+                          height: 16,
+                        },
+                      }}
                     >
-                      notifications
-                    </Icon>
+                      <Icon
+                        sx={({ palette: { dark, white } }) => ({
+                          color: light ? white.main : dark.main,
+                        })}
+                      >
+                        notifications
+                      </Icon>
+                    </Badge>
                   </IconButton>
                 )}
               />

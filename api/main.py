@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config.settings import settings
 
+from .automations import loop as automation_loop
 from .routers import ROUTERS
 from .voice_transcription import VoiceTranscriptionUnavailable, warm_voice_model
 from agents.shared.checkpoints import close_checkpointer, get_checkpointer
@@ -70,6 +71,21 @@ def start_voice_transcription() -> None:
         # A corrupt/incompatible optional checkpoint must be loud in the logs,
         # but it must not take banking, comparison and text chat down with it.
         logger.exception("Voice model warm-up failed")
+
+
+@app.on_event("startup")
+def start_automation_loop() -> None:
+    """Begin firing the users' scheduled automations.
+
+    Safe to call in every process: exactly one wins an advisory lock and polls,
+    and the rest log why they are not. See `api/automations/loop.py`.
+    """
+    automation_loop.start()
+
+
+@app.on_event("shutdown")
+def stop_automation_loop() -> None:
+    automation_loop.stop()
 
 
 @app.on_event("shutdown")

@@ -8,21 +8,18 @@ import {
   useMemo,
   useRef,
   useState,
-  useSyncExternalStore,
   type ReactNode,
 } from "react";
 
 import {
-  chatStore,
-  historyServerSnapshot,
-  historySnapshot,
   newConversationId,
   newMessageId,
-  subscribeHistory,
   titleFor,
-  type StoredConversation,
+  toAgentMessages,
+  toConversations,
+  type Conversation,
 } from "./store";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { streamChat } from "./transport";
 import {
@@ -33,6 +30,7 @@ import {
   type ReusableAttachment,
 } from "./attachment-mentions";
 import { api } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { usePathname } from "@/i18n/navigation";
 import { useLocale } from "next-intl";
 
@@ -94,15 +92,32 @@ type ChatContextValue = {
   /** Staged files plus reusable files from earlier turns in this conversation. */
   mentionTargets: ReturnType<typeof attachmentMentionTargets>;
 
-  /** Past conversations, newest first. Empty until the store has been read. */
-  history: StoredConversation[];
-  /** Which conversation is on screen. */
+  /**
+   * This account's conversations, newest first.
+   *
+   * From the server, not the browser -- the same list in every browser the user
+   * signs into. Empty on the first render while the request is in flight, and
+   * empty for a signed-out visitor, which are the same thing as far as the menu
+   * is concerned.
+   */
+  history: Conversation[];
+  /** Which conversation is on screen. The server session id, once there is one. */
   activeId: string;
-  /** Load a past conversation into both surfaces. */
+  /** Load a past conversation into both surfaces. Fetches its turns. */
   openConversation: (id: string) => void;
-  /** Forget one. If it is the open one, this starts a fresh chat. */
+  /** Delete one, on the server. If it is the open one, this starts a fresh chat. */
   deleteConversation: (id: string) => void;
 };
+
+/**
+ * The conversation list's cache key.
+ *
+ * Exported because it is invalidated from more than one place -- a turn
+ * finishing, a deletion, and (once there is a second surface that writes
+ * conversations) whatever comes next. A key written out twice is a key that
+ * eventually disagrees with itself and leaves a stale sidebar.
+ */
+export const CHAT_SESSIONS_KEY = ["chat", "sessions"] as const;
 
 const ChatContext = createContext<ChatContextValue | null>(null);
 
@@ -127,19 +142,23 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const locale = useLocale();
   const [messages, setMessages] = useState<AgentMessage[]>([]);
+  const { user } = useAuth();
   /**
-   * Past conversations, read straight from the store.
+   * This account's conversations, from the server.
    *
-   * `useSyncExternalStore` rather than state seeded in a mount effect: the effect
-   * version had to `setState` on mount, which is both a render-then-correct and
-   * exactly what `react-hooks/set-state-in-effect` warns about. This subscribes
-   * instead, so a write anywhere updates every reader.
+   * Gated on a signed-in user rather than left to fail: `/chat/sessions` is
+   * authenticated, and an unauthenticated fetch on every visit to a public page
+   * would be a 401 in the console with nothing to show for it.
+   *
+   * No `refetchInterval`. A conversation list only changes when this browser
+   * changes it -- there is no second writer -- so it is invalidated at the two
+   * moments that can move it (a turn finishing, a deletion) rather than polled.
    */
-  const history = useSyncExternalStore(
-    subscribeHistory,
-    historySnapshot,
-    historyServerSnapshot,
-  );
+  const sessions = useQuery({
+    queryKey: CHAT_SESSIONS_KEY,
+    queryFn: () => api.chatSessions(),
+    enabled: Boolean(user),
+  });
   const [activeId, setActiveId] = useState<string>(() => newConversationId());
   const [serverSessionId, setServerSessionId] = useState<string | undefined>();
   const [status, setStatus] = useState<ChatStatus>("ready");
@@ -234,32 +253,61 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }, [locale, messages, serverSessionId, status]);
 
   /**
-   * Persist the open conversation whenever it changes.
+   * The history menu's list: this account's conversations, plus the one being
+   * written right now.
    *
-   * Keyed on the message list, so it saves as the answer streams rather than only
-   * at the end -- a reload mid-answer keeps what had arrived. An empty
-   * conversation is deliberately not saved: a "new chat" the user never typed into
-   * would otherwise appear in the list as an untitled row.
+   * The extra row is not decoration. A session id does not reach the browser
+   * until the `done` frame, so for the whole minute an answer takes to arrive the
+   * server list cannot contain the conversation the user is looking at -- and
+   * opening the menu mid-answer would show every conversation except that one,
+   * with nothing highlighted. Named with `titleFor`, which derives the same title
+   * from the same turn that `_title_for` will derive on the server, so the row is
+   * not renamed underneath the reader when the answer lands.
+   *
+   * Dropped as soon as the real row exists, matched by id rather than by
+   * position: `onSessionId` adopts the server id as `activeId`, so from that
+   * moment the two are the same row and only one may render.
    */
-  const emptyTitle = "…";
-  useEffect(() => {
-    if (messages.length === 0) return;
-    const conversation: StoredConversation = {
-      id: activeId,
-      serverSessionId,
-      title: titleFor(messages, emptyTitle),
-      messages,
-      updatedAt: Date.now(),
-    };
-    // The store notifies its subscribers, so nothing has to be set here.
-    chatStore.save(conversation);
-  }, [messages, activeId, serverSessionId]);
+  const history = useMemo<Conversation[]>(() => {
+    const stored = toConversations(sessions.data ?? []);
+    if (messages.length === 0 || stored.some((row) => row.id === activeId)) {
+      return stored;
+    }
+    return [
+      { id: activeId, title: titleFor(messages, "…"), updatedAt: Date.now() },
+      ...stored,
+    ];
+  }, [sessions.data, messages, activeId]);
 
   const stop = useCallback(() => {
     abortRef.current?.abort();
     abortRef.current = null;
     setStatus("ready");
   }, []);
+
+  /**
+   * Take the server's id for this conversation as its identity.
+   *
+   * Called from the `done` frame of the first turn, which is the first moment the
+   * browser learns it. Two things happen here and both matter:
+   *
+   * `activeId` becomes the session id, so the conversation the user is reading is
+   * the same row the history menu lists -- otherwise the menu would highlight
+   * nothing, and clicking the row for the open conversation would re-fetch it as
+   * though it were a different one.
+   *
+   * The list is invalidated, so a conversation that has just come into existence
+   * appears in every other tab too. `updated_at` moved on a later turn as well,
+   * which is what reorders the menu, so this is not only for the first one.
+   */
+  const adoptSessionId = useCallback(
+    (id: string) => {
+      setServerSessionId(id);
+      setActiveId(id);
+      void queryClient.invalidateQueries({ queryKey: CHAT_SESSIONS_KEY });
+    },
+    [queryClient],
+  );
 
   const send = useCallback(
     (text: string) => {
@@ -439,7 +487,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               {
                 messages: history,
                 sessionId: serverSessionId,
-                onSessionId: setServerSessionId,
+                onSessionId: adoptSessionId,
                 think,
                 webSearch,
                 model,
@@ -546,6 +594,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       })();
     },
     [
+      adoptSessionId,
       messages,
       serverSessionId,
       think,
@@ -572,36 +621,82 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     attachments.clear();
   }, [attachments]);
 
+  /**
+   * Load a past conversation into both surfaces.
+   *
+   * Its turns are fetched rather than held in the list: the menu needs a title
+   * and the transcript needs everything, and keeping every message of fifty
+   * conversations in memory to render a list of fifty strings was the shape the
+   * localStorage store had. One request, cached by react-query, on the click that
+   * actually needs it.
+   *
+   * The transcript is cleared before the fetch, not after. It takes a moment, and
+   * leaving the previous conversation on screen while a different row is
+   * highlighted reads as the click having failed -- so the surfaces show the
+   * conversation being opened, empty, rather than the one being left.
+   *
+   * A failed fetch leaves an empty transcript on a real conversation. It is the
+   * honest outcome: the alternative is restoring the previous conversation under
+   * the new title, and there is nothing to put in its place. The row stays in the
+   * menu, so the retry is one more click.
+   */
   const openConversation = useCallback(
     (id: string) => {
-      const found = chatStore.list().find((c) => c.id === id);
-      if (!found) return;
+      if (id === activeId) return;
       // Whatever was streaming belongs to the conversation being left.
       abortRef.current?.abort();
       abortRef.current = null;
-      setActiveId(found.id);
-      setServerSessionId(found.serverSessionId);
-      setMessages(found.messages);
+      setActiveId(id);
+      setServerSessionId(id);
+      setMessages([]);
       setRecommendation(undefined);
       setStatus("ready");
       attachments.clear();
+
+      void queryClient
+        .fetchQuery({
+          queryKey: [...CHAT_SESSIONS_KEY, id],
+          queryFn: () => api.chatSession(id),
+        })
+        .then((detail) => setMessages(toAgentMessages(detail)))
+        .catch(() => {
+          // Nothing to show and nothing to substitute. See above.
+        });
     },
-    [attachments],
+    [activeId, attachments, queryClient],
   );
 
+  /**
+   * Delete a conversation, on the server, which is now the only copy.
+   *
+   * The session row carries the agents' private checkpoint state as well as the
+   * visible turns, so this is what makes a deletion mean anything -- deleting
+   * only the transcript would leave the supervisor still remembering the
+   * conversation on its next turn.
+   *
+   * The list is invalidated in `finally`: a failed delete has to put the row
+   * back, because the alternative is a conversation the user believes is gone
+   * and which reappears on the next reload.
+   */
   const deleteConversation = useCallback(
     (id: string) => {
-      const found = chatStore.list().find((conversation) => conversation.id === id);
-      chatStore.remove(id);
-      // The server session contains the agents' private checkpoint state as well
-      // as visible messages, so deleting a UI conversation must remove both.
-      if (found?.serverSessionId) {
-        void api.deleteChatSession(found.serverSessionId).catch(() => {
-          // Local deletion remains useful if the user is offline or logged out.
-        });
+      // The in-flight conversation has no server row yet, so there is nothing to
+      // delete -- but it is a real row in the menu, and leaving it there after
+      // the user asked for it to go would be the click doing nothing.
+      const onServer = id !== activeId || serverSessionId !== undefined;
+      if (onServer) {
+        void api
+          .deleteChatSession(id)
+          .catch(() => {
+            // Reported by the row coming back below, rather than by a toast this
+            // menu has no room for.
+          })
+          .finally(() => {
+            void queryClient.invalidateQueries({ queryKey: CHAT_SESSIONS_KEY });
+          });
       }
       // Deleting the conversation you are reading leaves nothing to read, so it
-      // becomes a fresh one rather than an orphaned transcript with no store entry.
+      // becomes a fresh one rather than a transcript with no row behind it.
       if (id === activeId) {
         abortRef.current?.abort();
         abortRef.current = null;
@@ -613,7 +708,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         attachments.clear();
       }
     },
-    [activeId, attachments],
+    [activeId, attachments, queryClient, serverSessionId],
   );
 
   const value = useMemo(

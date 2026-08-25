@@ -23,6 +23,7 @@ import {
   type KeyboardEvent,
 } from "react";
 
+import { RoundButton } from "@/components/ui/RoundButton";
 import { VuiBox } from "@/components/vision";
 import { api } from "@/lib/api";
 import { useChat } from "@/lib/chat/ChatProvider";
@@ -1060,95 +1061,6 @@ function RecommendationPlaceholder({
       >
         <ArrowRight size={15} />
       </VuiBox>
-    </VuiBox>
-  );
-}
-
-/** One of the composer's round buttons. */
-function RoundButton({
-  label,
-  onClick,
-  children,
-  disabled,
-  filled,
-  ml = 0,
-}: {
-  label: string;
-  onClick: () => void;
-  children: React.ReactNode;
-  disabled?: boolean;
-  /** The send/stop button: solid, so it reads as the primary action. */
-  filled?: boolean;
-  /** Distance from the control on its left, in px. See OPTICAL_GAP_PX. */
-  ml?: number;
-}) {
-  return (
-    <VuiBox
-      component="button"
-      type="button"
-      onClick={(event: React.MouseEvent) => {
-        // The shell focuses the field on click; a button press must not also do
-        // that, or pressing stop moves the caret.
-        event.stopPropagation();
-        onClick();
-      }}
-      disabled={disabled}
-      aria-label={label}
-      title={label}
-      display="flex"
-      alignItems="center"
-      justifyContent="center"
-      sx={{
-        width: 36,
-        height: 36,
-        flexShrink: 0,
-        alignSelf: "center",
-        ml: `${ml}px`,
-        border: "none",
-        padding: 0,
-        borderRadius: "var(--radius-full)",
-        cursor: disabled ? "not-allowed" : "pointer",
-        transition: "background-color 150ms ease, color 150ms ease",
-        ...(filled
-          ? {
-              backgroundColor: disabled ? "var(--muted)" : "var(--primary)",
-              // Idle, this glyph is the same grey as the attach and mic glyphs
-              // beside it: every icon in the composer is one shade, so the row
-              // reads as one set of controls. `--text-faint` was a second, dimmer
-              // grey and made this button look like a different kind of thing.
-              // Enabled it inverts on the brand fill, which is the whole point of
-              // the primary action.
-              color: disabled ? "var(--control-ink)" : "var(--primary-foreground)",
-              "&:hover:not(:disabled)": {
-                backgroundColor: "var(--primary-hover)",
-              },
-            }
-          : {
-              backgroundColor: "transparent",
-              // At rest these are the only thing marking attach and mic as
-              // buttons -- there is no border and no fill -- so the glyph has to
-              // clear text contrast, which --muted-foreground did not in dark.
-              color: "var(--control-ink)",
-              "&:hover:not(:disabled)": {
-                backgroundColor: "var(--muted)",
-                color: "var(--foreground)",
-              },
-              // No dimming when disabled. The mic is the only disabled control in
-              // this row, and fading it to 0.5 made it a visibly lighter grey than
-              // the attach and Think glyphs beside it -- the row has to read as one
-              // set of controls in one shade.
-              //
-              // It stays `disabled` regardless: not focusable, not clickable and
-              // announced as unavailable, so the honesty is in the semantics rather
-              // than in a shade of grey. There is no speech-to-text pipeline yet.
-            }),
-        "&:focus-visible": {
-          outline: "2px solid var(--ring)",
-          outlineOffset: 2,
-        },
-      }}
-    >
-      {children}
     </VuiBox>
   );
 }

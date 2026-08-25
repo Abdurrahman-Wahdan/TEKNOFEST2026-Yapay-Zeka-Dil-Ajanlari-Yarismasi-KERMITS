@@ -49,6 +49,10 @@ export type TokenPair = Schemas["TokenPair"];
 export type User = Schemas["UserOut"];
 export type ResetPasswordResponse = Schemas["ResetPasswordResponse"];
 export type VoiceTranscription = Schemas["VoiceTranscriptionOut"];
+export type UserStats = Schemas["StatsOut"];
+export type Automation = Schemas["AutomationOut"];
+export type AutomationReport = Schemas["ReportOut"];
+export type AutomationReportSummary = Schemas["ReportSummary"];
 export type PreparedAttachment = Schemas["PreparedAttachmentOut"];
 
 /**
@@ -280,6 +284,62 @@ export const api = {
     }),
   deleteView: (slug: string) =>
     request<void>(`/me/views/${slug}`, { method: "DELETE" }),
+  /** Counts for the profile overview. No tokens — nothing records them. */
+  stats: () => request<UserStats>("/me/stats"),
+
+  // ----- automations -----
+  automations: () => request<Automation[]>("/me/automations"),
+  createAutomation: (body: Schemas["AutomationIn"]) =>
+    request<Automation>("/me/automations", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  /**
+   * Create one from a sentence. Any field set by hand overrides what the agent
+   * read out of the text — the user moved the picker after writing the sentence,
+   * so their reading of "akşam" outranks the model's.
+   */
+  describeAutomation: (body: Schemas["AutomationDescribeIn"]) =>
+    request<Automation>("/me/automations/describe", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateAutomation: (id: string, body: Schemas["AutomationPatch"]) =>
+    request<Automation>(`/me/automations/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteAutomation: (id: string) =>
+    request<void>(`/me/automations/${id}`, { method: "DELETE" }),
+  /**
+   * Run one now, out of band. Returns as soon as the run has started — a report
+   * is minutes of ten bank specialists, and the notification bell is how the
+   * user learns it finished, exactly as for a scheduled run.
+   */
+  runAutomation: (id: string) =>
+    request<{ started: boolean; automation_id: string }>(
+      `/me/automations/${id}/run`,
+      { method: "POST" },
+    ),
+  /** Summaries — no bodies. See `ReportSummary` on the Python side. */
+  automationReports: (unreadOnly = false) =>
+    request<AutomationReportSummary[]>(
+      `/me/automations/reports${unreadOnly ? "?unread_only=true" : ""}`,
+    ),
+  /** The notification badge. One indexed count, polled on a timer. */
+  unreadReportCount: () =>
+    request<{ unread: number }>("/me/automations/reports/unread-count"),
+  automationReport: (id: string) =>
+    request<AutomationReport>(`/me/automations/reports/${id}`),
+  /**
+   * Marking read is what clears the bell, and it is deliberately separate from
+   * fetching: a retry or a cache revalidation must not silently clear a
+   * notification the user never saw.
+   */
+  markReportRead: (id: string) =>
+    request<AutomationReport>(`/me/automations/reports/${id}/read`, {
+      method: "POST",
+    }),
 
   // ----- chat -----
   chatSessions: () => request<ChatSession[]>("/chat/sessions"),

@@ -40,7 +40,7 @@ const EDGE = "2rem";
  * mark says *whose* assistant it is, and it is already the app's own logo two
  * inches away in the drawer.
  */
-const KERMITS_LOGO = "/vision/images/kermits-logo.png";
+import { BRAND_LOGO as KERMITS_LOGO } from "@/components/ui/brand";
 
 export function AgentPopup() {
   const t = useTranslations("chat");

@@ -10,6 +10,7 @@ from llm.factory import resolve_model_key
 
 from .bank_tools import build_bank_tools
 from .checkpoints import get_checkpointer
+from .clock import now_block
 from .compaction import build_compaction
 from .registry import prompt_for
 from .retrieval_memory import RetrievalMemory, RetrievalPruning
@@ -224,6 +225,14 @@ def build_specialist(
             if enforced_monthly_profit_rate is not None
             else ""
         )
+        # The clock, last, and on every specialist rather than only the
+        # supervisor. A specialist is the one that reads a campaign's end date
+        # off a page and decides whether it has passed, and it is the one that
+        # stamps `retrieved_at` -- so it is the agent that most needs to know
+        # what day it is. Delegated turns carry no conversation history to
+        # infer it from either: the specialist sees one instruction and its own
+        # tool results.
+        + now_block()
     )
     # Each specialist is compacted on its own thread, against its own window.
     # Its prompt and bank tools are smaller than the supervisor's, so the space

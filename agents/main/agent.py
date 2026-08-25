@@ -8,8 +8,10 @@ from llm.context import usable_context_window
 from llm.factory import resolve_model_key
 
 from ..shared.agent_tools import build_specialist_tools
+from ..shared.automation_tools import build_automation_tools
 from ..shared.table_tools import build_table_directory_tool
 from ..shared.checkpoints import get_checkpointer
+from ..shared.clock import now_block
 from ..shared.compaction import build_compaction
 from ..shared.runtime import AgentContext
 from .prompt import NAME
@@ -26,27 +28,57 @@ that conclusive URL verification requires restoring the direct reader.
 
 
 def system_prompt() -> str:
-    return NAME + (
-        SEARCH_ONLY_SUPERVISOR_GUIDANCE
-        if not settings.WEB_READ_SOURCE_ENABLED
-        else ""
+    """The supervisor's prompt, including what time it is.
+
+    `now_block()` last, so the clock is the most recent thing the model read
+    before the conversation starts.
+
+    Note what this makes true of `main_compaction`, which calls this to size the
+    window: the two calls are microseconds apart within one request, so they
+    measure the same string. They would not if this were cached per process --
+    then the window would have been sized against the boot-time clock, which is
+    exactly the kind of quiet drift that function's docstring warns about.
+    """
+    return (
+        NAME
+        + (
+            SEARCH_ONLY_SUPERVISOR_GUIDANCE
+            if not settings.WEB_READ_SOURCE_ENABLED
+            else ""
+        )
+        + now_block()
     )
 
 
 def supervisor_tools():
-    """The supervisor's tool list: ten bank specialists and one page directory.
+    """The supervisor's tools: ten bank specialists, a page directory, automations.
 
     One list, one definition, because two callers need the exact same one --
     `build_main_agent` gives it to the model and `main_compaction` measures the
     window that is left after its schemas. Two definitions would let the
     "70% full" the user is shown disagree with the threshold that fires.
 
-    `find_comparison_table` is the one tool here that is not a bank. It reads no
-    bank data: it answers "does this site already have a table on this topic, and
-    what is its address", so the assistant can link to a page the product already
-    publishes. Everything factual still comes from the specialists.
+    That is also why this takes no arguments and nothing here is conditional.
+    `create_automation` needs a signed-in user and is offered even when there is
+    not one -- it refuses in prose at call time instead. Gating it on the caller
+    would make the measured list differ from the list the model was given, which
+    is exactly the disagreement the paragraph above exists to prevent.
+
+    Three of these are not banks and none of the three carries a bank fact:
+
+    - `find_comparison_table` answers "does this site already publish a table on
+      this topic, and what is its address", so the assistant can link to a page
+      the product already has.
+    - `create_automation` / `list_automations` store and read back a standing
+      order -- a question to be asked again on a schedule.
+
+    Everything factual still comes from the specialists.
     """
-    return [*build_specialist_tools(), build_table_directory_tool()]
+    return [
+        *build_specialist_tools(),
+        build_table_directory_tool(),
+        *build_automation_tools(),
+    ]
 
 
 def build_main_agent(model: str | None = None, thinking: bool = False):

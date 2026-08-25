@@ -43,6 +43,20 @@ class ChatMessageOut(BaseModel):
     role: Literal["user", "assistant"]
     content: str
     citations: list[ChunkOut] = Field(default_factory=list)
+    parts: list[dict] = Field(
+        default_factory=list,
+        description=(
+            "The turn as the browser drew it -- a `MessagePart[]`, the shape in "
+            "UI/src/lib/chat/types.ts. `content` is the same turn flattened for "
+            "the model and stays the authority for replay; this is what lets a "
+            "restored conversation show the table that was attached to a question "
+            "rather than a bracketed note about it. Typed as `dict` on purpose: "
+            "the part union belongs to the renderer, and mirroring five variants "
+            "here would be a second definition to keep in step. A row written "
+            "before this field existed comes back with a single text part rebuilt "
+            "from `content`."
+        ),
+    )
     created_at: datetime
 
 

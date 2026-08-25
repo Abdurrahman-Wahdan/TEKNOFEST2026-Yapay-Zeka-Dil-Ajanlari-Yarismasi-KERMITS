@@ -150,6 +150,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/me/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Stats
+         * @description This user's own usage, for the profile overview.
+         *
+         *     Eight counts and two timestamps, all from tables that already exist. Written
+         *     as separate queries rather than one join with conditional aggregates: they hit
+         *     four unrelated tables, each count is an index-only scan, and a single clever
+         *     statement here would be harder to read than the page it feeds.
+         *
+         *     Message counts go through the session join rather than a `user_id` on
+         *     `chat_messages`, because there is no such column -- a message belongs to a
+         *     conversation, and the conversation belongs to the user. That is the right
+         *     shape; it just means these two counts are the only ones with a subquery.
+         */
+        get: operations["get_stats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/me/views": {
         parameters: {
             query?: never;
@@ -192,6 +222,218 @@ export interface paths {
         post?: never;
         /** Delete View */
         delete: operations["delete_view"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/automations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Automations
+         * @description Every automation this user has, oldest first.
+         *
+         *     Oldest first, not newest: this is a list someone maintains rather than a feed
+         *     they read, and a list whose rows move when you add one is hard to keep track
+         *     of. The newly created row appearing at the bottom is also where the composer
+         *     that made it is.
+         */
+        get: operations["list_automations"];
+        put?: never;
+        /**
+         * Create Automation
+         * @description Create one from an explicit schedule.
+         */
+        post: operations["create_automation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/automations/describe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Describe Automation
+         * @description Create one from a sentence, with any hand-set field overriding the agent.
+         *
+         *     One round trip, not draft-then-confirm. The list is the confirmation: the row
+         *     appears with the schedule the agent read, and every field on it is editable
+         *     from the same page -- so a misread hour costs a click rather than a step
+         *     everybody has to take every time.
+         *
+         *     A field the user set by hand **wins**. They moved the picker after reading
+         *     their own sentence; a model's reading of "akşam" does not outrank that.
+         */
+        post: operations["describe_automation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/automations/{automation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Automation
+         * @description Delete an automation. **Its reports are kept.**
+         *
+         *     `automation_id` on a report is ON DELETE SET NULL, and the report carries its
+         *     own snapshot of the title -- cancelling tomorrow's report must not delete
+         *     yesterday's.
+         */
+        delete: operations["delete_automation"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Automation
+         * @description Edit an automation. Only the fields present in the body are written.
+         *
+         *     Any change to the schedule recomputes `next_run_at` from *now*. Keeping the
+         *     old value would fire the automation once more at the time the user just
+         *     changed away from, which is exactly the correction they were making.
+         */
+        patch: operations["update_automation"];
+        trace?: never;
+    };
+    "/api/me/automations/{automation_id}/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Now
+         * @description Run one automation immediately, without touching its schedule.
+         *
+         *     Not a convenience: without it, checking that an automation does what the user
+         *     meant means waiting for a wall clock.
+         *
+         *     In a thread, and 202 rather than 200, because a run is a full supervisor pass
+         *     over ten bank specialists -- minutes. The report appears when it appears; the
+         *     notification bell is how the user learns it did, which is the same way a
+         *     scheduled run tells them.
+         *
+         *     `next_run_at` is deliberately untouched. This is an extra run, not a
+         *     rescheduled one, so tomorrow's report still arrives at the usual time.
+         */
+        post: operations["run_now"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/automations/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Reports
+         * @description This user's reports, newest first. Bodies excluded -- see `ReportSummary`.
+         */
+        get: operations["list_reports"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/automations/reports/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Unread Count
+         * @description What the notification badge shows.
+         *
+         *     Its own route rather than `len(list_reports(unread_only=True))`: this is
+         *     polled on a timer by every open tab, and it must stay one indexed count
+         *     (`ix_automation_reports_unread`) rather than a row fetch.
+         */
+        get: operations["unread_count"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/automations/reports/{report_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Report
+         * @description One report, with its body and citations.
+         *
+         *     Reading does not mark it read. Opening it does, through the route below --
+         *     separate because the report page fetches this to render and a refetch
+         *     (a retry, a cache revalidation) must not silently clear a notification the
+         *     user never saw.
+         */
+        get: operations["get_report"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/automations/reports/{report_id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Report Read
+         * @description Mark one report read, which is what removes it from the bell.
+         *
+         *     Idempotent: an already-read report keeps its original `read_at`. Re-stamping
+         *     would make "when did I first see this" unanswerable for no gain.
+         */
+        post: operations["mark_report_read"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1052,6 +1294,109 @@ export interface components {
             count?: number | null;
         };
         /**
+         * AutomationDescribeIn
+         * @description Free text, plus whatever the user set by hand.
+         *
+         *     A field left `None` is one the agent decides. A field with a value **wins**:
+         *     the user who moved the hour picker did so after reading their own sentence,
+         *     and a model's reading of "akşam" does not outrank that.
+         */
+        AutomationDescribeIn: {
+            /** Text */
+            text: string;
+            /** Hour */
+            hour?: number | null;
+            /** Minute */
+            minute?: number | null;
+            /** Weekdays */
+            weekdays?: number[] | null;
+            /** Web Search */
+            web_search?: boolean | null;
+        };
+        /**
+         * AutomationIn
+         * @description A new automation with its schedule given explicitly.
+         *
+         *     The form's path. `POST /me/automations/describe` is the other one, where the
+         *     schedule is read out of a sentence.
+         */
+        AutomationIn: {
+            /** Title */
+            title: string;
+            /** Prompt */
+            prompt: string;
+            /** Hour */
+            hour: number;
+            /**
+             * Minute
+             * @default 0
+             */
+            minute: number;
+            /** Weekdays */
+            weekdays?: number[];
+            /**
+             * Web Search
+             * @default true
+             */
+            web_search: boolean;
+        };
+        /** AutomationOut */
+        AutomationOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string;
+            /** Prompt */
+            prompt: string;
+            /** Hour */
+            hour: number;
+            /** Minute */
+            minute: number;
+            /** Weekdays */
+            weekdays: number[];
+            /** Web Search */
+            web_search: boolean;
+            /** Enabled */
+            enabled: boolean;
+            /**
+             * Next Run At
+             * Format: date-time
+             */
+            next_run_at: string;
+            /** Last Run At */
+            last_run_at: string | null;
+            /** Last Error */
+            last_error: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * AutomationPatch
+         * @description A partial edit. Only the fields present are written.
+         */
+        AutomationPatch: {
+            /** Title */
+            title?: string | null;
+            /** Prompt */
+            prompt?: string | null;
+            /** Hour */
+            hour?: number | null;
+            /** Minute */
+            minute?: number | null;
+            /** Weekdays */
+            weekdays?: number[] | null;
+            /** Web Search */
+            web_search?: boolean | null;
+            /** Enabled */
+            enabled?: boolean | null;
+        };
+        /**
          * BankLimitsOut
          * @description What one bank will accept for a family, read from its own catalogue.
          */
@@ -1218,6 +1563,13 @@ export interface components {
             content: string;
             /** Citations */
             citations?: components["schemas"]["ChunkOut"][];
+            /**
+             * Parts
+             * @description The turn as the browser drew it -- a `MessagePart[]`, the shape in UI/src/lib/chat/types.ts. `content` is the same turn flattened for the model and stays the authority for replay; this is what lets a restored conversation show the table that was attached to a question rather than a bracketed note about it. Typed as `dict` on purpose: the part union belongs to the renderer, and mirroring five variants here would be a second definition to keep in step. A row written before this field existed comes back with a single text part rebuilt from `content`.
+             */
+            parts?: {
+                [key: string]: unknown;
+            }[];
             /**
              * Created At
              * Format: date-time
@@ -1936,6 +2288,67 @@ export interface components {
             /** Refresh Token */
             refresh_token: string;
         };
+        /**
+         * ReportOut
+         * @description One report. `body` is markdown, rendered by the chat answer renderer.
+         */
+        ReportOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Automation Id */
+            automation_id: string | null;
+            /** Title */
+            title: string;
+            /** Body */
+            body: string;
+            /** Citations */
+            citations: {
+                [key: string]: unknown;
+            }[];
+            /** Status */
+            status: string;
+            /** Error */
+            error: string;
+            /** Read At */
+            read_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * ReportSummary
+         * @description A report without its body, for the list and the notification menu.
+         *
+         *     The body is the whole point of a report and also all of its weight -- a
+         *     gold-price report with ten citations is several kilobytes of markdown. The
+         *     notification menu polls on a timer and shows five lines; sending it every
+         *     body would make the badge the most expensive request in the app.
+         */
+        ReportSummary: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Automation Id */
+            automation_id: string | null;
+            /** Title */
+            title: string;
+            /** Status */
+            status: string;
+            /** Read At */
+            read_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** ResetPasswordRequest */
         ResetPasswordRequest: {
             /**
@@ -2047,6 +2460,47 @@ export interface components {
              * @default tr
              */
             locale: string;
+        };
+        /**
+         * StatsOut
+         * @description What this user has actually done with the product.
+         *
+         *     Counted at request time from rows that already exist. Nothing here is
+         *     maintained as a running total: a counter column would be a second source of
+         *     truth for a number whose first source is one indexed `COUNT`, and it would be
+         *     wrong the first time a delete missed it.
+         *
+         *     **There is deliberately no token count.** Nothing in this application records
+         *     model usage -- the supervisor asks for `stream_usage` but no handler collects
+         *     it, and the ten bank specialists' spend is unobserved entirely. A "tokens"
+         *     field would therefore have to read zero for every conversation ever held,
+         *     which says something false rather than nothing.
+         */
+        StatsOut: {
+            /** Chat Sessions */
+            chat_sessions: number;
+            /**
+             * Messages Sent
+             * @description Turns the user wrote.
+             */
+            messages_sent: number;
+            /**
+             * Messages Received
+             * @description Answers the assistant wrote.
+             */
+            messages_received: number;
+            /** Saved Tables */
+            saved_tables: number;
+            /** Automations */
+            automations: number;
+            /** Reports */
+            reports: number;
+            /** Unread Reports */
+            unread_reports: number;
+            /** First Activity */
+            first_activity: string | null;
+            /** Last Activity */
+            last_activity: string | null;
         };
         /**
          * StreamEvent
@@ -2387,6 +2841,14 @@ export interface components {
              */
             detail: string;
         };
+        /** UnreadCount */
+        UnreadCount: {
+            /**
+             * Unread
+             * @description Reports this user has not opened yet.
+             */
+            unread: number;
+        };
         /** UserOut */
         UserOut: {
             /**
@@ -2650,6 +3112,26 @@ export interface operations {
             };
         };
     };
+    get_stats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatsOut"];
+                };
+            };
+        };
+    };
     list_views: {
         parameters: {
             query?: never;
@@ -2722,6 +3204,303 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_automations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationOut"][];
+                };
+            };
+        };
+    };
+    create_automation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutomationIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    describe_automation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutomationDescribeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_automation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                automation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_automation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                automation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutomationPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_now: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                automation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_reports: {
+        parameters: {
+            query?: {
+                unread_only?: boolean;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unread_count: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnreadCount"];
+                };
+            };
+        };
+    };
+    get_report: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_report_read: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportOut"];
+                };
             };
             /** @description Validation Error */
             422: {

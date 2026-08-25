@@ -1,8 +1,9 @@
 """Stable, compact result envelopes for live bank tools."""
 
 import json
-from datetime import UTC, datetime
 from typing import Any, Callable
+
+from banks import clock
 
 
 def live_result(
@@ -17,7 +18,11 @@ def live_result(
     base = {
         "bank": bank,
         "tool": tool,
-        "retrieved_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        # Turkey time, with its offset, because a model repeats a timestamp
+        # verbatim. This was UTC ("...Z"), and the visible consequence was a rate
+        # fetched at 11:04 presented to a Turkish reader as 08:04 -- the model
+        # quoting exactly what it was handed. See `banks/clock.py::stamp_tr`.
+        "retrieved_at": clock.stamp_tr(),
         "source_type": "live_endpoint",
     }
     if source_url:

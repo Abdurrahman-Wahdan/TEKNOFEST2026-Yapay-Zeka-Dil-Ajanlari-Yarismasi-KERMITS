@@ -11,6 +11,7 @@ WebSocket would add a second transport to operate for no capability gained.
 
 import json
 import logging
+import re
 import queue
 import threading
 import uuid
@@ -23,6 +24,7 @@ from sqlalchemy import select
 
 from ..agent import CLIENT_TOOLS, answer
 from ..chat_attachments import AttachmentError, prepare_attachment, resolve_attachments
+from ..chat_parts import assistant_parts, parts_or_text, user_parts
 from agents.table_metadata import generate_table_metadata
 from agents.recommendation import generate_recommendation
 from agents.shared.checkpoints import delete_session_checkpoints
@@ -92,6 +94,31 @@ def _with_heartbeats(
         yield item  # type: ignore[misc]
 
 
+def _title_for(body: AskRequest) -> str:
+    """A name for a new conversation, from the first thing the user did.
+
+    It used to be `body.question[:60]` and nothing else, which was fine while
+    the sidebar's titles came from the browser -- `store.ts::titleFor` had the
+    same fallbacks and applied them locally. Now the sidebar renders *this*
+    string in every browser, so a turn with no typed question (attach a table,
+    press send, which the composer allows on purpose) would put a blank row in
+    the list with nothing to click on and nothing to recognise.
+
+    Falls back the way the frontend did: the question, then the label of whatever
+    was attached, then a placeholder. Mentions are unwrapped -- `@[rapor.pdf]` is
+    machinery, and the brackets are not part of the name the user would recognise.
+    """
+    question = re.sub(r"@\[([^\]]+)\]", r"\1", body.question).strip()
+    if not question:
+        labels = [item.label for item in (*body.context, *body.captures) if item.label]
+        question = labels[0] if labels else ""
+    if not question and body.attachments:
+        # The opaque ids are all this has: the filename lives on the resolved
+        # record, which is not built until after the title is needed.
+        question = "Ek"
+    return (question[:TITLE_CHARS].strip() or "…")
+
+
 def _own_session(session, user, session_id: uuid.UUID) -> ChatSession:
     """A chat session belonging to this user, or 404.
 
@@ -126,7 +153,20 @@ def get_chat_session(
         title=chat.title,
         created_at=chat.created_at,
         updated_at=chat.updated_at,
-        messages=[ChatMessageOut.model_validate(m) for m in chat.messages],
+        # `parts` through `parts_or_text` rather than straight off the row: a
+        # message stored before that column existed has `[]`, and handing the
+        # browser an empty part list would render an existing turn as a blank
+        # bubble. Every conversation in the table today is one of those.
+        # `model_copy(update=...)` rather than a keyword on `model_validate`,
+        # which has no such argument. `parts_or_text` already returns the
+        # `list[dict]` this field is declared as, so skipping re-validation on
+        # the override costs nothing.
+        messages=[
+            ChatMessageOut.model_validate(m).model_copy(
+                update={"parts": parts_or_text(m)}
+            )
+            for m in chat.messages
+        ],
     )
 
 
@@ -325,9 +365,7 @@ def ask(body: AskRequest, user: CurrentUser, session: DbSession) -> StreamingRes
     if body.session_id is not None:
         chat = _own_session(session, user, body.session_id)
     else:
-        chat = ChatSession(
-            user_id=user.id, title=body.question[:TITLE_CHARS].strip()
-        )
+        chat = ChatSession(user_id=user.id, title=_title_for(body))
         session.add(chat)
         session.commit()
 
@@ -373,7 +411,20 @@ def ask(body: AskRequest, user: CurrentUser, session: DbSession) -> StreamingRes
     if prepared_attachments:
         labels = ", ".join(item.filename for item in prepared_attachments)
         stored = f"{stored}\n\n[ekli dosya: {labels}]".strip()
-    session.add(ChatMessage(session_id=chat_id, role="user", content=stored))
+    session.add(
+        ChatMessage(
+            session_id=chat_id,
+            role="user",
+            content=stored,
+            # `content` above is this same turn flattened for the model, with the
+            # bracketed notes it needs to read a conversation back. `parts` is the
+            # turn as the composer showed it. Both from one request, so the two
+            # renderings of one turn cannot drift apart.
+            parts=user_parts(
+                body.question, body.context, body.captures, prepared_attachments
+            ),
+        )
+    )
     session.commit()
 
     def frames() -> Iterator[str]:
@@ -449,11 +500,13 @@ def ask(body: AskRequest, user: CurrentUser, session: DbSession) -> StreamingRes
 
         # Its own session: the request's was closed when `ask` returned.
         with session_scope() as store:
+            answer_text = "".join(parts)
             message = ChatMessage(
                 session_id=chat_id,
                 role="assistant",
-                content="".join(parts),
+                content=answer_text,
                 citations=citations,
+                parts=assistant_parts(answer_text, citations, body.tool_results),
             )
             store.add(message)
             store.flush()

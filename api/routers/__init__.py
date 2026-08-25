@@ -2,6 +2,7 @@
 
     auth            signup, login, refresh, me
     profile         the onboarding result and the user's saved dashboard views
+    automations     the user's scheduled agent runs, and the reports they produce
     banks           the registry, one bank's products, one bank's quote
     compare         the same question at every bank
     components      a topic page's RAG content, produced by the agent
@@ -17,13 +18,14 @@ a live figure never arrives as a component or a comparison-table row.
 """
 
 from . import (
-    auth, banks, chat, compare, compare_tables, components, models, profile, search,
-    system, voice,
+    auth, automations, banks, chat, compare, compare_tables, components, models,
+    profile, search, system, voice,
 )
 
 ROUTERS = (
     auth.router,
     profile.router,
+    automations.router,
     banks.router,
     compare.router,
     components.router,

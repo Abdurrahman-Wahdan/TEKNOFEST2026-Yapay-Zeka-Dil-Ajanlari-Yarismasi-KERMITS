@@ -80,7 +80,7 @@ def test_reader_extracts_html_into_a_timestamped_evidence_envelope(monkeypatch):
     assert result["status"] == "ok"
     assert result["source_type"] == "live_web_page"
     assert result["url"].startswith("https://www.vakifkatilim.com.tr/")
-    assert result["retrieved_at"].endswith("+00:00")
+    assert result["retrieved_at"].endswith("+03:00")  # Turkey time; see banks.clock.stamp_tr
     assert "120" in result["text"]
 
 

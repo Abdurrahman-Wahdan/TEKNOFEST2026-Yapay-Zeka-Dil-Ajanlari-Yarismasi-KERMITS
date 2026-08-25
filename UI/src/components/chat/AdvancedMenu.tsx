@@ -4,6 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Check } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+// The switch this menu draws is now the app's one switch. It lives in `ui/`
+// because the automations board needs the identical control, and the copy it
+// had reached for instead -- MUI's `Switch` -- was the only one in the app not
+// using our tokens.
+import { SwitchTrack as Track } from "@/components/ui/Toggle";
 import { VuiBox, VuiTypography } from "@/components/vision";
 import { api, type ChatModel } from "@/lib/api";
 
@@ -319,37 +324,5 @@ function Note({ children }: { children: React.ReactNode }) {
         {children}
       </VuiTypography>
     </VuiBox>
-  );
-}
-
-/** The switch itself. Drawn rather than imported: MUI's Switch brings its own
- *  palette and would be the one control in the composer not using our tokens. */
-function Track({ on }: { on: boolean }) {
-  return (
-    <span
-      aria-hidden
-      style={{
-        display: "flex",
-        alignItems: "center",
-        flexShrink: 0,
-        width: 34,
-        height: 20,
-        padding: 2,
-        borderRadius: "var(--radius-full)",
-        backgroundColor: on ? "var(--primary)" : "var(--muted)",
-        transition: "background-color 150ms ease",
-      }}
-    >
-      <span
-        style={{
-          width: 16,
-          height: 16,
-          borderRadius: "var(--radius-full)",
-          backgroundColor: on ? "var(--primary-foreground)" : "var(--control-ink)",
-          transform: on ? "translateX(14px)" : "translateX(0)",
-          transition: "transform 150ms ease, background-color 150ms ease",
-        }}
-      />
-    </span>
   );
 }

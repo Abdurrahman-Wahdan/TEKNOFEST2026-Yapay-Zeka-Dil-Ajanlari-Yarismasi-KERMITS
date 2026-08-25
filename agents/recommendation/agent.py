@@ -12,6 +12,8 @@ from llm import get_llm
 from llm.context import usable_context_window
 from llm.factory import resolve_model_key
 
+from ..shared.clock import now_block
+
 from ..shared.checkpoints import get_checkpointer
 from ..shared.compaction import build_compaction
 from .models import ConversationRecommendation
@@ -26,9 +28,20 @@ def recommendation_thread_id(session_id: str) -> str:
     return f"{session_id}:recommendation"
 
 
+def system_prompt() -> str:
+    """This agent's prompt, including what time it is.
+
+    It proposes the user's *next* question, so it needs the date for the same
+    reason the supervisor does: "bu ayın kampanyaları" has to mean this month,
+    and a suggestion to ask about a campaign that ended last week is worse than
+    no suggestion at all.
+    """
+    return NAME + now_block()
+
+
 def recommendation_compaction():
     """Use the same durable compaction policy as the visible conversation."""
-    window = usable_context_window(resolve_model_key("chat"), NAME, [])
+    window = usable_context_window(resolve_model_key("chat"), system_prompt(), [])
     return build_compaction(window, specialist=False), window
 
 
@@ -38,7 +51,7 @@ def build_recommendation_agent():
     return create_agent(
         model=get_llm("chat", disable_streaming=True),
         tools=[],
-        system_prompt=NAME,
+        system_prompt=system_prompt(),
         response_format=ToolStrategy(ConversationRecommendation),
         checkpointer=get_checkpointer(),
         middleware=[compaction],

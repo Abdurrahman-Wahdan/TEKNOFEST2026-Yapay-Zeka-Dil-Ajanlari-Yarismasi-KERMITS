@@ -574,6 +574,23 @@ class Settings(BaseSettings):
         description="Optional explicit path to LibreOffice's soffice binary for DOCX rendering.",
     )
 
+    # ===== Automations (the user's scheduled agent runs) =====
+    AUTOMATIONS_ENABLED: bool = Field(
+        default=True,
+        description="Run the background loop that fires the user's scheduled "
+        "automations. Off leaves the API fully usable -- automations can still "
+        "be created, edited and run on demand -- they simply do not fire on "
+        "their own, which is what a second API instance or a CI run wants.",
+    )
+    AUTOMATIONS_POLL_SECONDS: int = Field(
+        default=30,
+        gt=0,
+        le=600,
+        description="How often the loop looks for a due automation. Schedules "
+        "have minute granularity, so anything under 60 is already exact; 30 "
+        "halves the worst-case lateness for the cost of one indexed query.",
+    )
+
     # ===== API (the FastAPI service the dashboard talks to) =====
     API_HOST: str = "127.0.0.1"
     API_PORT: int = Field(default=8000, gt=0, lt=65536)

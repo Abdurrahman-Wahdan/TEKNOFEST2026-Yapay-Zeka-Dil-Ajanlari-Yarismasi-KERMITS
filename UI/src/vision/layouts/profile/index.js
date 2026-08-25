@@ -1,3 +1,5 @@
+"use client";
+
 /*!
 
 =========================================================
@@ -16,231 +18,105 @@
 
 */
 
-// @mui material components
-// @mui icons
-import FacebookIcon from "@mui/icons-material/Facebook";
-import InstagramIcon from "@mui/icons-material/Instagram";
-import TwitterIcon from "@mui/icons-material/Twitter";
 import Card from "@mui/material/Card";
-import Grid from "@mui/material/Grid";
-// Served from /public rather than imported: Next resolves a static image
-// import to a StaticImageData object, and this template interpolates the
-// value straight into CSS url(...) — which would emit [object Object].
-const team1 = "/vision/images/avatar1.png";
-// Served from /public rather than imported: Next resolves a static image
-// import to a StaticImageData object, and this template interpolates the
-// value straight into CSS url(...) — which would emit [object Object].
-const team2 = "/vision/images/avatar2.png";
-// Served from /public rather than imported: Next resolves a static image
-// import to a StaticImageData object, and this template interpolates the
-// value straight into CSS url(...) — which would emit [object Object].
-const team3 = "/vision/images/avatar3.png";
-// Served from /public rather than imported: Next resolves a static image
-// import to a StaticImageData object, and this template interpolates the
-// value straight into CSS url(...) — which would emit [object Object].
-const team4 = "/vision/images/avatar4.png";
-// Images
-// Served from /public rather than imported: Next resolves a static image
-// import to a StaticImageData object, and this template interpolates the
-// value straight into CSS url(...) — which would emit [object Object].
-const profile1 = "/vision/images/profile-1.png";
-// Served from /public rather than imported: Next resolves a static image
-// import to a StaticImageData object, and this template interpolates the
-// value straight into CSS url(...) — which would emit [object Object].
-const profile2 = "/vision/images/profile-2.png";
-// Served from /public rather than imported: Next resolves a static image
-// import to a StaticImageData object, and this template interpolates the
-// value straight into CSS url(...) — which would emit [object Object].
-const profile3 = "/vision/images/profile-3.png";
+
 // Vision UI Dashboard React components
 import VuiBox from "components/VuiBox";
 import VuiTypography from "components/VuiTypography";
-import ProfileInfoCard from "examples/Cards/InfoCards/ProfileInfoCard";
-import DefaultProjectCard from "examples/Cards/ProjectCards/DefaultProjectCard";
 import Footer from "examples/Footer";
 // Vision UI Dashboard React example components
 import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
 // Overview page components
 import Header from "layouts/profile/components/Header";
-import PlatformSettings from "layouts/profile/components/PlatformSettings";
-import Welcome from "../profile/components/Welcome/index";
-import CarInformations from "./components/CarInformations";
 
+import { useTranslations } from "next-intl";
+
+import { AutomationComposer } from "@/components/widgets/AutomationComposer";
+import { AutomationsBoard } from "@/components/widgets/AutomationsBoard";
+import { ProfileStats } from "@/components/widgets/ProfileStats";
 import { useAuth } from "@/lib/auth";
 
+/**
+ * The profile overview: what this user has done, and what they have standing.
+ *
+ * The template's own body is gone — a Welcome card, a car's mileage and fuel, a
+ * PlatformSettings panel of switches wired to nothing, and three "projects" by
+ * Elena Morison and Ryan Milly. None of it described this product.
+ *
+ * **The components are kept, not deleted**, at
+ * `layouts/profile/components/{Welcome,CarInformations,PlatformSettings}` and
+ * `examples/Cards/{InfoCards/ProfileInfoCard,ProjectCards/DefaultProjectCard}`.
+ * They are simply not imported here — the same treatment `vision/routes.js`
+ * gives an unmounted page, and for the same reason: `ProfileInfoCard` in
+ * particular is the template's worked example of a labelled detail card, and
+ * this app will want one.
+ *
+ * `Header` stays exactly as it was and carries the identity — avatar, name,
+ * email, sign out — plus the tabs, which now navigate instead of moving an
+ * underline over nothing.
+ */
 function Overview() {
   // This screen only renders inside <RequireAuth>, so `user` is never null
   // here — the placeholder strings below are the fallback for that contract
   // being violated, not an expected path.
   const { user } = useAuth();
+  const t = useTranslations("profile");
+  const ta = useTranslations("automations");
   const name = user?.display_name || "Mark Johnson";
   const email = user?.email || "mark@simmmple.com";
 
   return (
     <DashboardLayout>
       <Header name={name} email={email} />
-      <VuiBox mt={5} mb={3}>
-        <Grid
-          container
-          spacing={3}
-          sx={({ breakpoints }) => ({
-            [breakpoints.only("xl")]: {
-              gridTemplateColumns: "repeat(2, 1fr)",
-            },
-          })}
-        >
-          <Grid
-            item
-            xs={12}
-            xl={4}
-            xxl={3}
-            sx={({ breakpoints }) => ({
-              minHeight: "400px",
-              [breakpoints.only("xl")]: {
-                gridArea: "1 / 1 / 2 / 2",
-              },
-            })}
-          >
-            <Welcome name={name} />
-          </Grid>
-          <Grid
-            item
-            xs={12}
-            xl={5}
-            xxl={6}
-            sx={({ breakpoints }) => ({
-              [breakpoints.only("xl")]: {
-                gridArea: "2 / 1 / 3 / 3",
-              },
-            })}
-          >
-            <CarInformations name={name} />
-          </Grid>
-          <Grid
-            item
-            xs={12}
-            xl={3}
-            xxl={3}
-            sx={({ breakpoints }) => ({
-              [breakpoints.only("xl")]: {
-                gridArea: "1 / 2 / 2 / 3",
-              },
-            })}
-          >
-            <ProfileInfoCard
-              title="profile information"
-              description={`Hi, I’m ${name}.`}
-              info={{
-                fullName: name,
-                mobile: "(44) 123 1234 123",
-                email: email,
-                location: "United States",
-              }}
-              social={[
-                {
-                  link: "https://www.facebook.com/CreativeTim/",
-                  icon: <FacebookIcon />,
-                  color: "facebook",
-                },
-                {
-                  link: "https://twitter.com/creativetim",
-                  icon: <TwitterIcon />,
-                  color: "twitter",
-                },
-                {
-                  link: "https://www.instagram.com/creativetimofficial/",
-                  icon: <InstagramIcon />,
-                  color: "instagram",
-                },
-              ]}
-            />
-          </Grid>
-        </Grid>
+
+      <VuiBox mt={4} mb={3} display="flex" flexDirection="column" gap="24px">
+        <Section title={t("statsTitle")} subtitle={t("statsSubtitle")}>
+          <ProfileStats />
+        </Section>
+
+        {/*
+          The composer sits above the list rather than below it. Creating is what
+          someone comes to this section to do the first time, and an empty list
+          with the box under it puts the only usable control below an empty
+          state.
+        */}
+        <Section title={ta("composerTitle")} subtitle={ta("composerHint")}>
+          <AutomationComposer />
+        </Section>
+
+        <Section title={ta("title")} subtitle={ta("subtitle")}>
+          <AutomationsBoard />
+        </Section>
       </VuiBox>
-      <Grid container spacing={3} mb="30px">
-        <Grid item xs={12} xl={3} height="100%">
-          <PlatformSettings />
-        </Grid>
-        <Grid item xs={12} xl={9}>
-          <Card>
-            <VuiBox display="flex" flexDirection="column" height="100%">
-              <VuiBox display="flex" flexDirection="column" mb="24px">
-                <VuiTypography color="white" variant="lg" fontWeight="bold" mb="6px">
-                  Projects
-                </VuiTypography>
-                <VuiTypography color="text" variant="button" fontWeight="regular">
-                  Architects design houses
-                </VuiTypography>
-              </VuiBox>
-              <Grid container spacing={3}>
-                <Grid item xs={12} md={6} xl={4}>
-                  <DefaultProjectCard
-                    image={profile1}
-                    label="project #2"
-                    title="modern"
-                    description="As Uber works through a huge amount of internal management turmoil."
-                    action={{
-                      type: "internal",
-                      route: "/pages/profile/profile-overview",
-                      color: "white",
-                      label: "VIEW ALL",
-                    }}
-                    authors={[
-                      { image: team1, name: "Elena Morison" },
-                      { image: team2, name: "Ryan Milly" },
-                      { image: team3, name: "Nick Daniel" },
-                      { image: team4, name: "Peterson" },
-                    ]}
-                  />
-                </Grid>
-                <Grid item xs={12} md={6} xl={4}>
-                  <DefaultProjectCard
-                    image={profile2}
-                    label="project #1"
-                    title="scandinavian"
-                    description="Music is something that every person has his or her own specific opinion about."
-                    action={{
-                      type: "internal",
-                      route: "/pages/profile/profile-overview",
-                      color: "white",
-                      label: "VIEW ALL",
-                    }}
-                    authors={[
-                      { image: team3, name: "Nick Daniel" },
-                      { image: team4, name: "Peterson" },
-                      { image: team1, name: "Elena Morison" },
-                      { image: team2, name: "Ryan Milly" },
-                    ]}
-                  />
-                </Grid>
-                <Grid item xs={12} md={6} xl={4}>
-                  <DefaultProjectCard
-                    image={profile3}
-                    label="project #3"
-                    title="minimalist"
-                    description="Different people have different taste, and various types of music."
-                    action={{
-                      type: "internal",
-                      route: "/pages/profile/profile-overview",
-                      color: "white",
-                      label: "VIEW ALL",
-                    }}
-                    authors={[
-                      { image: team4, name: "Peterson" },
-                      { image: team3, name: "Nick Daniel" },
-                      { image: team2, name: "Ryan Milly" },
-                      { image: team1, name: "Elena Morison" },
-                    ]}
-                  />
-                </Grid>
-              </Grid>
-            </VuiBox>
-          </Card>
-        </Grid>
-      </Grid>
 
       <Footer />
     </DashboardLayout>
+  );
+}
+
+/**
+ * A titled block on this page.
+ *
+ * MUI's `Card` from the template rather than `@/components/ui/Card`: this page
+ * is inside `DashboardLayout`, whose surfaces are the template's, and mixing the
+ * two card styles in one column is visible. The app's own `Card` is right for a
+ * `CardGrid` page such as /ai-overview.
+ */
+function Section({ title, subtitle, children }) {
+  return (
+    <Card sx={{ px: 3, py: 3 }}>
+      <VuiBox display="flex" flexDirection="column" gap="4px" mb={2}>
+        <VuiTypography variant="lg" color="white" fontWeight="bold">
+          {title}
+        </VuiTypography>
+        {subtitle && (
+          <VuiTypography color="text" variant="button" fontWeight="regular">
+            {subtitle}
+          </VuiTypography>
+        )}
+      </VuiBox>
+      {children}
+    </Card>
   );
 }
 

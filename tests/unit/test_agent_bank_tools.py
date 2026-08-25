@@ -81,7 +81,9 @@ def test_live_result_is_compact_timestamped_and_keeps_refusals_honest():
         "status": "ok",
         "data": [{"code": "USD"}],
     }
-    assert good["retrieved_at"].endswith("Z")
+    # Turkey time, not UTC. A model repeats a timestamp verbatim, so a UTC stamp
+    # here is what made a rate fetched at 11:04 read as 08:04 to a Turkish user.
+    assert good["retrieved_at"].endswith("+03:00")
 
     def refused():
         raise ValueError("This bank does not publish that calculator.")

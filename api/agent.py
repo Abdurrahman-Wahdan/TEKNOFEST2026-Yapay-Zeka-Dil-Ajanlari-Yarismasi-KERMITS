@@ -670,6 +670,7 @@ def _agent_answer(
     think: bool = False,
     model: str | None = None,
     web_search: bool = False,
+    user_id: uuid.UUID | None = None,
     attachments: list[ResolvedAttachment] | None = None,
 ) -> Iterator[StreamEvent]:
     """Stream the supervisor while keeping its checkpoint state private."""
@@ -722,13 +723,20 @@ def _agent_answer(
 
         fresh_candidate_sources: dict[tuple[str, str], dict] = {}
         answer_text: list[str] = []
+        # `user_id` only when there is one. `AgentContext` declares it
+        # NotRequired, and passing an empty string would make
+        # `create_automation` write an automation nobody owns rather than
+        # refuse -- the tool checks for absence, not for falsiness of a uuid.
+        run_context = {
+            "session_id": str(session_id),
+            "web_search_enabled": web_search,
+        }
+        if user_id is not None:
+            run_context["user_id"] = str(user_id)
         for message, metadata in agent.stream(
             {"messages": messages},
             config=config,
-            context={
-                "session_id": str(session_id),
-                "web_search_enabled": web_search,
-            },
+            context=run_context,
             stream_mode="messages",
         ):
             # Only filtered ask_<bank> handoffs expose candidate sources. Raw
@@ -832,5 +840,6 @@ def answer(
         question, history, context, captures, tool_results, session_id,
         think=think, model=model,
         web_search=web_search,
+        user_id=user_id,
         attachments=attachments,
     )

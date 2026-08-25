@@ -273,6 +273,33 @@
         ]
       }
     },
+    "/api/me/stats": {
+      "get": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Get Stats",
+        "description": "This user's own usage, for the profile overview.\n\nEight counts and two timestamps, all from tables that already exist. Written\nas separate queries rather than one join with conditional aggregates: they hit\nfour unrelated tables, each count is an index-only scan, and a single clever\nstatement here would be harder to read than the page it feeds.\n\nMessage counts go through the session join rather than a `user_id` on\n`chat_messages`, because there is no such column -- a message belongs to a\nconversation, and the conversation belongs to the user. That is the right\nshape; it just means these two counts are the only ones with a subquery.",
+        "operationId": "get_stats",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatsOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/me/views": {
       "get": {
         "tags": [
@@ -386,6 +413,467 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/automations": {
+      "get": {
+        "tags": [
+          "automations"
+        ],
+        "summary": "List Automations",
+        "description": "Every automation this user has, oldest first.\n\nOldest first, not newest: this is a list someone maintains rather than a feed\nthey read, and a list whose rows move when you add one is hard to keep track\nof. The newly created row appearing at the bottom is also where the composer\nthat made it is.",
+        "operationId": "list_automations",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AutomationOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Automations"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "automations"
+        ],
+        "summary": "Create Automation",
+        "description": "Create one from an explicit schedule.",
+        "operationId": "create_automation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutomationIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/me/automations/describe": {
+      "post": {
+        "tags": [
+          "automations"
+        ],
+        "summary": "Describe Automation",
+        "description": "Create one from a sentence, with any hand-set field overriding the agent.\n\nOne round trip, not draft-then-confirm. The list is the confirmation: the row\nappears with the schedule the agent read, and every field on it is editable\nfrom the same page -- so a misread hour costs a click rather than a step\neverybody has to take every time.\n\nA field the user set by hand **wins**. They moved the picker after reading\ntheir own sentence; a model's reading of \"akşam\" does not outrank that.",
+        "operationId": "describe_automation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutomationDescribeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/me/automations/{automation_id}": {
+      "patch": {
+        "tags": [
+          "automations"
+        ],
+        "summary": "Update Automation",
+        "description": "Edit an automation. Only the fields present in the body are written.\n\nAny change to the schedule recomputes `next_run_at` from *now*. Keeping the\nold value would fire the automation once more at the time the user just\nchanged away from, which is exactly the correction they were making.",
+        "operationId": "update_automation",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "automation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Automation Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutomationPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "automations"
+        ],
+        "summary": "Delete Automation",
+        "description": "Delete an automation. **Its reports are kept.**\n\n`automation_id` on a report is ON DELETE SET NULL, and the report carries its\nown snapshot of the title -- cancelling tomorrow's report must not delete\nyesterday's.",
+        "operationId": "delete_automation",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "automation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Automation Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/automations/{automation_id}/run": {
+      "post": {
+        "tags": [
+          "automations"
+        ],
+        "summary": "Run Now",
+        "description": "Run one automation immediately, without touching its schedule.\n\nNot a convenience: without it, checking that an automation does what the user\nmeant means waiting for a wall clock.\n\nIn a thread, and 202 rather than 200, because a run is a full supervisor pass\nover ten bank specialists -- minutes. The report appears when it appears; the\nnotification bell is how the user learns it did, which is the same way a\nscheduled run tells them.\n\n`next_run_at` is deliberately untouched. This is an extra run, not a\nrescheduled one, so tomorrow's report still arrives at the usual time.",
+        "operationId": "run_now",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "automation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Automation Id"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Run Now"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/automations/reports": {
+      "get": {
+        "tags": [
+          "automations"
+        ],
+        "summary": "List Reports",
+        "description": "This user's reports, newest first. Bodies excluded -- see `ReportSummary`.",
+        "operationId": "list_reports",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "unread_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Unread Only"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReportSummary"
+                  },
+                  "title": "Response List Reports"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/automations/reports/unread-count": {
+      "get": {
+        "tags": [
+          "automations"
+        ],
+        "summary": "Unread Count",
+        "description": "What the notification badge shows.\n\nIts own route rather than `len(list_reports(unread_only=True))`: this is\npolled on a timer by every open tab, and it must stay one indexed count\n(`ix_automation_reports_unread`) rather than a row fetch.",
+        "operationId": "unread_count",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnreadCount"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/me/automations/reports/{report_id}": {
+      "get": {
+        "tags": [
+          "automations"
+        ],
+        "summary": "Get Report",
+        "description": "One report, with its body and citations.\n\nReading does not mark it read. Opening it does, through the route below --\nseparate because the report page fetches this to render and a refetch\n(a retry, a cache revalidation) must not silently clear a notification the\nuser never saw.",
+        "operationId": "get_report",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "report_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Report Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/automations/reports/{report_id}/read": {
+      "post": {
+        "tags": [
+          "automations"
+        ],
+        "summary": "Mark Report Read",
+        "description": "Mark one report read, which is what removes it from the bell.\n\nIdempotent: an already-read report keeps its original `read_at`. Re-stamping\nwould make \"when did I first see this\" unanswerable for no gain.",
+        "operationId": "mark_report_read",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "report_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Report Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportOut"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -2463,6 +2951,296 @@
         "title": "AttachedContext",
         "description": "A piece of the UI the user handed to the agent.\n\nSerialised by the browser at the moment of the click -- a table as a GFM\ntable, a row as a key/value list, a selection as its text -- because what the\nuser pointed at is what should travel, not whatever the page looks like by the\ntime they press send."
       },
+      "AutomationDescribeIn": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Text"
+          },
+          "hour": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 23.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hour"
+          },
+          "minute": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 59.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minute"
+          },
+          "weekdays": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weekdays"
+          },
+          "web_search": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Web Search"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "AutomationDescribeIn",
+        "description": "Free text, plus whatever the user set by hand.\n\nA field left `None` is one the agent decides. A field with a value **wins**:\nthe user who moved the hour picker did so after reading their own sentence,\nand a model's reading of \"akşam\" does not outrank that."
+      },
+      "AutomationIn": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "prompt": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Prompt"
+          },
+          "hour": {
+            "type": "integer",
+            "maximum": 23.0,
+            "minimum": 0.0,
+            "title": "Hour"
+          },
+          "minute": {
+            "type": "integer",
+            "maximum": 59.0,
+            "minimum": 0.0,
+            "title": "Minute",
+            "default": 0
+          },
+          "weekdays": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Weekdays"
+          },
+          "web_search": {
+            "type": "boolean",
+            "title": "Web Search",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "prompt",
+          "hour"
+        ],
+        "title": "AutomationIn",
+        "description": "A new automation with its schedule given explicitly.\n\nThe form's path. `POST /me/automations/describe` is the other one, where the\nschedule is read out of a sentence."
+      },
+      "AutomationOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "prompt": {
+            "type": "string",
+            "title": "Prompt"
+          },
+          "hour": {
+            "type": "integer",
+            "title": "Hour"
+          },
+          "minute": {
+            "type": "integer",
+            "title": "Minute"
+          },
+          "weekdays": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Weekdays"
+          },
+          "web_search": {
+            "type": "boolean",
+            "title": "Web Search"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "next_run_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Next Run At"
+          },
+          "last_run_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Run At"
+          },
+          "last_error": {
+            "type": "string",
+            "title": "Last Error"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "prompt",
+          "hour",
+          "minute",
+          "weekdays",
+          "web_search",
+          "enabled",
+          "next_run_at",
+          "last_run_at",
+          "last_error",
+          "created_at"
+        ],
+        "title": "AutomationOut"
+      },
+      "AutomationPatch": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "prompt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt"
+          },
+          "hour": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 23.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hour"
+          },
+          "minute": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 59.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minute"
+          },
+          "weekdays": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weekdays"
+          },
+          "web_search": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Web Search"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          }
+        },
+        "type": "object",
+        "title": "AutomationPatch",
+        "description": "A partial edit. Only the fields present are written."
+      },
       "BankLimitsOut": {
         "properties": {
           "bank": {
@@ -2763,6 +3541,15 @@
             },
             "type": "array",
             "title": "Citations"
+          },
+          "parts": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Parts",
+            "description": "The turn as the browser drew it -- a `MessagePart[]`, the shape in UI/src/lib/chat/types.ts. `content` is the same turn flattened for the model and stays the authority for replay; this is what lets a restored conversation show the table that was attached to a question rather than a bracketed note about it. Typed as `dict` on purpose: the part union belongs to the renderer, and mirroring five variants here would be a second definition to keep in step. A row written before this field existed comes back with a single text part rebuilt from `content`."
           },
           "created_at": {
             "type": "string",
@@ -4260,6 +5047,139 @@
         ],
         "title": "RefreshRequest"
       },
+      "ReportOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "automation_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Automation Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          },
+          "citations": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Citations"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "error": {
+            "type": "string",
+            "title": "Error"
+          },
+          "read_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Read At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "automation_id",
+          "title",
+          "body",
+          "citations",
+          "status",
+          "error",
+          "read_at",
+          "created_at"
+        ],
+        "title": "ReportOut",
+        "description": "One report. `body` is markdown, rendered by the chat answer renderer."
+      },
+      "ReportSummary": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "automation_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Automation Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "read_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Read At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "automation_id",
+          "title",
+          "status",
+          "read_at",
+          "created_at"
+        ],
+        "title": "ReportSummary",
+        "description": "A report without its body, for the list and the notification menu.\n\nThe body is the whole point of a report and also all of its weight -- a\ngold-price report with ten citations is several kilobytes of markdown. The\nnotification menu polls on a timer and shows five lines; sending it every\nbody would make the badge the most expensive request in the app."
+      },
       "ResetPasswordRequest": {
         "properties": {
           "email": {
@@ -4506,6 +5426,78 @@
           "password"
         ],
         "title": "SignupRequest"
+      },
+      "StatsOut": {
+        "properties": {
+          "chat_sessions": {
+            "type": "integer",
+            "title": "Chat Sessions"
+          },
+          "messages_sent": {
+            "type": "integer",
+            "title": "Messages Sent",
+            "description": "Turns the user wrote."
+          },
+          "messages_received": {
+            "type": "integer",
+            "title": "Messages Received",
+            "description": "Answers the assistant wrote."
+          },
+          "saved_tables": {
+            "type": "integer",
+            "title": "Saved Tables"
+          },
+          "automations": {
+            "type": "integer",
+            "title": "Automations"
+          },
+          "reports": {
+            "type": "integer",
+            "title": "Reports"
+          },
+          "unread_reports": {
+            "type": "integer",
+            "title": "Unread Reports"
+          },
+          "first_activity": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Activity"
+          },
+          "last_activity": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Activity"
+          }
+        },
+        "type": "object",
+        "required": [
+          "chat_sessions",
+          "messages_sent",
+          "messages_received",
+          "saved_tables",
+          "automations",
+          "reports",
+          "unread_reports",
+          "first_activity",
+          "last_activity"
+        ],
+        "title": "StatsOut",
+        "description": "What this user has actually done with the product.\n\nCounted at request time from rows that already exist. Nothing here is\nmaintained as a running total: a counter column would be a second source of\ntruth for a number whose first source is one indexed `COUNT`, and it would be\nwrong the first time a delete missed it.\n\n**There is deliberately no token count.** Nothing in this application records\nmodel usage -- the supervisor asks for `stream_usage` but no handler collects\nit, and the ten bank specialists' spend is unobserved entirely. A \"tokens\"\nfield would therefore have to read zero for every conversation ever held,\nwhich says something false rather than nothing."
       },
       "StreamEvent": {
         "properties": {
@@ -5142,6 +6134,20 @@
         ],
         "title": "UnavailableOut",
         "description": "A bank absent from a ranking, and why.\n\n`why` is one of not_offered | maintenance | declined | error. Four distinct\nstates, kept distinct: \"no bank offers this\" and \"we could not reach anyone\"\nare opposite answers."
+      },
+      "UnreadCount": {
+        "properties": {
+          "unread": {
+            "type": "integer",
+            "title": "Unread",
+            "description": "Reports this user has not opened yet."
+          }
+        },
+        "type": "object",
+        "required": [
+          "unread"
+        ],
+        "title": "UnreadCount"
       },
       "UserOut": {
         "properties": {
