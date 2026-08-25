@@ -27,29 +27,23 @@
  * `src/lib/`.
  */
 
-import type { ComponentType, ReactNode } from "react";
-
-import VuiBoxRaw from "components/VuiBox";
-import VuiButtonRaw from "components/VuiButton";
-import VuiInputRaw from "components/VuiInput";
-import VuiTypographyRaw from "components/VuiTypography";
 import DashboardLayoutRaw from "examples/LayoutContainers/DashboardLayout";
 import DashboardNavbarRaw from "examples/Navbars/DashboardNavbar";
 import FooterRaw from "examples/Footer";
 
-/** MUI system props, plus whatever the template component adds on top. */
-export type VisionProps = {
-  children?: ReactNode;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [prop: string]: any;
-};
+import type { VisionComponent } from "./vision-primitives";
 
-export type VisionComponent = ComponentType<VisionProps>;
+/*
+  The primitives live in `vision-primitives.ts` and are re-exported here, so
+  this file stays the one import path app code needs. The split exists to break
+  a cycle -- `Breadcrumbs` renders `BrandWordmark`, which needs `VuiTypography`,
+  and taking it from this barrel meant reaching back through `DashboardNavbar`.
+  That file has the full story. Anything imported from `examples/` belongs here,
+  never there.
+*/
+export type { VisionProps, VisionComponent } from "./vision-primitives";
+export { VuiBox, VuiTypography, VuiButton, VuiInput } from "./vision-primitives";
 
-export const VuiBox = VuiBoxRaw as unknown as VisionComponent;
-export const VuiTypography = VuiTypographyRaw as unknown as VisionComponent;
-export const VuiButton = VuiButtonRaw as unknown as VisionComponent;
-export const VuiInput = VuiInputRaw as unknown as VisionComponent;
 export const DashboardLayout = DashboardLayoutRaw as unknown as VisionComponent;
 export const DashboardNavbar = DashboardNavbarRaw as unknown as VisionComponent;
 export const Footer = FooterRaw as unknown as VisionComponent;

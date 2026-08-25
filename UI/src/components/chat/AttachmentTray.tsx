@@ -6,14 +6,18 @@ import { useTranslations } from "next-intl";
 import { VuiBox, VuiTypography } from "@/components/vision";
 import type { ChatAttachments } from "@/lib/chat/types";
 
+import { shortLocation } from "@/lib/chat/page-locator";
+
+import { ContextGlyph } from "./ContextGlyph";
+
 /**
- * Staged images and files, above the composer's text.
+ * Everything staged for the next turn, above the composer's text: images, files,
+ * and pieces of the app itself -- a quote, a table row, a whole table.
  *
- * Built but not currently reachable: there is no upload endpoint yet, so neither
- * surface passes `attachments` and the composer draws no attach button. Shipping
- * the tray now means the day the endpoint lands the work is a prop, not a
- * component -- and it means the design was settled while the design was in front
- * of us.
+ * Three chip shapes would be three things to keep in step, so there are two: a
+ * thumbnail for anything with a picture, and a labelled chip for everything else.
+ * What tells a document from a table is the glyph, which `ContextGlyph` keeps
+ * identical here, in the `@` menu and in the transcript.
  */
 
 /** Bytes as something a person reads. */
@@ -62,7 +66,10 @@ export function AttachmentTray({ attachments }: { attachments: ChatAttachments }
 
   const images = attachments.images ?? [];
   const files = attachments.files ?? [];
-  const hasAny = images.length > 0 || files.length > 0;
+  const contexts = attachments.contexts ?? [];
+  const captures = attachments.captures ?? [];
+  const hasAny =
+    images.length > 0 || files.length > 0 || contexts.length > 0 || captures.length > 0;
 
   return (
     <VuiBox
@@ -115,7 +122,10 @@ export function AttachmentTray({ attachments }: { attachments: ChatAttachments }
                   borderRadius: "var(--radius-sm)",
                   overflow: "hidden",
                   backgroundColor: "var(--muted)",
+                  border: image.status === "error" ? "1px solid var(--danger)" : undefined,
+                  opacity: image.status === "uploading" ? 0.65 : 1,
                 }}
+                title={image.error || image.filename}
               >
                 {/* A staged local preview via object URL, not a remote asset, so
                     next/image would add a loader for no benefit. */}
@@ -136,6 +146,41 @@ export function AttachmentTray({ attachments }: { attachments: ChatAttachments }
               </VuiBox>
             ))}
 
+            {/* A screenshot is a picture, so it gets the thumbnail treatment the
+                images get rather than a labelled chip -- what it is, is what it
+                looks like. Its `dataUrl` is both the payload and the preview. */}
+            {captures.map((capture) => (
+              <VuiBox
+                key={capture.id}
+                className="tf26-chip"
+                sx={{
+                  position: "relative",
+                  width: 56,
+                  height: 56,
+                  borderRadius: "var(--radius-sm)",
+                  overflow: "hidden",
+                  backgroundColor: "var(--muted)",
+                  border: "1px solid var(--border)",
+                }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={capture.dataUrl}
+                  alt={capture.label}
+                  title={capture.label}
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+                {attachments.onRemoveCapture && (
+                  <VuiBox sx={{ position: "absolute", top: 2, right: 2 }}>
+                    <RemoveButton
+                      label={t("removeCapture")}
+                      onClick={() => attachments.onRemoveCapture?.(capture.id)}
+                    />
+                  </VuiBox>
+                )}
+              </VuiBox>
+            ))}
+
             {files.map((file) => (
               <VuiBox
                 key={file.id}
@@ -148,8 +193,11 @@ export function AttachmentTray({ attachments }: { attachments: ChatAttachments }
                 sx={{
                   borderRadius: "var(--radius-sm)",
                   backgroundColor: "var(--muted)",
-                  border: "1px solid var(--border)",
+                  border: "1px solid",
+                  borderColor: file.status === "error" ? "var(--danger)" : "var(--border)",
+                  opacity: file.status === "uploading" ? 0.65 : 1,
                 }}
+                title={file.error || file.filename}
               >
                 {/* --control-ink rather than --text-faint: the glyph is what
                     marks this chip as a document instead of a picture, and
@@ -187,6 +235,74 @@ export function AttachmentTray({ attachments }: { attachments: ChatAttachments }
                   <RemoveButton
                     label={t("removeFile")}
                     onClick={() => attachments.onRemoveFile?.(file.id)}
+                  />
+                )}
+              </VuiBox>
+            ))}
+
+            {/* Pieces of the app, drawn as the file chip rather than as a third
+                shape: a staged thing is a staged thing, and the glyph is what
+                says which kind. Only the subline differs -- a row count where a
+                file would show its bytes. */}
+            {contexts.map((context) => (
+              <VuiBox
+                key={context.id}
+                className="tf26-chip"
+                display="flex"
+                alignItems="center"
+                gap={1}
+                px={1}
+                py={0.75}
+                sx={{
+                  borderRadius: "var(--radius-sm)",
+                  backgroundColor: "var(--muted)",
+                  border: "1px solid var(--border)",
+                }}
+              >
+                <VuiBox display="flex" sx={{ color: "var(--control-ink)", flexShrink: 0 }}>
+                  <ContextGlyph kind={context.kind} />
+                </VuiBox>
+                <VuiBox sx={{ minWidth: 0 }}>
+                  <VuiTypography
+                    variant="caption"
+                    color="white"
+                    fontWeight="medium"
+                    sx={{
+                      display: "block",
+                      maxWidth: 160,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {context.label}
+                  </VuiTypography>
+                  <VuiTypography
+                    variant="caption"
+                    color="text"
+                    sx={{
+                      display: "block",
+                      fontSize: "0.625rem",
+                      maxWidth: 160,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {/* The row count when there is one, otherwise the most
+                        specific thing known about where it came from -- the
+                        column, or failing that the row, the table, the section.
+                        Both answer "which thing is this?" for a chip whose label
+                        may have been elided. */}
+                    {context.count !== undefined
+                      ? t("contextRows", { count: context.count })
+                      : shortLocation(context.location, context.kind)}
+                  </VuiTypography>
+                </VuiBox>
+                {attachments.onRemoveContext && (
+                  <RemoveButton
+                    label={t("removeContext")}
+                    onClick={() => attachments.onRemoveContext?.(context.id)}
                   />
                 )}
               </VuiBox>

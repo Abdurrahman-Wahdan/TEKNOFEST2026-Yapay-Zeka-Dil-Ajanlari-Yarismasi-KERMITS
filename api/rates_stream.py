@@ -27,7 +27,7 @@ from dataclasses import dataclass, field
 
 from banks import get_bank, list_banks
 
-from .converters import rate_out
+from .converters import rate_list_out
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +139,7 @@ class RatesHub:
     @staticmethod
     def _fetch(name: str) -> Board:
         provider = get_bank(name)
-        rows = [rate_out(r).model_dump() for r in provider.rates()]
+        rows = [row.model_dump() for row in rate_list_out(provider.rates())]
         return Board(bank=name, rates=rows, fetched_at=time.time())
 
     def _publish(self) -> None:

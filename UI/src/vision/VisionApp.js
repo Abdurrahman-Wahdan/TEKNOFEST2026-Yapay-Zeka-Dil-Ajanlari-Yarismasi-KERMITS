@@ -19,6 +19,8 @@ import Sidenav from "examples/Sidenav";
 // also in the navbar (`examples/Navbars/DashboardNavbar`), which is where every
 // other page-level control lives anyway.
 import { AgentPopup } from "@/components/chat/AgentPopup";
+import { SelectionReply } from "@/components/chat/SelectionReply";
+import { ReportToasts } from "@/components/widgets/ReportToasts";
 
 // Vision UI Dashboard React themes
 import createVisionTheme from "assets/theme";
@@ -89,6 +91,14 @@ export default function VisionApp({ children }) {
           {/* Where the Configurator's settings button, and then the theme
               toggle, used to sit. */}
           <AgentPopup />
+          {/* One selection listener for the whole dashboard, rather than one per
+              page. It renders nothing until there is a selection to act on. */}
+          <SelectionReply />
+          {/* One socket for the whole dashboard, for the same reason. A report
+              lands while the user is reading something else -- that is the
+              entire point of it -- so the thing that announces it cannot live
+              on the page they would have found out on anyway. */}
+          <ReportToasts />
         </>
       )}
       {children}

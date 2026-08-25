@@ -201,7 +201,7 @@ def test_albaraka_catalogue_parses_out_of_the_live_page(albaraka):
     assert all(p.code and p.name for p in products)
     assert len({p.code for p in products}) == len(products)
     assert [a.code for a in albaraka.products("profit_share")] == [
-        "KTLMHSP", "KTLARDM", "KURKTLMHSP",
+        "KTLMHSP", "KTLARDM", "KURKTLMHSP:bireysel", "KURKTLMHSP:ticari",
     ]
 
 
@@ -253,7 +253,7 @@ def test_albaraka_prices_the_accounts_it_offers(albaraka):
         # as "not offered".
         ("KTLMHSP", "XAU", "month", 200, "0% rate"),
         ("KTLARDM", "TRY", "day", 1000, "no profit-share rate"),
-        ("KURKTLMHSP", "TRY", "month", 1000, "0% rate"),
+        ("KURKTLMHSP:bireysel", "TRY", "month", 1000, "0% rate"),
     ],
 )
 def test_albaraka_refuses_what_it_does_not_price(
@@ -416,9 +416,10 @@ def test_ziraat_ceiling_falls_as_the_term_rises(bank):
 
 
 @pytest.mark.parametrize("bank", ["ziraat"], indirect=True)
-def test_ziraat_never_calls_its_browser_only_calculator(bank):
-    with pytest.raises(UnsupportedProduct, match="browser-only"):
-        bank.profit_share_quote("any", 100_000, 31)
+def test_ziraat_prices_its_public_profit_share_calculator(bank):
+    quote = bank.profit_share_quote("Katılma Hesabı", 100_000, 92, "TRY", "day")
+    assert quote.net_profit > 0
+    assert quote.gross_profit >= quote.net_profit
 
 
 @pytest.mark.parametrize("bank", ["turkiyefinans"], indirect=True)

@@ -3,19 +3,15 @@
 Drupal. The calculators live on the homepage with no dedicated URL, so
 URL-based discovery never finds them.
 
-Two of the three calculators are reachable headlessly and one is not:
+All but leasing are reachable headlessly:
 
 - finansman goes through /ajax/finansmanhesapla, which answers plain httpx.
-- kâr payı and leasing submit the Drupal form itself
-  (/anasayfa?ajax_form=1), and that path answers 493 to every non-browser
-  client, curl_cffi impersonation included. There is no /ajax/ route for them
-  -- every plausible name returns a Drupal "No route found".
+- kâr payı uses `/ajax/karpayi-products`, found by driving the widget and
+  recording its real request.  It answers plain HTTP just like financing.
+- leasing submits the Drupal form itself and remains browser-only.
 
-So kâr payı and leasing are browser-only for this bank. That is recorded rather
-than worked around, because a health check has to know the difference.
-
-The answer comes back as HTML inside a Drupal command array. The numbers are
-the bank's; we only pull them out of the markup.
+The answers come back as Drupal command arrays. The numbers are the bank's; we
+only pull them out of the response.
 
 Usage: python verify_ziraat.py
 """
@@ -111,7 +107,7 @@ def verify_finance(usable):
                      f"oran=%{rate.group(1) if rate else '-'}")
 
 
-def verify_maturity_types():
+def verify_profit_share():
     report.section("kâr payı maturity types")
     try:
         types = client.post(f"{HOST}/ajax/get-maturity-types?_wrapper_format=drupal_ajax",
@@ -123,13 +119,41 @@ def verify_maturity_types():
     except Exception as exc:
         report.check("maturity types", False, f"{type(exc).__name__}: {exc}")
 
-    report.known("kâr payı and leasing results",
-                 "only reachable by submitting the Drupal form, which answers 493 "
-                 "to every non-browser client; no /ajax/ route exists")
+    report.section("kâr payı (every public currency)")
+    for currency in ("TRY", "USD", "EUR"):
+        label = f"Katılma Hesabı {currency} 100000/92gün"
+        try:
+            payload = client.post(
+                f"{HOST}/ajax/karpayi-products?_wrapper_format=drupal_ajax",
+                headers=FORM,
+                data={
+                    "karpayi_hesap_type": "5",
+                    "karpayi_hesap_currency": currency,
+                    "karpayi_hesap_anapara": "100000",
+                    "karpayi_hesap_vade": "92",
+                    "karpayi_maturity_type": "14",
+                    "_drupal_ajax": "1",
+                },
+            ).json()
+            fields = {
+                (row.get("selector") or "").lstrip("."): row.get("data") or ""
+                for row in payload
+                if row.get("command") == "insert"
+            }
+            net = amount(fields.get("kar-payi-net-gelir"))
+            gross = amount(fields.get("kar-payi-brut-gelir"))
+            report.check(label, net > 0 and gross >= net,
+                         f"net={net} gross={gross} net-rate="
+                         f"{fields.get('kar-payi-net-oran', '-')}")
+        except Exception as exc:
+            report.check(label, False, f"{type(exc).__name__}: {exc}")
+
+    report.known("leasing results",
+                 "the public Drupal form still answers 493 to non-browser clients")
 
 
 if __name__ == "__main__":
     usable = verify_products()
     verify_finance(usable)
-    verify_maturity_types()
+    verify_profit_share()
     report.finish()

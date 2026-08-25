@@ -22,11 +22,11 @@ import Card from "@mui/material/Card";
 import Grid from "@mui/material/Grid";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
-// Images
-// Served from /public rather than imported: Next resolves a static image
-// import to a StaticImageData object, and this template interpolates the
-// value straight into CSS url(...) — which would emit [object Object].
-const burceMars = "/vision/images/avatar-simmmple.png";
+// The template's stock portrait ("Burce Mars") is gone from this slot -- it was
+// a stranger's face standing in for the signed-in user. The brand mark is the
+// honest thing to put there until there are real profile pictures to upload:
+// it says whose product this is rather than pretending to say who you are.
+import { BRAND_LOGO } from "@/components/ui/brand";
 // Vision UI Dashboard React base styles
 import breakpoints from "assets/theme/base/breakpoints";
 import VuiAvatar from "components/VuiAvatar";
@@ -37,20 +37,50 @@ import VuiTypography from "components/VuiTypography";
 // Vision UI Dashboard React icons
 import { IoCube } from "react-icons/io5";
 import { IoDocument } from "react-icons/io5";
-import { IoBuild } from "react-icons/io5";
+// Went with the template's PROJECTS tab; kept so restoring a third tab is an
+// uncomment rather than a hunt for which glyph it used.
+// import { IoBuild } from "react-icons/io5";
 import { IoLogOut } from "react-icons/io5";
 // Vision UI Dashboard React example components
 import DashboardNavbar from "examples/Navbars/DashboardNavbar";
 import { useEffect, useState } from "react";
 
-import { useRouter } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
+
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { useAuth } from "@/lib/auth";
 
+/**
+ * The two profile pages, in tab order. `path` is locale-less -- `@/i18n/navigation`
+ * adds the prefix -- and matches the App Router folder under `(app)`.
+ */
+const TABS = [
+  { key: "tabOverview", path: "/profile", icon: IoCube },
+  { key: "tabReports", path: "/profile/reports", icon: IoDocument },
+];
+
 function Header({ name = "Mark Johnson", email = "mark@simmmple.com" }) {
+  const t = useTranslations("nav");
+  const tp = useTranslations("profile");
   const [tabsOrientation, setTabsOrientation] = useState("horizontal");
-  const [tabValue, setTabValue] = useState(0);
   const { logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+
+  /*
+    Derived from the URL rather than held in state.
+
+    The tabs used to be `useState(0)` and navigate nowhere -- three labels that
+    moved an underline. Now they are navigation, and the selected tab has to be
+    whichever page is actually open: a link from the notification bell lands
+    directly on /profile/reports, and a tab index in state would show Genel
+    while Raporlar was on screen.
+
+    `findLast` so the longer path wins -- /profile/reports starts with /profile,
+    and matching first would select Genel on both pages.
+  */
+  const active = TABS.findLastIndex((tab) => pathname.startsWith(tab.path));
+  const tabValue = active === -1 ? 0 : active;
 
   const handleSignOut = () => {
     logout();
@@ -77,7 +107,7 @@ function Header({ name = "Mark Johnson", email = "mark@simmmple.com" }) {
     return () => window.removeEventListener("resize", handleTabsOrientation);
   }, [tabsOrientation]);
 
-  const handleSetTabValue = (event, newValue) => setTabValue(newValue);
+  const handleSetTabValue = (event, newValue) => router.push(TABS[newValue].path);
 
   return (
     <VuiBox position="relative">
@@ -119,12 +149,23 @@ function Header({ name = "Mark Johnson", email = "mark@simmmple.com" }) {
               },
             })}
           >
+            {/* `contain`, and padding to keep it off the corners: the mark is
+                301x225 on a transparent background, and MUI's Avatar sets
+                `object-fit: cover` on its img -- which on a 74px square crops
+                the wordmark off both ends of the logo. The tile behind it is
+                `--muted` so a transparent PNG still reads as a deliberate
+                avatar rather than a floating image, in either theme. */}
             <VuiAvatar
-              src={burceMars}
-              alt="profile-image"
+              src={BRAND_LOGO}
+              alt=""
               variant="rounded"
               size="xl"
               shadow="sm"
+              sx={{
+                backgroundColor: "var(--muted)",
+                padding: "10px",
+                "& img": { objectFit: "contain" },
+              }}
             />
           </Grid>
           <Grid item xs={12} md={4.3} lg={4} xl={3.8} xxl={7}>
@@ -169,9 +210,21 @@ function Header({ name = "Mark Johnson", email = "mark@simmmple.com" }) {
                 onChange={handleSetTabValue}
                 sx={{ background: "transparent", display: "flex", justifyContent: "flex-end" }}
               >
-                <Tab label="OVERVIEW" icon={<IoCube color="white" size="16px" />} />
-                <Tab label="TEAMS" icon={<IoDocument color="white" size="16px" />} />
-                <Tab label="PROJECTS" icon={<IoBuild color="white" size="16px" />} />
+                {/*
+                  Two tabs, not the template's three. TEAMS and PROJECTS
+                  described a product this is not; the pages behind them were
+                  demo content by people who do not exist. `IoBuild` went with
+                  PROJECTS -- it is still imported above, commented, so putting a
+                  third tab back is an uncomment rather than a hunt for which
+                  glyph it used.
+                */}
+                {TABS.map((tab) => (
+                  <Tab
+                    key={tab.key}
+                    label={tp(tab.key)}
+                    icon={<tab.icon color="white" size="16px" />}
+                  />
+                ))}
               </Tabs>
             </AppBar>
             {/* `variant="text" color="error"` matches the destructive action
@@ -185,7 +238,10 @@ function Header({ name = "Mark Johnson", email = "mark@simmmple.com" }) {
               sx={{ display: "flex", alignItems: "center", whiteSpace: "nowrap" }}
             >
               <IoLogOut size="16px" style={{ marginRight: "4px" }} />
-              Sign Out
+              {/* `nav.signOut`, the same key the drawer's own Sign Out row
+                  reads. Two sign-out controls are on screen together on this
+                  page, and they were reading "Çıkış yap" and "Sign Out". */}
+              {t("signOut")}
             </VuiButton>
           </Grid>
         </Grid>

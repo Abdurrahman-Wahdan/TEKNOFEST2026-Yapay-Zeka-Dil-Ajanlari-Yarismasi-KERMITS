@@ -24,15 +24,22 @@ PLUGINS = f"{HOST}/plugins/"
 LANG_ID = "bf2689d9-071e-4a20-9450-b1dbdd39778f"
 
 FINANCE_PAGE = f"{HOST}/tr/hesaplama-araclari/finansman-hesaplama/ihtiyac-finansmani-hesaplama"
+HOME_PAGE = f"{HOST}/tr"
 PROFIT_PAGE = f"{HOST}/tr/hesaplama-araclari/kar-payi-hesaplama"
 FX_PAGE = f"{HOST}/tr/hesaplama-araclari/doviz-cevirici"
 
-# Account type -> currencies the page offers for it.
-ACCOUNT_TYPES = {
-    "KTLMHSP": ("Katılma Hesabı", ("TRY", "USD", "EUR", "XAU")),
-    "KTLARDM": ("Ara Dönem Kâr Payı Ödemeli", ("TRY", "USD", "EUR")),
-    "KURKTLMHSP": ("Kur Korumalı Katılma Hesabı", ("TRY", "USD", "EUR", "GBP", "XAU")),
-}
+# Each visible product identity, its endpoint Type, and its own currency list.
+# Kur Korumalı appears twice in the public select.  The live request Type is
+# shared, but treating its labels as one product was the same loss-of-mode bug
+# that hid Ticari finance.
+ACCOUNT_TYPES = (
+    ("KTLMHSP", "Katılma Hesabı", "KTLMHSP", ("TRY", "USD", "EUR", "XAU")),
+    ("KTLARDM", "Ara Dönem Kâr Payı Ödemeli", "KTLARDM", ("TRY", "USD", "EUR")),
+    ("KURKTLMHSP:bireysel", "Kur Korumalı Katılma Hesabı (Bireysel)", "KURKTLMHSP",
+     ("TRY", "USD", "EUR", "GBP", "XAU")),
+    ("KURKTLMHSP:ticari", "Kur Korumalı Katılma Hesabı (Ticari)", "KURKTLMHSP",
+     ("TRY", "USD", "EUR", "GBP", "XAU")),
+)
 
 session = cr.Session(impersonate="chrome124", timeout=40)
 results = []
@@ -45,9 +52,15 @@ NOT_OFFERED = {
        for p in ("MONTH", "DAY")},
     **{("KTLARDM", c, "DAY"): "interim-payment accounts take months only"
        for c in ("TRY", "USD", "EUR")},
-    **{("KURKTLMHSP", c, p): "FX-protected accounts return zeros on their own page too"
+    **{(identity, c, p): "FX-protected accounts return zeros on their own page too"
+       for identity in ("KURKTLMHSP:bireysel", "KURKTLMHSP:ticari")
        for c in ("TRY", "USD", "EUR", "GBP", "XAU") for p in ("MONTH", "DAY")},
 }
+
+FINANCE_MODE = re.compile(
+    r'<div[^>]*class="[^"]*finansman-type[^"]*\b(bireysel|ticari)\b[^"]*"[^>]*>'
+    r'(.*?)</div>', re.S | re.I,
+)
 
 
 def check(name, ok, detail=""):
@@ -86,49 +99,60 @@ def plugin(name, page, **params):
 
 
 def products():
-    """Parse the catalogue out of the finance page's select options.
+    """Parse every homepage finance mode and its exact request contract.
 
     The attribute is single-quoted and the JSON inside is HTML-escaped, so a
     double-quote regex finds nothing and reads as "this bank has no products".
     """
-    page = session.get(FINANCE_PAGE).text
+    page = session.get(HOME_PAGE).text
     out, seen = [], set()
-    for m in re.finditer(r"<option[^>]*value='(\{.*?\})'", page, re.S):
-        try:
-            entry = json.loads(html.unescape(m.group(1)))
-        except json.JSONDecodeError:
-            continue
-        key = (entry.get("ProductCode"), entry.get("ProjectCode"), entry.get("CampaingCode"))
-        if key in seen:
-            continue
-        seen.add(key)
-        out.append(entry)
+    for mode_match in FINANCE_MODE.finditer(page):
+        mode, markup = mode_match.group(1).lower(), mode_match.group(2)
+        request = {
+            "page": HOME_PAGE if mode == "ticari" else FINANCE_PAGE,
+            "Type": "HesaplamaTicari" if mode == "ticari" else "HesaplamaBireysel",
+            "CreditType": "K" if mode == "ticari" else "B",
+        }
+        for m in re.finditer(r"<option[^>]*value='(\{.*?\})'", markup, re.S):
+            try:
+                entry = json.loads(html.unescape(m.group(1)))
+            except json.JSONDecodeError:
+                continue
+            key = (entry.get("ProductCode"), entry.get("ProjectCode"),
+                   entry.get("CampaingCode"), mode)
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append((entry, request))
     return out
 
 
 def verify_products():
     print("\n== product catalogue (embedded in the finance page)")
     catalogue = products()
-    ok = len(catalogue) >= 10 and all(p.get("CampaignName") and p.get("ProductCode")
-                                      for p in catalogue)
+    ok = len(catalogue) >= 17 and all(
+        p.get("CampaignName") and p.get("ProductCode") and contract["Type"]
+        for p, contract in catalogue
+    )
     check("catalogue parsed", ok, f"{len(catalogue)} product(s)")
     return catalogue
 
 
 def verify_finance(catalogue):
     print("\n== finansman (every product)")
-    for entry in catalogue:
+    for entry, contract in catalogue:
         lo, hi = int(entry["MaturityMinValue"]), int(entry["MaturityMaxValue"])
         term = min(24, hi) if hi >= max(lo, 1) else max(lo, 1)
         term = max(term, lo, 1)
         amount = int(min(100000.0, float(entry["AmountMaxValue"])))
         label = f"{entry['CampaignName'][:32]:34s} {amount}/{term}ay"
         try:
-            data = plugin("getFinanceCalculate", FINANCE_PAGE,
+            data = plugin("getFinanceCalculate", contract["page"],
                           ProfitRateByMe="false",
                           FinanceType=json.dumps(entry, ensure_ascii=False),
                           FinanceAmount=str(amount), Maturity=str(term),
-                          ProfitRate="0", Type="B", CreditType="B").json().get("Data") or {}
+                          ProfitRate="0", Type=contract["Type"],
+                          CreditType=contract["CreditType"]).json().get("Data") or {}
         except Exception as exc:
             check(label, False, f"{type(exc).__name__}: {exc}")
             continue
@@ -142,14 +166,14 @@ def verify_finance(catalogue):
 
 def verify_profit_share():
     print("\n== kâr payı (every account type x currency x period)")
-    for code, (title, currencies) in ACCOUNT_TYPES.items():
+    for identity, title, endpoint_type, currencies in ACCOUNT_TYPES:
         for currency in currencies:
             for period, term in (("MONTH", "6"), ("DAY", "90")):
-                label = f"{title[:26]:28s} {code:11s} {currency:4s} {term:>3}{period[0]}"
+                label = f"{title[:26]:28s} {identity:21s} {currency:4s} {term:>3}{period[0]}"
                 try:
                     payload = plugin("getProfitShareCalculate", PROFIT_PAGE,
                                      DepositedAmount="100000", Currency=currency,
-                                     Maturity=term, Period=period, Type=code).json()
+                                     Maturity=term, Period=period, Type=endpoint_type).json()
                 except Exception as exc:
                     check(label, False, f"{type(exc).__name__}: {exc}")
                     continue
@@ -157,8 +181,8 @@ def verify_profit_share():
                 net = data.get("NetProfit") or ""
                 ok = payload.get("Result") is True and amount_of(net) > 0
                 detail = f"gross={data.get('GrossProfit')} net={net} rate={data.get('GrossRate')}"
-                if not ok and (code, currency, period) in NOT_OFFERED:
-                    known(label, NOT_OFFERED[(code, currency, period)])
+                if not ok and (identity, currency, period) in NOT_OFFERED:
+                    known(label, NOT_OFFERED[(identity, currency, period)])
                 else:
                     check(label, ok, detail)
 

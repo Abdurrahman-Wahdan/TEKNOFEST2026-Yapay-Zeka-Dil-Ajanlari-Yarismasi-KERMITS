@@ -82,6 +82,9 @@ class Emlak(BaseBank):
     )
     # The same F5 WAF as Albaraka: it fingerprints the TLS handshake.
     transport = "impersonate"
+    # `#js-financial-rate` is named `CustomRate` on the public calculator.
+    # It is enabled by the “Kâr Oranını Kendim Belirleyeceğim” control.
+    finance_input_capabilities = frozenset({"monthly_profit_rate"})
 
     def _plugin(self, plugin: str, **params):
         return self._json(
@@ -246,7 +249,10 @@ class Emlak(BaseBank):
 
     # ----- finance -----
 
-    def finance_quote(self, product: str, amount: float, term: int) -> FinanceQuote:
+    def finance_quote(
+        self, product: str, amount: float, term: int,
+        monthly_profit_rate: float | None = None,
+    ) -> FinanceQuote:
         chosen = self.find_product("finance", product)
         self._check_limits(chosen, amount=amount, term=term)
         payload = self._plugin(
@@ -256,6 +262,7 @@ class Emlak(BaseBank):
             LoanAmount=int(amount),
             LoanMaturity=int(term),
             LoanSegmentId=1,
+            CustomRate=monthly_profit_rate if monthly_profit_rate is not None else 0,
         )
         data = (payload or {}).get("Data") or {}
         total = money(data.get("TotalInstallmentAmount"))

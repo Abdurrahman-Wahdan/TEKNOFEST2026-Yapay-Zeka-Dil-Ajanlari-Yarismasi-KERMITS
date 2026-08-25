@@ -99,6 +99,10 @@ class TurkiyeFinans(BaseBank):
     # same labels Kuveyt Türk and Hayat use -- so the shared alias map applies
     # unchanged.
     rate_aliases = RATE_ALIASES
+    # The public financing calculator explicitly lets the customer enable
+    # “Kâr oranını kendim belirleyeceğim”.  The page calculates the resulting
+    # plan locally from the same live product/fee table exposed below.
+    finance_input_capabilities = frozenset({"monthly_profit_rate"})
     notes = (
         "It publishes rate and fee tables and computes nothing itself: its "
         "own calculator does the arithmetic in the browser. Financing and "
@@ -225,7 +229,8 @@ class TurkiyeFinans(BaseBank):
                 name=(row.get("Title") or code).strip(),
                 buy=buy,
                 sell=sell,
-                unit="gram" if code in _GRAM_CODES else "1",
+                unit="gram" if code in _GRAM_CODES else "ounce" if code in {"XAU", "XAG"} else "1",
+                quote_currency="USD" if code in {"XAU", "XAG"} else "TRY",
                 as_of=_ms_date(row.get("Date")),
             ))
         return built
@@ -241,19 +246,18 @@ class TurkiyeFinans(BaseBank):
         """
         return self.convert_from_rates(source, target, amount)
 
-    # ----- a rate, and now a payment computed the bank's own way -----
+    # ----- live-published financing rate -----
 
-    def finance_quote(self, product: str, amount: float, term: int) -> FinanceQuote:
-        """The rate this bank publishes for the term, plus a computed payment.
+    def finance_quote(
+        self, product: str, amount: float, term: int,
+        monthly_profit_rate: float | None = None,
+    ) -> FinanceQuote:
+        """Return only values supplied by Türkiye Finans's live service.
 
-        The rate, annual cost rate, allocation fee and BSMV are read straight
-        off the bank's own table. `installment`, `total` and `schedule` are
-        not read off anything -- the bank's calculator computes them in the
-        browser and never sends them back -- so they are worked out here by
-        `_installment_plan`, a direct port of that calculator's own
-        `creditInstallmentResult` function. `derived=True` marks the result:
-        every input is the bank's own published figure, only the arithmetic
-        is ours.
+        Its page computes a payment client-side after receiving this rate
+        table. A copied formula is not a bank endpoint quote, so payment,
+        total and schedule remain absent until the bank exposes a server-side
+        quote contract.
         """
         chosen = self.find_product("finance", product)
         bands = chosen.raw.get("FinanceCalculatorCreditList") or []
@@ -277,16 +281,23 @@ class TurkiyeFinans(BaseBank):
         bsmv = rate(chosen.raw.get("Bitt"))
         if bsmv:
             fees["bsmv_rate"] = round(bsmv * 100, 4)
-        # KKDF ("Rusf" in the payload -- Kaynak Kullanımını Destekleme Fonu)
-        # never had a column of its own before now because nothing used it;
-        # `_installment_plan` needs it the same way the bank's own calculator
-        # does, folded into the effective rate alongside BSMV.
-        kkdf = rate(chosen.raw.get("Rusf"))
-
-        monthly_rate = rate(band.get("Value")) / 100
-        installment, total, schedule = _installment_plan(
-            amount=amount, term=term, monthly_rate=monthly_rate, kkdf=kkdf, bsmv=bsmv,
-        )
+        if monthly_profit_rate is not None:
+            # There is no submit endpoint: this is precisely the arithmetic
+            # the bank's public page runs after the customer toggles its own
+            # rate. Preserve that distinction for every caller.
+            installment, total, schedule = _installment_plan(
+                amount=float(amount),
+                term=int(term),
+                monthly_rate=float(monthly_profit_rate) / 100,
+                kkdf=0.15,
+                bsmv=float(bsmv or 0.0),
+            )
+            quote_rate = float(monthly_profit_rate)
+            derived = True
+        else:
+            installment, total, schedule = None, None, []
+            quote_rate = rate(band.get("Value"))
+            derived = False
 
         return self._check_quote(FinanceQuote(
             bank=self.name,
@@ -295,31 +306,20 @@ class TurkiyeFinans(BaseBank):
             term=term,
             installment=installment,
             total=total,
-            profit_rate=rate(band.get("Value")),
+            profit_rate=quote_rate,
             annual_cost_rate=rate(band.get("Cost")),
             fees=fees,
             schedule=schedule,
             raw={"band": band, "product": chosen.raw},
-            derived=True,
+            derived=derived,
         ))
 
-    # ----- a rate, and now a payment computed the bank's own way -----
+    # ----- live-published card rate -----
 
     def card_installment_quote(
         self, card: str, amount: float, installments: int
     ) -> CardInstallmentQuote:
-        """The published card instalment rate, plus a computed payment.
-
-        `taksitle-hesaplama-araci.aspx` runs `installments.js`, a client-side
-        annuity that schedules against a real transaction date and a card's
-        own statement cut-off day. Neither is a figure this project has for a
-        generic quote -- but anchoring the transaction to the statement date
-        itself (see `_card_installment_plan`) removes the dependency rather
-        than working around it: every ordinary cut-off day then answers
-        identically, so the choice among them was never actually customer-
-        specific information, just an artifact of asking the question with a
-        real date filled in.
-        """
+        """Return the card rate stated by the public page, not a local plan."""
         chosen = self.find_product("card", card)
         self._check_limits(chosen, amount=amount, term=installments,
                            term_label="instalments")
@@ -334,28 +334,15 @@ class TurkiyeFinans(BaseBank):
             )
         profit_rate = float(value.group(1).replace(",", "."))
 
-        # `_service` unwraps to a list for every catalogue call; this endpoint
-        # answers one object instead of a table, and a truthy dict survives
-        # its `or []` fallback unchanged, so the same helper still applies.
-        fees_data = self._service("GetKKDFandBSMVRate", "GetKKDFandBSMVRateResult")
-        kkdf = rate(fees_data.get("KKDF")) if isinstance(fees_data, dict) else 0.0
-        bsmv = rate(fees_data.get("BSMV")) if isinstance(fees_data, dict) else 0.0
-
-        installment, total, schedule = _card_installment_plan(
-            amount=amount, count=int(installments),
-            monthly_rate=profit_rate / 100, kkdf=kkdf, bsmv=bsmv,
-        )
-
         return CardInstallmentQuote(
             bank=self.name,
             card=chosen,
             amount=float(amount),
             installments=int(installments),
-            installment=installment,
-            total=total,
+            installment=None,
+            total=None,
             profit_rate=profit_rate,
-            raw={"txtTaksitleKarPayi": value.group(1), "fees": fees_data, "schedule": schedule},
-            derived=True,
+            raw={"txtTaksitleKarPayi": value.group(1)},
         )
 
     @refusal

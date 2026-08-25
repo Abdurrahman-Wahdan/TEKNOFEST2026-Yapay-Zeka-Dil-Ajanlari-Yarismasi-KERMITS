@@ -14,6 +14,7 @@ import {
 import { useBankLabels } from "@/lib/use-bank-labels";
 import { useTableSort } from "@/lib/use-table-sort";
 
+import { useAttachTable } from "@/lib/chat/use-attach-table";
 import { ProducedTable } from "./ProducedTable";
 import { TableFilters } from "./TableFilters";
 
@@ -49,6 +50,15 @@ export function TableWidget(props: TableProps) {
     return sortRows(matched, sort, table.columns, locale, bankLabels);
   }, [table.rows, table.columns, filters, sort, locale, bankLabels]);
 
+  // The filtered, sorted, visible rows -- what the user is actually looking at.
+  const attach = useAttachTable({
+    columns: visible,
+    rows,
+    title: table.title || undefined,
+    about: [table.subtitle, table.notes].filter(Boolean).join(" — ") || undefined,
+    bankLabels,
+  });
+
   return (
     <VuiBox>
       {/* The subtitle is unmounted, not dropped from the contract: producers may
@@ -62,6 +72,7 @@ export function TableWidget(props: TableProps) {
         rows={table.rows}
         state={filters}
         onChange={setFilters}
+        bankLabels={bankLabels}
         matched={rows.length}
         total={table.rows.length}
       />
@@ -75,6 +86,10 @@ export function TableWidget(props: TableProps) {
         onSort={toggleSort}
         bankLabels={bankLabels}
         emptyLabel={table.rows.length === 0 ? t("tableEmpty") : t("noRowsMatch")}
+        title={table.title || undefined}
+        about={[table.subtitle, table.notes].filter(Boolean).join(" — ") || undefined}
+        onAttachRow={attach.onAttachRow}
+        onAttachTable={attach.onAttachTable}
       />
 
       {table.notes && (

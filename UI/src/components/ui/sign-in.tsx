@@ -1,5 +1,19 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+
+/*
+  Not byte-for-byte as supplied any more, and the comments elsewhere that say it
+  is are now wrong by exactly this much: the copy was translated on 2026-08-25
+  when the site became Turkish-only. Structure, class names, animation delays
+  and the props contract are untouched -- the strings come from the `auth`
+  namespace in messages/tr.json instead of being English literals, which is
+  also where `sign-up.tsx` and `reset-password.tsx` read theirs, so the three
+  screens cannot drift into three vocabularies for the same field.
+
+  `title` and `description` stay props with defaults, so a caller can still
+  override the heading without touching this file.
+*/
 
 // --- HELPER COMPONENTS (ICONS) ---
 
@@ -45,12 +59,10 @@ const GlassInputWrapper = ({ children }: { children: React.ReactNode }) => (
 
 const TestimonialCard = ({ testimonial, delay }: { testimonial: Testimonial, delay: string }) => (
   <div className={`animate-testimonial ${delay} flex items-start gap-3 rounded-3xl bg-card/40 dark:bg-zinc-800/40 backdrop-blur-xl border border-white/10 p-5 w-64`}>
-    {/* A 40px decorative avatar, never the LCP element, loaded from a
-        third-party placeholder host. next/image would mean allowlisting that
-        host in next.config and routing a thumbnail through the optimizer for
-        no measurable gain, so the rule is answered rather than obeyed. */}
+    {/* A small local brand mark; object-contain preserves its transparent,
+        non-square artwork without cropping it into a portrait. */}
     {/* eslint-disable-next-line @next/next/no-img-element */}
-    <img src={testimonial.avatarSrc} className="h-10 w-10 object-cover rounded-2xl" alt="avatar" />
+    <img src={testimonial.avatarSrc} className="h-10 w-10 shrink-0 object-contain" alt={`${testimonial.name} logosu`} />
     <div className="text-sm leading-snug">
       <p className="flex items-center gap-1 font-medium">{testimonial.name}</p>
       <p className="text-muted-foreground">{testimonial.handle}</p>
@@ -62,8 +74,8 @@ const TestimonialCard = ({ testimonial, delay }: { testimonial: Testimonial, del
 // --- MAIN COMPONENT ---
 
 export const SignInPage: React.FC<SignInPageProps> = ({
-  title = <span className="font-light text-foreground tracking-tighter">Welcome</span>,
-  description = "Access your account and continue your journey with us",
+  title,
+  description,
   heroImageSrc,
   testimonials = [],
   onSignIn,
@@ -72,7 +84,14 @@ export const SignInPage: React.FC<SignInPageProps> = ({
   onCreateAccount,
   showGoogleSignIn = true,
 }) => {
+  const t = useTranslations('auth');
   const [showPassword, setShowPassword] = useState(false);
+  // The defaults live here rather than in the parameter list because they read
+  // translations, and a hook cannot be called in a default initialiser.
+  const heading = title ?? (
+    <span className="font-light text-foreground tracking-tighter">{t('welcome')}</span>
+  );
+  const subheading = description ?? t('loginDescription');
 
   return (
     <div className="h-[100dvh] flex flex-col md:flex-row font-geist w-[100dvw]">
@@ -80,22 +99,22 @@ export const SignInPage: React.FC<SignInPageProps> = ({
       <section className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           <div className="flex flex-col gap-6">
-            <h1 className="animate-element animate-delay-100 text-4xl md:text-5xl font-semibold leading-tight">{title}</h1>
-            <p className="animate-element animate-delay-200 text-muted-foreground">{description}</p>
+            <h1 className="animate-element animate-delay-100 text-4xl md:text-5xl font-semibold leading-tight">{heading}</h1>
+            <p className="animate-element animate-delay-200 text-muted-foreground">{subheading}</p>
 
             <form className="space-y-5" onSubmit={onSignIn}>
               <div className="animate-element animate-delay-300">
-                <label className="text-sm font-medium text-muted-foreground">Email Address</label>
+                <label className="text-sm font-medium text-muted-foreground">{t('emailLabel')}</label>
                 <GlassInputWrapper>
-                  <input name="email" type="email" placeholder="Enter your email address" className="w-full bg-transparent text-sm p-4 rounded-2xl focus:outline-none" />
+                  <input name="email" type="email" placeholder={t('emailPlaceholder')} className="w-full bg-transparent text-sm p-4 rounded-2xl focus:outline-none" />
                 </GlassInputWrapper>
               </div>
 
               <div className="animate-element animate-delay-400">
-                <label className="text-sm font-medium text-muted-foreground">Password</label>
+                <label className="text-sm font-medium text-muted-foreground">{t('password')}</label>
                 <GlassInputWrapper>
                   <div className="relative">
-                    <input name="password" type={showPassword ? 'text' : 'password'} placeholder="Enter your password" className="w-full bg-transparent text-sm p-4 pr-12 rounded-2xl focus:outline-none" />
+                    <input name="password" type={showPassword ? 'text' : 'password'} placeholder={t('passwordPlaceholder')} className="w-full bg-transparent text-sm p-4 pr-12 rounded-2xl focus:outline-none" />
                     <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-3 flex items-center">
                       {showPassword ? <EyeOff className="w-5 h-5 text-muted-foreground hover:text-foreground transition-colors" /> : <Eye className="w-5 h-5 text-muted-foreground hover:text-foreground transition-colors" />}
                     </button>
@@ -106,13 +125,13 @@ export const SignInPage: React.FC<SignInPageProps> = ({
               <div className="animate-element animate-delay-500 flex items-center justify-between text-sm">
                 <label className="flex items-center gap-3 cursor-pointer">
                   <input type="checkbox" name="rememberMe" className="custom-checkbox" />
-                  <span className="text-foreground/90">Keep me signed in</span>
+                  <span className="text-foreground/90">{t('keepSignedIn')}</span>
                 </label>
-                <a href="#" onClick={(e) => { e.preventDefault(); onResetPassword?.(); }} className="hover:underline text-violet-400 transition-colors">Reset password</a>
+                <a href="#" onClick={(e) => { e.preventDefault(); onResetPassword?.(); }} className="hover:underline text-violet-400 transition-colors">{t('resetPasswordLink')}</a>
               </div>
 
               <button type="submit" className="animate-element animate-delay-600 w-full rounded-2xl bg-primary py-4 font-medium text-primary-foreground hover:bg-primary/90 transition-colors">
-                Sign In
+                {t('login')}
               </button>
             </form>
 
@@ -120,7 +139,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
               <>
                 <div className="animate-element animate-delay-700 relative flex items-center justify-center">
                   <span className="w-full border-t border-border"></span>
-                  <span className="px-4 text-sm text-muted-foreground bg-background absolute">Or continue with</span>
+                  <span className="px-4 text-sm text-muted-foreground bg-background absolute">{t('orContinueWith')}</span>
                 </div>
 
                 {/* `hover:text-secondary-foreground` pairs with `hover:bg-secondary`.
@@ -131,13 +150,13 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                     answer for text on that background. */}
                 <button onClick={onGoogleSignIn} className="animate-element animate-delay-800 w-full flex items-center justify-center gap-3 border border-border rounded-2xl py-4 hover:bg-secondary hover:text-secondary-foreground transition-colors">
                     <GoogleIcon />
-                    Continue with Google
+                    {t('continueWithGoogle')}
                 </button>
               </>
             )}
 
             <p className="animate-element animate-delay-900 text-center text-sm text-muted-foreground">
-              New to our platform? <a href="#" onClick={(e) => { e.preventDefault(); onCreateAccount?.(); }} className="text-violet-400 hover:underline transition-colors">Create Account</a>
+              {t('noAccount')} <a href="#" onClick={(e) => { e.preventDefault(); onCreateAccount?.(); }} className="text-violet-400 hover:underline transition-colors">{t('signupTitle')}</a>
             </p>
           </div>
         </div>

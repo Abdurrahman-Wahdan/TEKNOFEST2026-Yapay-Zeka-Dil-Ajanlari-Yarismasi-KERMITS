@@ -46,6 +46,12 @@ def compare_finance(
     family: str = Query(description="A family key from /api/banks/families."),
     amount: float = Query(gt=0),
     term: int = Query(gt=0, le=360, description="Months."),
+    monthly_profit_rate: float | None = Query(
+        default=None,
+        gt=0,
+        le=100,
+        description="Optional customer-supplied monthly profit-rate scenario, as a percentage.",
+    ),
     banks: list[str] | None = BanksQuery,
 ) -> ComparisonOut:
     """One financing product at every bank that sells it.
@@ -54,7 +60,7 @@ def compare_finance(
     rows nobody reads in a ranking. Fetch one from /api/banks/{bank}/finance.
     """
     try:
-        result = compare_mod.finance(family, amount, term, banks)
+        result = compare_mod.finance(family, amount, term, banks, monthly_profit_rate)
     except (UnsupportedProduct, ValueError) as exc:
         raise _bad_family(exc) from exc
     return comparison_out(result)

@@ -1,5 +1,6 @@
 import { setRequestLocale } from "next-intl/server";
 
+import { ChatHistoryMenu } from "@/components/chat/ChatHistoryMenu";
 import { ChatPanel } from "@/components/chat/ChatPanel";
 import { AppPage } from "@/components/layout/AppPage";
 import { RequireAuth } from "@/components/layout/RequireAuth";
@@ -27,7 +28,7 @@ export default async function ChatPage({
 
   return (
     <RequireAuth>
-      <AppPage fullHeight brandTitle>
+      <AppPage fullHeight brandTitle headerActions={<ChatHistoryMenu />}>
         <ChatPanel emptyState="center" autoFocus />
       </AppPage>
     </RequireAuth>

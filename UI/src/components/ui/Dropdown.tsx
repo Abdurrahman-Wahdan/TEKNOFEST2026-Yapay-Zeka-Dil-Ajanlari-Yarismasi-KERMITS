@@ -44,6 +44,8 @@ type VisionTheme = Theme & {
 export interface DropdownOption {
   value: string;
   label: string;
+  /** Native select group, used to keep semantically different products apart. */
+  group?: string;
   /** Greyed out and unselectable — a choice that exists but is not available. */
   disabled?: boolean;
 }
@@ -55,6 +57,7 @@ export function Dropdown({
   onChange,
   minWidth = "14rem",
   fullWidth = true,
+  disabled = false,
 }: {
   label?: string;
   value: string;
@@ -62,6 +65,14 @@ export function Dropdown({
   onChange: (value: string) => void;
   minWidth?: string;
   fullWidth?: boolean;
+  /**
+   * The whole control, not one option — a choice that cannot be made *yet*
+   * because it depends on a control above it (the automations composer's
+   * minutes, which mean nothing until an hour is set). `DropdownOption.disabled`
+   * greys out a single row inside an otherwise usable select; this greys out the
+   * select.
+   */
+  disabled?: boolean;
 }) {
   return (
     <VuiBox sx={{ minWidth, width: fullWidth ? "100%" : undefined }}>
@@ -76,6 +87,12 @@ export function Dropdown({
       <VuiBox
         component="select"
         value={value}
+        disabled={disabled}
+        // The visible label is a caption box above the control, not a `<label
+        // for>`, so nothing could associate the two: a screen reader announced
+        // "combobox" with no name, and the assistant's page snapshot -- whose most
+        // useful section is "what is currently selected" -- came back empty.
+        aria-label={label}
         onChange={(e: { target: { value: string } }) => onChange(e.target.value)}
         sx={(theme: VisionTheme) => ({
           ...controlShape(theme),
@@ -90,8 +107,9 @@ export function Dropdown({
           background: theme.palette.inputColors.backgroundColor,
           color: theme.palette.white.main,
           fontFamily: "inherit",
-          cursor: "pointer",
+          cursor: disabled ? "not-allowed" : "pointer",
           appearance: "none",
+          "&:disabled": { opacity: 0.5 },
           // The caret, drawn rather than imported, so there is no icon font or
           // asset to keep in step with the palette.
           backgroundImage: [
@@ -101,7 +119,9 @@ export function Dropdown({
           backgroundPosition: "calc(100% - 20px) 50%, calc(100% - 14px) 50%",
           backgroundSize: "6px 6px, 6px 6px",
           backgroundRepeat: "no-repeat",
-          "&:hover": { borderColor: theme.palette.inputColors.borderColor.focus },
+          "&:hover:not(:disabled)": {
+            borderColor: theme.palette.inputColors.borderColor.focus,
+          },
           "&:focus-visible": {
             outline: "none",
             borderColor: theme.palette.inputColors.borderColor.focus,
@@ -114,11 +134,27 @@ export function Dropdown({
           },
         })}
       >
-        {options.map((option) => (
-          <option key={option.value} value={option.value} disabled={option.disabled}>
-            {option.label}
-          </option>
-        ))}
+        {Object.entries(
+          options.reduce<Record<string, DropdownOption[]>>((groups, option) => {
+            const key = option.group ?? "";
+            (groups[key] ??= []).push(option);
+            return groups;
+          }, {}),
+        ).map(([group, grouped]) =>
+          group ? (
+            <optgroup key={group} label={group}>
+              {grouped.map((option) => (
+                <option key={option.value} value={option.value} disabled={option.disabled}>
+                  {option.label}
+                </option>
+              ))}
+            </optgroup>
+          ) : grouped.map((option) => (
+            <option key={option.value} value={option.value} disabled={option.disabled}>
+              {option.label}
+            </option>
+          )),
+        )}
       </VuiBox>
     </VuiBox>
   );

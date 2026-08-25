@@ -50,7 +50,27 @@ import { BrandWordmark, BRAND_AI } from "@/components/ui/BrandWordmark";
 // eslint-disable-next-line no-unused-vars
 function Breadcrumbs({ icon, title, route, light = false, brand = false }) {
   return (
-    <VuiBox mr={{ xs: 0, xl: 8 }}>
+    /*
+      `data-page-title` is a positioning hook, not styling. /chat's history menu
+      lines its left edge up with where the title text actually starts, and the
+      toolbar's own padding sits between the toolbar edge and this element -- so
+      anchoring to the toolbar left the menu 16px further left than the word.
+    */
+    /*
+      Flex, so whatever is inside is vertically centred rather than sitting on a
+      baseline.
+
+      The toolbar row centres this box, but an inline child aligns to its line
+      box's baseline, not to the box's middle -- which left 8px of space above the
+      wordmark and 4px below, so the text rendered 2px lower than the buttons
+      beside it and the header read as two slightly different lines.
+    */
+    <VuiBox
+      mr={{ xs: 0, xl: 8 }}
+      display="flex"
+      alignItems="center"
+      data-page-title
+    >
       {/*
         The assistant's page is headed by the brand, not by its route segment.
 
@@ -61,14 +81,24 @@ function Breadcrumbs({ icon, title, route, light = false, brand = false }) {
       {brand ? (
         <BrandWordmark fontSize={16}>{BRAND_AI}</BrandWordmark>
       ) : (
+        /*
+          No `textTransform` and no slug rewriting. `title` arrives as the
+          page's real name from `@/lib/nav-label` -- "AI Görünümü", "Ürünler" --
+          already cased the way it should read.
+
+          Both used to be here and both were wrong for Turkish. The title was
+          the URL slug, so `capitalize` was doing the only casing there was:
+          `ai-overview` became "Ai Overview", lowering the product's own name.
+          `.replace("-", " ")` also replaced just the first hyphen, so any
+          three-word slug kept the second one.
+        */
         <VuiTypography
           fontWeight="bold"
-          textTransform="capitalize"
           variant="h6"
           color={light ? "white" : "dark"}
           noWrap
         >
-          {title.replace("-", " ")}
+          {title}
         </VuiTypography>
       )}
     </VuiBox>

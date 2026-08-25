@@ -13,7 +13,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config.settings import settings
 
+from .automations import loop as automation_loop
 from .routers import ROUTERS
+from .voice_transcription import VoiceTranscriptionUnavailable, warm_voice_model
+from agents.shared.checkpoints import close_checkpointer, get_checkpointer
 
 logging.basicConfig(
     level=settings.LOG_LEVEL,
@@ -45,6 +48,49 @@ app.add_middleware(
 
 for router in ROUTERS:
     app.include_router(router, prefix="/api")
+
+
+@app.on_event("startup")
+def start_agent_checkpointer() -> None:
+    """Create LangGraph's durable checkpoint tables before serving chat."""
+    get_checkpointer()
+
+
+@app.on_event("startup")
+def start_voice_transcription() -> None:
+    """Warm Metal inference before the first user waits for a transcript."""
+    if not settings.VOICE_WARM_ON_STARTUP:
+        return
+    try:
+        warm_voice_model()
+    except VoiceTranscriptionUnavailable as exc:
+        # Banking and text chat remain useful while a workstation is downloading
+        # the optional local checkpoint; the voice endpoint reports the same 503.
+        logger.warning("Voice model was not warmed: %s", exc)
+    except Exception:
+        # A corrupt/incompatible optional checkpoint must be loud in the logs,
+        # but it must not take banking, comparison and text chat down with it.
+        logger.exception("Voice model warm-up failed")
+
+
+@app.on_event("startup")
+def start_automation_loop() -> None:
+    """Begin firing the users' scheduled automations.
+
+    Safe to call in every process: exactly one wins an advisory lock and polls,
+    and the rest log why they are not. See `api/automations/loop.py`.
+    """
+    automation_loop.start()
+
+
+@app.on_event("shutdown")
+def stop_automation_loop() -> None:
+    automation_loop.stop()
+
+
+@app.on_event("shutdown")
+def stop_agent_checkpointer() -> None:
+    close_checkpointer()
 
 logger.info(
     "TF26 API ready — environment=%s, CORS origins=%s",

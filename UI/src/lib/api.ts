@@ -28,6 +28,10 @@ export type ComponentCategory = Schemas["CategoryOut"];
 export type TableSummary = Schemas["TableSummaryOut"];
 export type TableListOut = Schemas["TableListOut"];
 export type TableDetailOut = Schemas["TableDetailOut"];
+export type TableOverviewOut = Schemas["TableOverviewOut"];
+export type TableOverviewState = Schemas["TableOverviewState"];
+export type TableOverviewRequest = Schemas["TableOverviewRequest"];
+export type TableOverviewStarted = Schemas["TableOverviewStarted"];
 export type SearchResponse = Schemas["SearchResponse"];
 export type Profile = Schemas["ProfileOut"];
 export type SavedView = Schemas["SavedViewOut"];
@@ -35,9 +39,21 @@ export type ChatSession = Schemas["ChatSessionOut"];
 export type ChatSessionDetail = Schemas["ChatSessionDetail"];
 export type ChatMessage = Schemas["ChatMessageOut"];
 export type StreamEvent = Schemas["StreamEvent"];
+export type TableMetadata = Schemas["TableMetadataOut"];
+export type ContextLevel = Schemas["ContextLevelOut"];
+export type CompactionResult = Schemas["CompactionResult"];
+export type Recommendation = Schemas["RecommendationOut"];
+export type ChatModel = Schemas["ModelOut"];
+export type ChatModels = Schemas["ModelsResponse"];
 export type TokenPair = Schemas["TokenPair"];
 export type User = Schemas["UserOut"];
 export type ResetPasswordResponse = Schemas["ResetPasswordResponse"];
+export type VoiceTranscription = Schemas["VoiceTranscriptionOut"];
+export type UserStats = Schemas["StatsOut"];
+export type Automation = Schemas["AutomationOut"];
+export type AutomationReport = Schemas["ReportOut"];
+export type AutomationReportSummary = Schemas["ReportSummary"];
+export type PreparedAttachment = Schemas["PreparedAttachmentOut"];
 
 /**
  * Relative, so requests go through the Next rewrite to FastAPI and the browser
@@ -126,7 +142,11 @@ export function queryString(params: Query): string {
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
-  if (init.body && !headers.has("Content-Type")) {
+  if (
+    init.body &&
+    !(init.body instanceof FormData) &&
+    !headers.has("Content-Type")
+  ) {
     headers.set("Content-Type", "application/json");
   }
   if (accessToken) {
@@ -164,7 +184,7 @@ export const api = {
   bankProducts: (bank: string, category = "finance") =>
     request<Product[]>(`/banks/${bank}/products${queryString({ category })}`),
   bankRates: (bank: string) => request<Rate[]>(`/banks/${bank}/rates`),
-  financeQuote: (bank: string, params: { product: string; amount: number; term: number }) =>
+  financeQuote: (bank: string, params: { product: string; amount: number; term: number; monthly_profit_rate?: number }) =>
     request<FinanceQuote>(`/banks/${bank}/finance${queryString(params)}`),
   cardQuote: (
     bank: string,
@@ -177,6 +197,7 @@ export const api = {
     family: string;
     amount: number;
     term: number;
+    monthly_profit_rate?: number;
     banks?: string[];
   }) => request<Comparison>(`/compare/finance${queryString(params)}`),
   compareProfitShare: (params: {
@@ -227,6 +248,20 @@ export const api = {
     request<TableListOut>(`/compare-tables${queryString({ category })}`),
   /** One table, shaped for `<TableWidget />`. */
   compareTable: (id: string) => request<TableDetailOut>(`/compare-tables/${id}`),
+  /** Whether this table has an overview, is having one written, or has
+      neither. Never generates one itself: a GET that costs a vision-model call
+      is not safe to retry. */
+  tableOverview: (id: string, locale: string) =>
+    request<TableOverviewState>(`/compare-tables/${id}/overview${queryString({ locale })}`),
+  /** Start writing the overview, handing the agent the page the browser is
+      showing. Returns as soon as the work is queued — a generation outlives
+      what any proxy will hold a socket open for, so the result is collected by
+      polling `tableOverview` rather than waiting on this. */
+  startTableOverview: (id: string, body: TableOverviewRequest) =>
+    request<TableOverviewStarted>(`/compare-tables/${id}/overview`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 
   // ----- produced components -----
   componentCategories: () => request<ComponentCategory[]>("/components"),
@@ -249,12 +284,118 @@ export const api = {
     }),
   deleteView: (slug: string) =>
     request<void>(`/me/views/${slug}`, { method: "DELETE" }),
+  /** Counts for the profile overview. No tokens — nothing records them. */
+  stats: () => request<UserStats>("/me/stats"),
+
+  // ----- automations -----
+  automations: () => request<Automation[]>("/me/automations"),
+  createAutomation: (body: Schemas["AutomationIn"]) =>
+    request<Automation>("/me/automations", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  /**
+   * Create one from a sentence. Any field set by hand overrides what the agent
+   * read out of the text — the user moved the picker after writing the sentence,
+   * so their reading of "akşam" outranks the model's.
+   */
+  describeAutomation: (body: Schemas["AutomationDescribeIn"]) =>
+    request<Automation>("/me/automations/describe", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateAutomation: (id: string, body: Schemas["AutomationPatch"]) =>
+    request<Automation>(`/me/automations/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteAutomation: (id: string) =>
+    request<void>(`/me/automations/${id}`, { method: "DELETE" }),
+  /**
+   * Run one now, out of band. Returns as soon as the run has started — a report
+   * is minutes of ten bank specialists, and the notification bell is how the
+   * user learns it finished, exactly as for a scheduled run.
+   */
+  runAutomation: (id: string) =>
+    request<{ started: boolean; automation_id: string }>(
+      `/me/automations/${id}/run`,
+      { method: "POST" },
+    ),
+  /** Summaries — no bodies. See `ReportSummary` on the Python side. */
+  automationReports: (unreadOnly = false) =>
+    request<AutomationReportSummary[]>(
+      `/me/automations/reports${unreadOnly ? "?unread_only=true" : ""}`,
+    ),
+  /** The notification badge. One indexed count, polled on a timer. */
+  unreadReportCount: () =>
+    request<{ unread: number }>("/me/automations/reports/unread-count"),
+  automationReport: (id: string) =>
+    request<AutomationReport>(`/me/automations/reports/${id}`),
+  /**
+   * Marking read is what clears the bell, and it is deliberately separate from
+   * fetching: a retry or a cache revalidation must not silently clear a
+   * notification the user never saw.
+   */
+  markReportRead: (id: string) =>
+    request<AutomationReport>(`/me/automations/reports/${id}/read`, {
+      method: "POST",
+    }),
 
   // ----- chat -----
   chatSessions: () => request<ChatSession[]>("/chat/sessions"),
   chatSession: (id: string) => request<ChatSessionDetail>(`/chat/sessions/${id}`),
   deleteChatSession: (id: string) =>
     request<void>(`/chat/sessions/${id}`, { method: "DELETE" }),
+  // The composer's model picker. No arguments: the caller has nothing to filter
+  // this by, and the list is short enough that paging it would be theatre.
+  models: () => request<ChatModels>("/models"),
+  // How full the conversation's thread is. Only the supervisor's -- the bank
+  // specialists have their own, compacted the same way, but they are working
+  // memory rather than the conversation.
+  contextLevel: (sessionId: string) =>
+    request<ContextLevel>(`/chat/sessions/${sessionId}/context`),
+  compactSession: (sessionId: string) =>
+    request<CompactionResult>(`/chat/sessions/${sessionId}/compact`, {
+      method: "POST",
+    }),
+  conversationRecommendation: (sessionId: string, locale: "en" | "tr", signal?: AbortSignal) =>
+    request<Recommendation>(`/chat/sessions/${sessionId}/recommendation`, {
+      method: "POST",
+      body: JSON.stringify({ locale }),
+      signal,
+    }),
+  tableMetadata: (body: Schemas["TableMetadataRequest"]) =>
+    request<TableMetadata>("/chat/table-metadata", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  // ----- local speech-to-text -----
+  voiceTranscription: (audio: Blob, signal?: AbortSignal) => {
+    const body = new FormData();
+    const extension = audio.type.includes("mp4")
+      ? "m4a"
+      : audio.type.includes("ogg")
+        ? "ogg"
+        : "webm";
+    body.append("file", audio, `voice.${extension}`);
+    return request<VoiceTranscription>("/voice/transcriptions", {
+      method: "POST",
+      body,
+      signal,
+    });
+  },
+
+  // ----- chat attachments -----
+  prepareChatAttachment: (file: File, signal?: AbortSignal) => {
+    const body = new FormData();
+    body.append("file", file, file.name);
+    return request<PreparedAttachment>("/chat/attachments", {
+      method: "POST",
+      body,
+      signal,
+    });
+  },
 };
 
 /**
@@ -266,7 +407,17 @@ export const api = {
  * every access log it passes through.
  */
 export async function* askStream(
-  body: { question: string; session_id?: string },
+  body: {
+    question: string;
+    session_id?: string;
+    context?: Schemas["AttachedContext"][];
+    captures?: Schemas["CapturePayload"][];
+    attachments?: Schemas["PreparedAttachmentRef"][];
+    toolResults?: Schemas["ToolResult"][];
+    think?: boolean;
+    webSearch?: boolean;
+    model?: string | null;
+  },
   signal?: AbortSignal,
 ): AsyncGenerator<StreamEvent> {
   const headers = new Headers({ "Content-Type": "application/json" });

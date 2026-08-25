@@ -29,12 +29,14 @@ import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
 import IconButton from "@mui/material/IconButton";
 import Icon from "@mui/material/Icon";
+import Badge from "@mui/material/Badge";
 
 // Vision UI Dashboard React components
 import VuiBox from "components/VuiBox";
 import { ThemeToggleIconButton } from "components/VuiThemeToggle";
 
-import { LocaleToggleIconButton } from "@/components/ui/LocaleToggle";
+import { navLabel } from "@/lib/nav-label";
+
 import { Menu as MenuGlyph } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -57,7 +59,13 @@ import {
   setTransparentNavbar,
 } from "context";
 
-function DashboardNavbar({ absolute = false, light = false, isMini = false, brand = false }) {
+function DashboardNavbar({
+  absolute = false,
+  light = false,
+  isMini = false,
+  brand = false,
+  actions = null,
+}) {
   const [navbarType, setNavbarType] = useState();
   const t = useTranslations("nav");
   const [controller, dispatch] = useVisionUIController();
@@ -138,7 +146,28 @@ function DashboardNavbar({ absolute = false, light = false, isMini = false, bran
           >
             <MenuGlyph size={20} />
           </IconButton>
-          <Breadcrumbs icon="home" title={route[route.length - 1]} route={route} light={light} brand={brand} />
+          <Breadcrumbs
+            icon="home"
+            /*
+              The page's name, not its URL slug. `route[0]` is the first path
+              segment with the locale already stripped -- `usePathname` from
+              `@/i18n/navigation` does that -- which is the same value the
+              drawer matches its active entry on, so the two always name the
+              page the same way. See `@/lib/nav-label`.
+
+              The last segment rather than the first is what used to be passed.
+              Every route in this app is one level deep, so they were the same
+              value until a detail page appeared; the first segment is the one
+              that names the *page*, which is what a title wants.
+            */
+            title={navLabel(t, route[0], route[route.length - 1] ?? "")}
+            route={route}
+            light={light}
+            brand={brand}
+          />
+          {/* Page-scoped controls, beside the title. /chat puts its new-chat and
+              history buttons here; every other page passes nothing. */}
+          {actions}
         </VuiBox>
         {isMini ? null : (
           <VuiBox
@@ -196,21 +225,51 @@ function DashboardNavbar({ absolute = false, light = false, isMini = false, bran
             */}
             <VuiBox color={light ? "white" : "inherit"}>
               <NotificationsMenu
-                renderTrigger={(triggerProps) => (
+                renderTrigger={(triggerProps, unread) => (
                   <IconButton
                     {...triggerProps}
                     size="small"
                     color="inherit"
                     sx={navbarIconButton}
                     variant="contained"
+                    aria-label={
+                      unread ? t("notificationsUnread", { count: unread }) : t("notifications")
+                    }
+                    title={
+                      unread ? t("notificationsUnread", { count: unread }) : t("notifications")
+                    }
                   >
-                    <Icon
-                      sx={({ palette: { dark, white } }) => ({
-                        color: light ? white.main : dark.main,
-                      })}
+                    {/*
+                      The count is on the bell rather than beside it: this row is
+                      three icons wide and a number added to it would push the
+                      cluster off the toolbar's right edge on a tablet.
+
+                      `--primary`, not MUI's `error`. An unread report is
+                      something waiting, not something wrong, and the template's
+                      error red on a bell reads as a failure.
+                    */}
+                    <Badge
+                      badgeContent={unread}
+                      max={99}
+                      overlap="circular"
+                      sx={{
+                        "& .MuiBadge-badge": {
+                          backgroundColor: "var(--primary)",
+                          color: "var(--on-brand)",
+                          fontSize: "0.625rem",
+                          minWidth: 16,
+                          height: 16,
+                        },
+                      }}
                     >
-                      notifications
-                    </Icon>
+                      <Icon
+                        sx={({ palette: { dark, white } }) => ({
+                          color: light ? white.main : dark.main,
+                        })}
+                      >
+                        notifications
+                      </Icon>
+                    </Badge>
                   </IconButton>
                 )}
               />
@@ -219,9 +278,13 @@ function DashboardNavbar({ absolute = false, light = false, isMini = false, bran
                   visible expanded, and revealed on hover or focus when
                   collapsed -- so a second control in the navbar was pointing at
                   something the user could already see and reach. Counted from
-                  the right edge the row is now profile, theme, language,
-                  notifications. */}
-              <LocaleToggleIconButton sx={navbarIconButton} />
+                  the right edge the row is now profile, theme, notifications.
+
+                  The language toggle used to sit here, between theme and
+                  notifications. The site ships in Turkish only as of
+                  2026-08-25, so there is nothing to switch to; the component is
+                  kept at `components/_unmounted/LocaleToggle.tsx` for the day
+                  there is. */}
               {/* Was the Configurator's settings gear. The Configurator is no
                   longer mounted, so this would have been a dead button; it is
                   the light/dark switch instead. */}
@@ -232,7 +295,7 @@ function DashboardNavbar({ absolute = false, light = false, isMini = false, bran
                 action. Icon only — the label was the sign-in prompt.
               */}
               <Link to="/profile">
-                <IconButton sx={navbarIconButton} size="small" aria-label="Your profile">
+                <IconButton sx={navbarIconButton} size="small" aria-label={t("profile")}>
                   <Icon
                     sx={({ palette: { dark, white } }) => ({
                       color: light ? white.main : dark.main,
@@ -257,6 +320,8 @@ DashboardNavbar.propTypes = {
   isMini: PropTypes.bool,
   /** Head the page with the brand wordmark instead of its route title. */
   brand: PropTypes.bool,
+  /** Page-scoped controls rendered next to the title. */
+  actions: PropTypes.node,
 };
 
 export default DashboardNavbar;

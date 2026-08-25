@@ -1,0 +1,38 @@
+use_default_settings:
+  engines:
+    keep_only:
+      - bing
+      - duckduckgo web
+      - yep
+
+general:
+  instance_name: TF26 Search
+  debug: false
+
+search:
+  safe_search: 0
+  formats:
+    - html
+    - json
+
+server:
+  bind_address: "0.0.0.0"
+  port: 8080
+  secret_key: "tf26-local-search-not-public"
+  limiter: false
+  image_proxy: false
+
+ui:
+  static_use_hash: true
+
+# Keep a small, independently tested discovery pool. The former defaults
+# (Brave, Google CSE, Startpage, DuckDuckGo HTML) were simultaneously returning
+# rate limits or CAPTCHAs from this host. These engines all returned Turkish
+# bank-domain results during the live verification on 2026-08-24.
+engines:
+  - name: bing
+    disabled: false
+  - name: duckduckgo web
+    disabled: false
+  - name: yep
+    disabled: false

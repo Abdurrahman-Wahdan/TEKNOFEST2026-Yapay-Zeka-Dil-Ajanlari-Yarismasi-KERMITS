@@ -1,10 +1,15 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { ArrowRight, ExternalLink, File as FileGlyph, Image as ImageGlyph } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { VuiBox, VuiTypography } from "@/components/vision";
 import type { AgentMessage } from "@/lib/chat/types";
+import { navLabel } from "@/lib/nav-label";
+import { safeWebSource, siteSection, sourceGroup } from "@/lib/chat/source-group";
+
+import { ContextGlyph } from "./ContextGlyph";
 
 /**
  * Streamdown pulls in Shiki, and Shiki is large. Loading it lazily keeps it off
@@ -33,6 +38,9 @@ export function ChatMessage({
   streaming?: boolean;
 }) {
   const t = useTranslations("chat");
+  // The drawer's own words for the sections our pages live in, so a source card
+  // and the page it opens are not labelled two different ways.
+  const tNav = useTranslations("nav");
 
   return (
     <VuiBox display="flex" flexDirection="column" gap={1}>
@@ -69,6 +77,233 @@ export function ChatMessage({
           );
         }
 
+        if (part.type === "citations") {
+          const sources = part.sources.flatMap((source) => {
+            const group = sourceGroup(source.sourceType, source.url);
+            return group ? [{ source, group }] : [];
+          });
+          if (sources.length === 0) return null;
+          /*
+            Our own pages come last, deliberately. Everything above them supports
+            a claim in the answer; a comparison table does not -- the assistant
+            offers it as somewhere to go next. Putting it first would read as the
+            answer's primary source, which is the one thing it must never be.
+          */
+          const groups = (
+            [
+              { key: "online", label: t("onlineSources") },
+              { key: "knowledge-base", label: t("knowledgeBaseSources") },
+              { key: "site", label: t("sitePageSources") },
+            ] as const
+          )
+            .map((group) => ({
+              ...group,
+              sources: sources.filter(({ group: g }) => g === group.key),
+            }))
+            .filter((group) => group.sources.length > 0);
+
+          return (
+            <VuiBox
+              key={index}
+              component="section"
+              aria-label={t("sources")}
+              mt={0.75}
+              sx={{ maxWidth: "100%", minWidth: 0 }}
+            >
+              <VuiTypography
+                variant="caption"
+                fontWeight="medium"
+                color="text"
+                sx={{ display: "block", mb: 0.75, opacity: 0.78 }}
+              >
+                {t("sources")}
+              </VuiTypography>
+              {groups.map((group) => (
+                <VuiBox key={group.key} mb={1}>
+                  <VuiTypography
+                    variant="caption"
+                    fontWeight="medium"
+                    color="text"
+                    sx={{ display: "block", mb: 0.5, opacity: 0.68 }}
+                  >
+                    {group.label}
+                  </VuiTypography>
+                  <VuiBox display="flex" flexWrap="wrap" gap={0.75}>
+                    {group.sources.map(({ source }, sourceIndex) => (
+                      <VuiBox
+                        key={source.url}
+                        component="a"
+                        href={source.url}
+                        /* Our own pages stay in the app; everything else is a
+                           bank's site and opens in its own tab. Same rule
+                           `AgentMarkdown` applies to the links in the prose. */
+                        {...(group.key === "site"
+                          ? {}
+                          : { target: "_blank", rel: "noopener noreferrer" })}
+                        title={source.url}
+                        display="flex"
+                        alignItems="center"
+                        gap={0.75}
+                        px={1.25}
+                        py={0.75}
+                        sx={{
+                          minWidth: 0,
+                          maxWidth: "100%",
+                          color: "var(--control-ink)",
+                          border: "1px solid var(--border)",
+                          borderRadius: "var(--radius-md)",
+                          textDecoration: "none",
+                          backgroundColor: "transparent",
+                          transition: "border-color 120ms ease, background-color 120ms ease",
+                          "&:hover": {
+                            borderColor: "var(--border-strong)",
+                            backgroundColor: "var(--muted)",
+                          },
+                          "&:focus-visible": {
+                            outline: "2px solid var(--info)",
+                            outlineOffset: "2px",
+                          },
+                        }}
+                      >
+                        <VuiTypography
+                          variant="caption"
+                          fontWeight="bold"
+                          color="inherit"
+                          sx={{ color: "var(--primary-strong)", flex: "0 0 auto" }}
+                        >
+                          {sourceIndex + 1}
+                        </VuiTypography>
+                        <VuiBox minWidth={0}>
+                          <VuiTypography
+                            variant="caption"
+                            fontWeight="medium"
+                            color="text"
+                            sx={{
+                              display: "block",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                              maxWidth: "24rem",
+                            }}
+                          >
+                            {source.title || source.bank || source.url}
+                          </VuiTypography>
+                          <VuiTypography
+                            variant="caption"
+                            fontWeight="regular"
+                            color="text"
+                            sx={{ display: "block", opacity: 0.65 }}
+                          >
+                            {group.key === "site"
+                              ? navLabel(tNav, siteSection(source.url), siteSection(source.url))
+                              : (safeWebSource(source.url)?.hostname ?? source.url)}
+                          </VuiTypography>
+                        </VuiBox>
+                        {/* An arrow for a page in this app, the external-link
+                            glyph only for links that really do leave it. */}
+                        {group.key === "site" ? (
+                          <ArrowRight size={13} aria-hidden="true" />
+                        ) : (
+                          <ExternalLink size={13} aria-hidden="true" />
+                        )}
+                      </VuiBox>
+                    ))}
+                  </VuiBox>
+                </VuiBox>
+              ))}
+            </VuiBox>
+          );
+        }
+
+        /**
+         * A piece of the app that travelled with this turn.
+         *
+         * A reference line, never the body. The body is a serialised table --
+         * fifty rows of markdown -- and the user has already seen it on the page
+         * they attached it from; repeating it in the transcript would bury their
+         * own question. What this has to answer is "what did I send?", which is
+         * the label and where it came from.
+         */
+        if (part.type === "context") {
+          return (
+            <VuiBox
+              key={index}
+              alignSelf={message.role === "user" ? "flex-end" : "flex-start"}
+              display="flex"
+              alignItems="center"
+              gap={0.75}
+              px={1.25}
+              py={0.75}
+              sx={{
+                maxWidth: "75%",
+                minWidth: 0,
+                // Outlined rather than filled, so it reads as a citation next to
+                // the user's filled bubble instead of as a second thing they said.
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-md)",
+                color: "var(--control-ink)",
+              }}
+            >
+              <ContextGlyph kind={part.kind} />
+              <VuiTypography
+                variant="caption"
+                fontWeight="medium"
+                color="text"
+                sx={{
+                  minWidth: 0,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {/*
+                  The assistant looking at the page gets one fixed, translated
+                  phrase; everything the user attached themselves keeps its own
+                  label.
+
+                  The label is deliberately not shown for a tool: it is written for
+                  the agent and read "read the page (1 table(s), 1 control(s))",
+                  which tells the user nothing they wanted and quite a lot about
+                  our internals. It still travels on the request -- it is just not
+                  page furniture.
+                */}
+                {part.kind === "capture" ? t("readPage") : part.label}
+              </VuiTypography>
+            </VuiBox>
+          );
+        }
+
+        if (part.type === "attachment") {
+          return (
+            <VuiBox
+              key={index}
+              alignSelf="flex-end"
+              display="flex"
+              alignItems="center"
+              gap={0.75}
+              px={1.25}
+              py={0.75}
+              sx={{
+                maxWidth: "75%",
+                minWidth: 0,
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-md)",
+                color: "var(--control-ink)",
+              }}
+            >
+              {part.kind === "image" ? <ImageGlyph size={16} /> : <FileGlyph size={16} />}
+              <VuiTypography
+                variant="caption"
+                fontWeight="medium"
+                color="text"
+                sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+              >
+                {part.filename}
+              </VuiTypography>
+            </VuiBox>
+          );
+        }
+
         if (message.role === "user") {
           return (
             <VuiBox
@@ -84,6 +319,17 @@ export function ChatMessage({
                 // in the light theme is a pale blue box and read as a callout
                 // rather than as something the user said.
                 maxWidth: "75%",
+                // Flex, so the text is centred in the bubble rather than sitting
+                // on a baseline. The padding was already symmetric at 10px, but
+                // the block's own line-box strut is taller than the text's inline
+                // box, so the glyphs landed 19.5px below the top edge and 15px
+                // above the bottom -- 4.5px out, which is exactly enough to read
+                // as "not quite in the middle".
+                display: "flex",
+                alignItems: "center",
+                // A flex item will not shrink below its content width without
+                // this, so a long message would stop wrapping.
+                "& > *": { minWidth: 0 },
                 backgroundColor: "var(--muted)",
                 border: "none",
                 // Large, but not a pill -- a multi-line question in a pill looks

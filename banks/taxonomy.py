@@ -83,6 +83,7 @@ def _has(text: str, *words: str) -> bool:
 # be filed as a car loan, and Ziraat's "İHTIYAÇ FINANSMANI HAC / UMRE" contains
 # "ihtiyac" but is a pilgrimage product.
 _PURPOSE: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("cevre", ("cevre", "gri su")),
     ("hac-umre", ("hac", "umre")),
     ("sarj", ("sarj",)),
     ("bisiklet", ("bisiklet",)),

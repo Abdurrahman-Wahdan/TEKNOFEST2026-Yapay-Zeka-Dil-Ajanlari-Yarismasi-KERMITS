@@ -25,6 +25,7 @@ export function AppPage({
   children,
   fullHeight,
   brandTitle,
+  headerActions,
 }: {
   children: ReactNode;
   /**
@@ -34,6 +35,14 @@ export function AppPage({
    * URL segment ("chat") says less than the brand does.
    */
   brandTitle?: boolean;
+  /**
+   * Controls rendered in the navbar beside the page title.
+   *
+   * /chat uses it for its new-chat and history buttons -- they belong to the page,
+   * not to the app chrome, so they arrive from the page rather than being wired
+   * into the shared navbar.
+   */
+  headerActions?: ReactNode;
   /**
    * For a page that fills the viewport and scrolls inside itself, rather than
    * growing downward — /chat is the only one so far.
@@ -64,10 +73,22 @@ export function AppPage({
         flexDirection="column"
         {...(fullHeight ? { height: "100vh" } : { minHeight: "100vh" })}
       >
-        <DashboardNavbar brand={brandTitle} />
+        <DashboardNavbar brand={brandTitle} actions={headerActions} />
         <VuiBox
           py={3}
           flexGrow={1}
+          /**
+           * The page's content, and the only stable handle on it.
+           *
+           * There was no way to name "the page minus the chrome" before this: the
+           * drawer, navbar and assistant panel are all `position: fixed` siblings,
+           * and neither this box nor `DashboardLayout` exposed a ref or an id. Two
+           * things need it -- the selection locator, which scopes its
+           * nearest-heading search here so the drawer's own headings stop winning
+           * on every page, and the page capture, which must not photograph the
+           * chrome floating over the page.
+           */
+          data-page-root=""
           // `minHeight: 0` is what actually lets a flex child scroll: without it
           // the child's automatic minimum size is its content, so it grows past
           // the container instead of overflowing inside it.

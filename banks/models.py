@@ -148,6 +148,12 @@ class Rate:
     sell: float
     unit: str = "1"
 
+    # The currency the bank used to price one unit. Nearly every board row is
+    # a TRY quote, but Türkiye Finans also publishes gold and silver per ounce
+    # in USD. That is real live data, not a duplicate, and it must never be
+    # placed in a TRY comparison row.
+    quote_currency: str = "TRY"
+
     # When the bank says it quoted these. FX moves intraday, and without it the
     # agent cannot say how fresh a rate is. Empty where the feed omits it.
     as_of: str = ""

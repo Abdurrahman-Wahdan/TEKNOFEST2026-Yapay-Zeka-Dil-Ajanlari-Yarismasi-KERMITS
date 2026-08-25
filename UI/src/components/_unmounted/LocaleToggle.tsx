@@ -8,7 +8,6 @@ import { useParams } from "next/navigation";
 import { useTransition } from "react";
 
 import { usePathname, useRouter } from "@/i18n/navigation";
-import type { Locale } from "@/i18n/routing";
 
 /**
  * Each language's name in its own language. Endonyms on purpose: a switcher
@@ -16,8 +15,13 @@ import type { Locale } from "@/i18n/routing";
  * people who already read English, which is the wrong way round. This is also
  * why the two names need no entry in the message catalogs — they are the same
  * strings whichever locale is active.
+ *
+ * Keyed by `string`, not by the live `Locale` union: that union is `"tr"` alone
+ * now, and a Record keyed by it would reject the `en` entry this file exists to
+ * remember.
  */
-const ENDONYM: Record<Locale, string> = { tr: "Türkçe", en: "English" };
+type SwitchableLocale = "tr" | "en";
+const ENDONYM: Record<SwitchableLocale, string> = { tr: "Türkçe", en: "English" };
 
 /**
  * The navbar's language switch, sibling to `ThemeToggleIconButton`.
@@ -36,18 +40,18 @@ const ENDONYM: Record<Locale, string> = { tr: "Türkçe", en: "English" };
  */
 export function LocaleToggleIconButton({ sx }: { sx?: SxProps<Theme> }) {
   const t = useTranslations("nav");
-  const active = useLocale() as Locale;
+  const active = useLocale() as SwitchableLocale;
   const pathname = usePathname();
   const params = useParams();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
-  const next: Locale = active === "tr" ? "en" : "tr";
+  const next: SwitchableLocale = active === "tr" ? "en" : "tr";
   // "Dil: English" / "Language: Türkçe" — the existing `nav.language` key names
   // the control, the endonym names what pressing it gives.
   const label = `${t("language")}: ${ENDONYM[next]}`;
 
-  function switchTo(locale: Locale) {
+  function switchTo(locale: SwitchableLocale) {
     startTransition(() => {
       // `params` carries any dynamic segment of the current route; without it a
       // locale switch on a detail page 404s.

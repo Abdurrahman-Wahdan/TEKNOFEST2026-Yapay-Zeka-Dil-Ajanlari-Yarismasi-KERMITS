@@ -39,6 +39,10 @@ PLUGINS = f"{HOST}/plugins/"
 LANG_ID = "bf2689d9-071e-4a20-9450-b1dbdd39778f"
 
 FINANCE_PAGE = f"{HOST}/tr/hesaplama-araclari/finansman-hesaplama/ihtiyac-finansmani-hesaplama"
+# The homepage calculator has two separate finance catalogues.  The dedicated
+# page only exposes Bireysel, which made the public Ticari product invisible to
+# this provider even though both modes call the same live endpoint.
+HOME_PAGE = f"{HOST}/tr"
 PROFIT_PAGE = f"{HOST}/tr/hesaplama-araclari/kar-payi-hesaplama"
 FX_PAGE = f"{HOST}/tr/hesaplama-araclari/doviz-cevirici"
 
@@ -75,7 +79,13 @@ _CURRENCY_OPTION = re.compile(
 # The attribute is single-quoted and the JSON inside is HTML-escaped, so the
 # obvious double-quote pattern matches nothing and reads as "no products here".
 _OPTION = re.compile(r"<option[^>]*value='(\{.*?\})'", re.S)
-_SELECT_OPTION = re.compile(r"<option[^>]*value=\"([^\"]+)\"[^>]*>([^<]*)<", re.S)
+_FINANCE_MODE = re.compile(
+    r'<div[^>]*class="[^"]*finansman-type[^"]*\b(bireysel|ticari)\b[^"]*"[^>]*>'
+    r'(.*?)</div>',
+    re.S | re.I,
+)
+_ACCOUNT_OPTION = re.compile(r"<option(?P<attrs>[^>]*)>(?P<label>[^<]*)<", re.S)
+_ATTRIBUTE = re.compile(r"([\w-]+)=\"([^\"]*)\"")
 _ACCOUNT_SELECT = re.compile(r"<select[^>]*selectTypeKarpayi.*?</select>", re.S)
 
 
@@ -87,6 +97,7 @@ class Albaraka(BaseBank):
     capabilities = frozenset(
         {"products", "finance", "profit_share", "rates", "convert"}
     )
+    finance_input_capabilities = frozenset({"monthly_profit_rate"})
     # An F5 WAF fingerprints the TLS handshake and rejects httpx whatever
     # the headers, so this bank is called through curl_cffi.
     transport = "impersonate"
@@ -129,34 +140,50 @@ class Albaraka(BaseBank):
         return built
 
     def _finance_products(self) -> list[Product]:
-        page = self._text(FINANCE_PAGE)
+        page = self._text(HOME_PAGE)
         built, seen = [], set()
-        for match in _OPTION.finditer(page):
-            try:
-                entry = json.loads(html.unescape(match.group(1)))
-            except json.JSONDecodeError:
-                continue
-            # ProductCode alone does not identify a product — nine share
-            # IHTKRED. The campaign code is unique and is what a user names.
-            key = (entry.get("ProductCode"), entry.get("ProjectCode"),
-                   entry.get("CampaingCode"))
-            if key in seen or not entry.get("CampaignName"):
-                continue
-            seen.add(key)
-            built.append(
-                Product(
-                    code=entry.get("CampaingCode") or entry.get("ProductCode") or "",
-                    name=entry["CampaignName"],
-                    category="finance",
-                    min_amount=float(entry.get("AmountMinValue") or 0),
-                    max_amount=float(entry.get("AmountMaxValue") or 0),
-                    min_term=max(int(entry.get("MaturityMinValue") or 1), 1),
-                    max_term=int(entry.get("MaturityMaxValue") or 0),
-                    # Echoed back verbatim as FinanceType; do not rebuild it
-                    # field by field.
-                    raw=entry,
-                )
+        modes = list(_FINANCE_MODE.finditer(page))
+        # The dedicated finance page remains a safe fallback if the homepage
+        # markup changes; it intentionally has only the Bireysel catalogue.
+        if not modes:
+            modes = [("bireysel", page)]
+        for mode_match in modes:
+            mode, markup = (
+                (mode_match.group(1).lower(), mode_match.group(2))
+                if hasattr(mode_match, "group") else mode_match
             )
+            request = {
+                "page": HOME_PAGE if mode == "ticari" else FINANCE_PAGE,
+                "Type": "HesaplamaTicari" if mode == "ticari" else "HesaplamaBireysel",
+                "CreditType": "K" if mode == "ticari" else "B",
+                "customer_mode": mode,
+            }
+            for match in _OPTION.finditer(markup):
+                try:
+                    entry = json.loads(html.unescape(match.group(1)))
+                except json.JSONDecodeError:
+                    continue
+                # ProductCode alone does not identify a product — nine share
+                # IHTKRED. The campaign code is unique and is what a user names.
+                key = (entry.get("ProductCode"), entry.get("ProjectCode"),
+                       entry.get("CampaingCode"), mode)
+                if key in seen or not entry.get("CampaignName"):
+                    continue
+                seen.add(key)
+                built.append(
+                    Product(
+                        code=entry.get("CampaingCode") or entry.get("ProductCode") or "",
+                        name=entry["CampaignName"],
+                        category="finance",
+                        min_amount=float(entry.get("AmountMinValue") or 0),
+                        max_amount=float(entry.get("AmountMaxValue") or 0),
+                        min_term=max(int(entry.get("MaturityMinValue") or 1), 1),
+                        max_term=int(entry.get("MaturityMaxValue") or 0),
+                        # The bank requires this complete blob verbatim, plus
+                        # the mode-specific request contract used by its UI.
+                        raw={**entry, "_calculator": request},
+                    )
+                )
         if not built:
             raise UnsupportedProduct(
                 f"{self.display_name} returned no finance products. The catalogue "
@@ -197,17 +224,25 @@ class Albaraka(BaseBank):
                 f"account list is parsed out of the page."
             )
         built, seen = [], set()
-        for code, label in _SELECT_OPTION.findall(select.group(0)):
-            # Kur Korumalı is listed twice, bireysel and ticari, under one code.
-            if not code or code in seen:
+        for option in _ACCOUNT_OPTION.finditer(select.group(0)):
+            attrs = dict(_ATTRIBUTE.findall(option.group("attrs")))
+            code = attrs.get("value", "")
+            label = html.unescape(option.group("label")).strip()
+            source_class = attrs.get("class", "")
+            # Albaraka publishes two distinct Kur Korumalı offerings under one
+            # endpoint type.  Keep both visible and addressable while retaining
+            # the unmodified Type value the live endpoint accepts.
+            variant = {"G": "bireysel", "T": "ticari"}.get(source_class)
+            identity = f"{code}:{variant}" if variant else code
+            if not code or identity in seen:
                 continue
-            seen.add(code)
+            seen.add(identity)
             per_currency = limits.get(code, {})
             bands = [b for b in per_currency.values() if b.get("min_term")]
             built.append(
                 Product(
-                    code=code,
-                    name=html.unescape(label).strip(),
+                    code=identity,
+                    name=label,
                     category="profit_share",
                     currencies=tuple(per_currency) or ("TRY",),
                     # The lowest minimum across currencies, so the product-level
@@ -219,27 +254,41 @@ class Albaraka(BaseBank):
                     ),
                     min_term=min((b["min_term"] for b in bands), default=None),
                     max_term=max((b["max_term"] for b in bands if b["max_term"]), default=None),
-                    raw={"Type": code, "limits": per_currency},
+                    raw={
+                        "Type": code,
+                        "limits": per_currency,
+                        "customer_mode": variant,
+                    },
                 )
             )
         return built
 
     # ----- finance -----
 
-    def finance_quote(self, product: str, amount: float, term: int) -> FinanceQuote:
+    def finance_quote(
+        self,
+        product: str,
+        amount: float,
+        term: int,
+        monthly_profit_rate: float | None = None,
+    ) -> FinanceQuote:
         chosen = self.find_product("finance", product)
+        calculator = chosen.raw.get("_calculator") or {}
         payload = self._plugin(
             "getFinanceCalculate",
-            FINANCE_PAGE,
-            ProfitRateByMe="false",
-            FinanceType=json.dumps(chosen.raw, ensure_ascii=False),
+            calculator.get("page", FINANCE_PAGE),
+            ProfitRateByMe="true" if monthly_profit_rate is not None else "false",
+            # `_calculator` is our routing metadata; FinanceType must remain
+            # the exact JSON object the bank placed in the select option.
+            FinanceType=json.dumps(
+                {key: value for key, value in chosen.raw.items() if key != "_calculator"},
+                ensure_ascii=False,
+            ),
             FinanceAmount=str(int(amount)),
             Maturity=str(int(term)),
-            # ProfitRateByMe=true would let us impose our own rate. We never do:
-            # the bank's rate is the answer.
-            ProfitRate="0",
-            Type="B",
-            CreditType="B",
+            ProfitRate=str(monthly_profit_rate if monthly_profit_rate is not None else 0),
+            Type=calculator.get("Type", "HesaplamaBireysel"),
+            CreditType=calculator.get("CreditType", "B"),
         )
         data = (payload or {}).get("Data") or {}
         installment = money(data.get("MonthlyInstallmentAmount"))
@@ -315,7 +364,7 @@ class Albaraka(BaseBank):
                 Currency=currency,
                 Maturity=str(int(term)),
                 Period=unit.upper(),
-                Type=chosen.code,
+                Type=chosen.raw.get("Type", chosen.code),
             )
             data = (payload or {}).get("Data") or {}
             net = money(data.get("NetProfit"))

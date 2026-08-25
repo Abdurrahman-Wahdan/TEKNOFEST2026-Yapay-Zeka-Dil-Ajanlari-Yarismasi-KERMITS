@@ -8,8 +8,11 @@ import { useMemo } from "react";
 import { Streamdown } from "streamdown";
 
 import { VuiBox, VuiTypography } from "@/components/vision";
+import { normaliseAgentMarkdown } from "@/lib/chat/markdown-normalize";
+import { internalTableHref } from "@/lib/table-url";
 
 import { MdTable, MdTbody, MdTd, MdTh, MdThead, MdTr } from "./MarkdownTable";
+import { MarkdownTableProvider } from "./markdown-table-context";
 import { domProps, type El } from "./markdown-dom";
 
 /**
@@ -66,8 +69,8 @@ const components = {
     <VuiTypography
       variant="button"
       fontWeight="regular"
-      color="text"
-      sx={{ display: "block", lineHeight: 1.7, my: 1 }}
+      color="inherit"
+      sx={{ color: "var(--foreground)", display: "block", lineHeight: 1.7, my: 1 }}
       {...domProps(props)}
     />
   ),
@@ -78,53 +81,96 @@ const components = {
   h1: (props: El<"h1">) => (
     <VuiTypography
       variant="lg"
-      color="white"
+      color="inherit"
       fontWeight="bold"
-      sx={{ mt: 2.5, mb: 1 }}
+      // Do not use Vision's legacy `white` role here. Markdown is rendered
+      // inside the Tailwind-themed chat surface, and that MUI role can retain
+      // dark-theme ink for one render while the light theme is active. The
+      // shared CSS token switches atomically with the page theme.
+      sx={{ color: "var(--foreground)", mt: 2.5, mb: 1 }}
       {...domProps(props)}
     />
   ),
   h2: (props: El<"h2">) => (
     <VuiTypography
       variant="button"
-      color="white"
+      color="inherit"
       fontWeight="bold"
-      sx={{ display: "block", mt: 2.5, mb: 1, fontSize: "1rem" }}
+      sx={{
+        color: "var(--foreground)",
+        display: "block",
+        mt: 2.5,
+        mb: 1,
+        fontSize: "1rem",
+      }}
       {...domProps(props)}
     />
   ),
   h3: (props: El<"h3">) => (
     <VuiTypography
       variant="button"
-      color="white"
+      color="inherit"
       fontWeight="bold"
-      sx={{ display: "block", mt: 2, mb: 0.5 }}
+      sx={{
+        color: "var(--foreground)",
+        display: "block",
+        mt: 2,
+        mb: 0.5,
+      }}
       {...domProps(props)}
     />
   ),
 
-  a: (props: El<"a">) => (
-    <VuiTypography
-      component="a"
-      variant="button"
-      fontWeight="regular"
-      color="info"
-      // Only external links open a new tab. An in-app link -- the agent pointing
-      // at /kampanyalar -- should stay in the app.
-      {...(props.href?.startsWith("http")
-        ? { target: "_blank", rel: "noopener noreferrer" }
-        : {})}
-      sx={{ textDecoration: "underline" }}
-      {...domProps(props)}
-    />
-  ),
+  /**
+   * Only external links open a new tab. An in-app link -- the agent pointing at
+   * a comparison table with `/tr/kampanyalar?tablo=...` -- stays in the app, so
+   * following it does not abandon the conversation.
+   *
+   * `target` and `rel` are DELETED rather than just left unset. Streamdown's own
+   * anchor renderer hardcodes `target="_blank"` and hands it down to this
+   * override in `props`, and `domProps` spreads last -- so an earlier
+   * conditional was silently overridden and every link, relative ones included,
+   * opened a new tab. Measured on a real answer: a `/tr/kampanyalar?tablo=`
+   * link rendered with `target="_blank"`.
+   *
+   * Copy-and-delete rather than a destructure, matching `domProps` itself: it
+   * leaves no discarded binding for the linter.
+   */
+  a: (props: El<"a">) => {
+    const rest = domProps(props) as Record<string, unknown>;
+    delete rest.target;
+    delete rest.rel;
+    /*
+      A link to one of our own comparison tables is forced back to its in-app
+      address, whatever host the answer gave it. The assistant is handed a
+      relative address and sometimes prefixes a host it invented, which would
+      otherwise render as an external link to a dead domain. See
+      `internalTableHref`.
+    */
+    const internal = internalTableHref(props.href);
+    if (internal) rest.href = internal;
+    return (
+      <VuiTypography
+        component="a"
+        variant="button"
+        fontWeight="regular"
+        color="inherit"
+        sx={{ color: "var(--primary-strong)", textDecoration: "underline" }}
+        {...rest}
+        {...(!internal && props.href?.startsWith("http")
+          ? { target: "_blank", rel: "noopener noreferrer" }
+          : {})}
+      />
+    );
+  },
 
   strong: (props: El<"strong">) => (
     <VuiTypography
       component="strong"
       variant="button"
       fontWeight="bold"
-      color="white"
+      color="inherit"
+      sx={{ color: "var(--foreground)" }}
       {...domProps(props)}
     />
   ),
@@ -148,7 +194,7 @@ const components = {
       component="li"
       sx={{
         display: "list-item",
-        color: "text.main",
+        color: "var(--foreground)",
         fontSize: "0.875rem",
         lineHeight: 1.7,
         my: 0.25,
@@ -346,7 +392,15 @@ export function AgentMarkdown({
     [t],
   );
 
+  const source = useMemo(() => normaliseAgentMarkdown(children), [children]);
+
+  // The table override needs the streaming flag and the message source, and it
+  // cannot be handed them as props: `components` is built at module scope, and
+  // rebuilding it per render remounts the whole markdown tree on every token.
+  const tableTools = useMemo(() => ({ streaming, source }), [streaming, source]);
+
   return (
+    <MarkdownTableProvider value={tableTools}>
     <MarkdownScope>
       <Streamdown
         mode={streaming ? "streaming" : "static"}
@@ -372,9 +426,10 @@ export function AgentMarkdown({
         // one direction on the whole message.
         dir="auto"
       >
-        {children}
+        {source}
       </Streamdown>
     </MarkdownScope>
+    </MarkdownTableProvider>
   );
 }
 

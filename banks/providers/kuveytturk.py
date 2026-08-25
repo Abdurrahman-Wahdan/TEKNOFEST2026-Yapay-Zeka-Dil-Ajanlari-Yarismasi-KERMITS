@@ -96,6 +96,7 @@ class KuveytTurk(BaseBank):
         {"products", "finance", "profit_share", "card", "rates", "convert",
          "mile_rates"}
     )
+    finance_input_capabilities = frozenset({"monthly_profit_rate"})
     # This feed calls gold "ALT (gr)" and the lira "TL".
     rate_aliases = RATE_ALIASES
 
@@ -194,7 +195,13 @@ class KuveytTurk(BaseBank):
 
     # ----- finance -----
 
-    def finance_quote(self, product: str, amount: float, term: int) -> FinanceQuote:
+    def finance_quote(
+        self,
+        product: str,
+        amount: float,
+        term: int,
+        monthly_profit_rate: float | None = None,
+    ) -> FinanceQuote:
         chosen = self.find_product("finance", product)
         self._check_limits(chosen, amount=amount, term=term)
         body = {
@@ -204,7 +211,9 @@ class KuveytTurk(BaseBank):
             "p3": str(int(term)),
             "p4": chosen.code,
             "p5": chosen.code,
-            "p6": "0.00",
+            # The bank's own calculator treats a non-zero p6 as a customer
+            # supplied monthly profit rate. Zero asks it to select the live rate.
+            "p6": "0.00" if monthly_profit_rate is None else f"{monthly_profit_rate:.2f}",
             "p7": "",
             # Not cosmetic. Two entries share ELKTRARACSARJUNITE with different
             # limits and the endpoint validates the term against the entry

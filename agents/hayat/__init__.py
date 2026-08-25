@@ -1,0 +1,1 @@
+"""Hayat Finans specialist identity."""

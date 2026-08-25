@@ -2,11 +2,20 @@
 
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { styled, useTheme } from "@mui/material/styles";
-import { ArrowUp, Brain, Mic, Plus, Square } from "lucide-react";
-import { useTranslations } from "next-intl";
+import {
+  ArrowUp,
+  ArrowRight,
+  AudioLines,
+  Eye,
+  Plus,
+  SlidersHorizontal,
+  Square,
+} from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -14,12 +23,19 @@ import {
   type KeyboardEvent,
 } from "react";
 
+import { RoundButton } from "@/components/ui/RoundButton";
 import { VuiBox } from "@/components/vision";
+import { api } from "@/lib/api";
 import { useChat } from "@/lib/chat/ChatProvider";
 import type { MentionTarget } from "@/lib/chat/types";
+import { mentionAt } from "@/lib/chat/mention";
+import { useVoiceSession } from "@/lib/chat/useVoiceSession";
 
+import { AdvancedMenu } from "./AdvancedMenu";
 import { AttachmentTray } from "./AttachmentTray";
-import { MentionMenu, mentionAt } from "./MentionMenu";
+import { ContextMenu, ContextRing } from "./ContextRing";
+import { MentionMenu } from "./MentionMenu";
+import { VoiceSessionBar } from "./VoiceSessionBar";
 
 /**
  * The composer. One of it, in both chat surfaces.
@@ -69,7 +85,44 @@ const LINE_PX = 24;
  * and one that oscillates.
  */
 const SINGLE_ROW_LEFT_PX = 56;
-const SINGLE_ROW_RIGHT_PX = 168;
+
+/**
+ * The narrowest single-row field worth offering.
+ *
+ * Above it a sentence fits before wrapping; below it the layout would change
+ * within a few words. The page leaves about 544px here and the 420px popup about
+ * 196px, so the two land either side of this without it having to know about
+ * either surface.
+ */
+const COMFORTABLE_FIELD_PX = 320;
+
+/**
+ * Even spacing in the control row, measured between what you can *see*.
+ *
+ * A single `gap` looks wrong here because the controls do not paint the same
+ * share of their boxes. Measured on the running row: an icon button draws a 20px
+ * glyph inside a 36px box, so its ink starts 8px in; the Advanced chip's ink
+ * starts at its 10px padding; and Send is a filled 36px disc whose ink starts at
+ * 0. With a flat 6px gap the eye and the ring sat 22px apart while the ring and
+ * Send sat 14px apart -- the row read as crowded at the right end even though
+ * every box gap was identical.
+ *
+ * So the gap between any two neighbours is the optical distance minus what each
+ * one insets its own ink, and the same subtraction sets the distance from the
+ * shell's edge.
+ */
+const OPTICAL_GAP_PX = 22;
+const ICON_INK_INSET_PX = 8;
+const CHIP_INK_INSET_PX = 10;
+const FILLED_INK_INSET_PX = 0;
+
+const gapBetween = (leftInset: number, rightInset: number) =>
+  OPTICAL_GAP_PX - leftInset - rightInset;
+// Used only until the right-hand controls have been measured. The real reserve
+// is derived from their rendered width below, so adding a control or translating
+// the Think label cannot make the field run underneath the buttons again.
+const SINGLE_ROW_RIGHT_FALLBACK_PX = 224;
+const SINGLE_ROW_CONTROL_CLEARANCE_PX = 20;
 
 /** How long each example placeholder holds before the next one blurs in. */
 const PLACEHOLDER_HOLD_MS = 3000;
@@ -125,8 +178,23 @@ export function ChatComposer({
   placeholder?: string;
 }) {
   const t = useTranslations("chat");
+  const locale = useLocale();
   const theme = useTheme();
-  const { status, send, stop, think, setThink, attachments } = useChat();
+  const {
+    status,
+    recommendation,
+    send,
+    stop,
+    think,
+    setThink,
+    webSearch,
+    setWebSearch,
+    model,
+    setModel,
+    attachments,
+    mentionTargets: availableMentionTargets,
+    serverSessionId,
+  } = useChat();
 
   /**
    * On a phone the controls always get their own row.
@@ -138,19 +206,105 @@ export function ChatComposer({
   const narrow = useMediaQuery(theme.breakpoints.down("sm"));
 
   const [value, setValue] = useState("");
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  // Wraps the chip and its menu, so a click on either counts as inside.
+  const advancedRef = useRef<HTMLDivElement>(null);
+  const [contextOpen, setContextOpen] = useState(false);
+  const contextRef = useRef<HTMLDivElement>(null);
   /** True once the text no longer fits on one line: controls move below. */
   const [multiline, setMultiline] = useState(false);
+  /** True while snapdom is working, so the button cannot be pressed twice. */
+  const [capturing, setCapturing] = useState(false);
   const [mentionIndex, setMentionIndex] = useState(0);
   const [caret, setCaret] = useState(0);
-
   const fieldRef = useRef<HTMLTextAreaElement>(null);
+  const transcribeRecording = useCallback(
+    async (audio: Blob, signal: AbortSignal) => {
+      const transcript = await api.voiceTranscription(audio, signal);
+      if (!transcript.text) return;
+      setValue((current) =>
+        current ? `${current.trimEnd()} ${transcript.text}` : transcript.text,
+      );
+      requestAnimationFrame(() => {
+        const field = fieldRef.current;
+        if (!field) return;
+        field.focus();
+        field.setSelectionRange(field.value.length, field.value.length);
+        setCaret(field.value.length);
+      });
+    },
+    [],
+  );
+  const voiceCallbacks = useMemo(
+    () => ({ onEnd: transcribeRecording }),
+    [transcribeRecording],
+  );
+  const voice = useVoiceSession(voiceCallbacks);
+
   const fileRef = useRef<HTMLInputElement>(null);
   const shellRef = useRef<HTMLDivElement>(null);
+  const rightControlsRef = useRef<HTMLDivElement>(null);
+  const [singleRowRightPx, setSingleRowRightPx] = useState(
+    SINGLE_ROW_RIGHT_FALLBACK_PX,
+  );
+  const [shellWidth, setShellWidth] = useState(0);
+
+  /**
+   * Reserve exactly the space occupied by the right-hand controls.
+   *
+   * This used to be a fixed 168px. Once the page-view button joined Think, mic
+   * and send, the cluster became wider than that reserve: text painted beneath
+   * the icons and the wrap probe made the same late decision. A ResizeObserver
+   * also covers translated labels and responsive font changes.
+   */
+  useLayoutEffect(() => {
+    const controls = rightControlsRef.current;
+    if (!controls) return;
+
+    const measure = () => {
+      const next = Math.ceil(controls.getBoundingClientRect().width)
+        + SINGLE_ROW_CONTROL_CLEARANCE_PX;
+      setSingleRowRightPx((current) => (current === next ? current : next));
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(controls);
+    return () => observer.disconnect();
+  }, []);
+
+  /**
+   * The shell's own width, which is what decides whether one row is viable.
+   *
+   * Not the viewport's. The popup is a 420px panel on a full-size screen, so a
+   * media query calls it wide while the field it leaves is about 196px -- barely
+   * a few words before the text wraps and the layout changes under the cursor.
+   * A container measurement covers the popup and the phone with one rule,
+   * because they are the same problem.
+   */
+  useLayoutEffect(() => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const measure = () => {
+      const next = Math.round(shell.clientWidth);
+      setShellWidth((current) => (current === next ? current : next));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(shell);
+    return () => observer.disconnect();
+  }, []);
 
   // `submitted` counts as busy: the wait before the first token is exactly when
   // someone wants to cancel, so the stop button has to be live there too.
   const isBusy = status === "streaming" || status === "submitted";
   const hasText = value.trim().length > 0;
+  const hasAttachment = attachments.prepared.length > 0;
+  const canSubmit =
+    hasText ||
+    hasAttachment ||
+    attachments.contexts.length > 0 ||
+    attachments.captures.length > 0;
 
   /**
    * Whether the controls sit on their own row rather than in the field row.
@@ -163,20 +317,56 @@ export function ChatComposer({
    * the tray's height dragged them down over the thumbnails. That is fixed by
    * giving them their own positioning context instead.
    */
-  const stacked = multiline || narrow;
+  /**
+   * Too little room for the field to share a row with the controls.
+   *
+   * Measured against what single-row would actually leave: the shell minus the
+   * attach button and the right-hand cluster. Below this the row is not worth
+   * having -- the user types a few words, the text wraps, and the controls drop
+   * to their own row anyway. Starting stacked skips that reflow.
+   */
+  const cramped =
+    shellWidth > 0 &&
+    shellWidth - SINGLE_ROW_LEFT_PX - singleRowRightPx < COMFORTABLE_FIELD_PX;
+
+  const stacked = multiline || narrow || cramped;
+
+  // Dismiss the Advanced menu. `mousedown` rather than `click`, matching the
+  // popup shell: the field takes focus on mousedown, so waiting for the click
+  // leaves the menu open through the gesture that moved the caret away from it.
+  useEffect(() => {
+    if (!advancedOpen && !contextOpen) return;
+    const onPointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (!advancedRef.current?.contains(target)) setAdvancedOpen(false);
+      if (!contextRef.current?.contains(target)) setContextOpen(false);
+    };
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setAdvancedOpen(false);
+      setContextOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [advancedOpen, contextOpen]);
 
   /** The `@…` the caret is sitting in, if any. */
   const mention = useMemo(() => mentionAt(value, caret), [value, caret]);
   const mentionTargets: MentionTarget[] = useMemo(() => {
     if (!mention) return [];
-    const query = mention.query.toLowerCase();
-    return attachments.targets.filter((target) =>
-      target.filename.toLowerCase().includes(query),
+    const query = mention.query.trim().toLocaleLowerCase(locale);
+    return availableMentionTargets.filter((target) =>
+      target.filename.toLocaleLowerCase(locale).includes(query),
     );
-  }, [mention, attachments.targets]);
-  // Only offered once something is staged. `@` with nothing attached is just an
-  // at-sign, and a menu saying "nothing to mention" on every one would be noise.
-  const mentionOpen = Boolean(mention) && attachments.targets.length > 0;
+  }, [locale, mention, availableMentionTargets]);
+  // Offered for staged files and for prepared files sent earlier in this
+  // conversation. A picked historical file is resolved by its opaque id on the
+  // next request; this is not a filename-only visual shortcut.
+  const mentionOpen = Boolean(mention) && availableMentionTargets.length > 0;
   // Clamped at read time rather than reset from an effect: the filtered list
   // shrinks as the query is typed, and an index left pointing past the end would
   // highlight nothing until the next keystroke.
@@ -211,7 +401,7 @@ export function ChatComposer({
     // 1. Would this text fit on one line in the single-row layout? Probed at that
     //    width explicitly, then the override is removed.
     const shellWidth = shellRef.current?.clientWidth ?? 0;
-    const probeWidth = Math.max(shellWidth - SINGLE_ROW_LEFT_PX - SINGLE_ROW_RIGHT_PX, 40);
+    const probeWidth = Math.max(shellWidth - SINGLE_ROW_LEFT_PX - singleRowRightPx, 40);
     el.style.width = `${probeWidth}px`;
     el.style.height = "auto";
     // A couple of pixels of slack: a single line's scrollHeight is not exactly the
@@ -229,18 +419,68 @@ export function ChatComposer({
     el.style.overflowY = needed > MAX_FIELD_PX ? "auto" : "hidden";
 
     setMultiline(wrapped);
-  }, [value]);
+  }, [singleRowRightPx, value]);
 
   useEffect(() => {
     if (autoFocus) fieldRef.current?.focus();
   }, [autoFocus]);
 
+  /**
+   * Take a picture of the page and stage it.
+   *
+   * Deliberately not awaited into the send path: capturing a full page takes long
+   * enough to notice, and a send that silently stalled behind a screenshot would
+   * read as a broken button. It stages like any other attachment and travels on
+   * the next message.
+   */
+  const capture = useCallback(async () => {
+    setCapturing(true);
+    try {
+      const [{ capturePage }, { readPageText }] = await Promise.all([
+        import("@/lib/chat/capture"),
+        import("@/lib/chat/tools"),
+      ]);
+      // Both representations, because the button promises the assistant will
+      // *see* the page and the two answer different questions: the outline has the
+      // exact figures and the current filters, the picture has the layout. Sending
+      // only the picture handed the agent numbers it had to read off pixels when
+      // they were available as text two lines away.
+      const [shot, outline] = [await capturePage(), readPageText()];
+      if (!shot) return;
+      attachments.addCapture({
+        label: `${shot.width}×${shot.height}`,
+        dataUrl: shot.dataUrl,
+        width: shot.width,
+        height: shot.height,
+        bytes: shot.bytes,
+        // Carried on the capture, not staged as a second chip: one press is one
+        // thing the user did, and two attachments would show them the mechanism
+        // the eye exists to keep out of the way.
+        outline,
+      });
+    } finally {
+      setCapturing(false);
+    }
+  }, [attachments]);
+
   const submit = useCallback(() => {
-    if (!hasText || isBusy) return;
+    if (!canSubmit || isBusy || attachments.hasPending || attachments.hasError) return;
     send(value);
     setValue("");
     setMultiline(false);
-  }, [hasText, isBusy, send, value]);
+  }, [attachments.hasError, attachments.hasPending, canSubmit, isBusy, send, value]);
+
+  const acceptRecommendation = useCallback(() => {
+    if (!recommendation) return;
+    setValue(recommendation);
+    requestAnimationFrame(() => {
+      const field = fieldRef.current;
+      if (!field) return;
+      field.focus();
+      field.setSelectionRange(recommendation.length, recommendation.length);
+      setCaret(recommendation.length);
+    });
+  }, [recommendation]);
 
   /** Replace the open `@token` with the picked filename. */
   const pickMention = useCallback(
@@ -273,6 +513,7 @@ export function ChatComposer({
     if (mentionOpen) {
       if (event.key === "ArrowDown") {
         event.preventDefault();
+        if (mentionTargets.length === 0) return;
         setMentionIndex(
           (i) =>
             (Math.min(i, mentionTargets.length - 1) + 1) %
@@ -282,6 +523,7 @@ export function ChatComposer({
       }
       if (event.key === "ArrowUp") {
         event.preventDefault();
+        if (mentionTargets.length === 0) return;
         setMentionIndex(
           (i) =>
             (Math.min(i, mentionTargets.length - 1) -
@@ -293,11 +535,14 @@ export function ChatComposer({
       }
       if (event.key === "Enter" || event.key === "Tab") {
         const target = mentionTargets[activeMention];
+        // An unmatched @query still owns these keys. Enter must not send the
+        // whole chat accidentally just because there is no row to select.
+        event.preventDefault();
         if (target) {
-          event.preventDefault();
           pickMention(target);
           return;
         }
+        return;
       }
       if (event.key === "Escape") {
         event.preventDefault();
@@ -306,6 +551,14 @@ export function ChatComposer({
         setCaret(-1);
         return;
       }
+    }
+
+    // An empty composer treats Arrow Right as accepting the recommendation.
+    // Once text exists, the key keeps its normal caret-navigation behaviour.
+    if (event.key === "ArrowRight" && !value && recommendation) {
+      event.preventDefault();
+      acceptRecommendation();
+      return;
     }
 
     // Enter sends; Shift+Enter is a newline. The IME check matters for Turkish
@@ -331,33 +584,137 @@ export function ChatComposer({
 
       <VuiBox sx={{ flex: 1 }} />
 
-      <ThinkChip
-        active={think}
-        label={t("think")}
-        onToggle={() => setThink(!think)}
-      />
-
-      {/* Kept because the design has it and dictation is a real possibility, but
-          disabled: there is no speech-to-text pipeline yet, and a button that
-          silently does nothing is worse than one that says it cannot. */}
-      <RoundButton label={t("voice")} onClick={() => {}} disabled>
-        <Mic size={20} />
-      </RoundButton>
-
-      <RoundButton
-        label={isBusy ? t("stop") : t("send")}
-        onClick={() => (isBusy ? stop() : submit())}
-        disabled={!isBusy && !hasText}
-        filled
+      <VuiBox
+        ref={rightControlsRef}
+        display="flex"
+        alignItems="center"
+        // No `gap`: each control sets its own left margin, because an even row
+        // needs uneven box gaps. See OPTICAL_GAP_PX.
+        sx={{
+          flexShrink: 0,
+          // Send is a filled disc that runs to its box edge, so it would sit
+          // 8px nearer the shell's edge than the attach glyph sits to the other.
+          mr: `${ICON_INK_INSET_PX}px`,
+        }}
       >
-        {isBusy ? (
-          <Square size={14} fill="currentColor" />
-        ) : (
-          <ArrowUp size={18} />
-        )}
-      </RoundButton>
+        {/* Deliberately *not* `position: relative`.
+            The popovers below are absolutely positioned, so they resolve against
+            the nearest positioned ancestor -- the field row, which spans the
+            composer. Anchored to this 111px chip instead, `right: 0` sent a
+            288px menu 288px leftward from the chip's right edge: fine on the
+            page, and straight off the left edge of the 420px popup, where it
+            clipped the model names. The ref is still here for click-outside. */}
+        <VuiBox ref={advancedRef} sx={{ flexShrink: 0 }}>
+          <AdvancedChip
+            open={advancedOpen}
+            // Tinted whenever a setting is off-default, not only while the menu
+            // is open. The Think chip showed that state on its face; folding it
+            // into a menu must not cost the user the ability to see it.
+            changed={think || webSearch || model !== undefined}
+            label={t("advanced")}
+            onToggle={() => setAdvancedOpen(!advancedOpen)}
+          />
+          {advancedOpen && (
+            <AdvancedMenu
+              think={think}
+              webSearch={webSearch}
+              model={model}
+              onThink={setThink}
+              onWebSearch={setWebSearch}
+              onModel={setModel}
+            />
+          )}
+        </VuiBox>
+
+        {/* "Look at this page", not "take a screenshot". The user is asking the
+            assistant to see what they see; whether that happens by photographing
+            the page or reading its markup is ours to decide, and naming the
+            mechanism only invites questions about it. The agent can ask for the
+            same thing itself -- this is the affordance for a user who already
+            knows they want it. */}
+        <RoundButton
+          label={capturing ? t("capturing") : t("capture")}
+          onClick={capture}
+          disabled={capturing}
+          ml={gapBetween(CHIP_INK_INSET_PX, ICON_INK_INSET_PX)}
+        >
+          <Eye size={20} />
+        </RoundButton>
+
+        {/* Kept because the design has it and dictation is a real possibility, but
+            disabled: there is no speech-to-text pipeline yet, and a button that
+            silently does nothing is worse than one that says it cannot. */}
+        {/* Where the mic was. That button had been disabled since it was added
+            -- there is no speech-to-text pipeline -- so the row was spending a
+            slot on a control that did nothing. */}
+        {/* Static for the same reason as the Advanced wrapper above. */}
+        <VuiBox
+          ref={contextRef}
+          sx={{
+            flexShrink: 0,
+            ml: `${gapBetween(ICON_INK_INSET_PX, ICON_INK_INSET_PX)}px`,
+          }}
+        >
+          <ContextRing
+            sessionId={serverSessionId}
+            open={contextOpen}
+            onToggle={() => setContextOpen(!contextOpen)}
+          />
+          {contextOpen && serverSessionId && (
+            <ContextMenu
+              sessionId={serverSessionId}
+              onCompacted={() => setContextOpen(false)}
+            />
+          )}
+        </VuiBox>
+
+        <RoundButton
+          label={isBusy ? t("stop") : canSubmit ? t("send") : t("voiceStart")}
+          onClick={() => (isBusy ? stop() : canSubmit ? submit() : void voice.start())}
+          disabled={!isBusy && canSubmit && (attachments.hasPending || attachments.hasError)}
+          filled
+          ml={gapBetween(ICON_INK_INSET_PX, FILLED_INK_INSET_PX)}
+        >
+          {isBusy ? (
+            <Square size={14} fill="currentColor" />
+          ) : canSubmit ? (
+            <ArrowUp size={18} />
+          ) : (
+            <AudioLines size={20} />
+          )}
+        </RoundButton>
+      </VuiBox>
     </>
   );
+
+  if (voice.phase !== "idle") {
+    return (
+      <VuiBox sx={{ position: "relative", width: "100%", maxWidth: 768, mx: "auto" }}>
+        <VuiBox
+          data-no-quote=""
+          sx={{
+            position: "relative",
+            borderRadius: "28px",
+            backgroundColor: "var(--card)",
+            border: "1px solid var(--ring)",
+            boxShadow:
+              "0 0 0 3px color-mix(in srgb, var(--ring) 12%, transparent)",
+          }}
+        >
+          <VoiceSessionBar
+            phase={voice.phase}
+            error={voice.error}
+            elapsedMs={voice.elapsedMs}
+            levels={voice.levels}
+            onRetry={() => void voice.start()}
+            onMute={voice.toggleMute}
+            onEnd={voice.end}
+            onCancel={voice.cancel}
+          />
+        </VuiBox>
+      </VuiBox>
+    );
+  }
 
   return (
     <VuiBox
@@ -385,6 +742,7 @@ export function ChatComposer({
         ref={fileRef}
         type="file"
         multiple
+        accept="image/jpeg,image/png,image/webp,.txt,.md,.markdown,.pdf,.docx"
         onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
           if (event.target.files?.length) attachments.add(event.target.files);
           // Cleared so picking the same file twice in a row still fires a change.
@@ -397,6 +755,10 @@ export function ChatComposer({
         // The width the wrap probe measures against. It is this box, not the outer
         // wrapper, because this is what the field's padding is subtracted from.
         ref={shellRef}
+        // Selecting inside the composer is the user editing their own question,
+        // so `SelectionReply` leaves it alone -- a floating button there would
+        // cover the words being worked on.
+        data-no-quote=""
         onClick={() => fieldRef.current?.focus()}
         sx={{
           position: "relative",
@@ -414,8 +776,14 @@ export function ChatComposer({
           attachments={{
             images: attachments.images,
             files: attachments.files,
+            contexts: attachments.contexts,
+            captures: attachments.captures,
             onRemoveImage: attachments.removeImage,
             onRemoveFile: attachments.removeFile,
+            onRemoveContext: attachments.removeContext,
+            onRemoveCapture: attachments.removeCapture,
+            hasPending: attachments.hasPending,
+            hasError: attachments.hasError,
           }}
         />
 
@@ -440,7 +808,7 @@ export function ChatComposer({
               // ends. Multiline: they are on their own row below and the text gets
               // the full width.
               pl: stacked ? 2.5 : `${SINGLE_ROW_LEFT_PX}px`,
-              pr: stacked ? 2.5 : `${SINGLE_ROW_RIGHT_PX}px`,
+              pr: stacked ? 2.5 : `${singleRowRightPx}px`,
               transition: "padding 200ms ease",
             }}
           >
@@ -475,11 +843,20 @@ export function ChatComposer({
                 // what inflated the popup's box -- a placeholder long enough to
                 // wrap raises a textarea's `scrollHeight`, which tripped the
                 // wrapped-text layout on an empty field.
-                placeholder={placeholder ?? ""}
+                placeholder={recommendation ? "" : placeholder ?? ""}
                 aria-label={t("title")}
               />
 
-              {!placeholder && !value && <CyclingPlaceholder />}
+              {!value &&
+                (recommendation ? (
+                  <RecommendationPlaceholder
+                    text={recommendation}
+                    label={t("acceptRecommendation")}
+                    onAccept={acceptRecommendation}
+                  />
+                ) : (
+                  !placeholder && <CyclingPlaceholder />
+                ))}
             </VuiBox>
           </VuiBox>
 
@@ -581,6 +958,7 @@ function CyclingPlaceholder() {
           key={`${index}-${i}`}
           component="span"
           className={leaving ? "animate-letter-out" : "animate-letter-in"}
+          sx={{ color: "inherit" }}
           style={
             {
               display: "inline-block",
@@ -597,87 +975,92 @@ function CyclingPlaceholder() {
   );
 }
 
-/** One of the composer's round buttons. */
-function RoundButton({
+function RecommendationPlaceholder({
+  text,
   label,
-  onClick,
-  children,
-  disabled,
-  filled,
+  onAccept,
 }: {
+  text: string;
   label: string;
-  onClick: () => void;
-  children: React.ReactNode;
-  disabled?: boolean;
-  /** The send/stop button: solid, so it reads as the primary action. */
-  filled?: boolean;
+  onAccept: () => void;
 }) {
   return (
     <VuiBox
-      component="button"
-      type="button"
-      onClick={(event: React.MouseEvent) => {
-        // The shell focuses the field on click; a button press must not also do
-        // that, or pressing stop moves the caret.
-        event.stopPropagation();
-        onClick();
-      }}
-      disabled={disabled}
-      aria-label={label}
-      title={label}
-      display="flex"
-      alignItems="center"
-      justifyContent="center"
       sx={{
-        width: 36,
-        height: 36,
-        flexShrink: 0,
-        alignSelf: "center",
-        border: "none",
-        padding: 0,
-        borderRadius: "var(--radius-full)",
-        cursor: disabled ? "not-allowed" : "pointer",
-        transition: "background-color 150ms ease, color 150ms ease",
-        ...(filled
-          ? {
-              backgroundColor: disabled ? "var(--muted)" : "var(--primary)",
-              // Idle, this glyph is the same grey as the attach and mic glyphs
-              // beside it: every icon in the composer is one shade, so the row
-              // reads as one set of controls. `--text-faint` was a second, dimmer
-              // grey and made this button look like a different kind of thing.
-              // Enabled it inverts on the brand fill, which is the whole point of
-              // the primary action.
-              color: disabled ? "var(--control-ink)" : "var(--primary-foreground)",
-              "&:hover:not(:disabled)": {
-                backgroundColor: "var(--primary-hover)",
-              },
-            }
-          : {
-              backgroundColor: "transparent",
-              // At rest these are the only thing marking attach and mic as
-              // buttons -- there is no border and no fill -- so the glyph has to
-              // clear text contrast, which --muted-foreground did not in dark.
-              color: "var(--control-ink)",
-              "&:hover:not(:disabled)": {
-                backgroundColor: "var(--muted)",
-                color: "var(--foreground)",
-              },
-              // No dimming when disabled. The mic is the only disabled control in
-              // this row, and fading it to 0.5 made it a visibly lighter grey than
-              // the attach and Think glyphs beside it -- the row has to read as one
-              // set of controls in one shade.
-              //
-              // It stays `disabled` regardless: not focusable, not clickable and
-              // announced as unavailable, so the honesty is in the semantics rather
-              // than in a shade of grey. There is no speech-to-text pipeline yet.
-            }),
-        "&:focus-visible": {
-          outline: "2px solid var(--ring)",
-          outlineOffset: 2,
-        },
+        position: "absolute",
+        inset: 0,
+        zIndex: 2,
+        display: "flex",
+        alignItems: "flex-start",
+        minWidth: 0,
+        pointerEvents: "none",
+        color: "var(--composer-suggestion-ink)",
+        fontSize: "0.9375rem",
+        lineHeight: `${LINE_PX}px`,
       }}
     >
-      {children}
+      <VuiBox
+        aria-hidden
+        sx={{
+          flex: 1,
+          minWidth: 0,
+          // VuiBox supplies its own theme-derived text colour. Explicitly
+          // inherit here or it overwrites the accessible recommendation ink
+          // with light-on-light / dark-on-dark when the theme changes.
+          color: "inherit",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          pointerEvents: "none",
+        }}
+      >
+        {text}
+      </VuiBox>
+      <VuiBox
+        component="button"
+        type="button"
+        aria-label={label}
+        title={`${label} (→)`}
+        onMouseDown={(event: React.MouseEvent<HTMLButtonElement>) => {
+          // Accept before the composer's shell moves focus back to the textarea.
+          // The click handler remains for keyboard activation, which has no
+          // preceding mouse event.
+          event.preventDefault();
+          event.stopPropagation();
+          onAccept();
+        }}
+        onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
+          event.stopPropagation();
+          onAccept();
+        }}
+        sx={{
+          flexShrink: 0,
+          width: 24,
+          height: 24,
+          ml: 0.75,
+          p: 0,
+          display: "inline-grid",
+          placeItems: "center",
+          border: 0,
+          borderRadius: "999px",
+          color: "var(--composer-suggestion-ink)",
+          backgroundColor:
+            "color-mix(in srgb, var(--composer-suggestion-ink) 10%, transparent)",
+          cursor: "pointer",
+          pointerEvents: "auto",
+          "&:hover": {
+            color: "var(--foreground)",
+            backgroundColor:
+              "color-mix(in srgb, var(--foreground) 12%, transparent)",
+          },
+          "&:focus-visible": {
+            outline: "2px solid var(--ring)",
+            outlineOffset: 2,
+          },
+        }}
+      >
+        <ArrowRight size={15} />
+      </VuiBox>
     </VuiBox>
   );
 }
@@ -691,15 +1074,22 @@ function RoundButton({
  * inactive one. Checked against ChatGPT's, which tints the background and matches
  * the text to it, with no border in either state.
  */
-function ThinkChip({
-  active,
+function AdvancedChip({
+  open,
+  changed,
   label,
   onToggle,
 }: {
-  active: boolean;
+  /** Whether the menu is showing. */
+  open: boolean;
+  /** Whether anything inside the menu is off its default. */
+  changed: boolean;
   label: string;
   onToggle: () => void;
 }) {
+  // One tinted state, two reasons to be in it: the menu is open, or a setting
+  // inside it is non-default. Both mean "there is something to look at here".
+  const active = open || changed;
   return (
     <VuiBox
       component="button"
@@ -708,7 +1098,8 @@ function ThinkChip({
         event.stopPropagation();
         onToggle();
       }}
-      aria-pressed={active}
+      aria-haspopup="dialog"
+      aria-expanded={open}
       aria-label={label}
       title={label}
       display="flex"
@@ -771,7 +1162,7 @@ function ThinkChip({
         inline content that must inherit colour should not go through it.
       */}
       <span style={{ display: "flex", flexShrink: 0 }}>
-        <Brain size={18} />
+        <SlidersHorizontal size={18} />
       </span>
       <span>{label}</span>
     </VuiBox>

@@ -36,7 +36,8 @@ import { ThemeGlyph } from "@/components/ui/ThemeGlyph";
 import { useTheme } from "@/lib/theme";
 
 /**
- * Each language's name in its own language, as in `LocaleToggleIconButton`.
+ * Each language's name in its own language, as in `LocaleToggleIconButton`
+ * (now at `components/_unmounted/LocaleToggle.tsx` — the site is Turkish-only).
  *
  * Endonyms on purpose: a switcher offering "Turkish" to someone currently
  * reading English is only useful to people who already read English, which is

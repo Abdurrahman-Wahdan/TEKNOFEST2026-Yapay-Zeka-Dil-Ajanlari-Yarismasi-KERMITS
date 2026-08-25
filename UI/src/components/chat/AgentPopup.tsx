@@ -2,7 +2,7 @@
 
 import { useMediaQuery } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { Maximize2, Plus, X } from "lucide-react";
+import { Maximize2, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { usePathname } from "@/i18n/navigation";
 import { useEffect, useRef } from "react";
@@ -13,6 +13,7 @@ import { useRouter } from "@/i18n/navigation";
 import { useAuth } from "@/lib/auth";
 import { useChat } from "@/lib/chat/ChatProvider";
 
+import { ChatHistoryMenu } from "./ChatHistoryMenu";
 import { ChatPanel } from "./ChatPanel";
 
 /**
@@ -39,14 +40,14 @@ const EDGE = "2rem";
  * mark says *whose* assistant it is, and it is already the app's own logo two
  * inches away in the drawer.
  */
-const KERMITS_LOGO = "/vision/images/kermits-logo.png";
+import { BRAND_LOGO as KERMITS_LOGO } from "@/components/ui/brand";
 
 export function AgentPopup() {
   const t = useTranslations("chat");
   const theme = useTheme();
   const router = useRouter();
   const { user } = useAuth();
-  const { popupOpen, setPopupOpen, newChat, messages } = useChat();
+  const { popupOpen, setPopupOpen } = useChat();
   const pathname = usePathname();
 
   const panelRef = useRef<HTMLDivElement>(null);
@@ -101,19 +102,32 @@ export function AgentPopup() {
     wasOpen.current = popupOpen;
   }, [popupOpen]);
 
-  // Click-outside. Skipped while full-screen, where there is no outside to click.
+  /**
+   * Close on a genuine press outside the assistant and any overlay it owns.
+   *
+   * `ChatHistoryMenu` is a descendant in React, but MUI portals its paper under
+   * `document.body`. DOM containment alone therefore calls a history-row press
+   * "outside" and unmounts the popup before the selected transcript can remain
+   * visible. Owned overlays carry a stable marker class, making the boundary
+   * explicit instead of relying on where a component library mounts a portal.
+   */
   useEffect(() => {
     if (!popupOpen || fullScreen) return;
-    const onPointerDown = (event: MouseEvent) => {
-      const target = event.target as Node;
+
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
       if (panelRef.current?.contains(target)) return;
-      // The launcher has its own handler; letting this one fire too would close
-      // and reopen in the same gesture.
-      if (launcherRef.current?.contains(target)) return;
+
+      const element =
+        target instanceof Element ? target : target.parentElement;
+      if (element?.closest(".tf26-agent-popup-owned-overlay")) return;
+
       setPopupOpen(false);
     };
-    document.addEventListener("mousedown", onPointerDown);
-    return () => document.removeEventListener("mousedown", onPointerDown);
+
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [popupOpen, fullScreen, setPopupOpen]);
 
   // Signed out, there is nobody to ask on behalf of. The auth pages render
@@ -236,12 +250,22 @@ export function AgentPopup() {
             */}
             <BrandWordmark>{BRAND_AI}</BrandWordmark>
 
-            <VuiBox display="flex" alignItems="center" gap={0.5}>
-              {messages.length > 0 && (
-                <HeaderButton label={t("newChat")} onClick={newChat}>
-                  <Plus size={16} />
-                </HeaderButton>
-              )}
+            <VuiBox
+              display="flex"
+              alignItems="center"
+              gap={0.5}
+              // Named so the history menu can line its right edge up with the
+              // close button rather than with the button that opened it, which
+              // left it floating in the middle of the panel.
+              data-panel-header-actions=""
+            >
+              {/* The same control the page header uses, rather than a second
+                  new-chat button beside a popup-only one. It brings the past
+                  conversations with it: the panel could start a chat but never
+                  return to one, so anything opened here was only reachable by
+                  expanding to /chat first. Its menu renders in a portal, so a
+                  420px panel does not clip it. */}
+              <ChatHistoryMenu />
               <HeaderButton
                 label={t("expand")}
                 onClick={() => {

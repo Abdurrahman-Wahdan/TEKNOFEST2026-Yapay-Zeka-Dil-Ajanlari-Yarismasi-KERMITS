@@ -3,10 +3,11 @@
 import Card from "@mui/material/Card";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ActionButton } from "@/components/ui/ActionButton";
 import { AmountField, IntegerField } from "@/components/ui/AmountField";
+import { CollapsibleCard } from "@/components/ui/CollapsibleCard";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { MultiSelect } from "@/components/ui/MultiSelect";
 import { Pill } from "@/components/ui/Pill";
@@ -35,6 +36,7 @@ import { applyFilters, EMPTY_FILTERS, sortRows } from "@/lib/table-filter";
 import { useBankLabels } from "@/lib/use-bank-labels";
 import { useTableSort } from "@/lib/use-table-sort";
 
+import { useAttachTable } from "@/lib/chat/use-attach-table";
 import { ProducedTable } from "./ProducedTable";
 import { BoardFilters } from "./BoardFilters";
 import { TableFilters } from "./TableFilters";
@@ -92,6 +94,7 @@ export function Comparator() {
   // (AmountField's default) until the user enters their own amount and term.
   const [amount, setAmount] = useState("");
   const [term, setTerm] = useState("");
+  const [monthlyProfitRate, setMonthlyProfitRate] = useState("");
   const [currency, setCurrency] = useState("TRY");
   const [source, setSource] = useState("USD");
   const [target, setTarget] = useState("TRY");
@@ -99,6 +102,10 @@ export function Comparator() {
   // so it gets a dedicated single-bank selection, not the multi-bank picker
   // the ranked categories (including card, now) share below.
   const [singleBank, setSingleBank] = useState<string | null>(null);
+  // Comparison families intentionally exclude offerings sold by only one bank.
+  // Keep a separate bank picker for the complete live catalogue, otherwise a
+  // product can be available through the API yet remain invisible in the UI.
+  const [catalogueBank, setCatalogueBank] = useState("albaraka");
   const [installments, setInstallments] = useState("");
   // The toggle compares against raw `sort`, not `effectiveSort` below, so the
   // first click on a category's default-sorted column gives ascending rather
@@ -112,10 +119,24 @@ export function Comparator() {
   // the right one without casting away the types the client already has.
   const [query, setQuery] = useState<RunQuery | null>(null);
 
-  const { data: banks } = useQuery({ queryKey: ["banks"], queryFn: api.banks });
+  const {
+    data: banks,
+    isPending: banksPending,
+    isError: banksError,
+  } = useQuery({ queryKey: ["banks"], queryFn: api.banks });
   const { data: familyList } = useQuery({ queryKey: ["families"], queryFn: api.families });
 
   const spec = CATEGORIES[category];
+  // Keep these lookups explicit. `next-intl` can validate and hot-reload static
+  // nested keys, while a runtime-built `familyGroup.${key}` can retain a stale
+  // namespace during Turbopack updates and throw on an otherwise valid group.
+  const familyGroupLabels: Record<string, string> = {
+    personal: t("familyGroup.personal"),
+    vehicle: t("familyGroup.vehicle"),
+    property: t("familyGroup.property"),
+    standard_account: t("familyGroup.standard_account"),
+    special_account: t("familyGroup.special_account"),
+  };
 
 
   /** Banks that can serve this category at all, and why the others cannot. */
@@ -126,6 +147,22 @@ export function Comparator() {
   const eligibleKeys = eligible.map((b) => b.name);
   const chosen = selected ?? eligibleKeys;
   const activeBanks = chosen.filter((b) => eligibleKeys.includes(b));
+  const customRateBanks = (banks ?? []).filter(
+    (bank) => activeBanks.includes(bank.name) && (bank.finance_input_capabilities ?? []).includes("monthly_profit_rate"),
+  );
+  const catalogueCategory = category === "profit_share" ? "profit_share" : "finance";
+  const catalogueBanks = (banks ?? []).filter((bank) =>
+    bank.publishes.includes(catalogueCategory),
+  );
+  const effectiveCatalogueBank = catalogueBanks.some((bank) => bank.name === catalogueBank)
+    ? catalogueBank
+    : (catalogueBanks[0]?.name ?? "");
+  const { data: catalogueProducts, isLoading: catalogueLoading } = useQuery({
+    queryKey: ["bankProducts", effectiveCatalogueBank, catalogueCategory],
+    queryFn: () => api.bankProducts(effectiveCatalogueBank, catalogueCategory),
+    enabled: (category === "finance" || category === "profit_share") && Boolean(effectiveCatalogueBank),
+    staleTime: 15 * 60 * 1000,
+  });
   // Which banks publish a rate feed is the registry's answer, not a list kept
   // here: a bank that starts publishing appears on the board without a release.
   const rateBanks = (banks ?? [])
@@ -143,7 +180,11 @@ export function Comparator() {
   // The mile-rate table is read-only reference data, like the rates board —
   // it loads on selecting a bank rather than waiting for a submit, because
   // there is nothing to submit: no amount, no term, just the published table.
-  const { data: mileRates } = useQuery({
+  const {
+    data: mileRates,
+    isPending: mileRatesPending,
+    isError: mileRatesError,
+  } = useQuery({
     queryKey: ["mileRates", effectiveSingleBank],
     queryFn: () => api.mileRates(effectiveSingleBank),
     enabled: category === "miles" && Boolean(effectiveSingleBank),
@@ -303,6 +344,34 @@ export function Comparator() {
   // Both hooks share one `["banks"]` cache entry, so it is still one request.
   const bankNames = useBankLabels();
 
+  /**
+   * What this table is, and what was asked to produce it.
+   *
+   * An instalment figure is meaningless without the amount and term behind it, so
+   * a quoted cell that travels without them forces the agent to ask the user what
+   * they typed -- which is the follow-up question attaching the row was supposed
+   * to remove. Read from `query`, the parameters actually submitted, not from the
+   * live form state: the fields can be edited after Compare was pressed, and the
+   * table on screen still belongs to the old query.
+   *
+   * Bank keys are swapped for the names on screen, for the same reason a `bank`
+   * cell is: `kuveytturk` is not what the user is looking at.
+   */
+  const tableAbout = useMemo(() => {
+    if (!query) return undefined;
+    const params = Object.entries(query.params)
+      .filter(([, value]) => value !== undefined && value !== null && value !== "")
+      .map(([key, value]) => {
+        const text = Array.isArray(value)
+          ? value.map((v) => bankNames[String(v)] ?? String(v)).join(", ")
+          : String(value);
+        return `${key}=${text}`;
+      })
+      .join("; ");
+    return params || undefined;
+  }, [query, bankNames]);
+
+
   const labels: Labels = {
     bank: t("bank"), instalment: t("instalment"), total: t("total"),
     profitRate: t("profitRate"), annualCost: t("annualCost"), product: t("product"),
@@ -313,8 +382,7 @@ export function Comparator() {
     source: t("bankOwn"), computed: t("computed"), card: t("card"),
     installments: t("installments"), tier: t("tier"), category: t("category_label"),
     perLira: t("perLira"), basis: t("basis"), insured: t("insured"),
-    unit: t("unit"), perUnit: t("perUnit"), perGram: t("perGram"),
-    perCoin: t("perCoin"),
+    unit: t("unit"), perUnit: t("perUnit"), perGram: t("perGram"), perCoin: t("perCoin"),
     uninsured: t("uninsured"), campaign: t("campaign"), coversAll: t("coversAll"), rateOnly: t("rateOnly"),
   };
 
@@ -330,14 +398,14 @@ export function Comparator() {
       if (stream.live) {
         for (const [bank, board] of Object.entries(stream.banks) as [string, StreamedBoard][]) {
           for (const r of board.rates) {
-            if (rateGroup(r) === "parity") continue;
+            if (rateGroup(r) === "parity" || (r.quote_currency ?? "TRY") !== "TRY") continue;
             collected.push({ ...r, bank });
           }
         }
       } else {
         rateQueries.forEach((q, i) => {
           for (const r of (q.data ?? []) as Rate[]) {
-            if (rateGroup(r) === "parity") continue; // a cross rate is not a TRY price
+            if (rateGroup(r) === "parity" || (r.quote_currency ?? "TRY") !== "TRY") continue; // not a TRY price
             collected.push({ ...r, bank: rateBanks[i] });
           }
         });
@@ -357,6 +425,33 @@ export function Comparator() {
     if (category === "card") return cardTable(c, labels);
     return null;
   })();
+
+  // Each category owns its loading state. The submit-driven query is disabled
+  // for the two read-only boards, and TanStack correctly keeps such a query in
+  // `pending` because it has no data. Letting that unrelated state control the
+  // Results card is what left FX Rates saying "Loading..." after its stream and
+  // REST fallbacks had already returned.
+  const ratesHaveData = stream.live || rateQueries.some((q) => (q.data?.length ?? 0) > 0);
+  const ratesPending = category === "rates"
+    && !ratesHaveData
+    && (banksPending || rateQueries.some((q) => q.isPending || q.isFetching));
+  const ratesError = category === "rates"
+    && !ratesHaveData
+    && (banksError || (rateQueries.length > 0 && rateQueries.every((q) => q.isError)));
+  const submitDriven = category !== "rates" && category !== "miles";
+  const resultsPending = category === "rates"
+    ? ratesPending
+    : category === "miles"
+      ? mileRatesPending
+      : submitDriven && query !== null && result.isPending;
+  const resultsError = category === "rates"
+    ? ratesError
+    : category === "miles"
+      ? mileRatesError
+      : submitDriven && query !== null && result.isError;
+  const resultsVisible = category === "rates" || category === "miles"
+    ? resultsPending || resultsError || table !== null
+    : query !== null;
 
   // The user's choice when they have made one, otherwise the category's own
   // ranking. Passed to the table as well as to the sort, so the header shows
@@ -454,6 +549,17 @@ export function Comparator() {
         bankNames,
       )
     : [];
+  const tableTitle = t(`category.${category}`);
+
+  // The filtered, sorted, visible rows -- what the user is actually looking at.
+  const attach = useAttachTable({
+    columns: shownColumns,
+    rows,
+    title: tableTitle,
+    about: tableAbout,
+    bankLabels: bankNames,
+    groups: shownGroups,
+  });
 
   const run = () => {
     resetSort();
@@ -461,7 +567,13 @@ export function Comparator() {
     if (category === "finance") {
       setQuery({
         kind: "finance",
-        params: { family, amount: Number(amount), term: Number(term), banks: activeBanks },
+        params: {
+          family,
+          amount: Number(amount),
+          term: Number(term),
+          banks: activeBanks,
+          monthly_profit_rate: Number(monthlyProfitRate) > 0 ? Number(monthlyProfitRate) : undefined,
+        },
       });
     } else if (category === "profit_share") {
       // Days, always. Five of the six banks answer in days natively, and
@@ -494,6 +606,15 @@ export function Comparator() {
 
   const unavailable = result.data?.unavailable ?? [];
   const ineligible = (banks ?? []).filter((b) => !b.publishes.includes(spec.capability));
+  const resultsRef = useRef<HTMLDivElement>(null);
+
+  // The Results card mounts on the first Compare, so on a tall form it can
+  // appear below the fold and a successful click reads as doing nothing.
+  useEffect(() => {
+    if (query !== null && category !== "rates" && category !== "miles") {
+      resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [query, category]);
 
   return (
     <VuiBox display="flex" flexDirection="column" gap="24px">
@@ -603,6 +724,7 @@ export function Comparator() {
             value={family}
             options={families.map((f) => ({
               value: f.key,
+              group: familyGroupLabels[f.group] ?? f.group,
               // The bank count belongs in the label, not a second line: a native
               // <option> renders one string, and knowing a family reaches two
               // banks rather than six is the whole basis for picking it.
@@ -631,7 +753,7 @@ export function Comparator() {
           </VuiBox>
         )}
 
-        {category === "profit_share" && (
+        {category === "profit_share" && currencyOptions.length > 1 && (
           <Dropdown
             label={t("currency")}
             value={effectiveCurrency}
@@ -656,6 +778,16 @@ export function Comparator() {
                 onChange={(next) => { setTerm(next); setQuery(null); }} />
             )}
 
+            {category === "finance" && (
+              <AmountField
+                label={t("customProfitRate")}
+                value={monthlyProfitRate}
+                fullWidth={false}
+                minWidth="12rem"
+                onChange={(next) => { setMonthlyProfitRate(next); setQuery(null); }}
+              />
+            )}
+
             <ActionButton
               onClick={run}
               disabled={activeBanks.length === 0 || broken.size > 0 || missingInput}
@@ -663,6 +795,14 @@ export function Comparator() {
               {t("run")}
             </ActionButton>
           </VuiBox>
+        )}
+
+        {category === "finance" && Number(monthlyProfitRate) > 0 && (
+          <VuiTypography variant="caption" color="text" sx={{ display: "block", mt: 1 }}>
+            {t("customProfitRateHint", {
+              banks: customRateBanks.map((bank) => bank.display_name).join(", ") || t("noResults"),
+            })}
+          </VuiTypography>
         )}
 
         {/* The ceiling, and who set it -- only once the current input actually
@@ -689,8 +829,8 @@ export function Comparator() {
           for the user to press Compare. Without this, an empty "Results" card
           sat under the form on every category before a single request had
           been made. */}
-      {(category === "rates" || category === "miles" ? table : query !== null) && (
-        <Card>
+      {resultsVisible && (
+        <Card ref={resultsRef}>
           <VuiBox mb="22px" display="flex" alignItems="center" gap="12px" flexWrap="wrap">
             <VuiTypography variant="lg" color="white">{t("results")}</VuiTypography>
             {/* Unmounted, not deleted: how long the round trip took is a
@@ -701,7 +841,19 @@ export function Comparator() {
                 block, not a redesign. */}
           </VuiBox>
 
-          {result.isError ? (
+          {query?.kind === "finance" && query.params.monthly_profit_rate !== undefined && (
+            <VuiBox mb={2}>
+              <Pill tone="warn">
+                {t("customProfitRateResult", { rate: query.params.monthly_profit_rate })}
+              </Pill>
+            </VuiBox>
+          )}
+
+          {resultsPending ? (
+            <VuiTypography variant="button" color="text" fontWeight="regular">
+              {tc("loading")}
+            </VuiTypography>
+          ) : resultsError ? (
             <VuiTypography variant="button" color="text" fontWeight="regular">
               {tc("error")}
             </VuiTypography>
@@ -731,6 +883,12 @@ export function Comparator() {
                   : undefined}
                 rowKey={category === "rates" ? "instrument" : undefined}
                 groups={shownGroups}
+                // Not drawn: the card header already names the comparison. This
+                // is so a quoted cell can say which comparison it came out of.
+                title={tableTitle}
+                about={tableAbout}
+                onAttachRow={attach.onAttachRow}
+                onAttachTable={attach.onAttachTable}
               />
               </>
             )
@@ -770,6 +928,60 @@ export function Comparator() {
             ))}
           </VuiBox>
         </Card>
+      )}
+
+      {/* Last on the page, below the ranking and below the banks that could
+          not be ranked: this is deliberately separate from the
+          comparison-family picker above. A product does not disappear merely
+          because no second bank sells the same thing -- the catalogue is the
+          complete set of bank-published options, while the picker remains the
+          subset that can be ranked. */}
+      {(category === "finance" || category === "profit_share") && (
+        // Folded on arrival: it is the longest card on the page and the one
+        // nobody came for -- the ranking above answers the question, this
+        // answers "what else does that bank sell". Its description stays
+        // visible while folded, so the heading still says what is inside.
+        <CollapsibleCard
+          title={t("catalogueTitle")}
+          description={t("catalogueDescription")}
+          defaultCollapsed
+        >
+          <VuiBox mt={2}>
+            <Dropdown
+              label={t("bank")}
+              value={effectiveCatalogueBank}
+              options={catalogueBanks.map((bank) => ({ value: bank.name, label: bank.display_name }))}
+              onChange={setCatalogueBank}
+            />
+          </VuiBox>
+          <VuiBox mt={2} display="flex" flexDirection="column" gap="8px">
+            {catalogueLoading ? (
+              <VuiTypography variant="caption" color="text">{tc("loading")}</VuiTypography>
+            ) : catalogueProducts?.length ? (
+              catalogueProducts.map((product) => (
+                <VuiBox
+                  key={product.code}
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="space-between"
+                  gap="12px"
+                  flexWrap="wrap"
+                  sx={{
+                    borderBottom: "1px solid",
+                    borderColor: "borders.main",
+                    paddingBottom: "8px",
+                  }}
+                  >
+                    <VuiTypography variant="button" color="white" fontWeight="medium">
+                      {product.name}
+                    </VuiTypography>
+                </VuiBox>
+              ))
+            ) : (
+              <VuiTypography variant="caption" color="text">{t("noResults")}</VuiTypography>
+            )}
+          </VuiBox>
+        </CollapsibleCard>
       )}
     </VuiBox>
   );
@@ -867,4 +1079,3 @@ function Bounds({
     </VuiBox>
   );
 }
-

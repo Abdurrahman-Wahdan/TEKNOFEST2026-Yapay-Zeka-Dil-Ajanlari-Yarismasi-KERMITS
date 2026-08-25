@@ -1,0 +1,1 @@
+"""Vakıf Katılım specialist identity."""
