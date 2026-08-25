@@ -18,6 +18,7 @@ def clear_caches():
     from banks import clear_catalogue_cache, clear_http_cache
     from banks import status
     from corpus import store as corpus_store
+    from agents.shared.web_research import clear_web_research_cache
     from embeddings import clear_embedding_cache
     from llm.context import clear_cache as clear_context_cache
     from vector_stores import clear_client_cache
@@ -34,6 +35,7 @@ def clear_caches():
         corpus_store.clear_cache()
         # Probed context windows, keyed on the tunnel URL a test may have moved.
         clear_context_cache()
+        clear_web_research_cache()
 
     clear()
     yield

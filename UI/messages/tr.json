@@ -126,6 +126,8 @@
     "send": "Gönder",
     "newChat": "Yeni sohbet",
     "sources": "Kaynaklar",
+    "onlineSources": "İnternet kaynakları",
+    "knowledgeBaseSources": "Bilgi tabanı",
     "scanned": "Taranmış sayfadan okundu",
     "stage": {
       "retrieving": "Kaynaklar aranıyor…",
@@ -173,6 +175,7 @@
     "modelsError": "Modeller alınamadı",
     "copyCode": "Kodu kopyala",
     "copied": "Kopyalandı",
+    "acceptRecommendation": "Bu öneriyi kullan",
     "mockNotice": "Asistan henüz bağlı değil — aşağıdaki yanıtlar örnek veridir.",
     "placeholders": [
       "1 milyon TL, 120 ay vadede en uygun banka hangisi?",
@@ -199,7 +202,7 @@
     "voiceFailed": "Mikrofon başlatılamadı. Cihazınızı kontrol edip yeniden deneyin.",
     "voiceTranscriptionFailed": "Kayıt metne dönüştürülemedi. Lütfen yeniden konuşun.",
     "mentionLabel": "Ekli belgeler",
-    "mentionEmpty": "Henüz bir şey eklenmedi",
+    "mentionEmpty": "Eşleşen ek bulunamadı",
     "history": "Sohbet geçmişi",
     "historyEmpty": "Henüz geçmiş sohbet yok",
     "deleteChat": "Sohbeti sil",

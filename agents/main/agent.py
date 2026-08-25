@@ -2,6 +2,7 @@
 
 from langchain.agents import create_agent
 
+from config.settings import settings
 from llm import get_llm
 from llm.context import usable_context_window
 from llm.factory import resolve_model_key
@@ -11,6 +12,24 @@ from ..shared.checkpoints import get_checkpointer
 from ..shared.compaction import build_compaction
 from ..shared.runtime import AgentContext
 from .prompt import NAME
+
+
+SEARCH_ONLY_SUPERVISOR_GUIDANCE = """
+
+SEARCH-ONLY ASSESSMENT MODE is active. Bank specialists can discover links with
+search_bank_web but cannot open pages with read_bank_source. Do not instruct a
+specialist to claim it inspected or verified a page body. Treat returned titles
+and snippets as discovery leads only, clearly label them unverified, and say
+that conclusive URL verification requires restoring the direct reader.
+"""
+
+
+def system_prompt() -> str:
+    return NAME + (
+        SEARCH_ONLY_SUPERVISOR_GUIDANCE
+        if not settings.WEB_READ_SOURCE_ENABLED
+        else ""
+    )
 
 
 def build_main_agent(model: str | None = None, thinking: bool = False):
@@ -32,6 +51,7 @@ def build_main_agent(model: str | None = None, thinking: bool = False):
     """
     tools = build_specialist_tools()
     compaction, _ = main_compaction(model)
+    prompt = system_prompt()
     return create_agent(
         # stream_usage: this agent streams, and a streamed response carries no
         # usage at all without it -- measured, every chunk came back with
@@ -40,7 +60,7 @@ def build_main_agent(model: str | None = None, thinking: bool = False):
         # spend is invisible.
         model=get_llm(model or "chat", thinking=thinking, stream_usage=True),
         tools=tools,
-        system_prompt=NAME,
+        system_prompt=prompt,
         context_schema=AgentContext,
         checkpointer=get_checkpointer(),
         middleware=[compaction],
@@ -63,7 +83,9 @@ def main_compaction(model: str | None = None):
     tools = build_specialist_tools()
     # The same tool list the model is given: the threshold is a fraction of what
     # is left after these schemas, so measuring a different list would move it.
-    window = usable_context_window(resolve_model_key(model or "chat"), NAME, tools)
+    window = usable_context_window(
+        resolve_model_key(model or "chat"), system_prompt(), tools
+    )
     return build_compaction(window, specialist=False), window
 
 

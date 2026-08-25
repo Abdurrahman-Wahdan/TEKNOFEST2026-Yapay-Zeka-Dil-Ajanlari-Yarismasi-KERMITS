@@ -694,6 +694,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/chat/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload Chat Attachment
+         * @description Prepare one file without exposing document page images to the browser.
+         */
+        post: operations["upload_chat_attachment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/chat/sessions": {
         parameters: {
             query?: never;
@@ -730,6 +750,26 @@ export interface paths {
         post?: never;
         /** Delete Chat Session */
         delete: operations["delete_chat_session"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chat/sessions/{session_id}/recommendation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Recommendation
+         * @description Generate the next composer message from this conversation's private agent.
+         */
+        post: operations["create_recommendation"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -950,11 +990,22 @@ export interface components {
              */
             captures?: components["schemas"]["CapturePayload"][];
             /**
+             * Attachments
+             * @description Opaque ids from POST /api/chat/attachments. The server resolves text or page images only for the authenticated owner and never persists their bytes in the conversation transcript.
+             */
+            attachments?: components["schemas"]["PreparedAttachmentRef"][];
+            /**
              * Think
              * @description Keep the model's chain-of-thought on. Only changes the request for models that reason by default -- `GET /api/models` reports which with `supports_thinking`, and for the rest the flag is discarded downstream rather than silently altering the answer.
              * @default false
              */
             think: boolean;
+            /**
+             * Websearch
+             * @description Permit bank specialists to search and read current public pages on their own bank domains for this turn. The supervisor never receives a direct web tool.
+             * @default false
+             */
+            webSearch: boolean;
             /**
              * Model
              * @description A key from `GET /api/models`. Null answers with the configured chat model, which is what every caller that does not care should send.
@@ -1066,6 +1117,11 @@ export interface components {
              * File
              * @description One complete browser voice recording.
              */
+            file: string;
+        };
+        /** Body_upload_chat_attachment */
+        Body_upload_chat_attachment: {
+            /** File */
             file: string;
         };
         /**
@@ -1674,6 +1730,35 @@ export interface components {
              */
             due_date: string;
         };
+        /**
+         * PreparedAttachmentOut
+         * @description Browser-visible metadata; preprocessed content remains server-side.
+         */
+        PreparedAttachmentOut: {
+            /** Id */
+            id: string;
+            /** Filename */
+            filename: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "image" | "text" | "document";
+            /** Mediatype */
+            mediaType: string;
+            /** Size */
+            size: number;
+            /** Pagecount */
+            pageCount?: number | null;
+        };
+        /**
+         * PreparedAttachmentRef
+         * @description An opaque id returned by the authenticated attachment upload endpoint.
+         */
+        PreparedAttachmentRef: {
+            /** Id */
+            id: string;
+        };
         /** ProductOut */
         ProductOut: {
             /** Code */
@@ -1828,6 +1913,23 @@ export interface components {
             ready: boolean;
             /** Dependencies */
             dependencies: components["schemas"]["DependencyOut"][];
+        };
+        /** RecommendationOut */
+        RecommendationOut: {
+            /** Text */
+            text: string;
+        };
+        /**
+         * RecommendationRequest
+         * @description The display language for one context-aware composer recommendation.
+         */
+        RecommendationRequest: {
+            /**
+             * Locale
+             * @default en
+             * @enum {string}
+             */
+            locale: "en" | "tr";
         };
         /** RefreshRequest */
         RefreshRequest: {
@@ -3325,6 +3427,39 @@ export interface operations {
             };
         };
     };
+    upload_chat_attachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_chat_attachment"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreparedAttachmentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_sessions: {
         parameters: {
             query?: never;
@@ -3393,6 +3528,41 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_recommendation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecommendationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecommendationOut"];
+                };
             };
             /** @description Validation Error */
             422: {

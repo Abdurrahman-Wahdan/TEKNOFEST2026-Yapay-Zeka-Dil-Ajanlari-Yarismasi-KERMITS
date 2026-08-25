@@ -126,6 +126,8 @@
     "send": "Send",
     "newChat": "New chat",
     "sources": "Sources",
+    "onlineSources": "Online sources",
+    "knowledgeBaseSources": "Knowledge base",
     "scanned": "Read from a scanned page",
     "stage": {
       "retrieving": "Searching the sources…",
@@ -173,6 +175,7 @@
     "modelsError": "Models unavailable",
     "copyCode": "Copy code",
     "copied": "Copied",
+    "acceptRecommendation": "Use this recommendation",
     "mockNotice": "The assistant is not connected yet — answers below are sample data.",
     "placeholders": [
       "Which bank is cheapest for 1M TRY over 120 months?",
@@ -199,7 +202,7 @@
     "voiceFailed": "The microphone could not start. Check your device and try again.",
     "voiceTranscriptionFailed": "The recording could not be transcribed. Try speaking again.",
     "mentionLabel": "Attached documents",
-    "mentionEmpty": "Nothing attached yet",
+    "mentionEmpty": "No matching attachment",
     "history": "Chat history",
     "historyEmpty": "No past conversations yet",
     "deleteChat": "Delete conversation",

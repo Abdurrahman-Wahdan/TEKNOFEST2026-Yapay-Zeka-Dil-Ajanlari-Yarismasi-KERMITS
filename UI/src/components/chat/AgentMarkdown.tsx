@@ -8,6 +8,7 @@ import { useMemo } from "react";
 import { Streamdown } from "streamdown";
 
 import { VuiBox, VuiTypography } from "@/components/vision";
+import { normaliseAgentMarkdown } from "@/lib/chat/markdown-normalize";
 
 import { MdTable, MdTbody, MdTd, MdTh, MdThead, MdTr } from "./MarkdownTable";
 import { MarkdownTableProvider } from "./markdown-table-context";
@@ -67,8 +68,8 @@ const components = {
     <VuiTypography
       variant="button"
       fontWeight="regular"
-      color="text"
-      sx={{ display: "block", lineHeight: 1.7, my: 1 }}
+      color="inherit"
+      sx={{ color: "var(--foreground)", display: "block", lineHeight: 1.7, my: 1 }}
       {...domProps(props)}
     />
   ),
@@ -79,27 +80,42 @@ const components = {
   h1: (props: El<"h1">) => (
     <VuiTypography
       variant="lg"
-      color="white"
+      color="inherit"
       fontWeight="bold"
-      sx={{ mt: 2.5, mb: 1 }}
+      // Do not use Vision's legacy `white` role here. Markdown is rendered
+      // inside the Tailwind-themed chat surface, and that MUI role can retain
+      // dark-theme ink for one render while the light theme is active. The
+      // shared CSS token switches atomically with the page theme.
+      sx={{ color: "var(--foreground)", mt: 2.5, mb: 1 }}
       {...domProps(props)}
     />
   ),
   h2: (props: El<"h2">) => (
     <VuiTypography
       variant="button"
-      color="white"
+      color="inherit"
       fontWeight="bold"
-      sx={{ display: "block", mt: 2.5, mb: 1, fontSize: "1rem" }}
+      sx={{
+        color: "var(--foreground)",
+        display: "block",
+        mt: 2.5,
+        mb: 1,
+        fontSize: "1rem",
+      }}
       {...domProps(props)}
     />
   ),
   h3: (props: El<"h3">) => (
     <VuiTypography
       variant="button"
-      color="white"
+      color="inherit"
       fontWeight="bold"
-      sx={{ display: "block", mt: 2, mb: 0.5 }}
+      sx={{
+        color: "var(--foreground)",
+        display: "block",
+        mt: 2,
+        mb: 0.5,
+      }}
       {...domProps(props)}
     />
   ),
@@ -109,13 +125,13 @@ const components = {
       component="a"
       variant="button"
       fontWeight="regular"
-      color="info"
+      color="inherit"
       // Only external links open a new tab. An in-app link -- the agent pointing
       // at /kampanyalar -- should stay in the app.
       {...(props.href?.startsWith("http")
         ? { target: "_blank", rel: "noopener noreferrer" }
         : {})}
-      sx={{ textDecoration: "underline" }}
+      sx={{ color: "var(--primary-strong)", textDecoration: "underline" }}
       {...domProps(props)}
     />
   ),
@@ -125,7 +141,8 @@ const components = {
       component="strong"
       variant="button"
       fontWeight="bold"
-      color="white"
+      color="inherit"
+      sx={{ color: "var(--foreground)" }}
       {...domProps(props)}
     />
   ),
@@ -149,7 +166,7 @@ const components = {
       component="li"
       sx={{
         display: "list-item",
-        color: "text.main",
+        color: "var(--foreground)",
         fontSize: "0.875rem",
         lineHeight: 1.7,
         my: 0.25,
@@ -347,10 +364,12 @@ export function AgentMarkdown({
     [t],
   );
 
+  const source = useMemo(() => normaliseAgentMarkdown(children), [children]);
+
   // The table override needs the streaming flag and the message source, and it
   // cannot be handed them as props: `components` is built at module scope, and
   // rebuilding it per render remounts the whole markdown tree on every token.
-  const tableTools = useMemo(() => ({ streaming, source: children }), [streaming, children]);
+  const tableTools = useMemo(() => ({ streaming, source }), [streaming, source]);
 
   return (
     <MarkdownTableProvider value={tableTools}>
@@ -379,7 +398,7 @@ export function AgentMarkdown({
         // one direction on the whole message.
         dir="auto"
       >
-        {children}
+        {source}
       </Streamdown>
     </MarkdownScope>
     </MarkdownTableProvider>

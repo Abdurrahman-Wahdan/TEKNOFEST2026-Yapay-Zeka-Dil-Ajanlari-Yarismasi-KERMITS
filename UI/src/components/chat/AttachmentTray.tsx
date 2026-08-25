@@ -122,7 +122,10 @@ export function AttachmentTray({ attachments }: { attachments: ChatAttachments }
                   borderRadius: "var(--radius-sm)",
                   overflow: "hidden",
                   backgroundColor: "var(--muted)",
+                  border: image.status === "error" ? "1px solid var(--danger)" : undefined,
+                  opacity: image.status === "uploading" ? 0.65 : 1,
                 }}
+                title={image.error || image.filename}
               >
                 {/* A staged local preview via object URL, not a remote asset, so
                     next/image would add a loader for no benefit. */}
@@ -190,8 +193,11 @@ export function AttachmentTray({ attachments }: { attachments: ChatAttachments }
                 sx={{
                   borderRadius: "var(--radius-sm)",
                   backgroundColor: "var(--muted)",
-                  border: "1px solid var(--border)",
+                  border: "1px solid",
+                  borderColor: file.status === "error" ? "var(--danger)" : "var(--border)",
+                  opacity: file.status === "uploading" ? 0.65 : 1,
                 }}
+                title={file.error || file.filename}
               >
                 {/* --control-ink rather than --text-faint: the glyph is what
                     marks this chip as a document instead of a picture, and

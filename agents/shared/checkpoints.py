@@ -42,8 +42,9 @@ def close_checkpointer() -> None:
 
 
 def delete_session_checkpoints(session_id: str) -> None:
-    """Remove the supervisor and every private bank memory for one chat."""
+    """Remove the supervisor and every private agent memory for one chat."""
     checkpointer = get_checkpointer()
     checkpointer.delete_thread(f"{session_id}:main")
+    checkpointer.delete_thread(f"{session_id}:recommendation")
     for spec in SPECS:
         checkpointer.delete_thread(f"{session_id}:bank:{spec.bank}")

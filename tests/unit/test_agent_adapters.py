@@ -1,12 +1,13 @@
 """Main-agent adapters expose summaries, not specialist internals."""
 
+import json
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event
 
 import pytest
 from langchain.agents import create_agent
 from langchain_core.language_models.fake_chat_models import FakeMessagesListChatModel
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
 
 from agents.shared import agent_tools
@@ -48,6 +49,10 @@ class _Runtime:
     }
 
 
+class _WebRuntime(_Runtime):
+    context = {"session_id": "chat-1", "web_search_enabled": True}
+
+
 class _ToolCallingFake(FakeMessagesListChatModel):
     """The stock fake deliberately omits tool binding; agents require it."""
 
@@ -71,7 +76,314 @@ def test_main_adapter_uses_its_bank_private_thread(monkeypatch):
     assert result == "Live result"
     assert tool.name == "ask_kuveytturk"
     assert "request" in tool.args_schema.model_json_schema()["properties"]
+    assert "web_research_required" in tool.args_schema.model_json_schema()["properties"]
     assert "bank" not in tool.args_schema.model_json_schema()["properties"]
+
+
+def test_explicit_web_requirement_reaches_the_specialist_prompt(monkeypatch):
+    built: dict = {}
+
+    class _WebSpecialist:
+        def invoke(self, payload, config, context):
+            return {"messages": [
+                ToolMessage(
+                    name="search_bank_web",
+                    tool_call_id="search-1",
+                    content=json.dumps({
+                        "bank": "kuveytturk",
+                        "source_type": "web_search",
+                        "status": "no_results",
+                        "results": [],
+                    }),
+                ),
+                AIMessage(content="The web search returned no results."),
+            ]}
+
+    def build(bank, monthly_profit_rate=None, **kwargs):
+        built.update(bank=bank, monthly_profit_rate=monthly_profit_rate, **kwargs)
+        return _WebSpecialist()
+
+    monkeypatch.setattr(agent_tools, "build_specialist", build)
+    spec = next(spec for spec in SPECS if spec.bank == "kuveytturk")
+    tool = agent_tools.build_specialist_tool(spec)
+
+    result = tool.func(
+        "Search the internet and find everything available.",
+        _WebRuntime(),
+        web_research_required=True,
+    )
+
+    assert built == {
+        "bank": "kuveytturk",
+        "monthly_profit_rate": None,
+        "web_research_enabled": True,
+        "web_research_required": True,
+    }
+    assert "search_bank_web" in result
+
+
+def test_required_web_research_refuses_to_fall_back_when_toggle_is_off(monkeypatch):
+    monkeypatch.setattr(
+        agent_tools,
+        "build_specialist",
+        lambda *args, **kwargs: pytest.fail("specialist must not run"),
+    )
+    spec = next(spec for spec in SPECS if spec.bank == "kuveytturk")
+    tool = agent_tools.build_specialist_tool(spec)
+
+    result = tool.func(
+        "Search the internet.", _Runtime(), web_research_required=True
+    )
+
+    assert "Web search is disabled" in result
+    assert "indexed retrieval does not satisfy" in result
+
+
+def test_all_bank_coverage_does_not_require_web_when_toggle_is_off(monkeypatch):
+    class _AvailableSourcesSpecialist:
+        def invoke(self, payload, config, context):
+            assert "her banka" in payload["messages"][0][1]
+            return {"messages": [
+                ToolMessage(
+                    name="profit_share_quote",
+                    tool_call_id="quote-1",
+                    content=json.dumps({
+                        "bank": "kuveytturk",
+                        "source_type": "live_endpoint",
+                        "retrieved_at": "2026-08-25T10:00:00+00:00",
+                        "status": "ok",
+                    }),
+                ),
+                AIMessage(content="The live endpoint supplied the current result."),
+            ]}
+
+    monkeypatch.setattr(
+        agent_tools,
+        "build_specialist",
+        lambda bank, monthly_profit_rate=None: _AvailableSourcesSpecialist(),
+    )
+    spec = next(spec for spec in SPECS if spec.bank == "kuveytturk")
+    tool = agent_tools.build_specialist_tool(spec)
+
+    result = tool.func(
+        "Güncel kâr oranlarını her banka için bulabilir misin?",
+        _Runtime(),
+        web_research_required=False,
+    )
+
+    assert "current result" in result
+    assert "profit_share_quote" in result
+    assert "enable Web search" not in result
+
+
+def test_web_requirement_schema_distinguishes_sources_from_bank_coverage():
+    description = agent_tools.DelegateInput.model_json_schema()["properties"][
+        "web_research_required"
+    ]["description"]
+
+    assert "only when" in description
+    assert "all or every bank" in description
+    assert "her banka" in description
+
+
+def test_required_web_research_gets_one_corrective_retry(monkeypatch):
+    calls = 0
+
+    class _RetryingSpecialist:
+        def invoke(self, payload, config, context):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                return {"messages": [AIMessage(content="Indexed answer only.")]}
+            return {"messages": [
+                AIMessage(content="Indexed answer only."),
+                ToolMessage(
+                    name="search_bank_web",
+                    tool_call_id="search-1",
+                    content=json.dumps({
+                        "bank": "kuveytturk",
+                        "source_type": "web_search",
+                        "status": "no_results",
+                        "results": [],
+                    }),
+                ),
+                AIMessage(content="Corrected web answer."),
+            ]}
+
+    monkeypatch.setattr(
+        agent_tools,
+        "build_specialist",
+        lambda *args, **kwargs: _RetryingSpecialist(),
+    )
+    spec = next(spec for spec in SPECS if spec.bank == "kuveytturk")
+    tool = agent_tools.build_specialist_tool(spec)
+
+    result = tool.func(
+        "Find everything online.", _WebRuntime(), web_research_required=True
+    )
+
+    assert calls == 2
+    assert "Corrected web answer." in result
+    assert "search_bank_web" in result
+
+
+def test_adapter_machine_preserves_tool_evidence_the_specialist_omitted():
+    result = {"messages": [
+        ToolMessage(
+            name="read_bank_source",
+            tool_call_id="call-1",
+            content=json.dumps({
+                "bank": "vakif",
+                "source_type": "live_web_page",
+                "retrieved_at": "2026-08-24T19:00:00+00:00",
+                "status": "ok",
+                "url": "https://www.vakifkatilim.com.tr/tr/musteri-ol",
+                "text": "large source body that must stay private",
+            }),
+        ),
+        AIMessage(content=(
+            "The page supports the claim "
+            "[Müşteri Ol](https://www.vakifkatilim.com.tr/tr/musteri-ol)."
+        )),
+    ]}
+    handoff = agent_tools._final_text(result)
+    assert "TF26_TOOL_EVIDENCE" in handoff
+    assert "live_web_page" in handoff
+    assert "2026-08-24T19:00:00+00:00" in handoff
+    assert "https://www.vakifkatilim.com.tr/tr/musteri-ol" in handoff
+    assert "large source body" not in handoff
+
+
+def test_web_citations_are_derived_only_from_actual_web_tool_evidence():
+    messages = [
+        ToolMessage(
+            name="search_bank_web",
+            tool_call_id="search-1",
+            content=json.dumps({
+                "bank": "vakif",
+                "source_type": "web_search",
+                "status": "ok",
+                "results": [{
+                    "title": "Konut Finansmanı",
+                    "url": "https://www.vakifkatilim.com.tr/tr/konut-finansmani",
+                    "snippet": "A search hint that stays private.",
+                }],
+            }),
+        ),
+        ToolMessage(
+            name="read_bank_source",
+            tool_call_id="read-1",
+            content=json.dumps({
+                "bank": "vakif",
+                "source_type": "live_web_page",
+                "status": "ok",
+                "title": "Müşteri Ol",
+                "url": "https://www.vakifkatilim.com.tr/tr/musteri-ol",
+                "text": "The private page body.",
+            }),
+        ),
+        ToolMessage(
+            name="finance_quote",
+            tool_call_id="quote-1",
+            content=json.dumps({"bank": "vakif", "status": "ok"}),
+        ),
+    ]
+    handoff = agent_tools._final_text({
+        "messages": [*messages, AIMessage(content=(
+            "Use [Konut Finansmanı]"
+            "(https://www.vakifkatilim.com.tr/tr/konut-finansmani) and "
+            "[Müşteri Ol](https://www.vakifkatilim.com.tr/tr/musteri-ol)."
+        ))]
+    })
+    public_message = ToolMessage(
+        name="ask_vakif", tool_call_id="delegate-1", content=handoff
+    )
+
+    sources = agent_tools.used_sources_from_tool_message(public_message)
+
+    assert sources == [
+        {
+            "url": "https://www.vakifkatilim.com.tr/tr/konut-finansmani",
+            "title": "Konut Finansmanı",
+            "bank": "vakif",
+            "source_type": "web_search",
+            "provenance": "live_web",
+        },
+        {
+            "url": "https://www.vakifkatilim.com.tr/tr/musteri-ol",
+            "title": "Müşteri Ol",
+            "bank": "vakif",
+            "source_type": "live_web_page",
+            "provenance": "live_web",
+        },
+    ]
+    assert "A search hint that stays private." not in handoff
+    assert "The private page body." not in handoff
+
+
+def test_unused_web_results_never_cross_the_specialist_handoff():
+    used_url = "https://www.vakifkatilim.com.tr/tr/konut-finansmani"
+    unused_url = "https://www.vakifkatilim.com.tr/tr/kampanyalar"
+    message = ToolMessage(
+        name="search_bank_web",
+        tool_call_id="search-1",
+        content=json.dumps({
+            "bank": "vakif",
+            "source_type": "web_search",
+            "status": "ok",
+            "results": [
+                {"title": "Konut", "url": used_url, "snippet": "used"},
+                {"title": "Kampanyalar", "url": unused_url, "snippet": "unused"},
+            ],
+        }),
+    )
+    handoff = agent_tools._final_text({"messages": [
+        message,
+        AIMessage(content=f"Konut bilgisi [Konut]({used_url})."),
+    ]})
+
+    assert used_url in handoff
+    assert unused_url not in handoff
+
+
+def test_qdrant_and_web_sources_keep_separate_machine_provenance():
+    indexed_url = "https://www.vakifkatilim.com.tr/tr/bilgi-bankasi"
+    web_url = "https://www.vakifkatilim.com.tr/tr/guncel-bilgi"
+    messages = [
+        ToolMessage(
+            name="search_bank",
+            tool_call_id="index-1",
+            content=f"[1] point_id=abc url={indexed_url}\nIndexed fact",
+        ),
+        ToolMessage(
+            name="search_bank_web",
+            tool_call_id="web-1",
+            content=json.dumps({
+                "bank": "vakif",
+                "source_type": "web_search",
+                "status": "ok",
+                "results": [{"title": "Güncel Bilgi", "url": web_url}],
+            }),
+        ),
+        AIMessage(content=(
+            f"Arşiv bilgisi [Bilgi Bankası]({indexed_url}); "
+            f"güncel bilgi [Güncel Bilgi]({web_url})."
+        )),
+    ]
+    handoff = agent_tools._final_text({"messages": messages})
+    public_message = ToolMessage(
+        name="ask_vakif", tool_call_id="delegate-1", content=handoff
+    )
+
+    sources = agent_tools.used_sources_from_tool_message(public_message)
+
+    assert {(source["url"], source["provenance"]) for source in sources} == {
+        (indexed_url, "knowledge_base"),
+        (web_url, "live_web"),
+    }
+    assert next(
+        source for source in sources if source["url"] == indexed_url
+    )["source_type"] == "indexed_document"
 
 
 def test_specialists_are_rebuilt_with_fresh_non_streaming_models(monkeypatch):
@@ -93,6 +405,8 @@ def test_specialists_are_rebuilt_with_fresh_non_streaming_models(monkeypatch):
     monkeypatch.setattr(specialists, "build_bank_tools", lambda *args, **kwargs: [])
     monkeypatch.setattr(specialists, "get_checkpointer", lambda: object())
     monkeypatch.setattr(specialists, "prompt_for", lambda bank: bank)
+    monkeypatch.setattr(specialists, "usable_context_window", lambda *args: 100_000)
+    monkeypatch.setattr(specialists, "build_compaction", lambda *args, **kwargs: object())
 
     first = specialists.build_specialist("kuveytturk")
     second = specialists.build_specialist("kuveytturk")
@@ -106,6 +420,58 @@ def test_specialists_are_rebuilt_with_fresh_non_streaming_models(monkeypatch):
     ]
 
 
+def test_required_web_specialist_prompt_makes_search_bank_web_mandatory(monkeypatch):
+    captured: dict = {}
+
+    monkeypatch.setattr(specialists, "get_llm", lambda *args, **kwargs: object())
+    monkeypatch.setattr(specialists, "build_bank_tools", lambda *args, **kwargs: [])
+    monkeypatch.setattr(specialists, "get_checkpointer", lambda: object())
+    monkeypatch.setattr(specialists, "prompt_for", lambda bank: bank)
+    monkeypatch.setattr(specialists, "usable_context_window", lambda *args: 100_000)
+    monkeypatch.setattr(specialists, "build_compaction", lambda *args, **kwargs: object())
+
+    def fake_create_agent(**kwargs):
+        captured.update(kwargs)
+        return object()
+
+    monkeypatch.setattr(specialists, "create_agent", fake_create_agent)
+
+    specialists.build_specialist(
+        "kuveytturk",
+        web_research_enabled=True,
+        web_research_required=True,
+    )
+
+    prompt = " ".join(captured["system_prompt"].split())
+    assert "REQUIRES web discovery" in prompt
+    assert "search_bank_web" in prompt
+    assert "at least once" in prompt
+    assert "Indexed search_bank" in prompt
+
+
+def test_specialist_prompt_prioritizes_live_and_indexed_tools_without_web(monkeypatch):
+    captured: dict = {}
+
+    monkeypatch.setattr(specialists, "get_llm", lambda *args, **kwargs: object())
+    monkeypatch.setattr(specialists, "build_bank_tools", lambda *args, **kwargs: [])
+    monkeypatch.setattr(specialists, "get_checkpointer", lambda: object())
+    monkeypatch.setattr(specialists, "prompt_for", lambda bank: bank)
+    monkeypatch.setattr(specialists, "usable_context_window", lambda *args: 100_000)
+    monkeypatch.setattr(specialists, "build_compaction", lambda *args, **kwargs: object())
+    monkeypatch.setattr(
+        specialists,
+        "create_agent",
+        lambda **kwargs: captured.update(kwargs) or object(),
+    )
+
+    specialists.build_specialist("kuveytturk", web_research_enabled=False)
+
+    prompt = " ".join(captured["system_prompt"].split())
+    assert "live endpoint tools first" in prompt
+    assert "Use search_bank, expand_chunk, and read_full_page" in prompt
+    assert "Web search being absent never removes" in prompt
+
+
 def test_main_agent_is_rebuilt_without_losing_checkpoint_backed_memory(monkeypatch):
     """The graph is disposable; its checkpointer remains the state authority."""
     checkpointer = object()
@@ -116,6 +482,8 @@ def test_main_agent_is_rebuilt_without_losing_checkpoint_backed_memory(monkeypat
     monkeypatch.setattr(main_agent, "get_llm", lambda role, **kwargs: object())
     monkeypatch.setattr(main_agent, "build_specialist_tools", lambda: [])
     monkeypatch.setattr(main_agent, "get_checkpointer", lambda: checkpointer)
+    monkeypatch.setattr(main_agent, "usable_context_window", lambda *args: 100_000)
+    monkeypatch.setattr(main_agent, "build_compaction", lambda *args, **kwargs: object())
 
     def fake_create_agent(**kwargs):
         assert kwargs["checkpointer"] is checkpointer
@@ -199,7 +567,9 @@ def test_deleting_a_chat_removes_main_and_every_private_specialist_memory(monkey
     checkpoints.delete_session_checkpoints("chat-1")
 
     assert deleted == [
-        "chat-1:main", *[f"chat-1:bank:{spec.bank}" for spec in SPECS]
+        "chat-1:main",
+        "chat-1:recommendation",
+        *[f"chat-1:bank:{spec.bank}" for spec in SPECS],
     ]
 
 

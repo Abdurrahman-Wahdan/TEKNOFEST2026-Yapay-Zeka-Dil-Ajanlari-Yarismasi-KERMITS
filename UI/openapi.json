@@ -1792,6 +1792,53 @@
         }
       }
     },
+    "/api/chat/attachments": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Upload Chat Attachment",
+        "description": "Prepare one file without exposing document page images to the browser.",
+        "operationId": "upload_chat_attachment",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_chat_attachment"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreparedAttachmentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/chat/sessions": {
       "get": {
         "tags": [
@@ -1897,6 +1944,65 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/sessions/{session_id}/recommendation": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Create Recommendation",
+        "description": "Generate the next composer message from this conversation's private agent.",
+        "operationId": "create_recommendation",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecommendationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationOut"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -2273,10 +2379,25 @@
             "title": "Captures",
             "description": "Screenshots of the page. Passed to the model as image content blocks -- Gemma 4 takes image input, and screen/UI understanding is one of its stated vision capabilities."
           },
+          "attachments": {
+            "items": {
+              "$ref": "#/components/schemas/PreparedAttachmentRef"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Attachments",
+            "description": "Opaque ids from POST /api/chat/attachments. The server resolves text or page images only for the authenticated owner and never persists their bytes in the conversation transcript."
+          },
           "think": {
             "type": "boolean",
             "title": "Think",
             "description": "Keep the model's chain-of-thought on. Only changes the request for models that reason by default -- `GET /api/models` reports which with `supports_thinking`, and for the rest the flag is discarded downstream rather than silently altering the answer.",
+            "default": false
+          },
+          "webSearch": {
+            "type": "boolean",
+            "title": "Websearch",
+            "description": "Permit bank specialists to search and read current public pages on their own bank domains for this turn. The supervisor never receives a direct web tool.",
             "default": false
           },
           "model": {
@@ -2481,6 +2602,20 @@
           "file"
         ],
         "title": "Body_create_voice_transcription"
+      },
+      "Body_upload_chat_attachment": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_chat_attachment"
       },
       "CapturePayload": {
         "properties": {
@@ -3590,6 +3725,72 @@
         ],
         "title": "PaymentRowOut"
       },
+      "PreparedAttachmentOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "image",
+              "text",
+              "document"
+            ],
+            "title": "Kind"
+          },
+          "mediaType": {
+            "type": "string",
+            "title": "Mediatype"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "pageCount": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pagecount"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "filename",
+          "kind",
+          "mediaType",
+          "size"
+        ],
+        "title": "PreparedAttachmentOut",
+        "description": "Browser-visible metadata; preprocessed content remains server-side."
+      },
+      "PreparedAttachmentRef": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 20,
+            "title": "Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "title": "PreparedAttachmentRef",
+        "description": "An opaque id returned by the authenticated attachment upload endpoint."
+      },
       "ProductOut": {
         "properties": {
           "code": {
@@ -4016,6 +4217,35 @@
           "dependencies"
         ],
         "title": "ReadyOut"
+      },
+      "RecommendationOut": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "RecommendationOut"
+      },
+      "RecommendationRequest": {
+        "properties": {
+          "locale": {
+            "type": "string",
+            "enum": [
+              "en",
+              "tr"
+            ],
+            "title": "Locale",
+            "default": "en"
+          }
+        },
+        "type": "object",
+        "title": "RecommendationRequest",
+        "description": "The display language for one context-aware composer recommendation."
       },
       "RefreshRequest": {
         "properties": {

@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import { api } from "@/lib/api";
 
 import type {
   AttachedCapture,
@@ -13,10 +15,8 @@ import type {
 /**
  * Files the user has staged for the next message.
  *
- * Local only. There is no upload endpoint yet, so the bytes stay in the browser:
- * images get an object URL for their thumbnail and everything else is carried as
- * name and size. When the backend lands, this is where the upload call goes --
- * the shape it hands the composer does not have to change.
+ * Local entries provide previews and cancellation. Content is uploaded once to
+ * the authenticated preparation endpoint; chat requests carry only opaque ids.
  *
  * Images are split from other files because they are *shown* rather than listed,
  * which is the one place the two kinds genuinely differ.
@@ -24,6 +24,7 @@ import type {
 
 /** What counts as an image, and so gets a thumbnail instead of a file chip. */
 const IMAGE_TYPES = /^image\//;
+const IMAGE_EXTENSIONS = /\.(?:jpe?g|png|webp)$/i;
 
 let attachmentSeq = 0;
 
@@ -53,6 +54,7 @@ export function useAttachments() {
   // screenshots and clears them would otherwise hold all twelve for the life of
   // the page.
   const urls = useRef<Map<string, string>>(new Map());
+  const uploads = useRef<Map<string, AbortController>>(new Map());
 
   const release = useCallback((id: string) => {
     const url = urls.current.get(id);
@@ -64,27 +66,91 @@ export function useAttachments() {
 
   useEffect(() => {
     const map = urls.current;
+    const pending = uploads.current;
     return () => {
       for (const url of map.values()) URL.revokeObjectURL(url);
       map.clear();
+      for (const controller of pending.values()) controller.abort();
+      pending.clear();
     };
   }, []);
 
   const add = useCallback((incoming: FileList | File[]) => {
     for (const file of Array.from(incoming)) {
       const id = `att-${++attachmentSeq}`;
-      if (IMAGE_TYPES.test(file.type)) {
+      const image = IMAGE_TYPES.test(file.type) || IMAGE_EXTENSIONS.test(file.name);
+      if (image) {
         const url = URL.createObjectURL(file);
         urls.current.set(id, url);
-        setImages((prev) => [...prev, { id, filename: file.name, url, size: file.size }]);
+        setImages((prev) => [
+          ...prev,
+          { id, filename: file.name, url, size: file.size, status: "uploading" },
+        ]);
       } else {
-        setFiles((prev) => [...prev, { id, filename: file.name, size: file.size }]);
+        const extension = file.name.split(".").pop()?.toLowerCase();
+        const kind = extension === "pdf" || extension === "docx" ? "document" : "text";
+        setFiles((prev) => [
+          ...prev,
+          { id, filename: file.name, size: file.size, kind, status: "uploading" },
+        ]);
       }
+
+      const controller = new AbortController();
+      uploads.current.set(id, controller);
+      void api.prepareChatAttachment(file, controller.signal).then(
+        (prepared) => {
+          uploads.current.delete(id);
+          if (image) {
+            setImages((prev) =>
+              prev.map((item) =>
+                item.id === id
+                  ? { ...item, attachmentId: prepared.id, status: "ready", error: undefined }
+                  : item,
+              ),
+            );
+          } else {
+            setFiles((prev) =>
+              prev.map((item) =>
+                item.id === id
+                  ? {
+                      ...item,
+                      attachmentId: prepared.id,
+                      kind: prepared.kind === "document" ? "document" : "text",
+                      pageCount: prepared.pageCount ?? undefined,
+                      status: "ready",
+                      error: undefined,
+                    }
+                  : item,
+              ),
+            );
+          }
+        },
+        (error: unknown) => {
+          uploads.current.delete(id);
+          if (controller.signal.aborted) return;
+          const message = error instanceof Error ? error.message : String(error);
+          if (image) {
+            setImages((prev) =>
+              prev.map((item) =>
+                item.id === id ? { ...item, status: "error", error: message } : item,
+              ),
+            );
+          } else {
+            setFiles((prev) =>
+              prev.map((item) =>
+                item.id === id ? { ...item, status: "error", error: message } : item,
+              ),
+            );
+          }
+        },
+      );
     }
   }, []);
 
   const removeImage = useCallback(
     (id: string) => {
+      uploads.current.get(id)?.abort();
+      uploads.current.delete(id);
       release(id);
       setImages((prev) => prev.filter((image) => image.id !== id));
     },
@@ -92,6 +158,8 @@ export function useAttachments() {
   );
 
   const removeFile = useCallback((id: string) => {
+    uploads.current.get(id)?.abort();
+    uploads.current.delete(id);
     setFiles((prev) => prev.filter((file) => file.id !== id));
   }, []);
 
@@ -124,6 +192,8 @@ export function useAttachments() {
   }, []);
 
   const clear = useCallback(() => {
+    for (const controller of uploads.current.values()) controller.abort();
+    uploads.current.clear();
     for (const id of urls.current.keys()) release(id);
     setImages([]);
     setFiles([]);
@@ -132,19 +202,36 @@ export function useAttachments() {
   }, [release]);
 
   /** Everything staged, in one list, for the `@` menu and the request payload. */
-  const targets: MentionTarget[] = [
-    ...images.map((image) => ({ id: image.id, filename: image.filename, kind: "image" as const })),
-    ...files.map((file) => ({ id: file.id, filename: file.filename, kind: "file" as const })),
-    // An attached table becomes `@`-mentionable for free by being here, which is
-    // the point of one flattened list: "what does @[Kâr oranları] say about
-    // Kuveyt Türk" needs no new plumbing.
-    ...contexts.map((context) => ({
-      id: context.id,
-      filename: context.label,
-      kind: "context" as const,
-      contextKind: context.kind,
-    })),
-  ];
+  const targets: MentionTarget[] = useMemo(
+    () => [
+      ...images.map((image) => ({
+        id: image.id,
+        filename: image.filename,
+        kind: "image" as const,
+      })),
+      ...files.map((file) => ({
+        id: file.id,
+        filename: file.filename,
+        kind: "file" as const,
+      })),
+      // An attached table becomes `@`-mentionable for free by being here, which
+      // is the point of one flattened list: "what does @[Kâr oranları] say about
+      // Kuveyt Türk" needs no new plumbing.
+      ...contexts.map((context) => ({
+        id: context.id,
+        filename: context.label,
+        kind: "context" as const,
+        contextKind: context.kind,
+      })),
+    ],
+    [contexts, files, images],
+  );
+
+  const prepared = [...images, ...files].flatMap((item) =>
+    item.status === "ready" && item.attachmentId ? [{ id: item.attachmentId }] : [],
+  );
+  const hasPending = [...images, ...files].some((item) => item.status === "uploading");
+  const hasError = [...images, ...files].some((item) => item.status === "error");
 
   return {
     images,
@@ -152,6 +239,9 @@ export function useAttachments() {
     contexts,
     captures,
     targets,
+    prepared,
+    hasPending,
+    hasError,
     add,
     addContext,
     addCapture,

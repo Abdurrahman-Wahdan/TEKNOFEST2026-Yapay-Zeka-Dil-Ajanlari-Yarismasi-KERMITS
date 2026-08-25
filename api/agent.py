@@ -21,6 +21,7 @@ Two rules it already honours, because they are not the agent's to break:
 """
 
 import logging
+import unicodedata
 import uuid
 from typing import Iterator
 
@@ -31,10 +32,119 @@ from index.retrieve import search
 from llm import get_llm
 
 from .converters import chunk_out
+from .chat_attachments import ResolvedAttachment
 from .saved_tables import fingerprint, save_table_view
+from .schemas.banks import ChunkOut
 from .schemas.chat import AttachedContext, CapturePayload, StreamEvent, ToolResult
 
 logger = logging.getLogger(__name__)
+
+
+_BANK_MENTION_ALIASES = {
+    "adil": ("adil katilim",),
+    "albaraka": ("albaraka",),
+    "dunya": ("dunya katilim",),
+    "emlak": ("emlak katilim",),
+    "hayat": ("hayat finans",),
+    "kuveytturk": ("kuveyt turk",),
+    "tom": ("t.o.m.", "tom katilim"),
+    "turkiyefinans": ("turkiye finans",),
+    "vakif": ("vakif katilim",),
+    "ziraat": ("ziraat katilim",),
+}
+
+
+def _searchable_text(value: str) -> str:
+    """Case- and accent-insensitive text for conservative bank-name matching."""
+    decomposed = unicodedata.normalize("NFKD", value.casefold())
+    folded = "".join(
+        char for char in decomposed if not unicodedata.combining(char)
+    )
+    # Unicode decomposition removes the marks from ü/ş/ç/ğ but Turkish dotless
+    # ı is its own letter. Search aliases are intentionally ASCII, so fold it
+    # explicitly or every name ending in "Katılım" fails the multi-bank audit.
+    return folded.replace("ı", "i")
+
+
+def _source_priority(source: dict) -> int:
+    """Prefer an opened live page over a search hint, then indexed evidence."""
+    source_type = str(source.get("source_type") or "")
+    if source_type.startswith("live_web_"):
+        return 3
+    if source.get("provenance") == "live_web":
+        return 2
+    return 1
+
+
+def _audited_sources(
+    answer: str,
+    candidates: dict[tuple[str, str], dict],
+    fresh_candidates: dict[tuple[str, str], dict],
+    cited_source_keys: dict[str, str],
+) -> list[dict]:
+    """Select public citations from machine-preserved specialist evidence.
+
+    Exact Markdown links win, including a follow-up that cites evidence from an
+    earlier turn. If a fresh evidence-bearing specialist handoff reaches the
+    supervisor but its links disappear during synthesis, add one representative
+    source per bank and provenance class. Those candidates are already the
+    intersection of actual tool output and the specialist's claim-level links;
+    this is therefore a safety net, not a dump of search results.
+
+    Ordinary conversation has no fresh candidates and still receives no source
+    panel. Multi-bank fallbacks are limited to banks actually named in the
+    answer; a one-bank response may use a pronoun, so its sole bank is retained.
+    """
+    selected: list[dict] = []
+    covered: set[tuple[str, str]] = set()
+
+    for (key, provenance), source in candidates.items():
+        if key not in cited_source_keys:
+            continue
+        selected.append(source)
+        covered.add((str(source.get("bank") or ""), provenance))
+
+    fresh_banks = {
+        str(source.get("bank") or "")
+        for source in fresh_candidates.values()
+        if source.get("bank")
+    }
+    searchable_answer = _searchable_text(answer)
+    single_bank = len(fresh_banks) == 1
+
+    grouped: dict[tuple[str, str], list[dict]] = {}
+    for (_key, provenance), source in fresh_candidates.items():
+        bank = str(source.get("bank") or "")
+        group = (bank, provenance)
+        if group in covered:
+            continue
+        aliases = _BANK_MENTION_ALIASES.get(bank, ())
+        named = any(alias in searchable_answer for alias in aliases)
+        if not (single_bank or named):
+            continue
+        grouped.setdefault(group, []).append(source)
+
+    for group, sources in grouped.items():
+        selected.append(max(sources, key=_source_priority))
+        covered.add(group)
+
+    # The same bank page can be returned by live discovery and Qdrant. Showing
+    # it twice under two headings is confusing; when both were used, the live
+    # provenance is the more current description of that exact URL.
+    by_url: dict[str, dict] = {}
+    order: list[str] = []
+    for source in selected:
+        url = str(source.get("url") or "").strip()
+        if not url:
+            continue
+        key = url.rstrip(".,;:!?").rstrip("/")
+        previous = by_url.get(key)
+        if previous is None:
+            order.append(key)
+            by_url[key] = source
+        elif _source_priority(source) > _source_priority(previous):
+            by_url[key] = source
+    return [by_url[key] for key in order]
 
 # The model is told to answer only from what it was given. It is not told to be
 # helpful when it has nothing -- a bank-facing tool that fills a gap with a
@@ -239,6 +349,7 @@ def _human_content(
     context: list[AttachedContext],
     captures: list[CapturePayload],
     tool_results: list[ToolResult] | None = None,
+    attachments: list[ResolvedAttachment] | None = None,
 ) -> str | list[dict]:
     """The user's turn, as either a string or a multimodal content list.
 
@@ -255,15 +366,48 @@ def _human_content(
     exactly the request it did before this existed.
     """
     tool_results = tool_results or []
+    attachments = attachments or []
     # Everything with bytes, whether the user attached it or the agent asked for it.
     # `look_at_page` in `both` mode returns each, and they take different routes:
     # the picture becomes an image block below, the outline joins the text.
-    images_in = [*captures, *(r.image for r in tool_results if r.image)]
+    images_in = [
+        *captures,
+        *(image for attachment in attachments for image in attachment.images),
+        *(r.image for r in tool_results if r.image),
+    ]
 
     text_parts = []
     for result in tool_results:
         if result.text:
             text_parts.append(result.text)
+    if attachments:
+        file_blocks: list[str] = []
+        image_cursor = len(captures) + 1
+        for attachment in attachments:
+            safe_name = _attr(attachment.filename)
+            if attachment.text is not None:
+                # Keep a user file visibly separate from instructions and from
+                # retrieved evidence. It is still user-provided content, not a
+                # system prompt merely because it contains Markdown.
+                body = attachment.text.replace("</attached-file>", "< /attached-file>")
+                file_blocks.append(
+                    f'<attached-file filename="{safe_name}" type="{_attr(attachment.media_type)}">\n'
+                    f"{body}\n</attached-file>"
+                )
+            elif attachment.images:
+                first = image_cursor
+                last = first + len(attachment.images) - 1
+                image_cursor = last + 1
+                page_note = (
+                    f"The preceding image input {first} is this file."
+                    if first == last
+                    else f"The preceding image inputs {first}-{last} are pages 1-{len(attachment.images)} in order."
+                )
+                file_blocks.append(
+                    f'<attached-file filename="{safe_name}" type="{_attr(attachment.media_type)}" '
+                    f'images="{first}-{last}">{page_note}</attached-file>'
+                )
+        text_parts.append("\n\n".join(file_blocks))
     if context:
         text_parts.append(_context_block(context))
     text_parts.append(f"Kaynaklar:\n\n{_sources_block(chunks)}")
@@ -312,6 +456,7 @@ def _legacy_answer(
     think: bool = False,
     model: str | None = None,
     user_id: uuid.UUID | None = None,
+    attachments: list[ResolvedAttachment] | None = None,
 ) -> Iterator[StreamEvent]:
     """Answer a question, yielding stream events as the work happens.
 
@@ -357,7 +502,7 @@ def _legacy_answer(
     messages.append(
         HumanMessage(
             content=_human_content(
-                question, chunks, context or [], captures or [], tool_results or []
+                question, chunks, context or [], captures or [], tool_results or [], attachments or []
             )
         )
     )
@@ -458,9 +603,16 @@ def _agent_answer(
     session_id: uuid.UUID,
     think: bool = False,
     model: str | None = None,
+    web_search: bool = False,
+    attachments: list[ResolvedAttachment] | None = None,
 ) -> Iterator[StreamEvent]:
     """Stream the supervisor while keeping its checkpoint state private."""
     from agents.main.agent import build_main_agent, main_thread_id
+    from agents.shared.agent_tools import (
+        cited_sources_from_text,
+        source_key,
+        used_sources_from_tool_message,
+    )
 
     yield StreamEvent(type="status", stage="pricing")
     config = {
@@ -482,18 +634,50 @@ def _agent_answer(
         # after a compaction the checkpoint holds the summary, so `seeded` is
         # true and the stored history is correctly left alone.
         messages: list = [] if seeded else list(history or [])
-        # Reuse the existing attachment encoding, but with no RAG context. The
-        # supervisor has no retrieval tool in this milestone; a user attachment
-        # is still part of the request it may delegate to a bank specialist.
+        # Reuse the existing attachment encoding, but with no supervisor RAG
+        # context. Attachments are routing evidence it delegates to the relevant
+        # bank specialists, which own retrieval and optional web research.
         messages.append(HumanMessage(content=_human_content(
-            question, [], context or [], captures or [], tool_results or []
+            question, [], context or [], captures or [], tool_results or [], attachments or []
         )))
+        # Keep the source registry already present in the checkpoint. This is
+        # what lets a follow-up such as "show me the sources" render citation
+        # cards without rerunning ten bank specialists merely to recover URLs.
+        candidate_sources: dict[tuple[str, str], dict] = {}
+        for prior_message in (state.values or {}).get("messages", []):
+            if not isinstance(prior_message, ToolMessage):
+                continue
+            for source in used_sources_from_tool_message(prior_message):
+                url = str(source.get("url") or "").strip()
+                if not url:
+                    continue
+                provenance = str(source.get("provenance") or "")
+                candidate_sources.setdefault((source_key(url), provenance), source)
+
+        fresh_candidate_sources: dict[tuple[str, str], dict] = {}
+        answer_text: list[str] = []
         for message, metadata in agent.stream(
             {"messages": messages},
             config=config,
-            context={"session_id": str(session_id)},
+            context={
+                "session_id": str(session_id),
+                "web_search_enabled": web_search,
+            },
             stream_mode="messages",
         ):
+            # Only filtered ask_<bank> handoffs expose candidate sources. Raw
+            # nested tool traces contain every search result before the bank
+            # specialist decides what actually supports its answer.
+            if isinstance(message, ToolMessage):
+                for source in used_sources_from_tool_message(message):
+                    url = str(source.get("url") or "").strip()
+                    if not url:
+                        continue
+                    provenance = str(source.get("provenance") or "")
+                    key = (source_key(url), provenance)
+                    candidate_sources.setdefault(key, source)
+                    fresh_candidate_sources.setdefault(key, source)
+                continue
             # Tool output and state bookkeeping must remain private. Only the
             # supervisor's generated prose is part of the public SSE response.
             if metadata.get("langgraph_node") != "model":
@@ -501,7 +685,33 @@ def _agent_answer(
             if not isinstance(message, (AIMessage, AIMessageChunk)):
                 continue
             if isinstance(message.content, str) and message.content:
+                answer_text.append(message.content)
                 yield StreamEvent(type="token", text=message.content)
+        final_answer = "".join(answer_text)
+        final_source_keys = cited_sources_from_text(final_answer)
+        for source in _audited_sources(
+            final_answer,
+            candidate_sources,
+            fresh_candidate_sources,
+            final_source_keys,
+        ):
+            url = str(source.get("url") or "").strip()
+            yield StreamEvent(
+                type="citation",
+                citation=ChunkOut(
+                    score=1.0,
+                    cite_url=url,
+                    text="",
+                    bank=str(source.get("bank") or ""),
+                    title=str(source.get("title") or ""),
+                    doc_kind=(
+                        "knowledge_base"
+                        if source.get("provenance") == "knowledge_base"
+                        else "web"
+                    ),
+                    source_type=str(source.get("source_type") or ""),
+                ),
+            )
     except Exception:
         logger.exception("Live agent failed for chat session %s", session_id)
         yield StreamEvent(type="error", detail="The live banking assistant is unavailable.")
@@ -518,6 +728,8 @@ def answer(
     model: str | None = None,
     user_id: uuid.UUID | None = None,
     session_id: uuid.UUID | None = None,
+    web_search: bool = False,
+    attachments: list[ResolvedAttachment] | None = None,
 ) -> Iterator[StreamEvent]:
     """Answer through the supervisor when a persisted chat session is available.
 
@@ -530,10 +742,12 @@ def answer(
         # without a word from the type checker.
         yield from _legacy_answer(
             question, history, context, captures, tool_results, client_tools,
-            think=think, model=model, user_id=user_id,
+            think=think, model=model, user_id=user_id, attachments=attachments,
         )
         return
     yield from _agent_answer(
         question, history, context, captures, tool_results, session_id,
         think=think, model=model,
+        web_search=web_search,
+        attachments=attachments,
     )

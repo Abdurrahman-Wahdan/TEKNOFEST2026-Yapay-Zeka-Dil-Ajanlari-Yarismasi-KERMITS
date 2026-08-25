@@ -21,9 +21,32 @@
  */
 export type ChatStatus = "ready" | "submitted" | "streaming" | "idle";
 
+/** A claim-used source proven by an actual bank-specialist tool call. */
+export type WebCitation = {
+  url: string;
+  title?: string;
+  bank?: string;
+  sourceType?: string;
+};
+
 export type MessagePart =
   | { type: "text"; text: string }
   | { type: "error"; title?: string; message: string }
+  | { type: "citations"; sources: WebCitation[] }
+  | {
+      type: "attachment";
+      filename: string;
+      kind: "image" | "text" | "document";
+      pageCount?: number;
+      /**
+       * Opaque, owner-bound handle returned by the preparation endpoint.
+       *
+       * Keeping the handle beside the visible label makes a file mention usable
+       * on a later turn. The bytes remain server-side and the handle expires;
+       * it is not model content and the renderer never exposes it.
+       */
+      attachmentId?: string;
+    }
   /**
    * A piece of the app the user handed to the agent: a quote, a table row, a
    * whole table, a page capture.
@@ -126,20 +149,27 @@ export type AttachedImage = {
   filename: string;
   url: string;
   size?: number;
+  attachmentId?: string;
+  status: "uploading" | "ready" | "error";
+  error?: string;
 };
 
 export type AttachedFile = {
   id: string;
   filename: string;
   size?: number;
+  attachmentId?: string;
+  kind: "text" | "document";
+  pageCount?: number;
+  status: "uploading" | "ready" | "error";
+  error?: string;
 };
 
 /**
  * The staged attachments, and what the composer can do to them.
  *
- * `onAttach` opens the file picker. The bytes never leave the browser yet --
- * there is no upload endpoint -- so what is staged here is what the `@` mention
- * menu offers and what travels on the request as metadata.
+ * Files are prepared immediately by the authenticated API. Document page images
+ * remain server-side and only their opaque ids travel with the chat request.
  */
 export type ChatAttachments = {
   onAttach?: () => void;
@@ -151,6 +181,8 @@ export type ChatAttachments = {
   onRemoveFile?: (id: string) => void;
   onRemoveContext?: (id: string) => void;
   onRemoveCapture?: (id: string) => void;
+  hasPending?: boolean;
+  hasError?: boolean;
 };
 
 /** Everything staged, flattened, for the `@` menu to list. */
@@ -189,6 +221,8 @@ export type ChatRequest = {
    * rather than offering a toggle that changes nothing.
    */
   think?: boolean;
+  /** Permit each delegated bank specialist to research its own public domain. */
+  webSearch?: boolean;
   /**
    * The Advanced menu's model choice: a key from `GET /api/models`.
    *
@@ -197,13 +231,8 @@ export type ChatRequest = {
    * switching mid-thread keeps the history already built up.
    */
   model?: string | null;
-  /**
-   * Files the user staged for this turn.
-   *
-   * Metadata only. There is no upload endpoint yet, so the bytes stay in the
-   * browser and this says what the agent should expect to be given.
-   */
-  attachments?: { id: string; filename: string; kind: "image" | "file" }[];
+  /** Opaque ids of server-prepared files staged for this turn. */
+  attachments?: { id: string }[];
   /**
    * Pieces of the UI the user attached -- rows, tables, quotes -- already
    * serialised. Unlike `attachments` this *is* the content, because it is text
@@ -238,6 +267,7 @@ export type ChatRequest = {
  */
 export type ChatChunk =
   | { type: "text-delta"; delta: string }
+  | { type: "citation"; citation: WebCitation }
   | { type: "error"; message: string; title?: string }
   /**
    * The agent asking the *client* to do something only the client can.

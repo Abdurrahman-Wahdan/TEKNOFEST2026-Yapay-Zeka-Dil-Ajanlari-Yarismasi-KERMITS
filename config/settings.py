@@ -130,6 +130,27 @@ class Settings(BaseSettings):
         "`expand_chunk` usually replaces.",
     )
 
+    # ===== On-demand web research (specialists only) =====
+    WEB_SEARCH_URL: str = Field(default="http://127.0.0.1:8888")
+    WEB_SEARCH_TIMEOUT: float = Field(default=15.0, gt=0)
+    WEB_SEARCH_MAX_RESULTS: int = Field(default=6, gt=0, le=20)
+    WEB_RESEARCH_CACHE_SECONDS: float = Field(default=300.0, ge=0)
+    WEB_READ_SOURCE_ENABLED: bool = Field(
+        default=True,
+        description=(
+            "Expose read_bank_source beside search_bank_web. Set false only for "
+            "a search-only assessment; production research should keep it true."
+        ),
+    )
+    WEB_RESEARCH_USER_AGENT: str = "TF26-web-research/1.0"
+    WEB_READ_TIMEOUT: float = Field(default=30.0, gt=0)
+    WEB_READ_MAX_BYTES: int = Field(default=10_000_000, gt=0)
+    WEB_READ_MAX_CHARS: int = Field(default=35_000, gt=0)
+    WEB_READ_MAX_REDIRECTS: int = Field(default=5, ge=0, le=15)
+    WEB_READ_MAX_PDF_PAGES: int = Field(default=40, gt=0)
+    WEB_SEARCH_TOOL_LIMIT: int = Field(default=4, gt=0)
+    WEB_READ_TOOL_LIMIT: int = Field(default=8, gt=0)
+
     # ===== Table overviews =====
     TABLE_OVERVIEW_CONCURRENCY: int = Field(
         default=2,
@@ -535,6 +556,22 @@ class Settings(BaseSettings):
         default=True,
         description="Load and compile Whisper during API startup so the first "
         "voice request has warm-request latency.",
+    )
+
+    # ===== Chat attachments =====
+    CHAT_ATTACHMENT_MAX_UPLOAD_MB: int = Field(default=20, gt=0, le=100)
+    CHAT_ATTACHMENT_MAX_FILES: int = Field(default=8, gt=0, le=20)
+    CHAT_ATTACHMENT_MAX_PAGES: int = Field(default=40, gt=0, le=200)
+    CHAT_ATTACHMENT_MAX_TOTAL_IMAGES: int = Field(default=40, gt=0, le=200)
+    CHAT_ATTACHMENT_MAX_TEXT_CHARS: int = Field(default=100_000, gt=0)
+    CHAT_ATTACHMENT_MAX_TOTAL_TEXT_CHARS: int = Field(default=200_000, gt=0)
+    CHAT_ATTACHMENT_TTL_SECONDS: int = Field(default=3600, gt=0)
+    CHAT_ATTACHMENT_PROCESS_TIMEOUT_SECONDS: int = Field(default=120, gt=0)
+    CHAT_ATTACHMENT_RENDER_LONG_EDGE: int = Field(default=1800, gt=0)
+    CHAT_ATTACHMENT_JPEG_QUALITY: int = Field(default=88, gt=0, le=100)
+    CHAT_ATTACHMENT_SOFFICE_PATH: str = Field(
+        default="",
+        description="Optional explicit path to LibreOffice's soffice binary for DOCX rendering.",
     )
 
     # ===== API (the FastAPI service the dashboard talks to) =====

@@ -72,16 +72,31 @@ export async function* fetchChat(
       session_id: request.sessionId,
       context: request.context,
       captures: request.captures,
+      attachments: request.attachments,
       toolResults: request.toolResults,
       // Both were accepted into ChatRequest and then dropped here, so the
       // composer's toggle never left the browser. They travel now.
       think: request.think,
+      webSearch: request.webSearch,
       model: request.model,
     },
     signal,
   )) {
     if (event.type === "token" && event.text) {
       yield { type: "text-delta", delta: event.text };
+    } else if (event.type === "citation" && event.citation?.cite_url) {
+      // The API emits only claim-used web or indexed-document evidence on the
+      // live supervisor path. Keep the UI shape small rather than persisting
+      // the full retrieved-chunk contract in localStorage.
+      yield {
+        type: "citation",
+        citation: {
+          url: event.citation.cite_url,
+          title: event.citation.title || undefined,
+          bank: event.citation.bank || undefined,
+          sourceType: event.citation.source_type || undefined,
+        },
+      };
     } else if (event.type === "error") {
       yield { type: "error", message: event.detail ?? "The assistant failed to answer." };
     } else if (event.type === "tool_call" && event.tool_call_id && event.tool_name) {

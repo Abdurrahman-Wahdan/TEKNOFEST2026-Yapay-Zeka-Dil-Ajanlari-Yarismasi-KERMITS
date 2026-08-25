@@ -186,6 +186,15 @@
      dark greys unreadable in the first place. */
   --control-ink: color-mix(in srgb, var(--muted-foreground) 65%, var(--background));
 
+  /* Agent-authored next-message suggestions are actionable copy, not disabled
+     placeholder text. Keep them slightly quieter than typed text while giving
+     them body-text contrast on both the light and dark cards. */
+  --composer-suggestion-ink: color-mix(
+    in srgb,
+    var(--foreground) 76%,
+    var(--background)
+  );
+
   /* Semantic states, taken from the palette's own chart colours so a success
      tick and a green series are the same green. */
   --ok: var(--chart-2);

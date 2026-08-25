@@ -50,6 +50,16 @@ class ChatSessionDetail(ChatSessionOut):
     messages: list[ChatMessageOut] = Field(default_factory=list)
 
 
+class RecommendationRequest(BaseModel):
+    """The display language for one context-aware composer recommendation."""
+
+    locale: Literal["en", "tr"] = "en"
+
+
+class RecommendationOut(BaseModel):
+    text: str
+
+
 class TableMetadataContextMessage(BaseModel):
     """One visible chat turn supplied to the table-metadata specialist."""
 
@@ -156,6 +166,25 @@ class CapturePayload(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class PreparedAttachmentRef(BaseModel):
+    """An opaque id returned by the authenticated attachment upload endpoint."""
+
+    id: str = Field(min_length=20, max_length=80)
+
+
+class PreparedAttachmentOut(BaseModel):
+    """Browser-visible metadata; preprocessed content remains server-side."""
+
+    id: str
+    filename: str
+    kind: Literal["image", "text", "document"]
+    media_type: str = Field(alias="mediaType")
+    size: int
+    page_count: int | None = Field(default=None, alias="pageCount")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 class AskRequest(BaseModel):
     """A question. `session_id` omitted starts a new conversation."""
 
@@ -205,6 +234,15 @@ class AskRequest(BaseModel):
             "one of its stated vision capabilities."
         ),
     )
+    attachments: list[PreparedAttachmentRef] = Field(
+        default_factory=list,
+        max_length=8,
+        description=(
+            "Opaque ids from POST /api/chat/attachments. The server resolves "
+            "text or page images only for the authenticated owner and never "
+            "persists their bytes in the conversation transcript."
+        ),
+    )
 
     think: bool = Field(
         default=False,
@@ -213,6 +251,15 @@ class AskRequest(BaseModel):
             "models that reason by default -- `GET /api/models` reports which "
             "with `supports_thinking`, and for the rest the flag is discarded "
             "downstream rather than silently altering the answer."
+        ),
+    )
+    web_search: bool = Field(
+        default=False,
+        alias="webSearch",
+        description=(
+            "Permit bank specialists to search and read current public pages on "
+            "their own bank domains for this turn. The supervisor never receives "
+            "a direct web tool."
         ),
     )
     model: str | None = Field(
@@ -249,7 +296,12 @@ class AskRequest(BaseModel):
         "Here is this table" followed by a look is a real way to use this, so an
         empty question with an attachment is valid; empty everything is not.
         """
-        if not self.question.strip() and not self.context and not self.captures:
+        if (
+            not self.question.strip()
+            and not self.context
+            and not self.captures
+            and not self.attachments
+        ):
             raise ValueError("Ask a question or attach something.")
         return self
 

@@ -34,6 +34,13 @@ quote: cite the result's url, say what the bank published, and never present a
 figure read out of a page as a current rate from a live calculator. Expired
 campaigns are already filtered out of search results.
 
+For every claim you actually derive from indexed documentation, place that
+document's exact URL in a clickable Markdown link immediately after the claim.
+Do not append a catalogue of every retrieved URL. A URL belongs in your final
+response only when its retrieved passage directly supports information you
+carry into that response. Use a human-readable page or document title as the
+link label; never expose a Qdrant point_id or UUID to the user.
+
 A result marked `parça=i/n` is piece i of a document with n+1 pieces, and you
 are seeing only that piece. Documents are split without overlap, so anything
 adjacent to it is in the neighbouring piece, not in front of you. Call
@@ -56,8 +63,100 @@ the named one looked empty. If the heading is there, the section is there.
 As you work, pass the point_ids you are finished with as not_useful so they stop
 taking up room, and the ones your answer rests on as useful so they are kept."""
 
+FORMAT_GUIDANCE = """
 
-def build_specialist(bank: str, enforced_monthly_profit_rate: float | None = None):
+Write application or website menu paths with the literal Unicode arrow `→`,
+for example `Mobil Şube → Hesap → Yatırım Hesabı Aç`. Never write simple arrows
+as LaTeX such as `$\\rightarrow$`; this output is prose, not a math document."""
+
+TOOL_SELECTION_GUIDANCE = """
+
+Before answering, analyze the delegated request and select the available tools
+that can actually establish each requested fact. The source priority is:
+
+1. Use this bank's live endpoint tools first for current rates, quotes,
+   calculations, exchange values, and feeds.
+2. Use search_bank, expand_chunk, and read_full_page for published product
+   terms, conditions, context, and requested facts a live endpoint does not
+   expose.
+3. When live web tools are present, use them as a supplemental way to discover
+   or verify current bank publications. Their presence does not make them
+   mandatory unless this prompt separately says the request REQUIRES web
+   discovery.
+
+Web search being absent never removes or invalidates the live endpoint and
+indexed tools you still have. Do not tell the supervisor or user that you cannot
+answer an ordinary bank question merely because web research is unavailable.
+Use the tools in hand. If none supplies a requested current figure, say exactly
+which fact is unavailable for this bank after using the relevant tools; preserve
+the facts they did supply and do not turn one missing value into a refusal of
+the whole request."""
+
+WEB_GUIDANCE = """
+
+Live web research is enabled for this delegated turn. It is still restricted to
+this bank; you cannot search or open another bank's domain.
+
+Use read_bank_source directly when the request, an attached table row, or a
+retrieved chunk contains an exact URL. Do not waste a web search on a URL you
+already have. Use search_bank_web only when you need to discover a page that the
+known URLs and indexed corpus did not provide. A search snippet is never enough:
+open the result with read_bank_source before relying on a claim.
+
+Current web pages can change after the indexed document or attached table was
+created. Compare the live page to the supplied/retrieved claim and state any
+conflict, missing condition, changed date, or unavailable page. A live web read
+is published evidence at its retrieved_at time; it is not a calculator quote.
+
+Your final response is the only part the supervisor can see. It MUST preserve
+the evidence you actually used: source type (live_endpoint, indexed_document,
+or live_web_page/live_web_pdf/live_web_image), exact URL, retrieved_at for live reads, the
+relevant fact, and any conflict or limitation. Never merely say that you
+checked a source. If a requested URL was unreadable, include that URL and the
+tool's status instead of silently answering from something else.
+
+Every factual statement derived from search_bank_web or read_bank_source MUST
+carry its exact source as a clickable Markdown link immediately after that
+statement: `[source title](https://...)`. Do not cite a search-results page,
+invent a URL, or collect links only at the end while leaving the claims
+unattributed. Do not list every page the search returned: cite only a page whose
+snippet or opened body directly supplied a fact you used. Keep the other source
+classes labelled according to their own guidance."""
+
+SEARCH_ONLY_GUIDANCE = """
+
+Live web discovery is enabled in SEARCH-ONLY ASSESSMENT MODE. You have
+search_bank_web, but read_bank_source is deliberately absent. Use web search to
+discover this bank's pages and report result URLs, titles, and snippets.
+
+This mode cannot inspect page bodies. A search snippet is a discovery hint, not
+verified evidence. Never claim that a condition, rate, date, or campaign was
+confirmed from the page. Say explicitly when your answer is based only on a
+search snippet, and recommend re-enabling read_bank_source for conclusive
+verification. Do not invent a missing reader call or imply that you opened a
+result. If you report anything from a search result, put its exact result URL in
+a clickable Markdown link immediately after the title or snippet-derived
+statement: `[source title](https://...)`. Select only results whose snippets
+actually contribute information to your answer; never dump the complete search
+result list as a source catalogue."""
+
+MANDATORY_WEB_GUIDANCE = """
+
+This delegated request REQUIRES web discovery. You MUST call search_bank_web at
+least once during this turn before writing your final response, even if live
+endpoints or indexed retrieval already appear sufficient. Indexed search_bank,
+expand_chunk, and read_full_page do not satisfy this requirement. Report the
+web tool's real result, including `no_results` or an error; never replace a
+failed or empty web search with an unsupported claim that web research was
+completed."""
+
+
+def build_specialist(
+    bank: str,
+    enforced_monthly_profit_rate: float | None = None,
+    web_research_enabled: bool = False,
+    web_research_required: bool = False,
+):
     """Compile one isolated specialist with a fresh tunnel-aware model client.
 
     The graph is deliberately not cached.  A compiled agent retains the model
@@ -82,14 +181,35 @@ def build_specialist(bank: str, enforced_monthly_profit_rate: float | None = Non
         bank,
         enforced_monthly_profit_rate=enforced_monthly_profit_rate,
         retrieval=retrieval,
+        web_research_enabled=web_research_enabled,
     )
-    system_prompt = prompt_for(bank) + CORPUS_GUIDANCE + (
-        "\nThis delegated turn has a customer-supplied monthly profit-rate "
-        f"scenario fixed at {enforced_monthly_profit_rate}%. When you call "
-        "finance_quote, that rate is enforced even if you omit the optional "
-        "tool argument. Do not state a different rate."
-        if enforced_monthly_profit_rate is not None
+    web_guidance = ""
+    if web_research_enabled:
+        web_guidance = (
+            WEB_GUIDANCE
+            if settings.WEB_READ_SOURCE_ENABLED
+            else SEARCH_ONLY_GUIDANCE
+        )
+    required_web_guidance = (
+        MANDATORY_WEB_GUIDANCE
+        if web_research_enabled and web_research_required
         else ""
+    )
+    system_prompt = (
+        prompt_for(bank)
+        + CORPUS_GUIDANCE
+        + TOOL_SELECTION_GUIDANCE
+        + FORMAT_GUIDANCE
+        + web_guidance
+        + required_web_guidance
+        + (
+            "\nThis delegated turn has a customer-supplied monthly profit-rate "
+            f"scenario fixed at {enforced_monthly_profit_rate}%. When you call "
+            "finance_quote, that rate is enforced even if you omit the optional "
+            "tool argument. Do not state a different rate."
+            if enforced_monthly_profit_rate is not None
+            else ""
+        )
     )
     # Each specialist is compacted on its own thread, against its own window.
     # Its prompt and bank tools are smaller than the supervisor's, so the space
@@ -108,13 +228,13 @@ def build_specialist(bank: str, enforced_monthly_profit_rate: float | None = Non
         # passages the model had already asked to drop.
         middleware=[
             RetrievalPruning(retrieval),
-            *_retrieval_limits(),
+            *_retrieval_limits(web_research_enabled),
             build_compaction(window, specialist=True),
         ],
     )
 
 
-def _retrieval_limits() -> list[ToolCallLimitMiddleware]:
+def _retrieval_limits(web_research_enabled: bool = False) -> list[ToolCallLimitMiddleware]:
     """A per-turn ceiling on each retrieval tool.
 
     Run-scoped, not thread-scoped: the budget is for answering one delegated
@@ -122,7 +242,7 @@ def _retrieval_limits() -> list[ToolCallLimitMiddleware]:
     the live endpoint tools -- a specialist that needs six quotes to answer a
     question should make six calls.
     """
-    return [
+    limits = [
         ToolCallLimitMiddleware(tool_name=name, run_limit=limit,
                                 exit_behavior="continue")
         for name, limit in (
@@ -131,6 +251,21 @@ def _retrieval_limits() -> list[ToolCallLimitMiddleware]:
             ("read_full_page", settings.RETRIEVE_PAGE_LIMIT),
         )
     ]
+    if web_research_enabled:
+        limits.append(
+            ToolCallLimitMiddleware(
+                tool_name="search_bank_web",
+                run_limit=settings.WEB_SEARCH_TOOL_LIMIT,
+                exit_behavior="continue",
+            )
+        )
+        if settings.WEB_READ_SOURCE_ENABLED:
+            limits.append(ToolCallLimitMiddleware(
+                tool_name="read_bank_source",
+                run_limit=settings.WEB_READ_TOOL_LIMIT,
+                exit_behavior="continue",
+            ))
+    return limits
 
 
 def specialist_thread_id(session_id: str, bank: str) -> str:

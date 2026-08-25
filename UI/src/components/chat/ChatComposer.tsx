@@ -4,13 +4,14 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import { styled, useTheme } from "@mui/material/styles";
 import {
   ArrowUp,
+  ArrowRight,
   AudioLines,
   Eye,
   Plus,
   SlidersHorizontal,
   Square,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   useCallback,
   useEffect,
@@ -26,12 +27,13 @@ import { VuiBox } from "@/components/vision";
 import { api } from "@/lib/api";
 import { useChat } from "@/lib/chat/ChatProvider";
 import type { MentionTarget } from "@/lib/chat/types";
+import { mentionAt } from "@/lib/chat/mention";
 import { useVoiceSession } from "@/lib/chat/useVoiceSession";
 
 import { AdvancedMenu } from "./AdvancedMenu";
 import { AttachmentTray } from "./AttachmentTray";
 import { ContextMenu, ContextRing } from "./ContextRing";
-import { MentionMenu, mentionAt } from "./MentionMenu";
+import { MentionMenu } from "./MentionMenu";
 import { VoiceSessionBar } from "./VoiceSessionBar";
 
 /**
@@ -175,9 +177,11 @@ export function ChatComposer({
   placeholder?: string;
 }) {
   const t = useTranslations("chat");
+  const locale = useLocale();
   const theme = useTheme();
   const {
     status,
+    recommendation,
     send,
     stop,
     think,
@@ -187,6 +191,7 @@ export function ChatComposer({
     model,
     setModel,
     attachments,
+    mentionTargets: availableMentionTargets,
     serverSessionId,
   } = useChat();
 
@@ -293,6 +298,12 @@ export function ChatComposer({
   // someone wants to cancel, so the stop button has to be live there too.
   const isBusy = status === "streaming" || status === "submitted";
   const hasText = value.trim().length > 0;
+  const hasAttachment = attachments.prepared.length > 0;
+  const canSubmit =
+    hasText ||
+    hasAttachment ||
+    attachments.contexts.length > 0 ||
+    attachments.captures.length > 0;
 
   /**
    * Whether the controls sit on their own row rather than in the field row.
@@ -346,14 +357,15 @@ export function ChatComposer({
   const mention = useMemo(() => mentionAt(value, caret), [value, caret]);
   const mentionTargets: MentionTarget[] = useMemo(() => {
     if (!mention) return [];
-    const query = mention.query.toLowerCase();
-    return attachments.targets.filter((target) =>
-      target.filename.toLowerCase().includes(query),
+    const query = mention.query.trim().toLocaleLowerCase(locale);
+    return availableMentionTargets.filter((target) =>
+      target.filename.toLocaleLowerCase(locale).includes(query),
     );
-  }, [mention, attachments.targets]);
-  // Only offered once something is staged. `@` with nothing attached is just an
-  // at-sign, and a menu saying "nothing to mention" on every one would be noise.
-  const mentionOpen = Boolean(mention) && attachments.targets.length > 0;
+  }, [locale, mention, availableMentionTargets]);
+  // Offered for staged files and for prepared files sent earlier in this
+  // conversation. A picked historical file is resolved by its opaque id on the
+  // next request; this is not a filename-only visual shortcut.
+  const mentionOpen = Boolean(mention) && availableMentionTargets.length > 0;
   // Clamped at read time rather than reset from an effect: the filtered list
   // shrinks as the query is typed, and an index left pointing past the end would
   // highlight nothing until the next keystroke.
@@ -451,11 +463,23 @@ export function ChatComposer({
   }, [attachments]);
 
   const submit = useCallback(() => {
-    if (!hasText || isBusy) return;
+    if (!canSubmit || isBusy || attachments.hasPending || attachments.hasError) return;
     send(value);
     setValue("");
     setMultiline(false);
-  }, [hasText, isBusy, send, value]);
+  }, [attachments.hasError, attachments.hasPending, canSubmit, isBusy, send, value]);
+
+  const acceptRecommendation = useCallback(() => {
+    if (!recommendation) return;
+    setValue(recommendation);
+    requestAnimationFrame(() => {
+      const field = fieldRef.current;
+      if (!field) return;
+      field.focus();
+      field.setSelectionRange(recommendation.length, recommendation.length);
+      setCaret(recommendation.length);
+    });
+  }, [recommendation]);
 
   /** Replace the open `@token` with the picked filename. */
   const pickMention = useCallback(
@@ -488,6 +512,7 @@ export function ChatComposer({
     if (mentionOpen) {
       if (event.key === "ArrowDown") {
         event.preventDefault();
+        if (mentionTargets.length === 0) return;
         setMentionIndex(
           (i) =>
             (Math.min(i, mentionTargets.length - 1) + 1) %
@@ -497,6 +522,7 @@ export function ChatComposer({
       }
       if (event.key === "ArrowUp") {
         event.preventDefault();
+        if (mentionTargets.length === 0) return;
         setMentionIndex(
           (i) =>
             (Math.min(i, mentionTargets.length - 1) -
@@ -508,11 +534,14 @@ export function ChatComposer({
       }
       if (event.key === "Enter" || event.key === "Tab") {
         const target = mentionTargets[activeMention];
+        // An unmatched @query still owns these keys. Enter must not send the
+        // whole chat accidentally just because there is no row to select.
+        event.preventDefault();
         if (target) {
-          event.preventDefault();
           pickMention(target);
           return;
         }
+        return;
       }
       if (event.key === "Escape") {
         event.preventDefault();
@@ -521,6 +550,14 @@ export function ChatComposer({
         setCaret(-1);
         return;
       }
+    }
+
+    // An empty composer treats Arrow Right as accepting the recommendation.
+    // Once text exists, the key keeps its normal caret-navigation behaviour.
+    if (event.key === "ArrowRight" && !value && recommendation) {
+      event.preventDefault();
+      acceptRecommendation();
+      return;
     }
 
     // Enter sends; Shift+Enter is a newline. The IME check matters for Turkish
@@ -631,14 +668,15 @@ export function ChatComposer({
         </VuiBox>
 
         <RoundButton
-          label={isBusy ? t("stop") : hasText ? t("send") : t("voiceStart")}
-          onClick={() => (isBusy ? stop() : hasText ? submit() : void voice.start())}
+          label={isBusy ? t("stop") : canSubmit ? t("send") : t("voiceStart")}
+          onClick={() => (isBusy ? stop() : canSubmit ? submit() : void voice.start())}
+          disabled={!isBusy && canSubmit && (attachments.hasPending || attachments.hasError)}
           filled
           ml={gapBetween(ICON_INK_INSET_PX, FILLED_INK_INSET_PX)}
         >
           {isBusy ? (
             <Square size={14} fill="currentColor" />
-          ) : hasText ? (
+          ) : canSubmit ? (
             <ArrowUp size={18} />
           ) : (
             <AudioLines size={20} />
@@ -703,6 +741,7 @@ export function ChatComposer({
         ref={fileRef}
         type="file"
         multiple
+        accept="image/jpeg,image/png,image/webp,.txt,.md,.markdown,.pdf,.docx"
         onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
           if (event.target.files?.length) attachments.add(event.target.files);
           // Cleared so picking the same file twice in a row still fires a change.
@@ -742,6 +781,8 @@ export function ChatComposer({
             onRemoveFile: attachments.removeFile,
             onRemoveContext: attachments.removeContext,
             onRemoveCapture: attachments.removeCapture,
+            hasPending: attachments.hasPending,
+            hasError: attachments.hasError,
           }}
         />
 
@@ -801,11 +842,20 @@ export function ChatComposer({
                 // what inflated the popup's box -- a placeholder long enough to
                 // wrap raises a textarea's `scrollHeight`, which tripped the
                 // wrapped-text layout on an empty field.
-                placeholder={placeholder ?? ""}
+                placeholder={recommendation ? "" : placeholder ?? ""}
                 aria-label={t("title")}
               />
 
-              {!placeholder && !value && <CyclingPlaceholder />}
+              {!value &&
+                (recommendation ? (
+                  <RecommendationPlaceholder
+                    text={recommendation}
+                    label={t("acceptRecommendation")}
+                    onAccept={acceptRecommendation}
+                  />
+                ) : (
+                  !placeholder && <CyclingPlaceholder />
+                ))}
             </VuiBox>
           </VuiBox>
 
@@ -907,6 +957,7 @@ function CyclingPlaceholder() {
           key={`${index}-${i}`}
           component="span"
           className={leaving ? "animate-letter-out" : "animate-letter-in"}
+          sx={{ color: "inherit" }}
           style={
             {
               display: "inline-block",
@@ -919,6 +970,96 @@ function CyclingPlaceholder() {
           {char === " " ? " " : char}
         </VuiBox>
       ))}
+    </VuiBox>
+  );
+}
+
+function RecommendationPlaceholder({
+  text,
+  label,
+  onAccept,
+}: {
+  text: string;
+  label: string;
+  onAccept: () => void;
+}) {
+  return (
+    <VuiBox
+      sx={{
+        position: "absolute",
+        inset: 0,
+        zIndex: 2,
+        display: "flex",
+        alignItems: "flex-start",
+        minWidth: 0,
+        pointerEvents: "none",
+        color: "var(--composer-suggestion-ink)",
+        fontSize: "0.9375rem",
+        lineHeight: `${LINE_PX}px`,
+      }}
+    >
+      <VuiBox
+        aria-hidden
+        sx={{
+          flex: 1,
+          minWidth: 0,
+          // VuiBox supplies its own theme-derived text colour. Explicitly
+          // inherit here or it overwrites the accessible recommendation ink
+          // with light-on-light / dark-on-dark when the theme changes.
+          color: "inherit",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          pointerEvents: "none",
+        }}
+      >
+        {text}
+      </VuiBox>
+      <VuiBox
+        component="button"
+        type="button"
+        aria-label={label}
+        title={`${label} (→)`}
+        onMouseDown={(event: React.MouseEvent<HTMLButtonElement>) => {
+          // Accept before the composer's shell moves focus back to the textarea.
+          // The click handler remains for keyboard activation, which has no
+          // preceding mouse event.
+          event.preventDefault();
+          event.stopPropagation();
+          onAccept();
+        }}
+        onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
+          event.stopPropagation();
+          onAccept();
+        }}
+        sx={{
+          flexShrink: 0,
+          width: 24,
+          height: 24,
+          ml: 0.75,
+          p: 0,
+          display: "inline-grid",
+          placeItems: "center",
+          border: 0,
+          borderRadius: "999px",
+          color: "var(--composer-suggestion-ink)",
+          backgroundColor:
+            "color-mix(in srgb, var(--composer-suggestion-ink) 10%, transparent)",
+          cursor: "pointer",
+          pointerEvents: "auto",
+          "&:hover": {
+            color: "var(--foreground)",
+            backgroundColor:
+              "color-mix(in srgb, var(--foreground) 12%, transparent)",
+          },
+          "&:focus-visible": {
+            outline: "2px solid var(--ring)",
+            outlineOffset: 2,
+          },
+        }}
+      >
+        <ArrowRight size={15} />
+      </VuiBox>
     </VuiBox>
   );
 }

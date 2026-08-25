@@ -1,12 +1,22 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { ExternalLink, File as FileGlyph, Image as ImageGlyph } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { VuiBox, VuiTypography } from "@/components/vision";
 import type { AgentMessage } from "@/lib/chat/types";
 
 import { ContextGlyph } from "./ContextGlyph";
+
+function safeWebSource(url: string): URL | null {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" || parsed.protocol === "http:" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Streamdown pulls in Shiki, and Shiki is large. Loading it lazily keeps it off
@@ -71,6 +81,130 @@ export function ChatMessage({
           );
         }
 
+        if (part.type === "citations") {
+          const sources = part.sources.flatMap((source) => {
+            const parsed = safeWebSource(source.url);
+            return parsed ? [{ source, parsed }] : [];
+          });
+          if (sources.length === 0) return null;
+          const groups = [
+            {
+              key: "online",
+              label: t("onlineSources"),
+              sources: sources.filter(
+                ({ source }) => source.sourceType !== "indexed_document",
+              ),
+            },
+            {
+              key: "knowledge-base",
+              label: t("knowledgeBaseSources"),
+              sources: sources.filter(
+                ({ source }) => source.sourceType === "indexed_document",
+              ),
+            },
+          ].filter((group) => group.sources.length > 0);
+
+          return (
+            <VuiBox
+              key={index}
+              component="section"
+              aria-label={t("sources")}
+              mt={0.75}
+              sx={{ maxWidth: "100%", minWidth: 0 }}
+            >
+              <VuiTypography
+                variant="caption"
+                fontWeight="medium"
+                color="text"
+                sx={{ display: "block", mb: 0.75, opacity: 0.78 }}
+              >
+                {t("sources")}
+              </VuiTypography>
+              {groups.map((group) => (
+                <VuiBox key={group.key} mb={1}>
+                  <VuiTypography
+                    variant="caption"
+                    fontWeight="medium"
+                    color="text"
+                    sx={{ display: "block", mb: 0.5, opacity: 0.68 }}
+                  >
+                    {group.label}
+                  </VuiTypography>
+                  <VuiBox display="flex" flexWrap="wrap" gap={0.75}>
+                    {group.sources.map(({ source, parsed }, sourceIndex) => (
+                      <VuiBox
+                        key={source.url}
+                        component="a"
+                        href={source.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={source.url}
+                        display="flex"
+                        alignItems="center"
+                        gap={0.75}
+                        px={1.25}
+                        py={0.75}
+                        sx={{
+                          minWidth: 0,
+                          maxWidth: "100%",
+                          color: "var(--control-ink)",
+                          border: "1px solid var(--border)",
+                          borderRadius: "var(--radius-md)",
+                          textDecoration: "none",
+                          backgroundColor: "transparent",
+                          transition: "border-color 120ms ease, background-color 120ms ease",
+                          "&:hover": {
+                            borderColor: "var(--border-strong)",
+                            backgroundColor: "var(--muted)",
+                          },
+                          "&:focus-visible": {
+                            outline: "2px solid var(--info)",
+                            outlineOffset: "2px",
+                          },
+                        }}
+                      >
+                        <VuiTypography
+                          variant="caption"
+                          fontWeight="bold"
+                          color="inherit"
+                          sx={{ color: "var(--primary-strong)", flex: "0 0 auto" }}
+                        >
+                          {sourceIndex + 1}
+                        </VuiTypography>
+                        <VuiBox minWidth={0}>
+                          <VuiTypography
+                            variant="caption"
+                            fontWeight="medium"
+                            color="text"
+                            sx={{
+                              display: "block",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                              maxWidth: "24rem",
+                            }}
+                          >
+                            {source.title || source.bank || parsed.hostname}
+                          </VuiTypography>
+                          <VuiTypography
+                            variant="caption"
+                            fontWeight="regular"
+                            color="text"
+                            sx={{ display: "block", opacity: 0.65 }}
+                          >
+                            {parsed.hostname}
+                          </VuiTypography>
+                        </VuiBox>
+                        <ExternalLink size={13} aria-hidden="true" />
+                      </VuiBox>
+                    ))}
+                  </VuiBox>
+                </VuiBox>
+              ))}
+            </VuiBox>
+          );
+        }
+
         /**
          * A piece of the app that travelled with this turn.
          *
@@ -124,6 +258,37 @@ export function ChatMessage({
                   page furniture.
                 */}
                 {part.kind === "capture" ? t("readPage") : part.label}
+              </VuiTypography>
+            </VuiBox>
+          );
+        }
+
+        if (part.type === "attachment") {
+          return (
+            <VuiBox
+              key={index}
+              alignSelf="flex-end"
+              display="flex"
+              alignItems="center"
+              gap={0.75}
+              px={1.25}
+              py={0.75}
+              sx={{
+                maxWidth: "75%",
+                minWidth: 0,
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-md)",
+                color: "var(--control-ink)",
+              }}
+            >
+              {part.kind === "image" ? <ImageGlyph size={16} /> : <FileGlyph size={16} />}
+              <VuiTypography
+                variant="caption"
+                fontWeight="medium"
+                color="text"
+                sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+              >
+                {part.filename}
               </VuiTypography>
             </VuiBox>
           );

@@ -13,6 +13,7 @@ import pytest
 
 from api.agent import _context_block, _human_content
 from api.schemas.chat import AskRequest, AttachedContext, CapturePayload
+from api.chat_attachments import ResolvedAttachment
 
 pytestmark = pytest.mark.unit
 
@@ -164,10 +165,55 @@ def test_a_question_is_not_length_capped():
     assert len(AskRequest(question=long).question) == 50_000
 
 
+def test_web_search_permission_uses_the_browser_alias_and_defaults_off():
+    assert AskRequest(question="x").web_search is False
+    assert AskRequest(question="x", webSearch=True).web_search is True
+    dumped = AskRequest(question="x", webSearch=True).model_dump(by_alias=True)
+    assert dumped["webSearch"] is True
+
+
 def test_an_attachment_with_no_question_is_a_valid_turn():
     # "Here is this table" followed by a look is how people actually use it.
     body = AskRequest(question="", context=[_context()])
     assert body.question == ""
+
+
+def test_prepared_text_attachment_is_delimited_and_sent_as_text():
+    attachment = ResolvedAttachment(
+        id="prepared",
+        filename="rates.md",
+        kind="text",
+        media_type="text/markdown",
+        size=12,
+        text="# Rate\n17.25",
+        images=(),
+    )
+
+    content = _human_content("read it", [_Chunk()], [], [], attachments=[attachment])
+
+    assert isinstance(content, str)
+    assert '<attached-file filename="rates.md" type="text/markdown">' in content
+    assert "# Rate\n17.25" in content
+
+
+def test_prepared_document_pages_are_images_before_the_prompt():
+    attachment = ResolvedAttachment(
+        id="prepared",
+        filename="rates.pdf",
+        kind="document",
+        media_type="application/pdf",
+        size=100,
+        text=None,
+        images=(_capture(data="PAGE1"), _capture(data="PAGE2")),
+    )
+
+    content = _human_content("page two?", [_Chunk()], [], [], attachments=[attachment])
+
+    assert isinstance(content, list)
+    assert [block["type"] for block in content] == ["image_url", "image_url", "text"]
+    assert "images=\"1-2\"" in content[-1]["text"]
+    assert "pages 1-2 in order" in content[-1]["text"]
+    assert "PAGE1" not in content[-1]["text"]
 
 
 def test_an_empty_turn_is_rejected():

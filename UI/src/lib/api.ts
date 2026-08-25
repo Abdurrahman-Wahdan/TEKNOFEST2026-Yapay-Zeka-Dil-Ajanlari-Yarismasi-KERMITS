@@ -42,12 +42,14 @@ export type StreamEvent = Schemas["StreamEvent"];
 export type TableMetadata = Schemas["TableMetadataOut"];
 export type ContextLevel = Schemas["ContextLevelOut"];
 export type CompactionResult = Schemas["CompactionResult"];
+export type Recommendation = Schemas["RecommendationOut"];
 export type ChatModel = Schemas["ModelOut"];
 export type ChatModels = Schemas["ModelsResponse"];
 export type TokenPair = Schemas["TokenPair"];
 export type User = Schemas["UserOut"];
 export type ResetPasswordResponse = Schemas["ResetPasswordResponse"];
 export type VoiceTranscription = Schemas["VoiceTranscriptionOut"];
+export type PreparedAttachment = Schemas["PreparedAttachmentOut"];
 
 /**
  * Relative, so requests go through the Next rewrite to FastAPI and the browser
@@ -296,6 +298,12 @@ export const api = {
     request<CompactionResult>(`/chat/sessions/${sessionId}/compact`, {
       method: "POST",
     }),
+  conversationRecommendation: (sessionId: string, locale: "en" | "tr", signal?: AbortSignal) =>
+    request<Recommendation>(`/chat/sessions/${sessionId}/recommendation`, {
+      method: "POST",
+      body: JSON.stringify({ locale }),
+      signal,
+    }),
   tableMetadata: (body: Schemas["TableMetadataRequest"]) =>
     request<TableMetadata>("/chat/table-metadata", {
       method: "POST",
@@ -317,6 +325,17 @@ export const api = {
       signal,
     });
   },
+
+  // ----- chat attachments -----
+  prepareChatAttachment: (file: File, signal?: AbortSignal) => {
+    const body = new FormData();
+    body.append("file", file, file.name);
+    return request<PreparedAttachment>("/chat/attachments", {
+      method: "POST",
+      body,
+      signal,
+    });
+  },
 };
 
 /**
@@ -333,8 +352,10 @@ export async function* askStream(
     session_id?: string;
     context?: Schemas["AttachedContext"][];
     captures?: Schemas["CapturePayload"][];
+    attachments?: Schemas["PreparedAttachmentRef"][];
     toolResults?: Schemas["ToolResult"][];
     think?: boolean;
+    webSearch?: boolean;
     model?: string | null;
   },
   signal?: AbortSignal,

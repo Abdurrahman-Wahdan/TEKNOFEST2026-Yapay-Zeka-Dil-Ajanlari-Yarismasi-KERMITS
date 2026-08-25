@@ -25,8 +25,16 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 
 import { streamChat } from "./transport";
+import {
+  attachmentMentionTargets,
+  conversationAttachments,
+  mentionedAttachments,
+  mergeReusableAttachments,
+  type ReusableAttachment,
+} from "./attachment-mentions";
 import { api } from "@/lib/api";
 import { usePathname } from "@/i18n/navigation";
+import { useLocale } from "next-intl";
 
 import { formatLocation } from "./page-locator";
 import { toCapturePayloads } from "./capture";
@@ -38,6 +46,7 @@ import type {
   MessagePart,
   PageViewMode,
   ToolResult,
+  WebCitation,
 } from "./types";
 import { useAttachments } from "./useAttachments";
 
@@ -61,6 +70,8 @@ type ChatContextValue = {
   /** Persisted server conversation used when a kept table gets its context. */
   serverSessionId?: string;
   status: ChatStatus;
+  /** A private agent's context-aware next user message. */
+  recommendation?: string;
   send: (text: string) => void;
   stop: () => void;
   newChat: () => void;
@@ -80,6 +91,8 @@ type ChatContextValue = {
   setModel: (key: string | undefined) => void;
   /** Files staged for the next message, shared by both surfaces. */
   attachments: ReturnType<typeof useAttachments>;
+  /** Staged files plus reusable files from earlier turns in this conversation. */
+  mentionTargets: ReturnType<typeof attachmentMentionTargets>;
 
   /** Past conversations, newest first. Empty until the store has been read. */
   history: StoredConversation[];
@@ -112,6 +125,7 @@ const MAX_TOOL_PASSES = 3;
 export function ChatProvider({ children }: { children: ReactNode }) {
   // The locale-stripped path, for anything staged from the page the user is on.
   const pathname = usePathname();
+  const locale = useLocale();
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   /**
    * Past conversations, read straight from the store.
@@ -129,6 +143,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [activeId, setActiveId] = useState<string>(() => newConversationId());
   const [serverSessionId, setServerSessionId] = useState<string | undefined>();
   const [status, setStatus] = useState<ChatStatus>("ready");
+  const [recommendation, setRecommendation] = useState<string | undefined>();
   const [popupOpen, setPopupOpen] = useState(false);
   const queryClient = useQueryClient();
   const [think, setThink] = useState(false);
@@ -142,9 +157,81 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   // messages live up here.
   const attachments = useAttachments();
 
+  const stagedReusableAttachments: ReusableAttachment[] = useMemo(
+    () => [
+      ...attachments.images.flatMap((item) =>
+        item.status === "ready" && item.attachmentId
+          ? [{ id: item.attachmentId, filename: item.filename, kind: "image" as const }]
+          : [],
+      ),
+      ...attachments.files.flatMap((item) =>
+        item.status === "ready" && item.attachmentId
+          ? [
+              {
+                id: item.attachmentId,
+                filename: item.filename,
+                kind: item.kind,
+                pageCount: item.pageCount,
+              },
+            ]
+          : [],
+      ),
+    ],
+    [attachments.files, attachments.images],
+  );
+  const mentionTargets = useMemo(() => {
+    const reusable = mergeReusableAttachments(
+      stagedReusableAttachments,
+      conversationAttachments(messages),
+    );
+    const historical = attachmentMentionTargets(
+      reusable.filter(
+        (file) => !stagedReusableAttachments.some((staged) => staged.id === file.id),
+      ),
+    );
+    return [...attachments.targets, ...historical];
+  }, [attachments.targets, messages, stagedReusableAttachments]);
+
   // Held in a ref rather than state: aborting must not wait for a re-render, and
   // nothing renders differently based on the controller's identity.
   const abortRef = useRef<AbortController | null>(null);
+  const recommendationAbortRef = useRef<AbortController | null>(null);
+
+  /**
+   * Ask the separate recommendation agent after a complete assistant turn.
+   *
+   * This intentionally does not sit in the chat stream. The banking answer is
+   * never delayed by recommendation generation, and a failed recommendation is
+   * a quiet missing affordance rather than a failed conversation.
+   */
+  useEffect(() => {
+    const last = messages.at(-1);
+    const hasAnswer =
+      last?.role === "assistant" &&
+      last.parts.some((part) => part.type === "text" && part.text.trim());
+    if (status !== "ready" || !serverSessionId || !hasAnswer) return;
+
+    recommendationAbortRef.current?.abort();
+    const controller = new AbortController();
+    recommendationAbortRef.current = controller;
+    setRecommendation(undefined);
+
+    void api
+      .conversationRecommendation(
+        serverSessionId,
+        locale.startsWith("tr") ? "tr" : "en",
+        controller.signal,
+      )
+      .then((result) => {
+        if (!controller.signal.aborted) setRecommendation(result.text);
+      })
+      .catch(() => {
+        // Recommendations are an enhancement. The conversation remains fully
+        // usable when the local model is busy or this background call is stopped.
+      });
+
+    return () => controller.abort();
+  }, [locale, messages, serverSessionId, status]);
 
   /**
    * Persist the open conversation whenever it changes.
@@ -177,6 +264,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const send = useCallback(
     (text: string) => {
       const trimmed = text.trim();
+      setRecommendation(undefined);
 
       // Snapshotted before anything else, because they decide whether there is a
       // message at all and they travel in two directions: into the user's own
@@ -184,11 +272,26 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       // still no upload endpoint) while context *is* its content.
       const stagedContexts = attachments.contexts;
       const stagedCaptures = attachments.captures;
-      const stagedFiles = attachments.targets.flatMap((target) =>
-        target.kind === "context"
-          ? []
-          : [{ id: target.id, filename: target.filename, kind: target.kind }],
+      const reusableFiles = mergeReusableAttachments(
+        stagedReusableAttachments,
+        conversationAttachments(messages),
       );
+      const mentionedFiles = mentionedAttachments(trimmed, reusableFiles);
+      const stagedFiles = [...attachments.prepared, ...mentionedFiles.map(({ id }) => ({ id }))]
+        .filter((file, index, all) => all.findIndex((candidate) => candidate.id === file.id) === index);
+      const stagedDisplayFiles = [
+        ...attachments.images.map((item) => ({
+          filename: item.filename,
+          kind: "image" as const,
+          attachmentId: item.attachmentId,
+        })),
+        ...attachments.files.map((item) => ({
+          filename: item.filename,
+          kind: item.kind,
+          pageCount: item.pageCount,
+          attachmentId: item.attachmentId,
+        })),
+      ];
 
       /**
        * The page outlines that arrived with a capture, as ordinary text context.
@@ -218,7 +321,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       // Nothing typed and nothing attached is not a message. But an attachment
       // with no question is: "here is this table" followed by a look is how
       // people actually use it, and requiring a word first made that impossible.
-      if (!trimmed && stagedContexts.length === 0 && stagedCaptures.length === 0) return;
+      if (
+        !trimmed &&
+        stagedContexts.length === 0 &&
+        stagedCaptures.length === 0 &&
+        stagedFiles.length === 0
+      ) return;
 
       // A second send while one is in flight cancels the first. Two concurrent
       // streams would interleave their deltas into whichever assistant message
@@ -249,6 +357,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             type: "context" as const,
             kind: "capture" as const,
             label: capture.label,
+          })),
+          ...stagedDisplayFiles.map((file) => ({
+            type: "attachment" as const,
+            ...file,
           })),
           // Omitted when empty rather than sent blank: an empty text part renders
           // as an empty bubble.
@@ -292,6 +404,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
          * the quota and silently stop history saving.
          */
         const toolParts: MessagePart[] = [];
+        const citedSources: WebCitation[] = [];
+        const answerParts = (): MessagePart[] => [
+          ...toolParts,
+          { type: "text", text },
+          ...(citedSources.length > 0
+            ? [{ type: "citations" as const, sources: [...citedSources] }]
+            : []),
+        ];
         const render = (parts: MessagePart[]) =>
           setMessages((prev) =>
             prev.map((m) => (m.id === assistantId ? { ...m, parts } : m)),
@@ -321,6 +441,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                 sessionId: serverSessionId,
                 onSessionId: setServerSessionId,
                 think,
+                webSearch,
                 model,
                 attachments: stagedFiles,
                 // Omitted rather than sent empty, so the payload says something
@@ -355,9 +476,24 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                 continue;
               }
 
+              if (chunk.type === "citation") {
+                // The same source can surface once from the nested web tool and
+                // again from the specialist's evidence handoff. The API also
+                // de-duplicates, but keeping this boundary idempotent protects
+                // restored or proxied streams too.
+                if (!citedSources.some(
+                  (source) => source.url === chunk.citation.url
+                    && source.sourceType === chunk.citation.sourceType,
+                )) {
+                  citedSources.push(chunk.citation);
+                }
+                render(answerParts());
+                continue;
+              }
+
               text += chunk.delta;
               setStatus("streaming");
-              render([...toolParts, { type: "text", text }]);
+              render(answerParts());
             }
 
             if (pending.length === 0) break;
@@ -374,7 +510,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                 label: result.label,
               });
             }
-            render([...toolParts, { type: "text", text }]);
+            render(answerParts());
             toolResults = results;
           }
         } catch (error) {
@@ -409,7 +545,17 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         }
       })();
     },
-    [messages, serverSessionId, think, model, attachments, pathname, queryClient],
+    [
+      messages,
+      serverSessionId,
+      think,
+      webSearch,
+      model,
+      attachments,
+      pathname,
+      queryClient,
+      stagedReusableAttachments,
+    ],
   );
 
   const newChat = useCallback(() => {
@@ -421,6 +567,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     setActiveId(newConversationId());
     setServerSessionId(undefined);
     setMessages([]);
+    setRecommendation(undefined);
     setStatus("ready");
     attachments.clear();
   }, [attachments]);
@@ -435,6 +582,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       setActiveId(found.id);
       setServerSessionId(found.serverSessionId);
       setMessages(found.messages);
+      setRecommendation(undefined);
       setStatus("ready");
       attachments.clear();
     },
@@ -460,6 +608,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         setActiveId(newConversationId());
         setServerSessionId(undefined);
         setMessages([]);
+        setRecommendation(undefined);
         setStatus("ready");
         attachments.clear();
       }
@@ -472,6 +621,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       messages,
       serverSessionId,
       status,
+      recommendation,
       send,
       stop,
       newChat,
@@ -484,6 +634,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       model,
       setModel,
       attachments,
+      mentionTargets,
       history,
       activeId,
       openConversation,
@@ -493,6 +644,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       messages,
       serverSessionId,
       status,
+      recommendation,
       send,
       stop,
       newChat,
@@ -501,6 +653,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       webSearch,
       model,
       attachments,
+      mentionTargets,
       history,
       activeId,
       openConversation,

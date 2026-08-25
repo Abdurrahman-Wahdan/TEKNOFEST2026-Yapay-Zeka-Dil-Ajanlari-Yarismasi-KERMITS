@@ -17,12 +17,14 @@ import uuid
 from collections.abc import Callable, Iterator
 from typing import TypeVar
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 
 from ..agent import CLIENT_TOOLS, answer
+from ..chat_attachments import AttachmentError, prepare_attachment, resolve_attachments
 from agents.table_metadata import generate_table_metadata
+from agents.recommendation import generate_recommendation
 from agents.shared.checkpoints import delete_session_checkpoints
 from ..db.models import ChatMessage, ChatSession
 from ..db.session import session_scope
@@ -30,6 +32,7 @@ from ..deps import CurrentUser, DbSession
 from ..schemas.chat import (
     AskRequest, ChatMessageOut, ChatSessionDetail, ChatSessionOut, CompactionResult,
     ContextLevelOut, StreamEvent, TableMetadataOut, TableMetadataRequest,
+    PreparedAttachmentOut, RecommendationOut, RecommendationRequest,
 )
 
 logger = logging.getLogger(__name__)
@@ -40,6 +43,16 @@ TITLE_CHARS = 60
 SSE_HEARTBEAT_SECONDS = 15.0
 _T = TypeVar("_T")
 _STREAM_FINISHED = object()
+
+
+@router.post("/attachments", response_model=PreparedAttachmentOut)
+def upload_chat_attachment(file: UploadFile, user: CurrentUser) -> PreparedAttachmentOut:
+    """Prepare one file without exposing document page images to the browser."""
+    try:
+        prepared = prepare_attachment(file.file, file.filename, user.id)
+    except AttachmentError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
+    return PreparedAttachmentOut.model_validate(prepared)
 
 
 def _with_heartbeats(
@@ -115,6 +128,34 @@ def get_chat_session(
         updated_at=chat.updated_at,
         messages=[ChatMessageOut.model_validate(m) for m in chat.messages],
     )
+
+
+@router.post(
+    "/sessions/{session_id}/recommendation", response_model=RecommendationOut
+)
+def create_recommendation(
+    session_id: uuid.UUID,
+    body: RecommendationRequest,
+    user: CurrentUser,
+    session: DbSession,
+) -> RecommendationOut:
+    """Generate the next composer message from this conversation's private agent."""
+    chat = _own_session(session, user, session_id)
+    try:
+        result = generate_recommendation(
+            [(str(message.id), message.role, message.content) for message in chat.messages],
+            session_id=str(session_id),
+            locale=body.locale,
+        )
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Recommendation failed for %s", session_id)
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "A conversation recommendation is temporarily unavailable.",
+        ) from exc
+    return RecommendationOut(text=result.text)
 
 
 @router.delete("/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -200,6 +241,30 @@ def compact_session(
         update = compaction.compact_now(agent.get_state(config).values)
         if update is not None:
             agent.update_state(config, update)
+        # The recommendation agent owns an independent checkpoint thread, but
+        # the user's compact action applies to the conversation as a whole.
+        from agents.recommendation import (
+            build_recommendation_agent,
+            recommendation_compaction,
+            recommendation_thread_id,
+        )
+
+        recommendation_middleware, _ = recommendation_compaction()
+        recommendation_agent = build_recommendation_agent()
+        recommendation_config = {
+            "configurable": {
+                "thread_id": recommendation_thread_id(str(session_id))
+            }
+        }
+        recommendation_state = recommendation_agent.get_state(recommendation_config)
+        if (recommendation_state.values or {}).get("messages"):
+            recommendation_update = recommendation_middleware.compact_now(
+                recommendation_state.values
+            )
+            if recommendation_update is not None:
+                recommendation_agent.update_state(
+                    recommendation_config, recommendation_update
+                )
         level = _level_out(compaction, window, agent, config)
     except Exception as exc:
         logger.exception("Compaction failed for %s", session_id)
@@ -250,6 +315,13 @@ def ask(body: AskRequest, user: CurrentUser, session: DbSession) -> StreamingRes
     into the OpenAPI schema, so the frontend's event types are generated like
     everything else instead of being the one hand-written surface in the app.
     """
+    try:
+        prepared_attachments = resolve_attachments(
+            [attachment.id for attachment in body.attachments], user.id
+        )
+    except AttachmentError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
+
     if body.session_id is not None:
         chat = _own_session(session, user, body.session_id)
     else:
@@ -261,6 +333,12 @@ def ask(body: AskRequest, user: CurrentUser, session: DbSession) -> StreamingRes
 
     chat_id = chat.id
     user_id = user.id
+    logger.info(
+        "chat_turn accepted session=%s web_search_enabled=%s model=%s",
+        chat_id,
+        body.web_search,
+        body.model or "default",
+    )
 
     # Read the history now, inside the request's session. The generator below
     # runs after this function returns and after that session is closed, so
@@ -292,6 +370,9 @@ def ask(body: AskRequest, user: CurrentUser, session: DbSession) -> StreamingRes
     if body.context:
         labels = ", ".join(c.label for c in body.context if c.label)
         stored = f"{stored}\n\n[ekli bağlam: {labels}]".strip()
+    if prepared_attachments:
+        labels = ", ".join(item.filename for item in prepared_attachments)
+        stored = f"{stored}\n\n[ekli dosya: {labels}]".strip()
     session.add(ChatMessage(session_id=chat_id, role="user", content=stored))
     session.commit()
 
@@ -316,8 +397,10 @@ def ask(body: AskRequest, user: CurrentUser, session: DbSession) -> StreamingRes
                     body.client_tools,
                     think=body.think,
                     model=body.model,
+                    web_search=body.web_search,
                     user_id=user_id,
                     session_id=chat_id,
+                    attachments=prepared_attachments,
                 )
 
             for event in _with_heartbeats(produce_events):

@@ -4,7 +4,7 @@ The public ``banks.tools`` API remains generic for existing callers.  This
 module is deliberately separate: it binds a bank before LangChain sees a tool,
 so a specialist cannot redirect a request to another bank.
 
-Two kinds of tool are built here and they answer different questions:
+Three kinds of tool are built here and they answer different questions:
 
     live endpoints   what the bank's calculator says right now -- a quote, a
                      rate, an instalment. Gated on ``bank.capabilities``,
@@ -15,6 +15,9 @@ Two kinds of tool are built here and they answer different questions:
                      gated: every bank's site was crawled, and having no live
                      calculator has nothing to do with having no documents.
                      Built in ``corpus.search``.
+    web research     what the bank's public page/PDF/image says now. Added only
+                     when the request explicitly permits it, and bank-bound in
+                     ``agents.shared.web_research``.
 
 The retrieval tools are documentation, not live data, and the specialist prompt
 says so: a figure read out of a published page is not a quote and must not be
@@ -34,6 +37,7 @@ from corpus.sites import get_site
 
 from .results import live_result
 from .retrieval_memory import RetrievalMemory
+from .web_research import build_bank_web_tools
 
 
 class ProductsInput(BaseModel):
@@ -114,6 +118,7 @@ def build_bank_tools(
     *,
     enforced_monthly_profit_rate: float | None = None,
     retrieval: RetrievalMemory | None = None,
+    web_research_enabled: bool = False,
 ) -> list[BaseTool]:
     """The named bank's tools: the live endpoints it truthfully supports, plus
     corpus retrieval over what it has published.
@@ -271,6 +276,12 @@ def build_bank_tools(
     memory = retrieval or RetrievalMemory()
     tools.extend(build_bank_retrieval_tools(
         get_site(bank_name).corpus_slug, memory.marked, memory.discarded))
+
+    # On-demand network access is request permission, not a permanent agent
+    # capability. When the Advanced toggle is off these tools do not exist in
+    # the specialist's schema, so a prompt cannot bypass the user's choice.
+    if web_research_enabled:
+        tools.extend(build_bank_web_tools(bank_name))
 
     # Health is intentionally scoped to this provider and is a diagnostic tool,
     # never a way for one specialist to inspect another bank.
