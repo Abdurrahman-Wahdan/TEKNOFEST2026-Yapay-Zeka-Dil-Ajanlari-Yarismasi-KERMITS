@@ -299,6 +299,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
    * The list is invalidated, so a conversation that has just come into existence
    * appears in every other tab too. `updated_at` moved on a later turn as well,
    * which is what reorders the menu, so this is not only for the first one.
+   *
+   * That invalidation reaches the *transcripts* as well, and it has to. A
+   * conversation's turns are cached under `[...CHAT_SESSIONS_KEY, id]`, and
+   * react-query matches a key as a prefix -- so invalidating the list marks
+   * every cached transcript stale too. Without it, leaving a conversation right
+   * after answering and coming back inside the 60s `staleTime` would reopen it
+   * one turn short.
    */
   const adoptSessionId = useCallback(
     (id: string) => {
