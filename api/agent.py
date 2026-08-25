@@ -21,6 +21,7 @@ Two rules it already honours, because they are not the agent's to break:
 """
 
 import logging
+import re
 import unicodedata
 import uuid
 from typing import Iterator
@@ -33,6 +34,8 @@ from llm import get_llm
 
 from .converters import chunk_out
 from .chat_attachments import ResolvedAttachment
+from . import compare_tables_pool
+from .table_links import parse_ui_url, ui_url
 from .saved_tables import fingerprint, save_table_view
 from .schemas.banks import ChunkOut
 from .schemas.chat import AttachedContext, CapturePayload, StreamEvent, ToolResult
@@ -52,6 +55,67 @@ _BANK_MENTION_ALIASES = {
     "vakif": ("vakif katilim",),
     "ziraat": ("ziraat katilim",),
 }
+
+
+# Any markdown link, target captured. Not restricted to `/`-relative targets:
+# the model decorates ours with an invented host (see `table_links.parse_ui_url`),
+# and a pattern that only matched the relative form let those fall through into
+# nothing. `parse_ui_url` does the deciding; this only has to find candidates.
+#
+# The whitespace and the optional angle brackets are load-bearing, not defensive.
+# CommonMark allows `[label]( /path )` and `[label](</path>)`, the renderer
+# accepts both, and the model does write them: observed on 2026-08-25, it emitted
+# `[Konut Finansmanı]( /tr/urunler?tablo=konut-finansman%C4%B1)`. A stricter
+# pattern renders a working link in the prose and silently no source card, which
+# looks like the feature half-working rather than like a parser bug.
+_MD_LINK = re.compile(r"\[[^\]\n]*\]\(\s*<?([^\s)>]+)>?\s*\)")
+
+# The `source_type` these are emitted with. The UI groups the sources panel by
+# this value, and this one is what puts a table under its own heading instead of
+# among the bank pages the answer is evidenced by.
+SITE_PAGE_SOURCE_TYPE = "site_page"
+
+
+def site_table_sources(answer: str) -> list[dict]:
+    """Comparison-table pages the answer links to, in the order they appear.
+
+    Read out of the finished prose rather than from tool evidence, because that
+    is what these are: the assistant offering a page, not citing a source. The
+    citation machinery in `agents/shared/agent_tools.py` is for claim-level
+    evidence and `find_comparison_table` is explicitly not that -- it returns no
+    rate, fee or condition, so a table must never appear as the support for a
+    factual claim.
+
+    Two things are deliberately not taken from the model. The url is **rebuilt**
+    from the table it names rather than echoed, so an invented hostname or a
+    mangled encoding cannot reach the reader; and the title comes from the
+    resolved table, so a card cannot disagree with the page it opens. Links that
+    name no real table are dropped -- an invented slug produces a perfectly
+    well-formed address, and asking the pool is the only thing that separates the
+    two.
+
+    Keyed by table id, so the same table linked twice, or linked once relative and
+    once absolute, is listed once.
+    """
+    found: dict[str, dict] = {}
+    for target in _MD_LINK.findall(answer or ""):
+        parsed = parse_ui_url(target)
+        if not parsed:
+            continue
+        table_id, category = parsed
+        if table_id in found:
+            continue
+        table = compare_tables_pool.load_table(table_id)
+        if table is None:
+            logger.warning("Assistant linked a comparison table that does not exist: %s", target)
+            continue
+        canonical = ui_url(table_id, category)
+        if not canonical:
+            continue
+        if canonical != target:
+            logger.info("Rewrote a table link the model altered: %s -> %s", target, canonical)
+        found[table_id] = {"url": canonical, "title": str(table.get("topic") or table_id)}
+    return list(found.values())
 
 
 def _searchable_text(value: str) -> str:
@@ -712,6 +776,23 @@ def _agent_answer(
                         else "web"
                     ),
                     source_type=str(source.get("source_type") or ""),
+                ),
+            )
+        # Our own pages, last, and kept apart from the evidence above. A table is
+        # somewhere to go rather than something a claim rests on, so it is read
+        # out of the prose instead of the tool-evidence ledger and carries its own
+        # `source_type` for the UI to group under its own heading.
+        for site_source in site_table_sources(final_answer):
+            yield StreamEvent(
+                type="citation",
+                citation=ChunkOut(
+                    score=1.0,
+                    cite_url=site_source["url"],
+                    text="",
+                    bank="",
+                    title=site_source["title"],
+                    doc_kind="site_page",
+                    source_type=SITE_PAGE_SOURCE_TYPE,
                 ),
             )
     except Exception:

@@ -43,10 +43,13 @@ import { IoLogOut } from "react-icons/io5";
 import DashboardNavbar from "examples/Navbars/DashboardNavbar";
 import { useEffect, useState } from "react";
 
+import { useTranslations } from "next-intl";
+
 import { useRouter } from "@/i18n/navigation";
 import { useAuth } from "@/lib/auth";
 
 function Header({ name = "Mark Johnson", email = "mark@simmmple.com" }) {
+  const t = useTranslations("nav");
   const [tabsOrientation, setTabsOrientation] = useState("horizontal");
   const [tabValue, setTabValue] = useState(0);
   const { logout } = useAuth();
@@ -185,7 +188,10 @@ function Header({ name = "Mark Johnson", email = "mark@simmmple.com" }) {
               sx={{ display: "flex", alignItems: "center", whiteSpace: "nowrap" }}
             >
               <IoLogOut size="16px" style={{ marginRight: "4px" }} />
-              Sign Out
+              {/* `nav.signOut`, the same key the drawer's own Sign Out row
+                  reads. Two sign-out controls are on screen together on this
+                  page, and they were reading "Çıkış yap" and "Sign Out". */}
+              {t("signOut")}
             </VuiButton>
           </Grid>
         </Grid>

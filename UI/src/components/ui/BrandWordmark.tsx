@@ -1,6 +1,10 @@
 "use client";
 
-import { VuiTypography } from "@/components/vision";
+// `vision-primitives`, not the `@/components/vision` barrel: this component is
+// rendered by `Breadcrumbs`, which `DashboardNavbar` renders, which the barrel
+// casts -- importing the barrel here closes that loop. See the header comment
+// in `vision-primitives.ts`.
+import { VuiTypography } from "@/components/vision-primitives";
 
 /**
  * The `KERMİTS` lockup, in one place.

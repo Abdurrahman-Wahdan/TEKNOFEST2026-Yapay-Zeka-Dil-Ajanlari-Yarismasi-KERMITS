@@ -34,7 +34,8 @@ import Icon from "@mui/material/Icon";
 import VuiBox from "components/VuiBox";
 import { ThemeToggleIconButton } from "components/VuiThemeToggle";
 
-import { LocaleToggleIconButton } from "@/components/ui/LocaleToggle";
+import { navLabel } from "@/lib/nav-label";
+
 import { Menu as MenuGlyph } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -146,7 +147,19 @@ function DashboardNavbar({
           </IconButton>
           <Breadcrumbs
             icon="home"
-            title={route[route.length - 1]}
+            /*
+              The page's name, not its URL slug. `route[0]` is the first path
+              segment with the locale already stripped -- `usePathname` from
+              `@/i18n/navigation` does that -- which is the same value the
+              drawer matches its active entry on, so the two always name the
+              page the same way. See `@/lib/nav-label`.
+
+              The last segment rather than the first is what used to be passed.
+              Every route in this app is one level deep, so they were the same
+              value until a detail page appeared; the first segment is the one
+              that names the *page*, which is what a title wants.
+            */
+            title={navLabel(t, route[0], route[route.length - 1] ?? "")}
             route={route}
             light={light}
             brand={brand}
@@ -234,9 +247,13 @@ function DashboardNavbar({
                   visible expanded, and revealed on hover or focus when
                   collapsed -- so a second control in the navbar was pointing at
                   something the user could already see and reach. Counted from
-                  the right edge the row is now profile, theme, language,
-                  notifications. */}
-              <LocaleToggleIconButton sx={navbarIconButton} />
+                  the right edge the row is now profile, theme, notifications.
+
+                  The language toggle used to sit here, between theme and
+                  notifications. The site ships in Turkish only as of
+                  2026-08-25, so there is nothing to switch to; the component is
+                  kept at `components/_unmounted/LocaleToggle.tsx` for the day
+                  there is. */}
               {/* Was the Configurator's settings gear. The Configurator is no
                   longer mounted, so this would have been a dead button; it is
                   the light/dark switch instead. */}
@@ -247,7 +264,7 @@ function DashboardNavbar({
                 action. Icon only — the label was the sign-in prompt.
               */}
               <Link to="/profile">
-                <IconButton sx={navbarIconButton} size="small" aria-label="Your profile">
+                <IconButton sx={navbarIconButton} size="small" aria-label={t("profile")}>
                   <Icon
                     sx={({ palette: { dark, white } }) => ({
                       color: light ? white.main : dark.main,

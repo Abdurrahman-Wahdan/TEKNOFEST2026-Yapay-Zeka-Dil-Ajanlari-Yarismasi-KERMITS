@@ -9,6 +9,7 @@ import { Streamdown } from "streamdown";
 
 import { VuiBox, VuiTypography } from "@/components/vision";
 import { normaliseAgentMarkdown } from "@/lib/chat/markdown-normalize";
+import { internalTableHref } from "@/lib/table-url";
 
 import { MdTable, MdTbody, MdTd, MdTh, MdThead, MdTr } from "./MarkdownTable";
 import { MarkdownTableProvider } from "./markdown-table-context";
@@ -120,21 +121,48 @@ const components = {
     />
   ),
 
-  a: (props: El<"a">) => (
-    <VuiTypography
-      component="a"
-      variant="button"
-      fontWeight="regular"
-      color="inherit"
-      // Only external links open a new tab. An in-app link -- the agent pointing
-      // at /kampanyalar -- should stay in the app.
-      {...(props.href?.startsWith("http")
-        ? { target: "_blank", rel: "noopener noreferrer" }
-        : {})}
-      sx={{ color: "var(--primary-strong)", textDecoration: "underline" }}
-      {...domProps(props)}
-    />
-  ),
+  /**
+   * Only external links open a new tab. An in-app link -- the agent pointing at
+   * a comparison table with `/tr/kampanyalar?tablo=...` -- stays in the app, so
+   * following it does not abandon the conversation.
+   *
+   * `target` and `rel` are DELETED rather than just left unset. Streamdown's own
+   * anchor renderer hardcodes `target="_blank"` and hands it down to this
+   * override in `props`, and `domProps` spreads last -- so an earlier
+   * conditional was silently overridden and every link, relative ones included,
+   * opened a new tab. Measured on a real answer: a `/tr/kampanyalar?tablo=`
+   * link rendered with `target="_blank"`.
+   *
+   * Copy-and-delete rather than a destructure, matching `domProps` itself: it
+   * leaves no discarded binding for the linter.
+   */
+  a: (props: El<"a">) => {
+    const rest = domProps(props) as Record<string, unknown>;
+    delete rest.target;
+    delete rest.rel;
+    /*
+      A link to one of our own comparison tables is forced back to its in-app
+      address, whatever host the answer gave it. The assistant is handed a
+      relative address and sometimes prefixes a host it invented, which would
+      otherwise render as an external link to a dead domain. See
+      `internalTableHref`.
+    */
+    const internal = internalTableHref(props.href);
+    if (internal) rest.href = internal;
+    return (
+      <VuiTypography
+        component="a"
+        variant="button"
+        fontWeight="regular"
+        color="inherit"
+        sx={{ color: "var(--primary-strong)", textDecoration: "underline" }}
+        {...rest}
+        {...(!internal && props.href?.startsWith("http")
+          ? { target: "_blank", rel: "noopener noreferrer" }
+          : {})}
+      />
+    );
+  },
 
   strong: (props: El<"strong">) => (
     <VuiTypography

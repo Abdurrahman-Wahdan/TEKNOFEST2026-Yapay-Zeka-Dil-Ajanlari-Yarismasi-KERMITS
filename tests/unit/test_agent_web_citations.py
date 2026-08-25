@@ -260,3 +260,73 @@ def test_plain_conversation_does_not_receive_citations(monkeypatch):
     ))
 
     assert not [event for event in events if event.type == "citation"]
+
+
+# --- our own pages, listed apart from the evidence ----------------------------
+def test_a_linked_comparison_table_becomes_its_own_kind_of_source():
+    """The assistant offers a table page; the UI lists it under its own heading.
+
+    Read out of the finished prose rather than the tool-evidence ledger, because
+    that is what it is: somewhere to go next, not support for a claim.
+    """
+    from api.agent import site_table_sources
+
+    answer = (
+        "Kuveyt Türk %10 indirim sunuyor.\n\n"
+        "Daha detaylı karşılaştırma için: "
+        "[araç bakım ve onarım indirimi kampanyası]"
+        "(/tr/kampanyalar?tablo=ara%C3%A7-bak%C4%B1m-ve-onar%C4%B1m-indirimi-kampanyas%C4%B1)"
+    )
+    (source,) = site_table_sources(answer)
+    assert source["url"] == (
+        "/tr/kampanyalar?tablo=ara%C3%A7-bak%C4%B1m-ve-onar%C4%B1m-indirimi-kampanyas%C4%B1")
+    # The pool's own name for the table, not the model's link text: the card and
+    # the page it opens cannot then disagree.
+    assert source["title"] == "araç bakım ve onarım indirimi kampanyası"
+
+
+def test_an_invented_table_slug_is_dropped_rather_than_shown():
+    """A hallucinated slug produces a perfectly well-formed address. Resolving it
+    against the pool is the only thing that tells the two apart, and a card
+    linking to a table that does not exist is worse than no card."""
+    from api.agent import site_table_sources
+
+    assert site_table_sources(
+        "Bak: [uydurma tablo](/tr/urunler?tablo=boyle-bir-tablo-asla-yok)") == []
+
+
+def test_external_links_and_other_app_pages_are_not_table_sources():
+    from api.agent import site_table_sources
+
+    assert site_table_sources("[banka](https://www.kuveytturk.com.tr/x)") == []
+    assert site_table_sources("[profil](/tr/profile)") == []
+    assert site_table_sources("[liste](/tr/kampanyalar)") == []
+
+
+def test_the_same_table_linked_twice_is_listed_once():
+    from api.agent import site_table_sources
+
+    link = "[t](/tr/urunler?tablo=kredi-kart%C4%B1)"
+    assert len(site_table_sources(f"{link} ... {link}")) == 1
+
+
+def test_a_link_written_with_commonmark_whitespace_is_still_found():
+    """Observed from the live model on 2026-08-25:
+    `[Konut Finansmanı]( /tr/urunler?tablo=konut-finansman%C4%B1)`.
+
+    CommonMark permits the padding and the renderer honours it, so the link works
+    in the prose. A parser that requires the path to touch the paren produces a
+    working link and no source card -- the feature looking half-built rather than
+    the regex being wrong.
+    """
+    from api.agent import site_table_sources
+
+    for written in (
+        "[Konut Finansmanı]( /tr/urunler?tablo=konut-finansman%C4%B1)",
+        "[Konut Finansmanı](/tr/urunler?tablo=konut-finansman%C4%B1 )",
+        "[Konut Finansmanı](  /tr/urunler?tablo=konut-finansman%C4%B1  )",
+        "[Konut Finansmanı](</tr/urunler?tablo=konut-finansman%C4%B1>)",
+    ):
+        (source,) = site_table_sources(written)
+        assert source["url"] == "/tr/urunler?tablo=konut-finansman%C4%B1", written
+        assert source["title"] == "Konut Finansmanı"

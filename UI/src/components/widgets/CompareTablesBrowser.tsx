@@ -8,7 +8,7 @@ import type { Theme } from "@mui/material/styles";
 import Tooltip from "@mui/material/Tooltip";
 import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   IoAlertCircleOutline,
   IoArrowForward,
@@ -29,6 +29,7 @@ import { resolveTable, type TableProps } from "@/lib/contract";
 import { capitalize } from "@/lib/format";
 import { applyFilters, EMPTY_FILTERS, sortRows, type FilterState } from "@/lib/table-filter";
 import { searchTables } from "@/lib/table-search";
+import { tableSearch, TABLE_PARAM } from "@/lib/table-url";
 import { useBankLabels } from "@/lib/use-bank-labels";
 import { useTableSort } from "@/lib/use-table-sort";
 
@@ -144,10 +145,27 @@ function toTableProps(detail: TableDetailOut, rows: RowOut[]): TableProps {
  * Three states in one component rather than three routes: narrowing by
  * subcategory and picking a table are the same "which table" question, and
  * splitting it across pages would mean round-tripping the category/subcategory
- * choice through the URL for no benefit — nothing here is worth bookmarking
- * on its own.
+ * choice through the URL for no benefit.
+ *
+ * The open table is the exception, and it is a recent one. `?tablo=<id>` addresses
+ * it, because the assistant links to it: every table's point in the
+ * `compare_tables` collection carries this address as `ui_url`
+ * (`dataprep/stamp_table_urls.py`), so an answer that mentions a table can hand
+ * the reader the table itself. That makes one table worth bookmarking where a
+ * subcategory still is not — so it is the only one of the three states in the URL.
+ *
+ * `initialTableId` comes from the page's `searchParams` rather than being read here
+ * with `useSearchParams`, so a link opens on the table in the first paint instead of
+ * rendering the grid and swapping. After mount the state below owns it, and
+ * `pushState` keeps the URL in step -- see `select`.
  */
-export function CompareTablesBrowser({ category }: { category: "ürün" | "kampanya" }) {
+export function CompareTablesBrowser({
+  category,
+  initialTableId = null,
+}: {
+  category: "ürün" | "kampanya";
+  initialTableId?: string | null;
+}) {
   const t = useTranslations("compareTables");
   const tc = useTranslations("components");
   const locale = useLocale() as "tr" | "en";
@@ -157,7 +175,7 @@ export function CompareTablesBrowser({ category }: { category: "ürün" | "kampa
   // `SearchField` because the count beside it and the empty state below both
   // have to agree with it.
   const [query, setQuery] = useState("");
-  const [tableId, setTableId] = useState<string | null>(null);
+  const [tableId, setTableId] = useState<string | null>(initialTableId);
   // Local sort state, reset per table. The three-click asc/desc/off toggle is
   // `useTableSort`, the same hook `Comparator` and `TableWidget` call, so this
   // table is driven by the exact same mechanism rather than a lookalike -- it
@@ -256,11 +274,46 @@ export function CompareTablesBrowser({ category }: { category: "ürün" | "kampa
     bankLabels,
   });
 
-  const openTable = (id: string) => {
+  /**
+   * Open a table, or go back to the grid, and put that in the URL.
+   *
+   * `window.history.pushState` and not `router.push`: the grid and the open table
+   * are two states of this component, not two routes, so a navigation would tear
+   * down and re-run the server page only to arrive back here. Next hooks the
+   * native history methods, so its router still sees the change.
+   *
+   * Pushing rather than replacing is deliberate — it is what makes the browser's
+   * Back button close the table, which is the thing Back means on this page.
+   *
+   * Sort and filters are per-table and reset on every move, including on the way
+   * back out: the previous table's sort applied to a different table's columns is
+   * at best a no-op and at worst a sort on a column that only shares its name.
+   */
+  const select = (id: string | null) => {
     resetSort();
     setFilters(EMPTY_FILTERS);
     setTableId(id);
+    const search = tableSearch(window.location.search, id);
+    window.history.pushState(null, "", search ? `?${search}` : window.location.pathname);
   };
+
+  /**
+   * Back and Forward through the entries `select` pushed.
+   *
+   * Without this the URL would move and the table on screen would not, which is
+   * worse than having no history at all: the address bar would be describing a
+   * page that is not there. `resetSort` is stable (`useTableSort` memoises it), so
+   * this subscribes once.
+   */
+  useEffect(() => {
+    const onPopState = () => {
+      resetSort();
+      setFilters(EMPTY_FILTERS);
+      setTableId(new URLSearchParams(window.location.search).get(TABLE_PARAM));
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [resetSort]);
 
   if (tableId) {
     return (
@@ -282,10 +335,19 @@ export function CompareTablesBrowser({ category }: { category: "ürün" | "kampa
 
         <Card>
           <VuiBox display="flex" alignItems="center" justifyContent="space-between" mb="16px" flexWrap="wrap" gap="12px">
+            {/* On failure the heading shows the id that was asked for, not
+                "loading": a `?tablo=` naming nothing is reachable now that the
+                assistant links here, and a heading still claiming to load over a
+                "Yüklenemedi." below it describes neither state. The id is the
+                useful thing to print -- it says which link is stale. */}
             <VuiTypography variant="lg" color="white">
-              {detail.data ? capitalize(detail.data.title, locale) : t("loadingTable")}
+              {detail.data
+                ? capitalize(detail.data.title, locale)
+                : detail.isError
+                  ? tableId
+                  : t("loadingTable")}
             </VuiTypography>
-            <ActionButton variant="outlined" color="white" onClick={() => setTableId(null)}>
+            <ActionButton variant="outlined" color="white" onClick={() => select(null)}>
               {t("backToList")}
             </ActionButton>
           </VuiBox>
@@ -476,7 +538,7 @@ export function CompareTablesBrowser({ category }: { category: "ürün" | "kampa
               <Grid container spacing={3}>
                 {filtered.map((summary) => (
                   <Grid item xs={12} sm={6} lg={4} key={summary.id}>
-                    <TableCard table={summary} locale={locale} onClick={() => openTable(summary.id)} />
+                    <TableCard table={summary} locale={locale} onClick={() => select(summary.id)} />
                   </Grid>
                 ))}
               </Grid>

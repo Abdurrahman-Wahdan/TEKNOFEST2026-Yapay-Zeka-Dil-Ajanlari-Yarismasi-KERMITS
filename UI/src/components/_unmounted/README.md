@@ -32,6 +32,14 @@ received.
   only by `AppShell`, so the whole cluster came across together. Note the live
   theme toggles are `ui/ThemeToggleIcon.tsx` on the auth screens and
   `vision/components/VuiThemeToggle` inside the app; this is a fourth one.
+- **`LocaleToggle.tsx`** — the navbar's language switch, unmounted 2026-08-25
+  when the site became Turkish-only. Unlike the rest of this folder it was live
+  until that day: `DashboardNavbar` rendered it between the theme toggle and
+  notifications. It still compiles, but remounting it needs `en` back in
+  `src/i18n/routing.ts` and a `messages/en.json` (removed in the same change,
+  recoverable from git) — the button alone would have nothing to switch to.
+  Its `SwitchableLocale` type is local for that reason: the live `Locale` union
+  is `"tr"` alone now and would reject the `en` entry.
 - **`BankRegistry.module.scss`** — orphaned stylesheet. `BankRegistry.tsx`
   never imported it and **stays live** in `widgets/`, because
   `widgets/catalog.ts` still maps it: a producer emitting

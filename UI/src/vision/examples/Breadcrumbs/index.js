@@ -81,14 +81,24 @@ function Breadcrumbs({ icon, title, route, light = false, brand = false }) {
       {brand ? (
         <BrandWordmark fontSize={16}>{BRAND_AI}</BrandWordmark>
       ) : (
+        /*
+          No `textTransform` and no slug rewriting. `title` arrives as the
+          page's real name from `@/lib/nav-label` -- "AI Görünümü", "Ürünler" --
+          already cased the way it should read.
+
+          Both used to be here and both were wrong for Turkish. The title was
+          the URL slug, so `capitalize` was doing the only casing there was:
+          `ai-overview` became "Ai Overview", lowering the product's own name.
+          `.replace("-", " ")` also replaced just the first hyphen, so any
+          three-word slug kept the second one.
+        */
         <VuiTypography
           fontWeight="bold"
-          textTransform="capitalize"
           variant="h6"
           color={light ? "white" : "dark"}
           noWrap
         >
-          {title.replace("-", " ")}
+          {title}
         </VuiTypography>
       )}
     </VuiBox>

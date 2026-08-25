@@ -1,19 +1,18 @@
 import { getRequestConfig } from "next-intl/server";
 import { hasLocale } from "next-intl";
 
-import enMessages from "../../messages/en.json";
 import trMessages from "../../messages/tr.json";
 import { routing } from "./routing";
 
 const messages = {
-  en: enMessages,
   tr: trMessages,
 };
 
 export default getRequestConfig(async ({ requestLocale }) => {
   const requested = await requestLocale;
   // Falls back rather than throwing: a hand-typed or stale URL with an unknown
-  // locale should render the site in Turkish, not 500.
+  // locale should render the site in Turkish, not 500. With Turkish the only
+  // locale this is now the path every `/en/...` bookmark takes.
   const locale = hasLocale(routing.locales, requested)
     ? requested
     : routing.defaultLocale;

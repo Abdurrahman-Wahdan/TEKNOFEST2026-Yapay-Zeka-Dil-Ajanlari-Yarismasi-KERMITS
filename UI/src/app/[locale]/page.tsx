@@ -10,8 +10,8 @@ import { redirect } from "@/i18n/navigation";
  * favourite page, so the next unmount only has to change it once.
  *
  * `redirect` from `@/i18n/navigation`, not `next/navigation`: the plain one
- * drops the locale prefix and would send an English visitor to the Turkish
- * page.
+ * drops the locale prefix, and an unprefixed `/compare` is not a route — the
+ * App Router only has `/[locale]/...` pages.
  */
 export default async function RootPage({
   params,

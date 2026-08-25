@@ -124,9 +124,11 @@ const routes = [
   // the active state from `pathname.split("/").slice(1)[0]`, so a key of
   // "assistant" here would leave the entry unhighlighted on /chat.
   //
-  // The name is a Turkish literal like every entry above it: Sidenav renders
-  // `name` raw and does not translate it. `nav.chat` exists in messages/*.json
-  // for the day the drawer learns to.
+  // The name is a Turkish literal like every entry above it, but it is now the
+  // *fallback*: as of 2026-08-25 Sidenav looks `nav.<key>` up in
+  // messages/tr.json and only falls back to this string. That is also where
+  // DashboardNavbar gets the page title, so a new page needs a `nav` key or its
+  // header reads as the URL slug. See `@/lib/nav-label`.
   {
     type: "collapse",
     name: "Asistan",
@@ -168,7 +170,7 @@ const routes = [
   // with everything else. Worth restoring only if the account section grows.
   {
     type: "collapse",
-    name: "Profile",
+    name: "Profil",
     key: "profile",
     route: "/profile",
     icon: <BsFillPersonFill size="20px" color="inherit" />,

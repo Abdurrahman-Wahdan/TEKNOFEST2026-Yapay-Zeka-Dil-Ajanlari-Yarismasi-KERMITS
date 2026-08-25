@@ -1,22 +1,15 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { ExternalLink, File as FileGlyph, Image as ImageGlyph } from "lucide-react";
+import { ArrowRight, ExternalLink, File as FileGlyph, Image as ImageGlyph } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { VuiBox, VuiTypography } from "@/components/vision";
 import type { AgentMessage } from "@/lib/chat/types";
+import { navLabel } from "@/lib/nav-label";
+import { safeWebSource, siteSection, sourceGroup } from "@/lib/chat/source-group";
 
 import { ContextGlyph } from "./ContextGlyph";
-
-function safeWebSource(url: string): URL | null {
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === "https:" || parsed.protocol === "http:" ? parsed : null;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Streamdown pulls in Shiki, and Shiki is large. Loading it lazily keeps it off
@@ -45,6 +38,9 @@ export function ChatMessage({
   streaming?: boolean;
 }) {
   const t = useTranslations("chat");
+  // The drawer's own words for the sections our pages live in, so a source card
+  // and the page it opens are not labelled two different ways.
+  const tNav = useTranslations("nav");
 
   return (
     <VuiBox display="flex" flexDirection="column" gap={1}>
@@ -83,26 +79,28 @@ export function ChatMessage({
 
         if (part.type === "citations") {
           const sources = part.sources.flatMap((source) => {
-            const parsed = safeWebSource(source.url);
-            return parsed ? [{ source, parsed }] : [];
+            const group = sourceGroup(source.sourceType, source.url);
+            return group ? [{ source, group }] : [];
           });
           if (sources.length === 0) return null;
-          const groups = [
-            {
-              key: "online",
-              label: t("onlineSources"),
-              sources: sources.filter(
-                ({ source }) => source.sourceType !== "indexed_document",
-              ),
-            },
-            {
-              key: "knowledge-base",
-              label: t("knowledgeBaseSources"),
-              sources: sources.filter(
-                ({ source }) => source.sourceType === "indexed_document",
-              ),
-            },
-          ].filter((group) => group.sources.length > 0);
+          /*
+            Our own pages come last, deliberately. Everything above them supports
+            a claim in the answer; a comparison table does not -- the assistant
+            offers it as somewhere to go next. Putting it first would read as the
+            answer's primary source, which is the one thing it must never be.
+          */
+          const groups = (
+            [
+              { key: "online", label: t("onlineSources") },
+              { key: "knowledge-base", label: t("knowledgeBaseSources") },
+              { key: "site", label: t("sitePageSources") },
+            ] as const
+          )
+            .map((group) => ({
+              ...group,
+              sources: sources.filter(({ group: g }) => g === group.key),
+            }))
+            .filter((group) => group.sources.length > 0);
 
           return (
             <VuiBox
@@ -131,13 +129,17 @@ export function ChatMessage({
                     {group.label}
                   </VuiTypography>
                   <VuiBox display="flex" flexWrap="wrap" gap={0.75}>
-                    {group.sources.map(({ source, parsed }, sourceIndex) => (
+                    {group.sources.map(({ source }, sourceIndex) => (
                       <VuiBox
                         key={source.url}
                         component="a"
                         href={source.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        /* Our own pages stay in the app; everything else is a
+                           bank's site and opens in its own tab. Same rule
+                           `AgentMarkdown` applies to the links in the prose. */
+                        {...(group.key === "site"
+                          ? {}
+                          : { target: "_blank", rel: "noopener noreferrer" })}
                         title={source.url}
                         display="flex"
                         alignItems="center"
@@ -184,7 +186,7 @@ export function ChatMessage({
                               maxWidth: "24rem",
                             }}
                           >
-                            {source.title || source.bank || parsed.hostname}
+                            {source.title || source.bank || source.url}
                           </VuiTypography>
                           <VuiTypography
                             variant="caption"
@@ -192,10 +194,18 @@ export function ChatMessage({
                             color="text"
                             sx={{ display: "block", opacity: 0.65 }}
                           >
-                            {parsed.hostname}
+                            {group.key === "site"
+                              ? navLabel(tNav, siteSection(source.url), siteSection(source.url))
+                              : (safeWebSource(source.url)?.hostname ?? source.url)}
                           </VuiTypography>
                         </VuiBox>
-                        <ExternalLink size={13} aria-hidden="true" />
+                        {/* An arrow for a page in this app, the external-link
+                            glyph only for links that really do leave it. */}
+                        {group.key === "site" ? (
+                          <ArrowRight size={13} aria-hidden="true" />
+                        ) : (
+                          <ExternalLink size={13} aria-hidden="true" />
+                        )}
                       </VuiBox>
                     ))}
                   </VuiBox>

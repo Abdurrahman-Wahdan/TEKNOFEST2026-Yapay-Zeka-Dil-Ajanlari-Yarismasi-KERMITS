@@ -24,6 +24,7 @@ import { useTheme } from "@mui/material/styles";
 import { useLocation, NavLink } from "vision/router";
 import { useRouter } from "@/i18n/navigation";
 import { useAuth } from "@/lib/auth";
+import { navLabel } from "@/lib/nav-label";
 
 // prop-types is a library for typechecking of props.
 import PropTypes from "prop-types";
@@ -136,6 +137,19 @@ function Sidenav({ color, brandName, routes, ...rest }) {
   const renderRoutes = routes.map(({ type, name, icon, title, noCollapse, key, route, href }) => {
     let returnValue;
 
+    /*
+      The drawer's label and the page title in DashboardNavbar now come from the
+      same place -- `nav.<route segment>` in messages/tr.json -- so the two
+      cannot disagree the way they did when this rendered `name` raw and the
+      header rendered the URL slug ("Ürünler" here, "Urunler" there).
+
+      `routes.js`'s `name` stays as the fallback rather than being deleted: it
+      is a plain module, so it cannot translate anything itself, and it is what
+      a commented-out entry carries when someone remounts a page before adding
+      its key.
+    */
+    const label = navLabel(t, key, name);
+
     if (type === "collapse") {
       returnValue = href ? (
         <Link
@@ -147,7 +161,7 @@ function Sidenav({ color, brandName, routes, ...rest }) {
         >
           <SidenavCollapse
             color={color}
-            name={name}
+            name={label}
             icon={icon}
             active={key === collapseName}
             noCollapse={noCollapse}
@@ -161,7 +175,7 @@ function Sidenav({ color, brandName, routes, ...rest }) {
           <SidenavCollapse
             color={color}
             key={key}
-            name={name}
+            name={label}
             icon={icon}
             active={key === collapseName}
             noCollapse={noCollapse}
@@ -435,7 +449,7 @@ function Sidenav({ color, brandName, routes, ...rest }) {
             // mechanism recolour them, so Sign Out follows the same
             // convention rather than fighting it.
             color="error"
-            name="Sign Out"
+            name={t("signOut")}
             icon={<IoLogOut size="20px" color="inherit" />}
             onClick={handleSignOut}
             noCollapse

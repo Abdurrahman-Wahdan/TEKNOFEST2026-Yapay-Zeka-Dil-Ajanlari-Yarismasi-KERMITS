@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 // --- TYPE DEFINITIONS ---
 
@@ -50,16 +51,23 @@ const TestimonialCard = ({ testimonial, delay }: { testimonial: Testimonial, del
  * email and the new password in the same request and applies it immediately.
  */
 export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({
-  title = <span className="font-light text-foreground tracking-tighter">Reset Password</span>,
-  description = "Enter your email and choose a new password",
+  title,
+  description,
   heroImageSrc,
   testimonials = [],
   onReset,
   onSignIn,
 }) => {
+  const t = useTranslations('auth');
   const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  // Defaults here rather than in the parameter list: they read translations,
+  // and a hook cannot be called in a default initialiser.
+  const heading = title ?? (
+    <span className="font-light text-foreground tracking-tighter">{t('resetTitle')}</span>
+  );
+  const subheading = description ?? t('resetDescription');
 
   // Only a mismatch once the user has actually typed something in the second
   // field — otherwise an empty confirm box reads as an error before they have
@@ -72,22 +80,22 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({
       <section className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           <div className="flex flex-col gap-6">
-            <h1 className="animate-element animate-delay-100 text-4xl md:text-5xl font-semibold leading-tight">{title}</h1>
-            <p className="animate-element animate-delay-200 text-muted-foreground">{description}</p>
+            <h1 className="animate-element animate-delay-100 text-4xl md:text-5xl font-semibold leading-tight">{heading}</h1>
+            <p className="animate-element animate-delay-200 text-muted-foreground">{subheading}</p>
 
             <form className="space-y-5" onSubmit={onReset}>
               <div className="animate-element animate-delay-300">
-                <label className="text-sm font-medium text-muted-foreground">Email Address</label>
+                <label className="text-sm font-medium text-muted-foreground">{t('emailLabel')}</label>
                 <GlassInputWrapper>
-                  <input name="email" type="email" autoComplete="email" required placeholder="Enter your email address" className="w-full bg-transparent text-sm p-4 rounded-2xl focus:outline-none" />
+                  <input name="email" type="email" autoComplete="email" required placeholder={t('emailPlaceholder')} className="w-full bg-transparent text-sm p-4 rounded-2xl focus:outline-none" />
                 </GlassInputWrapper>
               </div>
 
               <div className="animate-element animate-delay-400">
-                <label className="text-sm font-medium text-muted-foreground">New Password</label>
+                <label className="text-sm font-medium text-muted-foreground">{t('newPassword')}</label>
                 <GlassInputWrapper>
                   <div className="relative">
-                    <input name="password" type={showPassword ? 'text' : 'password'} autoComplete="new-password" required minLength={5} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Create a new password" className="w-full bg-transparent text-sm p-4 pr-12 rounded-2xl focus:outline-none" />
+                    <input name="password" type={showPassword ? 'text' : 'password'} autoComplete="new-password" required minLength={5} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t('newPasswordPlaceholder')} className="w-full bg-transparent text-sm p-4 pr-12 rounded-2xl focus:outline-none" />
                     <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-3 flex items-center">
                       {showPassword ? <EyeOff className="w-5 h-5 text-muted-foreground hover:text-foreground transition-colors" /> : <Eye className="w-5 h-5 text-muted-foreground hover:text-foreground transition-colors" />}
                     </button>
@@ -96,10 +104,10 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({
               </div>
 
               <div className="animate-element animate-delay-500">
-                <label className="text-sm font-medium text-muted-foreground">Confirm New Password</label>
+                <label className="text-sm font-medium text-muted-foreground">{t('confirmNewPassword')}</label>
                 <GlassInputWrapper>
                   <div className="relative">
-                    <input name="confirmPassword" type={showPassword ? 'text' : 'password'} autoComplete="new-password" required value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="Re-enter your new password" className="w-full bg-transparent text-sm p-4 pr-12 rounded-2xl focus:outline-none" aria-invalid={mismatch || undefined} aria-describedby={mismatch ? 'confirm-error' : undefined} />
+                    <input name="confirmPassword" type={showPassword ? 'text' : 'password'} autoComplete="new-password" required value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder={t('confirmNewPasswordPlaceholder')} className="w-full bg-transparent text-sm p-4 pr-12 rounded-2xl focus:outline-none" aria-invalid={mismatch || undefined} aria-describedby={mismatch ? 'confirm-error' : undefined} />
                     <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-3 flex items-center">
                       {showPassword ? <EyeOff className="w-5 h-5 text-muted-foreground hover:text-foreground transition-colors" /> : <Eye className="w-5 h-5 text-muted-foreground hover:text-foreground transition-colors" />}
                     </button>
@@ -109,24 +117,24 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({
                     does not appear while the user is still typing the first
                     character of a password that will match. */}
                 {mismatch && (
-                  <p id="confirm-error" className="mt-2 text-sm text-destructive">Passwords do not match</p>
+                  <p id="confirm-error" className="mt-2 text-sm text-destructive">{t('passwordMismatch')}</p>
                 )}
               </div>
 
               <div className="animate-element animate-delay-600 flex items-center justify-end text-sm">
-                <span className="text-muted-foreground">At least 5 characters</span>
+                <span className="text-muted-foreground">{t('passwordHint')}</span>
               </div>
 
               {/* Disabled on mismatch rather than only checked on submit, same
                   as sign-up: the button going dead the moment the two diverge
                   is the feedback. */}
               <button type="submit" disabled={mismatch} className="animate-element animate-delay-700 w-full rounded-2xl bg-primary py-4 font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:cursor-not-allowed disabled:bg-primary/40 disabled:hover:bg-primary/40">
-                Reset Password
+                {t('resetTitle')}
               </button>
             </form>
 
             <p className="animate-element animate-delay-800 text-center text-sm text-muted-foreground">
-              Remembered your password? <a href="#" onClick={(e) => { e.preventDefault(); onSignIn?.(); }} className="text-violet-400 hover:underline transition-colors">Sign In</a>
+              {t('rememberedPassword')} <a href="#" onClick={(e) => { e.preventDefault(); onSignIn?.(); }} className="text-violet-400 hover:underline transition-colors">{t('login')}</a>
             </p>
           </div>
         </div>

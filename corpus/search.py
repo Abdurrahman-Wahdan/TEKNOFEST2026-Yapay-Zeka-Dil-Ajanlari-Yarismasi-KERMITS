@@ -327,6 +327,18 @@ def _entry(index: int, point_id, meta: dict, text: str, total: int | None = None
     not_useful ile atılabiliyor. İkinci bir yol yok.
     """
     head = [f"[{index}] point_id={point_id}", f"url={_source_url(meta)}"]
+    # GÖRSEL parçalar. Koleksiyonun 6510 point'inin 755'i `type=gorsel`: bir
+    # kampanya afişinden/görselinden okunmuş metin, ortalama 66 karakter, ve
+    # görselin kendi adresi `gorsel_kaynak`ta. Arama bunları zaten getiriyordu
+    # (banka filtresinde tür koşulu yok) ama künyede hiçbir yerde yazmıyordu —
+    # yani ajan 60 karakterlik bir afiş yazısını, KESİLMİŞ bir sayfa parçasından
+    # ayırt edemiyordu. `url=` hâlâ görselin ÜZERİNDE DURDUĞU sayfa, yani
+    # atıf için doğru adres olan o; bu alan görselin nerede olduğunu söyler.
+    if meta.get("type") == "gorsel":
+        head.append("tür=görsel")
+        gorsel = meta.get("gorsel_kaynak") or meta.get("gorsel_url") or ""
+        if gorsel:
+            head.append(f"görsel={gorsel}")
     end = _end_date(meta)
     if end:
         head.append(f"gecerlilik_bitis={end}")

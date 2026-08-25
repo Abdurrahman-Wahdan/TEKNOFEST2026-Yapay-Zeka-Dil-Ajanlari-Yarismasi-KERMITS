@@ -9,7 +9,7 @@ import { routing, type Locale } from "@/i18n/routing";
 
 import styles from "./Switcher.module.scss";
 
-const LABELS: Record<Locale, string> = { tr: "TR", en: "EN" };
+const LABELS: Record<string, string> = { tr: "TR", en: "EN" };
 
 /**
  * Switches locale while staying on the current page.

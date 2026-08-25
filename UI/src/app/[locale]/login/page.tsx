@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
@@ -17,6 +18,7 @@ import { useAuth } from "@/lib/auth";
  * imports client-side, which is what the `useState` inside the component needs.
  */
 export default function LoginPage() {
+  const t = useTranslations("auth");
   const { login } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -84,9 +86,7 @@ export default function LoginPage() {
             role="status"
             className="fixed bottom-6 left-1/2 -translate-x-1/2 rounded-2xl border border-border bg-card px-5 py-3 text-sm text-[var(--ok)] shadow-lg"
           >
-            {justCreated
-              ? "Account created — sign in to continue."
-              : "Password reset — sign in with your new password."}
+            {justCreated ? t("accountCreated") : t("passwordWasReset")}
           </p>
         )
       )}

@@ -8,6 +8,7 @@ from llm.context import usable_context_window
 from llm.factory import resolve_model_key
 
 from ..shared.agent_tools import build_specialist_tools
+from ..shared.table_tools import build_table_directory_tool
 from ..shared.checkpoints import get_checkpointer
 from ..shared.compaction import build_compaction
 from ..shared.runtime import AgentContext
@@ -32,8 +33,24 @@ def system_prompt() -> str:
     )
 
 
+def supervisor_tools():
+    """The supervisor's tool list: ten bank specialists and one page directory.
+
+    One list, one definition, because two callers need the exact same one --
+    `build_main_agent` gives it to the model and `main_compaction` measures the
+    window that is left after its schemas. Two definitions would let the
+    "70% full" the user is shown disagree with the threshold that fires.
+
+    `find_comparison_table` is the one tool here that is not a bank. It reads no
+    bank data: it answers "does this site already have a table on this topic, and
+    what is its address", so the assistant can link to a page the product already
+    publishes. Everything factual still comes from the specialists.
+    """
+    return [*build_specialist_tools(), build_table_directory_tool()]
+
+
 def build_main_agent(model: str | None = None, thinking: bool = False):
-    """Compile a fresh supervisor with exactly ten bank-specialist tools.
+    """Compile a fresh supervisor with the tools `supervisor_tools` defines.
 
     Conversation state lives in the checkpointer, not in this graph object.
     Rebuilding per request prevents the supervisor itself from retaining an old
@@ -49,7 +66,7 @@ def build_main_agent(model: str | None = None, thinking: bool = False):
         thinking: Keep chain-of-thought on. Only models that reason by default
             are affected; see ``VLLMProvider.create``.
     """
-    tools = build_specialist_tools()
+    tools = supervisor_tools()
     compaction, _ = main_compaction(model)
     prompt = system_prompt()
     return create_agent(
@@ -80,7 +97,7 @@ def main_compaction(model: str | None = None):
     Returns:
         (middleware, usable_window).
     """
-    tools = build_specialist_tools()
+    tools = supervisor_tools()
     # The same tool list the model is given: the threshold is a fraction of what
     # is left after these schemas, so measuring a different list would move it.
     window = usable_context_window(

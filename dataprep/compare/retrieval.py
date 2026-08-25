@@ -6,18 +6,17 @@ Banka-scoped olanların üçü (search_bank, expand_chunk, read_full_page) artı
 okuması ile parça budama TEK yerde tanımlı olmalı. Buradan yeniden dışa
 aktarılıyorlar, böylece bank_agent.py'nin importları değişmiyor.
 
-Bu dosyada kalan tek şey TABLO HAVUZU araması — `compare_tables` koleksiyonu,
-classify_agent'ın aracı. O koleksiyon bu hatta özgü: canlı uzmanların işi değil.
+Bu dosyada kalan tek şey TABLO HAVUZU ARACI — `compare_tables` koleksiyonunu
+okuyan, classify_agent'a ait araç. Koleksiyonun KENDİSİ artık `corpus/tables.py`:
+2026-08-25'e kadar bu hatta özgüydü, ama canlı süpervizör de aynı koleksiyonu
+okumaya başladı (`agents/shared/table_tools.py`), yani okuyan iki taraf var ve
+koleksiyon adı, point id türetmesi, payload isimleri TEK yerde durmalı. Aynı
+gerekçeyle banka-scoped araçlar da `corpus/search.py`'ye taşınmıştı.
 """
 from __future__ import annotations
 
-import os
-import threading
-import uuid
-
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
-from qdrant_client import models
 
 from corpus.search import (
     COLLECTION,
@@ -34,6 +33,7 @@ from corpus.search import (
     make_full_page_tool,
     prune_entries,
 )
+from corpus.tables import TABLES_COLLECTION, index_table, search_tables, table_point_id
 
 # Banka-scoped yüzey buradan yeniden dışa aktarılıyor: bu modülü zaten import
 # eden çağıranlar (bank_agent, testler) taşımadan sonra da aynı isimleri bulsun.
@@ -41,7 +41,7 @@ __all__ = [
     "COLLECTION", "RESULTS_PER_CALL", "TABLES_COLLECTION",
     "build_bank_retrieval_tools", "embed_query", "index_table",
     "make_bank_search_tool", "make_expand_chunk_tool", "make_full_page_tool",
-    "make_table_search_tool", "prune_entries",
+    "make_table_search_tool", "prune_entries", "search_tables", "table_point_id",
     "_apply_mark", "_end_date", "_expired", "_shared", "_source_url",
 ]
 
@@ -52,50 +52,12 @@ __all__ = [
 # verene kadar özgürce (farklı sorgularla) tekrar arayabilir. KALICI: hafıza-içi
 # değil, Qdrant'ta ayrı bir koleksiyon — süreç kaç kez restart olursa olsun
 # yeniden embed etmeye gerek kalmaz, tek gerçek kaynak budur.
-
-TABLES_COLLECTION = os.environ.get("QDRANT_COLLECTION_TABLES", "compare_tables")
-_TABLE_NS = uuid.UUID("6f9c6e2e-6b7a-4b7a-9c1e-3a2f7b8d5e10")   # id->UUID için sabit namespace
-_tables_collection_ready = False
-_tables_collection_lock = threading.Lock()
-
-
-def _table_point_id(table_id: str) -> str:
-    return str(uuid.uuid5(_TABLE_NS, table_id))
-
-
-def _ensure_tables_collection() -> None:
-    global _tables_collection_ready
-    if _tables_collection_ready:
-        return
-    with _tables_collection_lock:
-        if _tables_collection_ready:
-            return
-        _, client = _shared()
-        if not client.collection_exists(TABLES_COLLECTION):
-            client.create_collection(
-                collection_name=TABLES_COLLECTION,
-                vectors_config=models.VectorParams(size=1024, distance=models.Distance.COSINE))
-        _tables_collection_ready = True
-
-
-def index_table(table_id: str, topic: str, category: str, subcategory: str, docstring: str) -> None:
-    """Yeni (ya da güncellenmiş) bir tabloyu Qdrant'a KALICI olarak yazar —
-    search_tables bunu okur. create_table sonrası pipeline tarafından çağrılır.
-
-    `topic` metnin EN BAŞINA ve tekrarlı konur: docstring'ler kalıplaşmış/şablon
-    ağırlıklı olduğu için (ör. onlarca sigorta tablosu neredeyse birebir aynı
-    cümleyle başlıyor), ayırt edici asıl bilgi (ürünün adı/türü) kalabalık ortak
-    kelimeler arasında boğulup embedding benzerliğini bulanıklaştırıyordu
-    (kanıtlı: "konut sigortası" araması gerçek 'konut-sigortası' tablosunu ilk
-    5'e bile sokmadı). Konuyu öne çıkarmak ayırt ediciliği güçlendirir."""
-    _ensure_tables_collection()
-    _, client = _shared()
-    text = f"{topic}. {topic}. {category} {subcategory}: {docstring}"
-    vec = embed_query(text)
-    client.upsert(collection_name=TABLES_COLLECTION, points=[models.PointStruct(
-        id=_table_point_id(table_id), vector=vec,
-        payload={"id": table_id, "category": category, "subcategory": subcategory,
-                 "docstring": docstring})])
+#
+# Koleksiyonun KENDİSİ artık `corpus/tables.py`'de: canlı süpervizör de aynı
+# koleksiyonu okuyor, yani "bu hatta özgü" değil. Yukarıda yeniden dışa
+# aktarılıyor, bu modülü import eden çevrimdışı hat değişmedi. Burada kalan tek
+# şey AŞAĞIDAKİ ARAÇ: `next`/`useful`/`not_useful` işaretlemesi çevrimdışı
+# ajanın bağlam budamasına bağlı ve yalnızca ona ait.
 
 
 class _TableSearchArgs(BaseModel):
@@ -138,23 +100,19 @@ def make_table_search_tool(registry_loader, marked: set | None = None,
         mark_note = _apply_mark(useful, not_useful, marked, discarded)
         if not registry_loader():
             return "Henüz hiç karşılaştırma tablosu yok — bu kesin olarak yeni bir konu."
-        _ensure_tables_collection()
-        _, client = _shared()
         key = query.strip().lower()
         offset = (_offsets.get(key, 0) + 5) if next else 0
         _offsets[key] = offset
-        # `intent`: statik/sabit bir talimat metni BİZ yazmıyoruz — modelin kendi
-        # ifade ettiği arama niyeti kullanılıyor (asimetrik retrieval talimatı).
-        qvec = embed_query(query, task=intent or None)
-        hits = client.query_points(collection_name=TABLES_COLLECTION, query=qvec,
-                                    limit=5, offset=offset, with_payload=True).points
+        hits = search_tables(query, intent=intent, limit=5, offset=offset)
         if not hits:
             body = "Sonuç yok."
         else:
+            # `ui_url` KASITLI olarak yazılmıyor: bu araç bir tablonun VAR OLUP
+            # OLMADIĞINA karar vermek için, kullanıcıya link vermek için değil —
+            # çevrimdışı hattın kullanıcısı yok.
             body = "\n---\n".join(
-                f"id={h.payload['id']} [{h.payload.get('category', '')}/"
-                f"{h.payload.get('subcategory', '')}] benzerlik={h.score:.2f}\n"
-                f"{h.payload['docstring']}"
+                f"id={h['id']} [{h['category']}/{h['subcategory']}] "
+                f"benzerlik={h['score']:.2f}\n{h['docstring']}"
                 for h in hits)
         return f"{mark_note}\n\n{body}" if mark_note else body
 

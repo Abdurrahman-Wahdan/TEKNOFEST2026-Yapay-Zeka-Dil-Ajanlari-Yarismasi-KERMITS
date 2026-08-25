@@ -6,7 +6,7 @@
       "runtimeExecutable": "sh",
       "runtimeArgs": [
         "-c",
-        "exec \"$HOME/.pyenv/versions/tf26/bin/python\" -m uvicorn api.main:app --reload --host 127.0.0.1 --port 8210"
+        "exec \"$HOME/.pyenv/versions/tf26/bin/python\" -m uvicorn api.main:app --reload --reload-exclude '.claude/*' --reload-exclude 'UI/*' --host 127.0.0.1 --port 8210"
       ],
       "port": 8210,
       "autoPort": false

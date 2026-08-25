@@ -25,6 +25,31 @@ const nextConfig: NextConfig = {
     additionalData: `@use "tokens" as *;\n@use "mixins" as *;\n`,
   },
 
+  async redirects() {
+    /*
+      `/en/...` is a dead locale as of 2026-08-25, and every link shared or
+      bookmarked while English existed still points at one.
+
+      Here rather than in `proxy.ts` because that is what Next recommends for a
+      redirect that needs no request data, and because `proxy.ts` delegates
+      wholesale to next-intl's middleware -- wrapping it to special-case one
+      prefix would put app routing logic inside locale negotiation.
+
+      Left to next-intl this 404s rather than redirecting: with `en` gone from
+      `routing.locales` the middleware stops reading `/en` as a locale segment
+      and treats it as the first path segment of an unprefixed URL, sending
+      `/en/compare` to `/tr/en/compare`, which is not a route.
+
+      `permanent: false` -- a 307, not a 308. A 308 is cached by the browser
+      indefinitely, and these paths become real again the day a second language
+      does.
+    */
+    return [
+      { source: "/en", destination: "/tr", permanent: false },
+      { source: "/en/:path*", destination: "/tr/:path*", permanent: false },
+    ];
+  },
+
   async rewrites() {
     // /api/* is proxied to FastAPI in development so the browser sees a single
     // origin. That removes a CORS preflight from every request, and leaves the
