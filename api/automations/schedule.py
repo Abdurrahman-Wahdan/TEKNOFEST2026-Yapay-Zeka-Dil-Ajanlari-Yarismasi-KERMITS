@@ -4,13 +4,10 @@ Pure arithmetic. No database, no clock of its own -- `now` is always an
 argument, which is what makes "does 09:00 on a Friday roll over to Monday"
 something a test can ask rather than something you wait a weekend to find out.
 
-**The schedule is `(hour, minute, weekdays)` and nothing more.** Not a cron
-expression. A model creates these from a sentence, and a wrong cron string fails
-in the worst way available: silently, by never firing, with nothing on screen to
-show it. Three integers fail visibly -- the list renders "Her gün 09:00" and the
-user can see it is not what they asked for. The cost is that only "at this time,
-on these days" is expressible; every automation this feature was asked for is one
-of those.
+Schedules are either a fixed local clock time or a minute interval. Both may be
+restricted to weekdays; interval schedules may additionally have a daily active
+window. The representation stays typed and visible rather than becoming an
+opaque cron string.
 """
 
 from datetime import datetime, time, timedelta, timezone
@@ -96,6 +93,61 @@ def next_run(
         return candidate.astimezone(timezone.utc)
     # Unreachable: eight consecutive days always contain every weekday.
     raise AssertionError(f"no run found for {hour}:{minute} on {days}")
+
+
+def next_interval_run(
+    after: datetime,
+    interval_minutes: int,
+    weekdays: list[int] | None = None,
+    window_start_minute: int | None = None,
+    window_end_minute: int | None = None,
+    *,
+    include_now: bool = False,
+) -> datetime:
+    """Next interval occurrence, honoring local weekdays and an optional window.
+
+    A window is expressed as minutes after local midnight. When its end is less
+    than its start it crosses midnight (for example 22:00–06:00); the selected
+    weekday is the day on which that window starts.
+    """
+    if interval_minutes <= 0:
+        raise ValueError("interval_minutes must be positive")
+    if (window_start_minute is None) != (window_end_minute is None):
+        raise ValueError("an interval window needs both start and end")
+    if after.tzinfo is None:
+        after = after.replace(tzinfo=timezone.utc)
+    local = after.astimezone(TZ)
+    days = valid_weekdays(weekdays)
+    step = timedelta(minutes=interval_minutes)
+
+    if window_start_minute is None:
+        candidate = local if include_now else local + step
+        for offset in range(8):
+            if not days or candidate.weekday() in days:
+                return candidate.astimezone(timezone.utc)
+            next_date = (candidate + timedelta(days=1)).date()
+            candidate = datetime.combine(next_date, time(0, 0), tzinfo=TZ)
+        raise AssertionError(f"no interval run found on {days}")
+
+    start_delta = timedelta(minutes=window_start_minute)
+    end_delta = timedelta(minutes=window_end_minute)
+    for offset in range(9):
+        anchor_date = (local + timedelta(days=offset)).date()
+        start = datetime.combine(anchor_date, time(0, 0), tzinfo=TZ) + start_delta
+        end = datetime.combine(anchor_date, time(0, 0), tzinfo=TZ) + end_delta
+        if end <= start:
+            end += timedelta(days=1)
+        if days and start.weekday() not in days:
+            continue
+        if include_now and start <= local <= end:
+            return local.astimezone(timezone.utc)
+        if local < start:
+            return start.astimezone(timezone.utc)
+        if start <= local < end:
+            candidate = local + step
+            if candidate <= end:
+                return candidate.astimezone(timezone.utc)
+    raise AssertionError("no interval run found inside the active window")
 
 
 def describe(hour: int, minute: int, weekdays: list[int] | None = None) -> str:

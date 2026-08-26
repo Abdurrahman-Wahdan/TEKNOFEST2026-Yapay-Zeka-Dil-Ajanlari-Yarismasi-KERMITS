@@ -66,6 +66,96 @@ class TestModel:
         assert draft.title == "Sabah"
         assert draft.prompt == "soru"
 
+    def test_gold_threshold_alert_keeps_an_explicit_hourly_interval(self):
+        draft = AutomationDraft.model_validate(
+            {
+                "title": "Altın satış alarmı",
+                "prompt": "Kuveyt Türk gram altın satışı 7.000 TL olunca bildir.",
+                "hour": 9,
+                "kind": "condition_alert",
+                "interval_minutes": 60,
+                "condition": {
+                    "left": {
+                        "source": "bank_rate", "bank": "kuveytturk",
+                        "code": "XAU", "side": "sell",
+                    },
+                    "operator": "gte",
+                    "right": {"source": "constant", "value": 7000},
+                },
+            }
+        )
+        assert draft.kind == "condition_alert"
+        assert draft.interval_minutes == 60
+
+    def test_condition_alert_may_use_a_fixed_clock_schedule(self):
+        draft = AutomationDraft.model_validate(
+            {
+                "title": "Sabah altın alarmı",
+                "prompt": "Her sabah altın 7.000 TL üzerindeyse bildir.",
+                "hour": 9,
+                "kind": "condition_alert",
+                "condition": {
+                    "left": {
+                        "source": "bank_rate", "bank": "kuveytturk",
+                        "code": "XAU", "side": "sell",
+                    },
+                    "operator": "gte",
+                    "right": {"source": "constant", "value": 7000},
+                },
+            }
+        )
+        assert draft.interval_minutes is None
+        assert draft.hour == 9
+
+    def test_research_report_keeps_the_users_interval(self):
+        draft = AutomationDraft(
+            title="Sukuk takibi",
+            prompt="Tüm bankaların güncel sukuk bilgilerini araştır.",
+            hour=9,
+            kind="scheduled_report",
+            interval_minutes=15,
+        )
+        assert draft.interval_minutes == 15
+
+    def test_any_interval_may_have_days_and_a_daily_window(self):
+        draft = AutomationDraft(
+            title="Mesai içi sukuk takibi",
+            prompt="Sukukları karşılaştır.",
+            hour=9,
+            weekdays=[0, 1, 2, 3, 4],
+            interval_minutes=5,
+            window_start_minute=9 * 60,
+            window_end_minute=17 * 60,
+        )
+        assert draft.weekdays == [0, 1, 2, 3, 4]
+        assert draft.window_start_minute == 540
+        assert draft.window_end_minute == 1020
+
+    def test_alert_without_a_condition_is_rejected(self):
+        with pytest.raises(ValidationError):
+            AutomationDraft(
+                title="Eksik alarm", prompt="Altın yükselince bildir",
+                hour=9, kind="condition_alert",
+            )
+
+    def test_clarification_requires_a_real_question(self):
+        with pytest.raises(ValidationError):
+            AutomationDraft(
+                title="Eksik", prompt="Eksik", hour=9,
+                kind="needs_clarification",
+            )
+
+    def test_a_filled_clarification_can_never_be_stored_as_a_report(self):
+        draft = AutomationDraft(
+            title="Altın alarmı",
+            prompt="Altın 7.500 TL olunca bildir",
+            hour=9,
+            kind="scheduled_report",
+            clarification="Alış mı satış mı?",
+        )
+        assert draft.kind == "needs_clarification"
+        assert draft.clarification == "Alış mı satış mı?"
+
 
 class TestAgent:
     def test_uses_validated_structured_output(self, monkeypatch):
@@ -123,3 +213,20 @@ class TestAgent:
         monkeypatch.setattr(draft_agent, "build_automation_agent", lambda: Graph())
         with pytest.raises(RuntimeError):
             draft_agent.draft_automation("her sabah altın")
+
+    def test_clarification_is_returned_as_a_value_error(self, monkeypatch):
+        expected = AutomationDraft(
+            title="Eksik alarm",
+            prompt="Altın fiyatı yükselince bildir",
+            hour=9,
+            kind="needs_clarification",
+            clarification="Hangi banka ve alış mı satış mı?",
+        )
+
+        class Graph:
+            def invoke(self, _payload):
+                return {"structured_response": expected}
+
+        monkeypatch.setattr(draft_agent, "build_automation_agent", lambda: Graph())
+        with pytest.raises(ValueError, match="Hangi banka"):
+            draft_agent.draft_automation("Altın 7000 olunca bildir")

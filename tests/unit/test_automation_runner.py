@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 
 import pytest
 
+from api.automations.conditions import ConditionResult
 from api.automations.runner import Due, collect, run_automation, tick
 
 pytestmark = pytest.mark.unit
@@ -47,6 +48,14 @@ class _Row:
         self.next_run_at = utc(2026, 8, 25, 6, 0)
         self.last_run_at = None
         self.last_error = ""
+        self.kind = "scheduled_report"
+        self.condition = {}
+        self.interval_minutes = None
+        self.window_start_minute = None
+        self.window_end_minute = None
+        self.last_condition_met = None
+        self.last_observation = {}
+        self.last_triggered_at = None
 
 
 class _Store:
@@ -154,6 +163,42 @@ class TestClaimDue:
         from api.automations.runner import claim_due
 
         assert claim_due(NOW, _scope_for(_Store([]))) == []
+
+    def test_condition_alert_advances_by_its_interval(self):
+        from api.automations.runner import claim_due
+
+        row = _Row()
+        row.kind = "condition_alert"
+        row.condition = {"version": 1}
+        row.interval_minutes = 30
+        claimed = claim_due(NOW, _scope_for(_Store([row])))[0]
+
+        assert row.next_run_at == utc(2026, 8, 25, 12, 30)
+        assert claimed.kind == "condition_alert"
+        assert claimed.interval_minutes == 30
+
+    def test_research_report_can_advance_by_the_same_interval(self):
+        from api.automations.runner import claim_due
+
+        row = _Row()
+        row.interval_minutes = 15
+        claimed = claim_due(NOW, _scope_for(_Store([row])))[0]
+
+        assert row.next_run_at == utc(2026, 8, 25, 12, 15)
+        assert claimed.kind == "scheduled_report"
+        assert claimed.interval_minutes == 15
+
+    def test_interval_report_honors_its_daily_window(self):
+        from api.automations.runner import claim_due
+
+        row = _Row()
+        row.interval_minutes = 15
+        # Istanbul is UTC+3, so NOW=15:00 local. Window begins at 16:00 local.
+        row.window_start_minute = 16 * 60
+        row.window_end_minute = 18 * 60
+        claim_due(NOW, _scope_for(_Store([row])))
+
+        assert row.next_run_at == utc(2026, 8, 25, 13, 0)
 
 
 class TestCollect:
@@ -282,6 +327,61 @@ class TestRunAutomation:
             due, ask=lambda d: [_Event("token", text="x")], scope=_scope_for(store)
         )
         assert report.status == "ok"
+
+    def test_condition_alert_notifies_only_on_false_to_true_edge(self):
+        condition = {
+            "version": 1,
+            "left": {"source": "bank_rate", "bank": "kuveytturk", "code": "XAU", "side": "sell"},
+            "operator": "gte",
+            "right": {"source": "constant", "value": 7000},
+        }
+        due = Due(
+            **{**_due().__dict__, "kind": "condition_alert", "condition": condition}
+        )
+        row = _Row()
+        row.kind = "condition_alert"
+        store = _Store(lookup={due.id: row})
+        result = ConditionResult(
+            matched=True,
+            body="alarm",
+            observations={"matched": True},
+            citations=[{"cite_url": "https://bank.example"}],
+        )
+
+        report = run_automation(due, scope=_scope_for(store), evaluate=lambda _: result)
+        assert report is not None and report.body == "alarm"
+        assert row.last_condition_met is True
+        assert row.last_observation == {"matched": True}
+        assert row.last_triggered_at is not None
+
+        due_again = Due(**{**due.__dict__, "last_condition_met": True})
+        second = run_automation(
+            due_again, scope=_scope_for(store), evaluate=lambda _: result
+        )
+        assert second is None
+
+    def test_false_condition_updates_state_without_a_report(self):
+        condition = {
+            "version": 1,
+            "left": {"source": "bank_rate", "bank": "kuveytturk", "code": "XAU", "side": "sell"},
+            "operator": "gte",
+            "right": {"source": "constant", "value": 7000},
+        }
+        due = Due(
+            **{**_due().__dict__, "kind": "condition_alert", "condition": condition}
+        )
+        row = _Row()
+        row.kind = "condition_alert"
+        store = _Store(lookup={due.id: row})
+        result = ConditionResult(
+            matched=False, body="", observations={"matched": False}
+        )
+
+        assert run_automation(
+            due, scope=_scope_for(store), evaluate=lambda _: result
+        ) is None
+        assert row.last_condition_met is False
+        assert row.last_observation == {"matched": False}
 
 
 class TestTick:

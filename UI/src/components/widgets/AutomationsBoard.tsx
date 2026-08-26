@@ -21,6 +21,7 @@ import {
 import { formatDateTime } from "@/lib/format";
 
 import {
+  FrequencyField,
   PromptField,
   ScheduleFields,
   TitleField,
@@ -183,10 +184,11 @@ export function AutomationsBoard() {
 /** The fields the editor can change. Everything else on the row is derived. */
 export interface AutomationEdit {
   title: string;
-  prompt: string;
-  hour: number;
-  minute: number;
-  weekdays: Weekday[];
+  prompt?: string;
+  hour?: number;
+  minute?: number;
+  weekdays?: Weekday[];
+  interval_minutes?: number;
 }
 
 function Row({
@@ -215,17 +217,33 @@ function Row({
   onSave: (patch: AutomationEdit) => void;
 }) {
   const t = useTranslations("automations");
+  const dayNames = [
+    t("dayMon"), t("dayTue"), t("dayWed"), t("dayThu"),
+    t("dayFri"), t("daySat"), t("daySun"),
+  ];
+  const minuteOfDay = (value: number) =>
+    `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
 
-  const schedule = describeSchedule(row.hour, row.minute, row.weekdays, {
+  const schedule = row.interval_minutes !== null
+    ? [
+        t("everyMinutes", { minutes: row.interval_minutes }),
+        row.weekdays.length > 0
+          ? row.weekdays.map((day) => dayNames[day]).join(", ")
+          : null,
+        row.window_start_minute !== null && row.window_end_minute !== null
+          ? t("timeWindow", {
+              start: minuteOfDay(row.window_start_minute),
+              end: minuteOfDay(row.window_end_minute),
+            })
+          : null,
+      ].filter(Boolean).join(" · ")
+    : describeSchedule(row.hour, row.minute, row.weekdays, {
     daily: (time) => t("daily", { time }),
     weekdays: (time) => t("weekdaysOnly", { time }),
     weekend: (time) => t("weekend", { time }),
     someDays: (days, time) => t("someDays", { days, time }),
-    dayNames: [
-      t("dayMon"), t("dayTue"), t("dayWed"), t("dayThu"),
-      t("dayFri"), t("daySat"), t("daySun"),
-    ],
-  });
+    dayNames,
+      });
 
   if (editing) {
     return (
@@ -261,6 +279,7 @@ function Row({
             {row.title}
           </VuiTypography>
           {!row.enabled && <Pill tone="neutral">{t("paused")}</Pill>}
+          {row.kind === "condition_alert" && <Pill tone="neutral">{t("alert")}</Pill>}
           {row.last_error && <Pill tone="bad">{t("lastErrorLabel")}</Pill>}
         </VuiBox>
         <VuiTypography variant="caption" sx={{ color: "var(--control-ink)" }}>
@@ -277,9 +296,21 @@ function Row({
             ? `  ·  ${t("lastRun", { date: formatDateTime(row.last_run_at, locale) })}`
             : `  ·  ${t("neverRun")}`}
         </VuiTypography>
+        {row.kind === "condition_alert" && row.last_condition_met !== null && (
+          <VuiTypography
+            variant="caption"
+            sx={{
+              color: row.last_condition_met
+                ? "var(--primary-strong)"
+                : "var(--control-ink)",
+            }}
+          >
+            {row.last_condition_met ? t("conditionMet") : t("conditionNotMet")}
+          </VuiTypography>
+        )}
         {justStarted && (
           <VuiTypography variant="caption" sx={{ color: "var(--primary-strong)" }}>
-            {t("runStarted")}
+            {row.kind === "condition_alert" ? t("checkStarted") : t("runStarted")}
           </VuiTypography>
         )}
       </VuiBox>
@@ -362,9 +393,16 @@ function RowEditor({
   // Never null here: an existing automation has a set, and an empty one means
   // every day. `null` is the composer's "the user has not touched this yet".
   const [days, setDays] = useState<Weekday[]>(row.weekdays as Weekday[]);
+  const [interval, setInterval] = useState<Chosen>(row.interval_minutes ?? 60);
+
+  const isAlert = row.kind === "condition_alert";
+  const isInterval = row.interval_minutes !== null;
 
   const canSave =
-    title.trim().length > 0 && prompt.trim().length > 0 && !busy;
+    title.trim().length > 0 &&
+    (isAlert || prompt.trim().length > 0) &&
+    (!isInterval || interval !== null) &&
+    !busy;
 
   return (
     <VuiBox
@@ -393,7 +431,7 @@ function RowEditor({
         />
       </VuiBox>
 
-      <VuiBox display="flex" flexDirection="column" gap="6px">
+      {!isAlert && <VuiBox display="flex" flexDirection="column" gap="6px">
         <VuiTypography variant="caption" color="text">
           {t("promptLabel")}
         </VuiTypography>
@@ -414,9 +452,9 @@ function RowEditor({
             onChange={(event) => setPrompt(event.target.value)}
           />
         </VuiBox>
-      </VuiBox>
+      </VuiBox>}
 
-      <ScheduleFields
+      {!isInterval && <ScheduleFields
         hour={hour}
         minute={minute}
         days={days}
@@ -424,7 +462,20 @@ function RowEditor({
         onHour={setHour}
         onMinute={setMinute}
         onToggleDay={(day) => setDays((current) => toggleDay(current, day))}
-      />
+      />}
+
+      {isInterval && (
+        <>
+          <FrequencyField
+            value={interval}
+            onChange={setInterval}
+            disabled={busy}
+          />
+          <VuiTypography variant="caption" sx={{ color: "var(--control-ink)" }}>
+            {isAlert ? row.prompt : t("frequencyHint")}
+          </VuiTypography>
+        </>
+      )}
 
       <VuiBox display="flex" alignItems="center" justifyContent="flex-end" gap="8px">
         <ActionButton variant="outlined" color="white" onClick={onCancel} disabled={busy}>
@@ -433,15 +484,22 @@ function RowEditor({
         <ActionButton
           disabled={!canSave}
           onClick={() =>
-            onSave({
-              title: title.trim(),
-              prompt: prompt.trim(),
-              // Both are real numbers on this form: `allowAuto` is off, so the
-              // selects cannot produce the empty option.
-              hour: hour ?? row.hour,
-              minute: minute ?? row.minute,
-              weekdays: days,
-            })
+            onSave(
+              isInterval
+                ? {
+                    title: title.trim(),
+                    ...(!isAlert ? { prompt: prompt.trim() } : {}),
+                    interval_minutes: interval ?? row.interval_minutes ?? 60,
+                  }
+                : {
+                    title: title.trim(),
+                    prompt: prompt.trim(),
+                    // Both are real numbers on this form: `allowAuto` is off.
+                    hour: hour ?? row.hour,
+                    minute: minute ?? row.minute,
+                    weekdays: days,
+                  },
+            )
           }
         >
           {busy ? t("saving") : t("save")}

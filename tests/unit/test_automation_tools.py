@@ -69,6 +69,10 @@ class _Existing:
         self.enabled = enabled
         self.web_search = True
         self.next_run_at = None
+        self.kind = "scheduled_report"
+        self.interval_minutes = None
+        self.window_start_minute = None
+        self.window_end_minute = None
 
 
 @pytest.fixture
@@ -218,6 +222,77 @@ class TestCreate:
         )
         assert "Pazartesi, Cuma" in answer
         assert "21:30" in answer
+
+    def test_creates_a_typed_gold_threshold_alert(self, tools, store):
+        create, _ = tools
+        answer = create.func(
+            title="Altın alarmı",
+            prompt="Kuveyt Türk gram altın satışı 7000 TL olunca bildir.",
+            kind="condition_alert",
+            condition={
+                "left": {
+                    "source": "bank_rate", "bank": "kuveytturk",
+                    "code": "XAU", "side": "sell",
+                },
+                "operator": "gte",
+                "right": {"source": "constant", "value": 7000},
+            },
+            interval_minutes=30,
+            runtime=_Runtime(USER),
+        )
+        row = store.added[0]
+        assert row.kind == "condition_alert"
+        assert row.interval_minutes == 30
+        assert row.condition["left"]["code"] == "XAU"
+        assert "her 30 dakikada" in answer
+
+    def test_creates_a_fixed_time_condition_alert(self, tools, store):
+        create, _ = tools
+        answer = create.func(
+            title="Sabah altın alarmı",
+            prompt="Her sabah altın 7000 TL üzerindeyse bildir.",
+            schedule_mode="fixed_time",
+            hour=9,
+            kind="condition_alert",
+            condition={
+                "left": {
+                    "source": "bank_rate", "bank": "kuveytturk",
+                    "code": "XAU", "side": "sell",
+                },
+                "operator": "gte",
+                "right": {"source": "constant", "value": 7000},
+            },
+            runtime=_Runtime(USER),
+        )
+        row = store.added[0]
+        assert row.kind == "condition_alert"
+        assert row.interval_minutes is None
+        assert "09:00" in answer
+
+    def test_creates_a_research_report_every_fifteen_minutes(self, tools, store):
+        create, _ = tools
+        answer = create.func(
+            title="Sukuk takibi",
+            prompt="Tüm katılım bankalarının güncel sukuk bilgilerini araştır.",
+            kind="scheduled_report",
+            interval_minutes=15,
+            runtime=_Runtime(USER),
+        )
+
+        row = store.added[0]
+        assert row.kind == "scheduled_report"
+        assert row.interval_minutes == 15
+        assert row.next_run_at is not None
+        assert "her 15 dakikada" in answer
+
+    def test_refuses_an_untyped_alert(self, tools, store):
+        create, _ = tools
+        answer = create.func(
+            title="Eksik", prompt="Altın yükselince bildir",
+            kind="condition_alert", runtime=_Runtime(USER),
+        )
+        assert "Eksik banka" in answer
+        assert store.added == []
 
 
 class TestList:
@@ -406,6 +481,48 @@ class TestUpdate:
         )
         assert row.prompt == "Dolar ve altın fiyatlarını karşılaştır"
 
+    def test_alert_frequency_can_be_changed(self, update, store):
+        row = _Existing("Altın alarmı")
+        row.kind = "condition_alert"
+        row.interval_minutes = 60
+        store.existing = [row]
+        answer = update.func(
+            title="Altın alarmı", interval_minutes=30, runtime=_Runtime(USER)
+        )
+        assert row.interval_minutes == 30
+        assert row.next_run_at is not None
+        assert "her 30 dakikada" in answer
+
+    def test_report_can_switch_from_fixed_time_to_interval(self, update, store):
+        row = _Existing("Sukuk raporu")
+        store.existing = [row]
+        answer = update.func(
+            title="Sukuk raporu",
+            schedule_mode="interval",
+            interval_minutes=15,
+            runtime=_Runtime(USER),
+        )
+        assert row.interval_minutes == 15
+        assert "her 15 dakikada" in answer
+
+    def test_report_can_switch_from_interval_to_fixed_time(self, update, store):
+        row = _Existing("Sukuk raporu")
+        row.interval_minutes = 15
+        row.window_start_minute = 540
+        row.window_end_minute = 1020
+        store.existing = [row]
+        answer = update.func(
+            title="Sukuk raporu",
+            schedule_mode="fixed_time",
+            hour=9,
+            minute=30,
+            runtime=_Runtime(USER),
+        )
+        assert row.interval_minutes is None
+        assert row.window_start_minute is None
+        assert row.window_end_minute is None
+        assert "09:30" in answer
+
     def test_a_database_failure_comes_back_as_prose(self, update, monkeypatch):
         """Never an exception: the router discards the whole assembled answer on
         an `error` frame, so a raise here would delete a good answer."""
@@ -430,12 +547,14 @@ class TestUpdate:
 
 
 class TestSchemas:
-    def test_create_takes_no_cron_string(self):
-        """The schedule is three integers. A wrong cron fails by never firing."""
+    def test_create_takes_typed_schedule_fields_not_a_cron_string(self):
+        """Typed clock/interval fields stay inspectable and validated."""
         create, _update, _listing = build_automation_tools()
         props = create.args_schema.model_json_schema()["properties"]
         assert set(props) == {
-            "title", "prompt", "hour", "minute", "weekdays", "web_search"
+            "title", "prompt", "hour", "minute", "weekdays", "web_search",
+            "schedule_mode", "kind", "condition", "interval_minutes", "window_start_minute",
+            "window_end_minute",
         }
         assert props["hour"]["maximum"] == 23
         assert props["minute"]["maximum"] == 59
@@ -464,7 +583,8 @@ class TestSchemas:
         assert props["hour"]["anyOf"][0]["maximum"] == 23
         assert set(props) == {
             "title", "new_title", "prompt", "hour", "minute", "weekdays",
-            "enabled", "web_search",
+            "enabled", "web_search", "schedule_mode", "interval_minutes", "window_start_minute",
+            "window_end_minute",
         }
 
     def test_the_runtime_annotation_is_a_resolved_type(self):

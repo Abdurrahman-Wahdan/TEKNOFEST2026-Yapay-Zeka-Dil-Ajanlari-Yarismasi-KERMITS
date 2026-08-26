@@ -101,6 +101,45 @@ export type Chosen = number | null;
 /** The empty option's value. `""` is what a native select reports for it. */
 export const AUTO = "";
 
+/** Common presets. The agent/API may preserve any value from five minutes up. */
+export const CHECK_INTERVALS = [5, 15, 30, 60, 180, 360, 720, 1440];
+
+export function FrequencyField({
+  value,
+  onChange,
+  disabled = false,
+  allowAuto = false,
+}: {
+  value: Chosen;
+  onChange: (minutes: Chosen) => void;
+  disabled?: boolean;
+  allowAuto?: boolean;
+}) {
+  const t = useTranslations("automations");
+  const options = [
+    ...(allowAuto ? [{ value: AUTO, label: t("automatic") }] : []),
+    ...Array.from(new Set([
+      ...(value !== null ? [value] : []),
+      ...CHECK_INTERVALS,
+    ])).sort((a, b) => a - b).map((minutes) => ({
+      value: String(minutes),
+      label: t("everyMinutes", { minutes }),
+    })),
+  ];
+
+  return (
+    <Dropdown
+      label={t("checkFrequency")}
+      value={value === null ? AUTO : String(value)}
+      options={options}
+      minWidth="13rem"
+      fullWidth={false}
+      disabled={disabled}
+      onChange={(next) => onChange(next === AUTO ? null : Number(next))}
+    />
+  );
+}
+
 /** Every field of an automation that either surface edits. */
 export interface AutomationDraft {
   text: string;

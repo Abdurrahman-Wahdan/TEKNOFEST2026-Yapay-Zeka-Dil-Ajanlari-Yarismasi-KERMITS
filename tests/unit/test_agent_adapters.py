@@ -146,6 +146,10 @@ def test_required_web_research_uses_available_sources_when_toggle_is_off(monkeyp
 
     assert "Useful indexed sukuk answer" in result
     assert "search_bank" in result
+    assert '"record_type":"source_capability"' in result
+    assert '"web_search_enabled":false' in result
+    assert '"status":"disabled"' in result
+    assert "was not performed" in result
 
 
 
@@ -195,6 +199,8 @@ def test_web_requirement_schema_distinguishes_sources_from_bank_coverage():
     assert "only when" in description
     assert "all or every bank" in description
     assert "her banka" in description
+    assert "internetten araştır" in description
+    assert "'araştır' by itself is false" in description
 
 
 def test_required_web_research_gets_one_corrective_retry(monkeypatch):

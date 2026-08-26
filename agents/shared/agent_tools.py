@@ -38,7 +38,9 @@ class DelegateInput(BaseModel):
             "verification on a public page, every available source, or exhaustive "
             "online research. Do not set true merely because coverage includes all "
             "or every bank, product, or campaign (for example 'her banka' or 'tüm "
-            "bankalar'). This requires search_bank_web at least once; indexed "
+            "bankalar'). Turkish 'internetten araştır' explicitly requests the "
+            "internet and is true; 'araştır' by itself is false. This requires "
+            "search_bank_web at least once; indexed "
             "retrieval alone is insufficient."
         ),
     )
@@ -300,7 +302,11 @@ def web_sources_from_tool_message(message: ToolMessage) -> list[dict]:
     ]
 
 
-def _final_text(result: dict, evidence_messages: list | None = None) -> str:
+def _final_text(
+    result: dict,
+    evidence_messages: list | None = None,
+    source_capability: dict | None = None,
+) -> str:
     messages = result.get("messages") or []
     if not messages:
         return "The bank specialist returned no result."
@@ -310,6 +316,12 @@ def _final_text(result: dict, evidence_messages: list | None = None) -> str:
         messages if evidence_messages is None else evidence_messages,
         cited=cited_sources_from_text(final),
     )
+    # The specialist's prose is not authoritative about which optional source
+    # classes existed for the turn. Preserve that execution fact at the same
+    # privacy boundary as its tool evidence so the supervisor cannot confuse
+    # indexed/live-endpoint findings with on-demand Web Search.
+    if source_capability:
+        evidence.append(source_capability)
     if not evidence:
         return final
     return (
@@ -500,7 +512,35 @@ def build_specialist_tool(spec: SpecialistSpec) -> BaseTool:
                     "repeat its uncited factual claims; report that source attribution "
                     "failed for this bank."
                 )
-            return _final_text(result, evidence_messages=turn_messages)
+            source_capability = None
+            if web_research_required:
+                source_capability = {
+                    "record_type": "source_capability",
+                    "requested_source": "on_demand_web_search",
+                    "required_by_user": True,
+                    "web_search_enabled": web_search_enabled,
+                    "web_search_attempted": "search_bank_web" in tools_used,
+                    "status": (
+                        "attempted"
+                        if "search_bank_web" in tools_used
+                        else "disabled"
+                        if not web_search_enabled
+                        else "not_attempted"
+                    ),
+                    "final_answer_requirement": (
+                        "State that on-demand Web Search was disabled and was not "
+                        "performed. Present any useful live-endpoint or indexed "
+                        "findings as those source classes, never as internet research."
+                        if not web_search_enabled
+                        else "Describe only the web research actually evidenced by "
+                        "search_bank_web/read_bank_source calls."
+                    ),
+                }
+            return _final_text(
+                result,
+                evidence_messages=turn_messages,
+                source_capability=source_capability,
+            )
         except Exception as exc:  # noqa: BLE001 - a single bank must not end the supervisor turn
             logger.exception(
                 "%s specialist exhausted its model retry window", spec.display_name

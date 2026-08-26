@@ -32,6 +32,7 @@ from pydantic import BaseModel, Field, model_validator
 from banks.factory import get_bank
 from banks import tools as generic
 from banks.health import run as run_health
+from banks.source_pages import live_source
 from corpus.search import build_bank_retrieval_tools
 from corpus.sites import get_site
 
@@ -44,83 +45,9 @@ from .web_research import build_bank_web_tools
 # JSON service URL is an implementation detail and is often opaque; this is the
 # stable, user-checkable bank page whose UI calls that service. A live result
 # carries this page through the specialist and supervisor citation pipeline.
-_LIVE_SOURCE_PAGES: dict[str, dict[str, tuple[str, str]]] = {
-    "kuveytturk": {
-        "default": (
-            "https://www.kuveytturk.com.tr/hesaplama-araclari/",
-            "Kuveyt Türk Hesaplama Araçları",
-        ),
-        "mile_earning_rates": (
-            "https://milesandsmiles.kuveytturk.com.tr/",
-            "Kuveyt Türk Miles&Smiles",
-        ),
-    },
-    "albaraka": {
-        "default": (
-            "https://www.albaraka.com.tr/tr/hesaplama-araclari",
-            "Albaraka Türk Hesaplama Araçları",
-        ),
-    },
-    "vakif": {
-        "default": (
-            "https://www.vakifkatilim.com.tr/tr/yardimci-sayfalar/hesaplama-araclari",
-            "Vakıf Katılım Hesaplama Araçları",
-        ),
-    },
-    "emlak": {
-        "default": (
-            "https://www.emlakkatilim.com.tr/tr/hesaplama-araclari",
-            "Emlak Katılım Hesaplama Araçları",
-        ),
-        "exchange_rates": (
-            "https://www.emlakkatilim.com.tr/tr/tum-kurlarimiz",
-            "Emlak Katılım Tüm Kurlarımız",
-        ),
-    },
-    "dunya": {
-        "default": (
-            "https://dunyakatilim.com.tr/",
-            "Dünya Katılım Hesaplama Araçları",
-        ),
-        "exchange_rates": (
-            "https://dunyakatilim.com.tr/gunluk-kurlar",
-            "Dünya Katılım Günlük Kurlar",
-        ),
-    },
-    "ziraat": {
-        "default": (
-            "https://www.ziraatkatilim.com.tr/anasayfa",
-            "Ziraat Katılım Hesaplama Araçları",
-        ),
-    },
-    "turkiyefinans": {
-        "default": (
-            "https://www.turkiyefinans.com.tr/tr-tr/hesaplama-araclari/Sayfalar/hesaplama-araclari.aspx",
-            "Türkiye Finans Hesaplama Araçları",
-        ),
-        "card_installment_quote": (
-            "https://www.turkiyefinans.com.tr/tr-tr/hesaplama-araclari/Sayfalar/taksitle-hesaplama-araci.aspx",
-            "Türkiye Finans Taksitle Hesaplama Aracı",
-        ),
-    },
-    "hayat": {
-        "default": (
-            "https://hayatfinans.com.tr/",
-            "Hayat Finans Hesaplama Araçları",
-        ),
-    },
-    "tom": {
-        "default": (
-            "https://www.tombank.com.tr/hesaplama-araclari.html",
-            "T.O.M. Katılım Hesaplama Araçları",
-        ),
-    },
-}
-
-
 def _live_source(bank: str, tool: str) -> tuple[str, str]:
-    sources = _LIVE_SOURCE_PAGES.get(bank, {})
-    return sources.get(tool) or sources.get("default") or (
+    url, title = live_source(bank, tool)
+    return (url, title) if url else (
         get_site(bank).base,
         f"{get_site(bank).display_name} resmi sitesi",
     )

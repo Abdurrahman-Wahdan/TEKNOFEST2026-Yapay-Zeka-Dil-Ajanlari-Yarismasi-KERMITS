@@ -26,7 +26,9 @@ reversible version of the same intent and `update_automation` can do it
 (`enabled=false`), so "cancel my morning report" has an answer that cannot lose
 anything. The list in the UI has a delete button per row.
 
-**The schedule is three integers, never a cron string.** A wrong cron fails the
+**The schedule is typed fields, never a cron string.** Fixed schedules use
+`hour`/`minute`/`weekdays`; recurring schedules use `interval_minutes`, with an
+optional daily window. A wrong cron fails the
 worst way available: silently, by simply never firing, with nothing on screen to
 show that it did not. `hour`/`minute`/`weekdays` fail visibly instead -- the
 profile page renders "Her gün 09:00" and the user can see that is not what they
@@ -42,6 +44,7 @@ answer along with the failed write. A refusal is a sentence, following
 
 import logging
 import uuid
+from typing import Literal
 
 from langchain.tools import ToolRuntime
 from langchain_core.tools import StructuredTool
@@ -50,6 +53,11 @@ from sqlalchemy import select
 
 from .clock import TZ
 from .runtime import AgentContext
+from api.schemas.automations import (
+    ConditionSpec,
+    MAX_CHECK_MINUTES,
+    MIN_CHECK_MINUTES,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +103,7 @@ class CreateAutomationInput(BaseModel):
         )
     )
     hour: int = Field(
+        default=9,
         ge=0,
         le=23,
         description=(
@@ -119,6 +128,38 @@ class CreateAutomationInput(BaseModel):
             "asked for indexed data only -- a report about what changed since "
             "yesterday cannot be answered from the offline index."
         ),
+    )
+    schedule_mode: Literal["fixed_time", "interval"] | None = Field(
+        default=None,
+        description=(
+            "fixed_time when the user named a clock time; interval when they "
+            "named a cadence. For an alert with no schedule, use interval."
+        ),
+    )
+    kind: Literal["scheduled_report", "condition_alert"] = Field(
+        default="scheduled_report",
+        description=(
+            "condition_alert for notify/alarm requests against live numeric values; "
+            "scheduled_report for an answer produced at a clock time."
+        ),
+    )
+    condition: ConditionSpec | None = Field(
+        default=None,
+        description="Required for condition_alert. Never invent missing inputs.",
+    )
+    interval_minutes: int | None = Field(
+        default=None,
+        ge=MIN_CHECK_MINUTES,
+        le=MAX_CHECK_MINUTES,
+        description="Frequency for any report or alert that runs every N minutes.",
+    )
+    window_start_minute: int | None = Field(
+        default=None, ge=0, le=1439,
+        description="Optional active-window start as minutes after midnight.",
+    )
+    window_end_minute: int | None = Field(
+        default=None, ge=0, le=1439,
+        description="Optional active-window end as minutes after midnight.",
     )
 
 
@@ -182,6 +223,21 @@ class UpdateAutomationInput(BaseModel):
     web_search: bool | None = Field(
         default=None, description="Allow or forbid live internet research on each run."
     )
+    schedule_mode: Literal["fixed_time", "interval"] | None = Field(
+        default=None,
+        description=(
+            "Set fixed_time to replace an interval with hour/minute/weekdays, "
+            "or interval to replace a clock schedule with interval_minutes."
+        ),
+    )
+    interval_minutes: int | None = Field(
+        default=None,
+        ge=MIN_CHECK_MINUTES,
+        le=MAX_CHECK_MINUTES,
+        description="New interval frequency for any automation.",
+    )
+    window_start_minute: int | None = Field(default=None, ge=0, le=1439)
+    window_end_minute: int | None = Field(default=None, ge=0, le=1439)
 
 
 class ListAutomationsInput(BaseModel):
@@ -282,13 +338,19 @@ def build_automation_tools() -> list[StructuredTool]:
     def create_automation(
         title: str,
         prompt: str,
-        hour: int,
         runtime: ToolRuntime[AgentContext],
+        hour: int = 9,
         minute: int = 0,
         weekdays: list[int] | None = None,
         web_search: bool = True,
+        schedule_mode: str | None = None,
+        kind: str = "scheduled_report",
+        condition: dict | ConditionSpec | None = None,
+        interval_minutes: int | None = None,
+        window_start_minute: int | None = None,
+        window_end_minute: int | None = None,
     ) -> str:
-        from api.automations.schedule import next_run, valid_weekdays
+        from api.automations.schedule import next_interval_run, next_run, valid_weekdays
         from api.db.base import utcnow
         from api.db.models import Automation
         from api.db.session import session_scope
@@ -311,6 +373,25 @@ def build_automation_tools() -> list[StructuredTool]:
                 "Otomasyon kurulamadı: başlık ve çalıştırılacak istek boş "
                 "olamaz. Kullanıcıdan ne istediğini netleştir."
             )
+        if kind == "condition_alert":
+            if condition is None:
+                return (
+                    "Alarm kurulamadı: karşılaştırılacak canlı değerler eksik. "
+                    "Eksik banka, tutar, vade, metrik, yön veya eşik değerini "
+                    "kullanıcıya sor; tahmin etme."
+                )
+            try:
+                condition_spec = ConditionSpec.model_validate(condition)
+            except ValueError as exc:
+                return f"Alarm kurulamadı: koşul geçersiz ({exc}). Eksik bilgiyi kullanıcıya sor."
+            if schedule_mode != "fixed_time":
+                interval_minutes = interval_minutes or 60
+        else:
+            condition_spec = None
+        if (window_start_minute is None) != (window_end_minute is None):
+            return "Zaman aralığı için hem başlangıç hem bitiş saati gereklidir."
+        if window_start_minute is not None and interval_minutes is None:
+            return "Zaman aralığı yalnızca aralıklı bir otomasyonda kullanılabilir."
 
         try:
             with session_scope() as store:
@@ -323,6 +404,7 @@ def build_automation_tools() -> list[StructuredTool]:
                         f"sınır {MAX_PER_USER}. Yeni bir tane kurmak için Profil "
                         "sayfasından birini silmesi gerekiyor."
                     )
+                now = utcnow()
                 row = Automation(
                     user_id=user_id,
                     title=clean_title,
@@ -331,8 +413,26 @@ def build_automation_tools() -> list[StructuredTool]:
                     minute=minute,
                     weekdays=days,
                     web_search=bool(web_search),
+                    kind=kind,
+                    condition=(
+                        condition_spec.model_dump(mode="json") if condition_spec else {}
+                    ),
+                    interval_minutes=interval_minutes,
+                    window_start_minute=window_start_minute,
+                    window_end_minute=window_end_minute,
                     enabled=True,
-                    next_run_at=next_run(utcnow(), hour, minute, days),
+                    next_run_at=(
+                        next_interval_run(
+                            now,
+                            interval_minutes,
+                            days,
+                            window_start_minute,
+                            window_end_minute,
+                            include_now=kind == "condition_alert",
+                        )
+                        if interval_minutes is not None
+                        else next_run(now, hour, minute, days)
+                    ),
                 )
                 store.add(row)
                 store.flush()
@@ -350,9 +450,19 @@ def build_automation_tools() -> list[StructuredTool]:
             created_id,
             user_id,
             clean_title,
-            _describe(hour, minute, days),
+            (
+                f"every {interval_minutes} minutes"
+                if interval_minutes is not None
+                else _describe(hour, minute, days)
+            ),
             first.isoformat(),
         )
+        if interval_minutes is not None:
+            return (
+                f"Otomasyon kuruldu: {clean_title!r}, her {interval_minutes} dakikada "
+                "çalışacak. Sonuçlar Profil → Raporlar altında birikecek ve bildirim "
+                "zili kullanıcıyı uyaracak. Kullanıcıya çalışma sıklığını söyle."
+            )
         return (
             f"Otomasyon kuruldu: {clean_title!r}, {_describe(hour, minute, days)}. "
             f"İlk çalışma: {first.astimezone().strftime('%d.%m.%Y %H:%M')}. "
@@ -375,8 +485,12 @@ def build_automation_tools() -> list[StructuredTool]:
         weekdays: list[int] | None = None,
         enabled: bool | None = None,
         web_search: bool | None = None,
+        schedule_mode: str | None = None,
+        interval_minutes: int | None = None,
+        window_start_minute: int | None = None,
+        window_end_minute: int | None = None,
     ) -> str:
-        from api.automations.schedule import next_run, valid_weekdays
+        from api.automations.schedule import next_interval_run, next_run, valid_weekdays
         from api.db.base import utcnow
         from api.db.models import Automation
         from api.db.session import session_scope
@@ -406,8 +520,11 @@ def build_automation_tools() -> list[StructuredTool]:
             "weekdays": None if weekdays is None else valid_weekdays(weekdays),
             "enabled": enabled,
             "web_search": web_search,
+            "interval_minutes": interval_minutes,
+            "window_start_minute": window_start_minute,
+            "window_end_minute": window_end_minute,
         }
-        if all(value is None for value in changes.values()):
+        if all(value is None for value in changes.values()) and schedule_mode is None:
             return (
                 "Değiştirilecek bir alan verilmedi. Kullanıcıya neyi "
                 "değiştirmek istediğini sor (saat, günler, başlık, durdur/başlat)."
@@ -424,9 +541,24 @@ def build_automation_tools() -> list[StructuredTool]:
                 if problem is not None:
                     return problem
 
+                match_kind = getattr(match, "kind", "scheduled_report")
                 for field, value in changes.items():
                     if value is not None:
                         setattr(match, field, value)
+                if schedule_mode == "fixed_time":
+                    match.interval_minutes = None
+                    match.window_start_minute = None
+                    match.window_end_minute = None
+                elif schedule_mode == "interval":
+                    if interval_minutes is None and match.interval_minutes is None:
+                        return (
+                            "Aralıklı programa geçmek için interval_minutes gerekli. "
+                            "Kullanıcıdan çalışma sıklığını sor; tahmin etme."
+                        )
+                if (
+                    getattr(match, "window_start_minute", None) is None
+                ) != (getattr(match, "window_end_minute", None) is None):
+                    return "Zaman aralığı için hem başlangıç hem bitiş saati gereklidir."
                 # Recomputed from *now*, exactly as `PATCH /me/automations/{id}`
                 # does. Keeping the old value would fire the automation once more
                 # at the time the user just changed away from, which is precisely
@@ -435,14 +567,33 @@ def build_automation_tools() -> list[StructuredTool]:
                     changes[field] is not None
                     for field in ("hour", "minute", "weekdays", "enabled")
                 )
+                schedule_moved = schedule_moved or any(
+                    value is not None
+                    for value in (interval_minutes, window_start_minute, window_end_minute)
+                )
+                schedule_moved = schedule_moved or schedule_mode is not None
                 if schedule_moved:
-                    match.next_run_at = next_run(
-                        utcnow(), match.hour, match.minute, match.weekdays
+                    now = utcnow()
+                    match.next_run_at = (
+                        next_interval_run(
+                            now,
+                            match.interval_minutes,
+                            match.weekdays,
+                            getattr(match, "window_start_minute", None),
+                            getattr(match, "window_end_minute", None),
+                            include_now=match_kind == "condition_alert",
+                        )
+                        if match.interval_minutes is not None
+                        else next_run(now, match.hour, match.minute, match.weekdays)
                     )
                 store.flush()
                 changed_id = match.id
                 final_title = match.title
-                schedule = _describe(match.hour, match.minute, match.weekdays)
+                schedule = (
+                    f"her {match.interval_minutes} dakikada"
+                    if match.interval_minutes is not None
+                    else _describe(match.hour, match.minute, match.weekdays)
+                )
                 paused = not match.enabled
                 first = match.next_run_at
         except Exception as exc:  # noqa: BLE001 - a traceback must not reach the model
@@ -484,7 +635,12 @@ def build_automation_tools() -> list[StructuredTool]:
                     .order_by(Automation.created_at)
                 ).all()
                 lines = [
-                    f"{i}. {r.title} -- {_describe(r.hour, r.minute, r.weekdays)}"
+                    f"{i}. {r.title} -- "
+                    + (
+                        f"her {r.interval_minutes} dakikada"
+                        if getattr(r, "interval_minutes", None) is not None
+                        else _describe(r.hour, r.minute, r.weekdays)
+                    )
                     + ("" if r.enabled else "  (DURDURULMUŞ)")
                     for i, r in enumerate(rows, 1)
                 ]
@@ -505,12 +661,17 @@ def build_automation_tools() -> list[StructuredTool]:
             func=create_automation,
             name="create_automation",
             description=(
-                "Set up a recurring report for the user: a question you will be "
-                "asked automatically at a time of day they choose, whose answer "
-                "is saved to their Reports page and announced by the "
+                "Set up either a recurring report/research task or a conditional "
+                "live-value alert. Scheduling is independent of kind: both may run "
+                "at a fixed clock time or every interval_minutes, optionally only "
+                "on selected weekdays and inside a daily time window. An alert checks "
+                "a validated numeric condition and notifies "
+                "only when false becomes true. Never invent an alert's missing "
+                "bank, amount, term, metric, buy/sell side, currency or threshold; "
+                "ask the user first. Results are saved to Reports and announced by the "
                 "notification bell. Use this when the user asks for something "
-                "repeating -- 'her sabah', 'her gün 9'da', 'her pazartesi', "
-                "'bana günlük rapor ver'. Do NOT use it for a question they want "
+                "repeating or says 'alarm ver / haber ver / notify me when'. "
+                "Do NOT use it for a question they want "
                 "answered now; answer that normally. Storing the request is all "
                 "this does -- it retrieves nothing and proves nothing, so still "
                 "answer today's version of the question from the bank "
@@ -522,8 +683,8 @@ def build_automation_tools() -> list[StructuredTool]:
             func=update_automation,
             name="update_automation",
             description=(
-                "Change a recurring report the user already has: its time, its "
-                "days, its title, the question it asks, or whether it runs at "
+                "Change an automation the user already has: its fixed time or "
+                "interval, optional time window, days, title, question, or whether it runs at "
                 "all. Identify it by its current title. Use this when they "
                 "correct you ('hayır, 19:00 olsun'), change their mind about "
                 "when or what ('pazartesileri de olsun', 'dolar kurunu da "

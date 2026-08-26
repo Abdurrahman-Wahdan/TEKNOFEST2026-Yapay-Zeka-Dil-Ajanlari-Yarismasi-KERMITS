@@ -1,5 +1,12 @@
-"""The final, public-answer policy guard."""
+"""The public-answer check: pass, or hand the problem back to the assistant."""
 
-from .agent import OutputGuardError, GuardedOutput, guard_output
+from .agent import OutputGuardError, check_output, load_rules
+from .models import GuardVerdict, RuleCheck
 
-__all__ = ["GuardedOutput", "OutputGuardError", "guard_output"]
+__all__ = [
+    "GuardVerdict",
+    "OutputGuardError",
+    "RuleCheck",
+    "check_output",
+    "load_rules",
+]

@@ -3008,6 +3008,46 @@
               }
             ],
             "title": "Web Search"
+          },
+          "interval_minutes": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10080.0,
+                "minimum": 5.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interval Minutes",
+            "description": "Optional user-selected frequency for any automation."
+          },
+          "window_start_minute": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1439.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Start Minute"
+          },
+          "window_end_minute": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1439.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window End Minute"
           }
         },
         "type": "object",
@@ -3054,6 +3094,64 @@
             "type": "boolean",
             "title": "Web Search",
             "default": true
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "scheduled_report",
+              "condition_alert"
+            ],
+            "title": "Kind",
+            "default": "scheduled_report"
+          },
+          "condition": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConditionSpec"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "interval_minutes": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10080.0,
+                "minimum": 5.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interval Minutes"
+          },
+          "window_start_minute": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1439.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Start Minute"
+          },
+          "window_end_minute": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1439.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window End Minute"
           }
         },
         "type": "object",
@@ -3099,6 +3197,52 @@
             "type": "boolean",
             "title": "Web Search"
           },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "scheduled_report",
+              "condition_alert"
+            ],
+            "title": "Kind"
+          },
+          "condition": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Condition"
+          },
+          "interval_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interval Minutes"
+          },
+          "window_start_minute": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Start Minute"
+          },
+          "window_end_minute": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window End Minute"
+          },
           "enabled": {
             "type": "boolean",
             "title": "Enabled"
@@ -3124,6 +3268,34 @@
             "type": "string",
             "title": "Last Error"
           },
+          "last_condition_met": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Condition Met"
+          },
+          "last_observation": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Last Observation"
+          },
+          "last_triggered_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Triggered At"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -3139,10 +3311,18 @@
           "minute",
           "weekdays",
           "web_search",
+          "kind",
+          "condition",
+          "interval_minutes",
+          "window_start_minute",
+          "window_end_minute",
           "enabled",
           "next_run_at",
           "last_run_at",
           "last_error",
+          "last_condition_met",
+          "last_observation",
+          "last_triggered_at",
           "created_at"
         ],
         "title": "AutomationOut"
@@ -3235,6 +3415,55 @@
               }
             ],
             "title": "Enabled"
+          },
+          "interval_minutes": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10080.0,
+                "minimum": 5.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interval Minutes"
+          },
+          "window_start_minute": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1439.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Start Minute"
+          },
+          "window_end_minute": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1439.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window End Minute"
+          },
+          "condition": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConditionSpec"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -3365,6 +3594,43 @@
         ],
         "title": "BankOut",
         "description": "One bank, what it publishes, and what is currently down.\n\n`publishes` and `maintenance` are different absences and are reported\nseparately: a bank that does not sell car finance and a bank whose car\nfinance endpoint is broken this morning must never look alike in the UI."
+      },
+      "BankRateOperand": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "const": "bank_rate",
+            "title": "Source",
+            "default": "bank_rate"
+          },
+          "bank": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Bank"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 2,
+            "title": "Code",
+            "description": "Canonical code such as XAU, USD or XAG."
+          },
+          "side": {
+            "type": "string",
+            "enum": [
+              "buy",
+              "sell"
+            ],
+            "title": "Side"
+          }
+        },
+        "type": "object",
+        "required": [
+          "bank",
+          "code",
+          "side"
+        ],
+        "title": "BankRateOperand",
+        "description": "One buy/sell cell from a bank's live FX or precious-metal table."
       },
       "Body_create_voice_transcription": {
         "properties": {
@@ -3859,6 +4125,102 @@
         "title": "ComponentsResponse",
         "description": "Everything a topic page needs to render, in one response.\n\n`components` is ordered, and the order is meaningful -- it is the producer's\nargument, not an arbitrary set. The frontend preserves it and computes\nwidths itself."
       },
+      "ConditionSpec": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version",
+            "default": 1
+          },
+          "left": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FinanceOperand"
+              },
+              {
+                "$ref": "#/components/schemas/BankRateOperand"
+              },
+              {
+                "$ref": "#/components/schemas/ProfitShareOperand"
+              }
+            ],
+            "title": "Left",
+            "discriminator": {
+              "propertyName": "source",
+              "mapping": {
+                "bank_rate": "#/components/schemas/BankRateOperand",
+                "finance": "#/components/schemas/FinanceOperand",
+                "profit_share": "#/components/schemas/ProfitShareOperand"
+              }
+            }
+          },
+          "operator": {
+            "type": "string",
+            "enum": [
+              "lt",
+              "lte",
+              "gt",
+              "gte"
+            ],
+            "title": "Operator"
+          },
+          "right": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FinanceOperand"
+              },
+              {
+                "$ref": "#/components/schemas/BankRateOperand"
+              },
+              {
+                "$ref": "#/components/schemas/ProfitShareOperand"
+              },
+              {
+                "$ref": "#/components/schemas/ConstantOperand"
+              }
+            ],
+            "title": "Right",
+            "discriminator": {
+              "propertyName": "source",
+              "mapping": {
+                "bank_rate": "#/components/schemas/BankRateOperand",
+                "constant": "#/components/schemas/ConstantOperand",
+                "finance": "#/components/schemas/FinanceOperand",
+                "profit_share": "#/components/schemas/ProfitShareOperand"
+              }
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "left",
+          "operator",
+          "right"
+        ],
+        "title": "ConditionSpec",
+        "description": "Versioned, deterministic condition evaluated without an LLM."
+      },
+      "ConstantOperand": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "const": "constant",
+            "title": "Source",
+            "default": "constant"
+          },
+          "value": {
+            "type": "number",
+            "title": "Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "title": "ConstantOperand",
+        "description": "A literal threshold on the right side of an alert."
+      },
       "ConstraintsOut": {
         "properties": {
           "category": {
@@ -4143,6 +4505,65 @@
         ],
         "title": "FamilyOut",
         "description": "A product family -- the thing that makes two banks comparable."
+      },
+      "FinanceOperand": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "const": "finance",
+            "title": "Source",
+            "default": "finance"
+          },
+          "bank": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Bank"
+          },
+          "family": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Family",
+            "description": "Comparison family, e.g. tasit-0km."
+          },
+          "amount": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Amount",
+            "description": "Financing amount in TRY."
+          },
+          "term_months": {
+            "type": "integer",
+            "maximum": 360.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Term Months"
+          },
+          "metric": {
+            "type": "string",
+            "enum": [
+              "monthly_installment",
+              "total_repayment",
+              "profit_rate",
+              "annual_cost_rate"
+            ],
+            "title": "Metric",
+            "default": "monthly_installment"
+          },
+          "variant": {
+            "type": "string",
+            "title": "Variant",
+            "description": "Required only when a bank returns several variants for the family.",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "bank",
+          "family",
+          "amount",
+          "term_months"
+        ],
+        "title": "FinanceOperand",
+        "description": "One metric from a like-for-like live financing quote."
       },
       "FinanceQuoteOut": {
         "properties": {
@@ -4818,6 +5239,77 @@
           "completed_at"
         ],
         "title": "ProfileOut"
+      },
+      "ProfitShareOperand": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "const": "profit_share",
+            "title": "Source",
+            "default": "profit_share"
+          },
+          "bank": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Bank"
+          },
+          "family": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Family"
+          },
+          "amount": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Amount"
+          },
+          "term": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Term"
+          },
+          "term_unit": {
+            "type": "string",
+            "enum": [
+              "day",
+              "month"
+            ],
+            "title": "Term Unit",
+            "default": "month"
+          },
+          "currency": {
+            "type": "string",
+            "maxLength": 3,
+            "minLength": 3,
+            "title": "Currency",
+            "default": "TRY"
+          },
+          "metric": {
+            "type": "string",
+            "enum": [
+              "net_profit",
+              "gross_profit",
+              "net_annual_rate",
+              "gross_annual_rate"
+            ],
+            "title": "Metric",
+            "default": "net_profit"
+          },
+          "variant": {
+            "type": "string",
+            "title": "Variant",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "bank",
+          "family",
+          "amount",
+          "term"
+        ],
+        "title": "ProfitShareOperand",
+        "description": "One metric from a live participation-account quote."
       },
       "ProfitShareQuoteOut": {
         "properties": {
@@ -5525,7 +6017,7 @@
               }
             ],
             "title": "Stage",
-            "description": "status only: retrieving | pricing | writing."
+            "description": "status only: retrieving | pricing | writing | reviewing."
           },
           "text": {
             "anyOf": [

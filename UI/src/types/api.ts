@@ -1312,6 +1312,15 @@ export interface components {
             weekdays?: number[] | null;
             /** Web Search */
             web_search?: boolean | null;
+            /**
+             * Interval Minutes
+             * @description Optional user-selected frequency for any automation.
+             */
+            interval_minutes?: number | null;
+            /** Window Start Minute */
+            window_start_minute?: number | null;
+            /** Window End Minute */
+            window_end_minute?: number | null;
         };
         /**
          * AutomationIn
@@ -1339,6 +1348,19 @@ export interface components {
              * @default true
              */
             web_search: boolean;
+            /**
+             * Kind
+             * @default scheduled_report
+             * @enum {string}
+             */
+            kind: "scheduled_report" | "condition_alert";
+            condition?: components["schemas"]["ConditionSpec"] | null;
+            /** Interval Minutes */
+            interval_minutes?: number | null;
+            /** Window Start Minute */
+            window_start_minute?: number | null;
+            /** Window End Minute */
+            window_end_minute?: number | null;
         };
         /** AutomationOut */
         AutomationOut: {
@@ -1359,6 +1381,21 @@ export interface components {
             weekdays: number[];
             /** Web Search */
             web_search: boolean;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "scheduled_report" | "condition_alert";
+            /** Condition */
+            condition: {
+                [key: string]: unknown;
+            };
+            /** Interval Minutes */
+            interval_minutes: number | null;
+            /** Window Start Minute */
+            window_start_minute: number | null;
+            /** Window End Minute */
+            window_end_minute: number | null;
             /** Enabled */
             enabled: boolean;
             /**
@@ -1370,6 +1407,14 @@ export interface components {
             last_run_at: string | null;
             /** Last Error */
             last_error: string;
+            /** Last Condition Met */
+            last_condition_met: boolean | null;
+            /** Last Observation */
+            last_observation: {
+                [key: string]: unknown;
+            };
+            /** Last Triggered At */
+            last_triggered_at: string | null;
             /**
              * Created At
              * Format: date-time
@@ -1395,6 +1440,13 @@ export interface components {
             web_search?: boolean | null;
             /** Enabled */
             enabled?: boolean | null;
+            /** Interval Minutes */
+            interval_minutes?: number | null;
+            /** Window Start Minute */
+            window_start_minute?: number | null;
+            /** Window End Minute */
+            window_end_minute?: number | null;
+            condition?: components["schemas"]["ConditionSpec"] | null;
         };
         /**
          * BankLimitsOut
@@ -1455,6 +1507,29 @@ export interface components {
              * @default
              */
             notes: string;
+        };
+        /**
+         * BankRateOperand
+         * @description One buy/sell cell from a bank's live FX or precious-metal table.
+         */
+        BankRateOperand: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            source: "bank_rate";
+            /** Bank */
+            bank: string;
+            /**
+             * Code
+             * @description Canonical code such as XAU, USD or XAG.
+             */
+            code: string;
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "buy" | "sell";
         };
         /** Body_create_voice_transcription */
         Body_create_voice_transcription: {
@@ -1751,6 +1826,40 @@ export interface components {
             /** Components */
             components?: components["schemas"]["Component"][];
         };
+        /**
+         * ConditionSpec
+         * @description Versioned, deterministic condition evaluated without an LLM.
+         */
+        ConditionSpec: {
+            /**
+             * Version
+             * @default 1
+             * @constant
+             */
+            version: 1;
+            /** Left */
+            left: components["schemas"]["FinanceOperand"] | components["schemas"]["BankRateOperand"] | components["schemas"]["ProfitShareOperand"];
+            /**
+             * Operator
+             * @enum {string}
+             */
+            operator: "lt" | "lte" | "gt" | "gte";
+            /** Right */
+            right: components["schemas"]["FinanceOperand"] | components["schemas"]["BankRateOperand"] | components["schemas"]["ProfitShareOperand"] | components["schemas"]["ConstantOperand"];
+        };
+        /**
+         * ConstantOperand
+         * @description A literal threshold on the right side of an alert.
+         */
+        ConstantOperand: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            source: "constant";
+            /** Value */
+            value: number;
+        };
         /** ConstraintsOut */
         ConstraintsOut: {
             /** Category */
@@ -1890,6 +1999,43 @@ export interface components {
              * @description Banks that sell it.
              */
             banks: string[];
+        };
+        /**
+         * FinanceOperand
+         * @description One metric from a like-for-like live financing quote.
+         */
+        FinanceOperand: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            source: "finance";
+            /** Bank */
+            bank: string;
+            /**
+             * Family
+             * @description Comparison family, e.g. tasit-0km.
+             */
+            family: string;
+            /**
+             * Amount
+             * @description Financing amount in TRY.
+             */
+            amount: number;
+            /** Term Months */
+            term_months: number;
+            /**
+             * Metric
+             * @default monthly_installment
+             * @enum {string}
+             */
+            metric: "monthly_installment" | "total_repayment" | "profit_rate" | "annual_cost_rate";
+            /**
+             * Variant
+             * @description Required only when a bank returns several variants for the family.
+             * @default
+             */
+            variant: string;
         };
         /** FinanceQuoteOut */
         FinanceQuoteOut: {
@@ -2175,6 +2321,47 @@ export interface components {
             };
             /** Completed At */
             completed_at: string | null;
+        };
+        /**
+         * ProfitShareOperand
+         * @description One metric from a live participation-account quote.
+         */
+        ProfitShareOperand: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            source: "profit_share";
+            /** Bank */
+            bank: string;
+            /** Family */
+            family: string;
+            /** Amount */
+            amount: number;
+            /** Term */
+            term: number;
+            /**
+             * Term Unit
+             * @default month
+             * @enum {string}
+             */
+            term_unit: "day" | "month";
+            /**
+             * Currency
+             * @default TRY
+             */
+            currency: string;
+            /**
+             * Metric
+             * @default net_profit
+             * @enum {string}
+             */
+            metric: "net_profit" | "gross_profit" | "net_annual_rate" | "gross_annual_rate";
+            /**
+             * Variant
+             * @default
+             */
+            variant: string;
         };
         /** ProfitShareQuoteOut */
         ProfitShareQuoteOut: {
@@ -2517,7 +2704,7 @@ export interface components {
             type: "status" | "token" | "citation" | "tool_call" | "saved_view" | "automation" | "done" | "error";
             /**
              * Stage
-             * @description status only: retrieving | pricing | writing.
+             * @description status only: retrieving | pricing | writing | reviewing.
              */
             stage?: string | null;
             /**

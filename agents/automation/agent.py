@@ -59,4 +59,6 @@ def draft_automation(text: str) -> AutomationDraft:
     structured = result.get("structured_response")
     if not isinstance(structured, AutomationDraft):
         raise RuntimeError("The automation agent returned no validated result.")
+    if structured.kind == "needs_clarification":
+        raise ValueError(structured.clarification)
     return structured

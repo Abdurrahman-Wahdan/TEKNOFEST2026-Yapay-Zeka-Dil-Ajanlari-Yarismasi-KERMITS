@@ -14,6 +14,7 @@ import { AUTOMATIONS_KEY, type Weekday } from "@/lib/automations";
 import { useVoiceSession } from "@/lib/chat/useVoiceSession";
 
 import {
+  FrequencyField,
   PromptField,
   ScheduleFields,
   toggleDay,
@@ -61,6 +62,7 @@ export function AutomationComposer() {
   const [text, setText] = useState("");
   const [hour, setHour] = useState<Chosen>(null);
   const [minute, setMinute] = useState<Chosen>(null);
+  const [interval, setInterval] = useState<Chosen>(null);
   /** `null` until the user touches a day chip, so an untouched set is the agent's. */
   const [days, setDays] = useState<Weekday[] | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
@@ -99,12 +101,14 @@ export function AutomationComposer() {
         ...(hour !== null ? { hour } : {}),
         ...(minute !== null ? { minute } : {}),
         ...(days !== null ? { weekdays: days } : {}),
+        ...(interval !== null ? { interval_minutes: interval } : {}),
       }),
     onSuccess: () => {
       setText("");
       setHour(null);
       setMinute(null);
       setDays(null);
+      setInterval(null);
       setFailed(null);
       queryClient.invalidateQueries({ queryKey: AUTOMATIONS_KEY });
       queryClient.invalidateQueries({ queryKey: STATS_KEY });
@@ -210,6 +214,16 @@ export function AutomationComposer() {
           onMinute={setMinute}
           onToggleDay={(day) => setDays((current) => toggleDay(current, day))}
         />
+
+        <FrequencyField
+          value={interval}
+          onChange={setInterval}
+          disabled={busy}
+          allowAuto
+        />
+        <VuiTypography variant="caption" sx={{ color: "var(--text-faint)" }}>
+          {t("frequencyHint")}
+        </VuiTypography>
 
         <VuiBox
           display="flex"

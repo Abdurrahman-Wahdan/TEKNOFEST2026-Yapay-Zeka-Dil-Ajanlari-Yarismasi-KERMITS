@@ -25,7 +25,7 @@ from sqlalchemy import func, select
 
 from ..automations.notifications import hub
 from ..automations.runner import Due, run_automation
-from ..automations.schedule import describe, next_run, valid_weekdays
+from ..automations.schedule import describe, next_interval_run, next_run, valid_weekdays
 from ..db.base import utcnow
 from ..db.models import Automation, AutomationReport, User
 from ..db.session import session_scope
@@ -86,7 +86,10 @@ def _check_room(session, user) -> None:
 
 def _create(
     session, user, *, title: str, prompt: str, hour: int, minute: int,
-    weekdays: list[int], web_search: bool,
+    weekdays: list[int], web_search: bool, kind: str = "scheduled_report",
+    condition: dict | None = None, interval_minutes: int | None = None,
+    window_start_minute: int | None = None,
+    window_end_minute: int | None = None,
 ) -> Automation:
     """The one place a row is written, so `next_run_at` is never forgotten.
 
@@ -96,6 +99,7 @@ def _create(
     want -- but only one caller should ever have to know that.
     """
     days = valid_weekdays(weekdays)
+    now = utcnow()
     row = Automation(
         user_id=user.id,
         title=title.strip(),
@@ -104,14 +108,37 @@ def _create(
         minute=minute,
         weekdays=days,
         web_search=web_search,
+        kind=kind,
+        condition=condition or {},
+        interval_minutes=interval_minutes,
+        window_start_minute=window_start_minute,
+        window_end_minute=window_end_minute,
         enabled=True,
-        next_run_at=next_run(utcnow(), hour, minute, days),
+        next_run_at=(
+            next_interval_run(
+                now,
+                interval_minutes,
+                days,
+                window_start_minute,
+                window_end_minute,
+                include_now=kind == "condition_alert",
+            )
+            if interval_minutes is not None
+            else next_run(now, hour, minute, days)
+        ),
     )
     session.add(row)
     session.commit()
     logger.info(
         "automation created id=%s user=%s schedule=%r next=%s",
-        row.id, user.id, describe(hour, minute, days), row.next_run_at.isoformat(),
+        row.id,
+        user.id,
+        (
+            f"every {interval_minutes} minutes"
+            if interval_minutes is not None
+            else describe(hour, minute, days)
+        ),
+        row.next_run_at.isoformat(),
     )
     return row
 
@@ -143,6 +170,11 @@ def create_automation(
         session, user,
         title=body.title, prompt=body.prompt, hour=body.hour, minute=body.minute,
         weekdays=body.weekdays, web_search=body.web_search,
+        kind=body.kind,
+        condition=body.condition.model_dump(mode="json") if body.condition else None,
+        interval_minutes=body.interval_minutes,
+        window_start_minute=body.window_start_minute,
+        window_end_minute=body.window_end_minute,
     )
     return AutomationOut.model_validate(row)
 
@@ -187,6 +219,23 @@ def describe_automation(
         web_search=(
             body.web_search if body.web_search is not None else draft.web_search
         ),
+        kind=draft.kind,
+        condition=draft.condition,
+        interval_minutes=(
+            body.interval_minutes
+            if body.interval_minutes is not None
+            else draft.interval_minutes
+        ),
+        window_start_minute=(
+            body.window_start_minute
+            if body.window_start_minute is not None
+            else draft.window_start_minute
+        ),
+        window_end_minute=(
+            body.window_end_minute
+            if body.window_end_minute is not None
+            else draft.window_end_minute
+        ),
     )
     return AutomationOut.model_validate(row)
 
@@ -207,16 +256,59 @@ def update_automation(
     row = _own(session, user, automation_id)
     fields = body.model_dump(exclude_unset=True)
     for field, value in fields.items():
-        if value is not None:
-            setattr(row, field, value)
+        setattr(row, field, value)
 
-    if {"hour", "minute", "weekdays", "enabled"} & fields.keys():
+    # Explicit null switches an interval automation back to its fixed clock
+    # schedule. Its former window cannot survive that switch because windows
+    # only have meaning for interval schedules.
+    if "interval_minutes" in fields and fields["interval_minutes"] is None:
+        row.window_start_minute = None
+        row.window_end_minute = None
+
+    if (row.window_start_minute is None) != (row.window_end_minute is None):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="A time window needs both a start and an end.",
+        )
+    if row.window_start_minute is not None and row.interval_minutes is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="A time window requires an interval schedule.",
+        )
+
+    schedule_fields = {
+        "hour", "minute", "weekdays", "interval_minutes",
+        "window_start_minute", "window_end_minute", "enabled",
+    }
+    if row.kind == "condition_alert" and "condition" in fields:
+        if "condition" in fields:
+            row.last_condition_met = None
+            row.last_observation = {}
+    if schedule_fields & fields.keys() or "condition" in fields:
         row.weekdays = valid_weekdays(row.weekdays)
-        row.next_run_at = next_run(utcnow(), row.hour, row.minute, row.weekdays)
+        now = utcnow()
+        row.next_run_at = (
+            next_interval_run(
+                now,
+                row.interval_minutes,
+                row.weekdays,
+                row.window_start_minute,
+                row.window_end_minute,
+                include_now=row.kind == "condition_alert",
+            )
+            if row.interval_minutes is not None
+            else next_run(now, row.hour, row.minute, row.weekdays)
+        )
     session.commit()
     logger.info(
         "automation updated id=%s enabled=%s schedule=%r next=%s",
-        row.id, row.enabled, describe(row.hour, row.minute, row.weekdays),
+        row.id,
+        row.enabled,
+        (
+            f"every {row.interval_minutes} minutes"
+            if row.interval_minutes is not None
+            else describe(row.hour, row.minute, row.weekdays)
+        ),
         row.next_run_at.isoformat(),
     )
     return AutomationOut.model_validate(row)
@@ -262,6 +354,10 @@ def run_now(
         prompt=row.prompt,
         web_search=row.web_search,
         next_run_at=row.next_run_at,
+        kind=row.kind,
+        condition=row.condition,
+        interval_minutes=row.interval_minutes,
+        last_condition_met=row.last_condition_met,
     )
     logger.info("automation manual run id=%s user=%s", row.id, user.id)
     threading.Thread(

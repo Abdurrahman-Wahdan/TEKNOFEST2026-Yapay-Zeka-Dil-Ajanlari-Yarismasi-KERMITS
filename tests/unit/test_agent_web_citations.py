@@ -8,7 +8,7 @@ import pytest
 from langchain_core.messages import AIMessage, AIMessageChunk, ToolMessage
 
 from agents.main import agent as main_agent
-from agents.output_guard.models import GuardedOutput
+from agents.output_guard.models import GuardVerdict, RuleCheck
 from api import agent as agent_module
 from api.agent import _agent_answer, _searchable_text
 
@@ -20,9 +20,9 @@ def pass_public_output_guard(monkeypatch):
     """Citation tests isolate source selection from the separately tested guard."""
     monkeypatch.setattr(
         agent_module,
-        "guard_output",
-        lambda text, **kwargs: GuardedOutput(
-            text=text, changed=False, checks=[], patches=[], passes=1
+        "check_output",
+        lambda answer, **kwargs: GuardVerdict(
+            checks=[RuleCheck(rule_id="banking_domain", passed=True)], passed=True
         ),
     )
 

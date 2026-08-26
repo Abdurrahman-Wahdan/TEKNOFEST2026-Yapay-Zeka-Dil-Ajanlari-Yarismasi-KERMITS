@@ -23,8 +23,10 @@ from sqlalchemy import select
 from ..db.base import utcnow
 from ..db.models import Automation, AutomationReport
 from ..db.session import session_scope
+from ..schemas.automations import ConditionSpec
+from .conditions import ConditionResult, evaluate_condition
 from .notifications import hub, report_event
-from .schedule import describe, next_run
+from .schedule import describe, next_interval_run, next_run
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +48,12 @@ class Due:
     #: Where `next_run_at` was moved to. Logged, so a report and the next run it
     #: implies can be read off one line.
     next_run_at: datetime
+    kind: str = "scheduled_report"
+    condition: dict = field(default_factory=dict)
+    interval_minutes: int | None = None
+    window_start_minute: int | None = None
+    window_end_minute: int | None = None
+    last_condition_met: bool | None = None
 
 
 @dataclass
@@ -86,7 +94,19 @@ def claim_due(now: datetime, scope=session_scope, limit: int = 20) -> list[Due]:
             .with_for_update(skip_locked=True)
         ).all()
         for row in rows:
-            row.next_run_at = next_run(now, row.hour, row.minute, row.weekdays)
+            kind = getattr(row, "kind", "scheduled_report")
+            interval = getattr(row, "interval_minutes", None)
+            row.next_run_at = (
+                next_interval_run(
+                    now,
+                    interval,
+                    row.weekdays,
+                    getattr(row, "window_start_minute", None),
+                    getattr(row, "window_end_minute", None),
+                )
+                if interval is not None
+                else next_run(now, row.hour, row.minute, row.weekdays)
+            )
             claimed.append(
                 Due(
                     id=row.id,
@@ -95,13 +115,23 @@ def claim_due(now: datetime, scope=session_scope, limit: int = 20) -> list[Due]:
                     prompt=row.prompt,
                     web_search=row.web_search,
                     next_run_at=row.next_run_at,
+                    kind=kind,
+                    condition=getattr(row, "condition", {}) or {},
+                    interval_minutes=interval,
+                    window_start_minute=getattr(row, "window_start_minute", None),
+                    window_end_minute=getattr(row, "window_end_minute", None),
+                    last_condition_met=getattr(row, "last_condition_met", None),
                 )
             )
             logger.info(
                 "automation claimed id=%s title=%r schedule=%r next=%s",
                 row.id,
                 row.title,
-                describe(row.hour, row.minute, row.weekdays),
+                (
+                    f"every {interval} minutes"
+                    if interval is not None
+                    else describe(row.hour, row.minute, row.weekdays)
+                ),
                 row.next_run_at.isoformat(),
             )
     return claimed
@@ -179,20 +209,28 @@ def run_automation(
     due: Due,
     ask: Callable[[Due], Iterable] = _default_answer,
     scope=session_scope,
-) -> AutomationReport:
+    evaluate: Callable[[ConditionSpec], ConditionResult] = evaluate_condition,
+) -> AutomationReport | None:
     """Run one claimed automation and store its report.
 
-    **This never raises.** A report is the only evidence the user has that an
-    automation exists at all; an exception here would leave them with silence,
-    which is indistinguishable from an automation they forgot they made. So a
-    failure is a stored report with `status="failed"` and the reason in it.
+    **This never raises.** Scheduled-report failures are stored as reports.
+    Condition checks keep their error on the automation row so a transient live
+    endpoint failure cannot create a new notification every polling interval.
 
     Returns the report row -- detached, since its session has closed -- so the
     caller can log or push it without a second query.
     """
+    condition_result: ConditionResult | None = None
     try:
-        result = collect(ask(due))
-    except Exception as exc:  # noqa: BLE001 - the user must get a report either way
+        if due.kind == "condition_alert":
+            condition_result = evaluate(ConditionSpec.model_validate(due.condition))
+            result = RunResult(
+                body=condition_result.body,
+                citations=condition_result.citations,
+            )
+        else:
+            result = collect(ask(due))
+    except Exception as exc:  # noqa: BLE001 - recorded on the automation row
         # `collect` keeps whatever a failing stream had already produced, so this
         # is the narrower case: building the stream failed before it yielded
         # anything -- a model client that cannot be constructed, a checkpointer
@@ -204,6 +242,27 @@ def run_automation(
         )
 
     with scope() as store:
+        # `last_error` on the automation as well as on the report, so the list can
+        # show a broken automation as broken without a second query per row.
+        automation = store.get(Automation, due.id)
+        if automation is not None:
+            automation.last_run_at = utcnow()
+            automation.last_error = result.error
+            if condition_result is not None:
+                automation.last_condition_met = condition_result.matched
+                automation.last_observation = condition_result.observations
+
+        # Scheduled reports always leave a report, including failures. Alerts
+        # are edge-triggered: false checks and a condition that remains true
+        # update state but do not notify again.
+        should_report = due.kind != "condition_alert" or (
+            condition_result is not None
+            and condition_result.matched
+            and due.last_condition_met is not True
+        )
+        if not should_report:
+            return None
+
         report = AutomationReport(
             automation_id=due.id,
             user_id=due.user_id,
@@ -214,12 +273,8 @@ def run_automation(
             error=result.error,
         )
         store.add(report)
-        # `last_error` on the automation as well as on the report, so the list can
-        # show a broken automation as broken without a second query per row.
-        automation = store.get(Automation, due.id)
-        if automation is not None:
-            automation.last_run_at = utcnow()
-            automation.last_error = result.error
+        if automation is not None and due.kind == "condition_alert":
+            automation.last_triggered_at = utcnow()
         store.flush()
         # Read before the session closes; `expire_on_commit=False` keeps the
         # loaded attributes readable afterwards but not ones never loaded.
@@ -256,4 +311,7 @@ def tick(
     costs nothing; being blocked by a bank for an hour costs every one of them.
     """
     now = now or utcnow()
-    return [run_automation(due, ask=ask, scope=scope) for due in claim_due(now, scope)]
+    reports = [
+        run_automation(due, ask=ask, scope=scope) for due in claim_due(now, scope)
+    ]
+    return [report for report in reports if report is not None]

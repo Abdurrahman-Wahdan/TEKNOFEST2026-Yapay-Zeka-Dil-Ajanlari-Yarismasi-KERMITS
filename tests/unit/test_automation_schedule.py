@@ -17,7 +17,13 @@ from datetime import datetime, timezone
 
 import pytest
 
-from api.automations.schedule import TZ, describe, next_run, valid_weekdays
+from api.automations.schedule import (
+    TZ,
+    describe,
+    next_interval_run,
+    next_run,
+    valid_weekdays,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -130,6 +136,26 @@ class TestNaiveInput:
     def test_naive_is_read_as_utc(self):
         naive = datetime(2026, 8, 25, 12, 0)
         assert next_run(naive, 21, 30) == utc(2026, 8, 25, 18, 30)
+
+
+class TestIntervals:
+    def test_report_can_run_every_five_minutes(self):
+        assert next_interval_run(TUESDAY_NOON_UTC, 5) == utc(2026, 8, 25, 12, 5)
+
+    def test_selected_days_apply_to_any_interval(self):
+        friday_evening = utc(2026, 8, 28, 20, 50)  # Friday 23:50 Istanbul
+        result = next_interval_run(friday_evening, 15, [0, 1, 2, 3, 4])
+        assert result == utc(2026, 8, 30, 21, 0)  # Monday 00:00 Istanbul
+
+    def test_daily_window_starts_at_its_opening_time(self):
+        before_work = utc(2026, 8, 25, 5, 0)  # 08:00 Istanbul
+        result = next_interval_run(before_work, 15, [], 9 * 60, 17 * 60)
+        assert result == utc(2026, 8, 25, 6, 0)
+
+    def test_daily_window_rolls_over_after_closing(self):
+        after_work = utc(2026, 8, 25, 15, 0)  # 18:00 Istanbul
+        result = next_interval_run(after_work, 30, [], 9 * 60, 17 * 60)
+        assert result == utc(2026, 8, 26, 6, 0)
 
 
 class TestValidWeekdays:

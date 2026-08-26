@@ -30,7 +30,7 @@ from langchain_core.messages import (
     AIMessage, AIMessageChunk, HumanMessage, RemoveMessage, ToolMessage,
 )
 
-from agents.output_guard import OutputGuardError, guard_output
+from agents.output_guard import OutputGuardError, check_output
 from config.settings import settings
 from index.retrieve import search
 from llm import get_llm
@@ -713,13 +713,6 @@ def _checkpointed_final_answer(
     return final
 
 
-def _replace_checkpointed_answer(agent, config, original: AIMessage, text: str) -> None:
-    """Make the guarded wording the supervisor's durable conversation memory."""
-    agent.update_state(config, {
-        "messages": [original.model_copy(update={"content": text})]
-    })
-
-
 def _discard_checkpointed_answer(agent, config, original: AIMessage | None) -> None:
     """Fail closed without leaving a private draft in future conversation context."""
     if original is None or not original.id:
@@ -728,6 +721,17 @@ def _discard_checkpointed_answer(agent, config, original: AIMessage | None) -> N
         agent.update_state(config, {"messages": [RemoveMessage(id=original.id)]})
     except Exception:  # noqa: BLE001 - retain the original guard failure in logs
         logger.exception("Could not remove a rejected supervisor draft")
+
+
+def _retry_request(problem: str) -> str:
+    """The check's finding, handed back to the supervisor as its next turn."""
+    return (
+        "Your previous answer was not sent to the user. The output check found "
+        "this problem with it:\n\n"
+        f"{problem}\n\n"
+        "Answer again, in full, without that problem. You decide what that takes. "
+        "Do not mention this check to the user."
+    )
 
 
 def _agent_answer(
@@ -808,94 +812,129 @@ def _agent_answer(
         }
         if user_id is not None:
             run_context["user_id"] = str(user_id)
-        for message, metadata in agent.stream(
-            {"messages": messages},
-            config=config,
-            context=run_context,
-            stream_mode="messages",
-        ):
-            # Only filtered ask_<bank> handoffs expose candidate sources. Raw
-            # nested tool traces contain every search result before the bank
-            # specialist decides what actually supports its answer.
-            if isinstance(message, ToolMessage):
-                # A standing order the agent just wrote or changed. Announced so
-                # the browser can refetch the list -- without this the write is
-                # invisible: it happens inside the graph, the profile page keeps
-                # showing its cached list, and the user concludes the assistant
-                # only *said* it had set one up.
-                #
-                # Read off the tool's name rather than its text. The tool returns
-                # Turkish prose for the model, and a refusal ("bu oturumda
-                # otomasyon kuramıyorum") is a normal outcome that must not be
-                # reported as a change -- so the frame is gated on the tool
-                # having actually written, which `AUTOMATION_TOOLS` maps and
-                # `_automation_changed` checks.
-                action = _automation_changed(message)
-                if action is not None:
-                    yield StreamEvent(type="automation", automation_action=action)
-                # The output guard needs the factual handoff to detect a
-                # supervisor claim that none of its bank sources supported.
-                # Keep it private and de-duplicate callback echoes. Other tool
-                # results (page directory and automation writes) are actions,
-                # not bank evidence.
-                if (message.name or "").startswith("ask_"):
-                    handoff = (
-                        message.content
-                        if isinstance(message.content, str)
-                        else str(message.content)
-                    )
-                    if handoff and handoff not in guard_evidence_seen:
-                        guard_evidence_seen.add(handoff)
-                        guard_evidence.append(handoff)
-                for source in used_sources_from_tool_message(message):
-                    url = str(source.get("url") or "").strip()
-                    if not url:
-                        continue
-                    provenance = str(source.get("provenance") or "")
-                    key = (source_key(url), provenance)
-                    candidate_sources.setdefault(key, source)
-                    fresh_candidate_sources.setdefault(key, source)
-                continue
-            # Tool output and state bookkeeping must remain private. Only the
-            # supervisor's generated prose is part of the public SSE response.
-            if metadata.get("langgraph_node") != "model":
-                continue
-            if not isinstance(message, (AIMessage, AIMessageChunk)):
-                continue
-            if isinstance(message.content, str) and message.content:
-                # Keep every model chunk private. The graph's newly checkpointed
-                # final AIMessage is read below; unlike concatenating chunks, it
-                # excludes prose from intermediate tool-calling turns.
-                continue
-        yield StreamEvent(type="status", stage="reviewing")
+        def _stream_turn(turn_messages: list):
+            """One supervisor pass: private tool traffic in, public events out."""
+            for message, metadata in agent.stream(
+                {"messages": turn_messages},
+                config=config,
+                context=run_context,
+                stream_mode="messages",
+            ):
+                # Only filtered ask_<bank> handoffs expose candidate sources. Raw
+                # nested tool traces contain every search result before the bank
+                # specialist decides what actually supports its answer.
+                if isinstance(message, ToolMessage):
+                    # A standing order the agent just wrote or changed. Announced so
+                    # the browser can refetch the list -- without this the write is
+                    # invisible: it happens inside the graph, the profile page keeps
+                    # showing its cached list, and the user concludes the assistant
+                    # only *said* it had set one up.
+                    #
+                    # Read off the tool's name rather than its text. The tool returns
+                    # Turkish prose for the model, and a refusal ("bu oturumda
+                    # otomasyon kuramıyorum") is a normal outcome that must not be
+                    # reported as a change -- so the frame is gated on the tool
+                    # having actually written, which `AUTOMATION_TOOLS` maps and
+                    # `_automation_changed` checks.
+                    action = _automation_changed(message)
+                    if action is not None:
+                        yield StreamEvent(type="automation", automation_action=action)
+                    # The output guard needs the factual handoff to detect a
+                    # supervisor claim that none of its bank sources supported.
+                    # Keep it private and de-duplicate callback echoes. Other tool
+                    # results (page directory and automation writes) are actions,
+                    # not bank evidence.
+                    if (message.name or "").startswith("ask_"):
+                        handoff = (
+                            message.content
+                            if isinstance(message.content, str)
+                            else str(message.content)
+                        )
+                        if handoff and handoff not in guard_evidence_seen:
+                            guard_evidence_seen.add(handoff)
+                            guard_evidence.append(handoff)
+                    for source in used_sources_from_tool_message(message):
+                        url = str(source.get("url") or "").strip()
+                        if not url:
+                            continue
+                        provenance = str(source.get("provenance") or "")
+                        key = (source_key(url), provenance)
+                        candidate_sources.setdefault(key, source)
+                        fresh_candidate_sources.setdefault(key, source)
+                    continue
+                # Tool output and state bookkeeping must remain private. Only the
+                # supervisor's generated prose is part of the public SSE response.
+                if metadata.get("langgraph_node") != "model":
+                    continue
+                if not isinstance(message, (AIMessage, AIMessageChunk)):
+                    continue
+                if isinstance(message.content, str) and message.content:
+                    # Keep every model chunk private. The graph's newly checkpointed
+                    # final AIMessage is read below; unlike concatenating chunks, it
+                    # excludes prose from intermediate tool-calling turns.
+                    continue
+        # The check has no opinion on wording and writes nothing. It passes the
+        # answer, or it names the problem and the supervisor answers again -- it
+        # is the one holding the tools and the conversation. One retry: the
+        # second answer goes out either way, because a user waiting on a second
+        # full fan-out is owed an answer rather than an error.
         checkpointed: AIMessage | None = None
         try:
-            checkpointed = _checkpointed_final_answer(
-                agent, config, prior_answer_id
-            )
-            final_answer = checkpointed.content
-            guarded = guard_output(
-                final_answer,
-                user_request=question,
-                evidence=guard_evidence,
-            )
-            if guarded.changed:
-                _replace_checkpointed_answer(
-                    agent, config, checkpointed, guarded.text
+            for attempt in range(2):
+                yield from _stream_turn(messages)
+                yield StreamEvent(type="status", stage="reviewing")
+                checkpointed = _checkpointed_final_answer(
+                    agent, config, prior_answer_id
                 )
-            final_answer = guarded.text
-        except Exception as exc:  # noqa: BLE001 - the public boundary fails closed
-            _discard_checkpointed_answer(agent, config, checkpointed)
+                final_answer = checkpointed.content
+                verdict = check_output(
+                    final_answer,
+                    user_request=question,
+                    evidence=guard_evidence,
+                )
+                if verdict.passed:
+                    break
+                if attempt == 1:
+                    logger.warning(
+                        "publishing an answer the output check still failed "
+                        "session=%s problem=%s",
+                        session_id,
+                        verdict.problem,
+                    )
+                    break
+                logger.info(
+                    "output check failed, returning the turn to the assistant "
+                    "session=%s problem=%s",
+                    session_id,
+                    verdict.problem,
+                )
+                # Drop the unpublished answer, then require a genuinely newer
+                # one: `prior_answer_id` moves forward whether or not the removal
+                # succeeded, so a draft left behind cannot be mistaken for the
+                # retry's answer.
+                _discard_checkpointed_answer(agent, config, checkpointed)
+                prior_answer_id = checkpointed.id
+                checkpointed = None
+                messages = [HumanMessage(content=_retry_request(verdict.problem))]
+                yield StreamEvent(type="status", stage="pricing")
+        except Exception as exc:  # noqa: BLE001 - guard availability must not block chat
             logger.exception(
-                "Output guard rejected chat answer session=%s type=%s",
+                "Output guard could not check chat answer session=%s type=%s",
                 session_id,
                 type(exc).__name__,
             )
-            yield StreamEvent(
-                type="error",
-                detail="The answer could not be safely verified. Please try again.",
-            )
-            return
+            # The guard is an additional review, not an availability dependency.
+            # If the supervisor already checkpointed a complete answer, publish
+            # that answer unchanged when the policy file/model/structured verdict
+            # is unavailable. A missing or empty supervisor answer is different:
+            # there is no usable message to fall back to, so that remains an error.
+            if checkpointed is None:
+                yield StreamEvent(
+                    type="error",
+                    detail="The assistant failed to produce a complete answer. Please try again.",
+                )
+                return
+            final_answer = checkpointed.content
 
         # Only the accepted answer crosses the public SSE boundary. The router
         # assembles this exact text for PostgreSQL and the browser uses it for

@@ -1,64 +1,55 @@
-"""Validated contracts for surgical output review."""
+"""What the output check returns: a verdict, and what is wrong when it fails."""
 
 from __future__ import annotations
-
-from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
 
-class PolicyCheck(BaseModel):
-    """One checklist row returned by the guard model."""
+class RuleCheck(BaseModel):
+    """One rule, judged. All of them come back from a single review."""
 
-    policy_id: str = Field(min_length=1)
-    status: Literal["pass", "violation"]
-    note: str = Field(
+    rule_id: str = Field(min_length=1)
+    passed: bool
+    problem: str = Field(
         default="",
-        max_length=240,
-        description="A short finding, never hidden chain-of-thought.",
+        max_length=300,
+        description="Why this rule failed. Empty when it passed.",
     )
 
 
-class TextPatch(BaseModel):
-    """Replace one immutable draft segment, and nothing around it."""
+class GuardVerdict(BaseModel):
+    """Pass, or fail with the problem to hand back to the assistant.
 
-    policy_ids: list[str] = Field(
-        min_length=1,
-        description="Every violated policy this one local edit corrects.",
-    )
-    segment_id: str = Field(pattern=r"^S[1-9][0-9]*$")
-    replacement: str = Field(
-        description="The corrected segment body. May be empty to delete the segment.",
-    )
+    There is no patch, no rewrite and no replacement text: the guard reads the
+    answer and says yes or no. Repairing it is the assistant's work, because the
+    assistant is the one holding the tools and the conversation.
+    """
 
-
-class GuardReview(BaseModel):
-    """One complete checklist and its minimal edits."""
-
-    checks: list[PolicyCheck] = Field(min_length=1)
-    patches: list[TextPatch] = Field(default_factory=list, max_length=6)
-    safe_after_patches: bool = Field(
-        description="True only when applying every patch makes the draft publishable.",
+    checks: list[RuleCheck] = Field(min_length=1)
+    passed: bool
+    problem: str = Field(
+        default="",
+        max_length=800,
+        description=(
+            "What the assistant must fix, addressed to it. One or two plain "
+            "sentences. Empty when the answer passed."
+        ),
     )
 
     @model_validator(mode="after")
-    def unique_rows(self):
-        check_ids = [row.policy_id for row in self.checks]
-        if len(check_ids) != len(set(check_ids)):
-            raise ValueError("Each policy must appear exactly once in checks.")
-        segment_ids = [patch.segment_id for patch in self.patches]
-        if len(segment_ids) != len(set(segment_ids)):
-            raise ValueError("A draft segment may be patched only once.")
-        if any(len(ids) != len(set(ids)) for ids in (p.policy_ids for p in self.patches)):
-            raise ValueError("Patch policy ids must be unique.")
+    def consistent(self):
+        rule_ids = [row.rule_id for row in self.checks]
+        if len(rule_ids) != len(set(rule_ids)):
+            raise ValueError("Each rule must appear exactly once.")
+        failed = [row for row in self.checks if not row.passed]
+        if self.passed and failed:
+            raise ValueError(
+                "Cannot pass while these rules failed: "
+                + ", ".join(row.rule_id for row in failed)
+            )
+        if not self.passed:
+            if not failed:
+                raise ValueError("A failure must name the rule that failed.")
+            if not self.problem.strip():
+                raise ValueError("A failure must say what the assistant should fix.")
         return self
-
-
-class GuardedOutput(BaseModel):
-    """The accepted answer and a private audit summary."""
-
-    text: str
-    changed: bool
-    checks: list[PolicyCheck]
-    patches: list[TextPatch]
-    passes: int = Field(ge=1, le=2)

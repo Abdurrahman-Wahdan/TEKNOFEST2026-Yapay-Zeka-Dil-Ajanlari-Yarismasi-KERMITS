@@ -31,27 +31,6 @@ logger = logging.getLogger(__name__)
 
 RESULTS_PER_CALL = 5
 
-# Below this similarity there is no table on the topic, so nothing is returned.
-#
-# Measured, not chosen: 30 tables sampled from the pool of 403 were queried by
-# their own topic, and six deliberately off-topic queries ("kedi maması
-# fiyatları", "futbol maç sonuçları", ...) were run against the same collection.
-# The intended table came back in the top 5 every time, 29 of 30 at rank 1. The
-# two populations separate cleanly and do not overlap:
-#
-#     the intended table   min 0.538   median 0.838   max 0.920
-#     off-topic hits       min 0.289   median 0.356   max 0.466
-#
-# 0.50 sits in the gap. At that value the sweep keeps 100% of intended tables and
-# drops 100% of off-topic hits; so does 0.48, and 0.55 starts losing real ones.
-#
-# Without a floor the tool always returns five rows, because a vector search
-# always has a top five -- "kedi maması fiyatları" came back with five credit-card
-# tables at 0.33-0.38. A model shown a numbered list will offer something from it.
-# The sample is 30 tables and 6 off-topic queries; the gap is wide, but re-measure
-# before moving this rather than nudging it.
-MIN_SCORE = 0.50
-
 
 class FindTableInput(BaseModel):
     query: str = Field(
@@ -100,7 +79,11 @@ def _format(hits: list[dict]) -> str:
                else "   (Bu tablonun sayfa adresi kayıtlı değil -- link VERME.)")
         )
     return "\n".join(lines) + (
-        "\n\nBunlar TABLO KÜNYELERİDİR, banka bilgisi değil: içlerinde oran, ücret "
+        "\n\nBunlar anlamsal yakınlığa göre sıralanmış ADAY TABLO KÜNYELERİDİR. "
+        "Benzerlik puanı bir eleme kuralı değildir ve aday gösterilmesi tek "
+        "başına kullanıcının konusuyla eşleştiği anlamına gelmez. Başlık ile 'Ne "
+        "karşılaştırıyor' açıklamasını semantik olarak değerlendir; gerçekten "
+        "eşleşen yoksa hiçbirini önerme. Bunlar banka bilgisi değil: içlerinde oran, ücret "
         "ya da koşul yok. Rakamları yine banka uzmanlarından al. Kullanıcının "
         "sorduğu konuya gerçekten karşılık gelen TEK tabloyu öner ve yukarıdaki "
         "markdown linki AYNEN kopyala: başına alan adı EKLEME, adresi yeniden "
@@ -110,10 +93,9 @@ def _format(hits: list[dict]) -> str:
 
 def build_table_directory_tool() -> StructuredTool:
     def find_comparison_table(query: str, intent: str = "") -> str:
-        found = search_tables(query, intent=intent, limit=RESULTS_PER_CALL)
-        hits = [h for h in found if h["score"] >= MIN_SCORE]
-        logger.info("table_directory query=%r hits=%d/%d above %.2f",
-                    query, len(hits), len(found), MIN_SCORE)
+        hits = search_tables(query, intent=intent, limit=RESULTS_PER_CALL)
+        logger.info("table_directory query=%r candidates=%d no_score_cutoff",
+                    query, len(hits))
         return _format(hits)
 
     return StructuredTool.from_function(

@@ -290,6 +290,19 @@ class Automation(UUIDMixin, TimestampMixin, Base):
     #: for -- new campaigns, this morning's gold price -- are about what changed
     #: since yesterday, which the offline index cannot know.
     web_search: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    #: Scheduled reports ask the supervisor a question. Condition alerts read
+    #: live endpoints and compare typed numbers without involving a model.
+    kind: Mapped[str] = mapped_column(
+        String(24), nullable=False, default="scheduled_report"
+    )
+    #: Versioned `ConditionSpec` JSON for condition alerts; empty for reports.
+    condition: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    #: Optional cadence shared by reports and alerts. NULL means fixed clock.
+    interval_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    #: Optional active window as local minutes after midnight. Both NULL means
+    #: the interval runs throughout each selected day.
+    window_start_minute: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    window_end_minute: Mapped[int | None] = mapped_column(Integer, nullable=True)
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     next_run_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
@@ -301,6 +314,14 @@ class Automation(UUIDMixin, TimestampMixin, Base):
     #: the failed report, so the list can show a broken automation as broken
     #: without a second query.
     last_error: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    #: Edge-trigger state. NULL means the condition has never been evaluated.
+    last_condition_met: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    #: Latest checked values and timestamp, including false checks that do not
+    #: create a notification.
+    last_observation: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    last_triggered_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     user: Mapped[User] = relationship(back_populates="automations")
 

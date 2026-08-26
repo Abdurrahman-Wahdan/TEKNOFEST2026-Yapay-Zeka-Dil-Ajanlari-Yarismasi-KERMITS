@@ -1,6 +1,10 @@
 """Validated output of the automation-drafting agent."""
 
-from pydantic import BaseModel, Field, field_validator
+from typing import Literal
+
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+from api.schemas.automations import ConditionSpec, MAX_CHECK_MINUTES, MIN_CHECK_MINUTES
 
 
 class AutomationDraft(BaseModel):
@@ -51,6 +55,44 @@ class AutomationDraft(BaseModel):
             "for indexed data only."
         ),
     )
+    kind: Literal["scheduled_report", "condition_alert", "needs_clarification"] = Field(
+        default="scheduled_report",
+        description=(
+            "condition_alert only for notify/alarm requests evaluated against live numbers; "
+            "needs_clarification when a required bank, amount, term, metric, side or threshold "
+            "is missing; otherwise scheduled_report."
+        ),
+    )
+    # Kept as JSON in the drafting schema so smaller local models are not asked
+    # to choose inside a deeply nested discriminated union. The validator below
+    # immediately turns it through `ConditionSpec`, so storage is still fully
+    # typed and invalid keys/units/operators never escape this class.
+    condition: dict | None = None
+    interval_minutes: int | None = Field(
+        default=None,
+        ge=MIN_CHECK_MINUTES,
+        le=MAX_CHECK_MINUTES,
+        description=(
+            "Frequency for any interval-based automation. Use it for reports, "
+            "comparisons and alerts whenever the user says every N minutes/hours."
+        ),
+    )
+    window_start_minute: int | None = Field(
+        default=None,
+        ge=0,
+        le=1439,
+        description="Optional daily active-window start, minutes after midnight.",
+    )
+    window_end_minute: int | None = Field(
+        default=None,
+        ge=0,
+        le=1439,
+        description="Optional daily active-window end, minutes after midnight.",
+    )
+    clarification: str = Field(
+        default="",
+        description="One concise question in the user's language when kind=needs_clarification.",
+    )
 
     @field_validator("title", "prompt", mode="before")
     @classmethod
@@ -81,3 +123,35 @@ class AutomationDraft(BaseModel):
                 if isinstance(item, int) and not isinstance(item, bool) and 0 <= item <= 6
             }
         )
+
+    @model_validator(mode="after")
+    def complete_kind(self) -> "AutomationDraft":
+        # Some smaller structured-output models correctly identify a missing
+        # input and fill `clarification`, but forget to switch the discriminator.
+        # Never let that half-finished result become a daily report. The question
+        # is the model's explicit admission that the rule is not executable yet.
+        if self.clarification.strip() and self.kind != "condition_alert":
+            self.kind = "needs_clarification"
+        if self.kind == "condition_alert":
+            if self.condition is None:
+                raise ValueError("A condition alert needs a validated condition.")
+            self.condition = ConditionSpec.model_validate(self.condition).model_dump(
+                mode="json"
+            )
+        elif self.kind == "needs_clarification":
+            if not self.clarification.strip():
+                raise ValueError("A clarification result needs a question.")
+            self.condition = None
+            self.interval_minutes = None
+            self.window_start_minute = None
+            self.window_end_minute = None
+        else:
+            self.condition = None
+            self.clarification = ""
+        if (self.window_start_minute is None) != (self.window_end_minute is None):
+            raise ValueError("A time window needs both a start and an end.")
+        if self.window_start_minute is not None and self.interval_minutes is None:
+            raise ValueError("A time window requires an interval schedule.")
+        if self.window_start_minute == self.window_end_minute and self.window_start_minute is not None:
+            raise ValueError("A time window start and end cannot be equal.")
+        return self

@@ -136,17 +136,22 @@ def _tool(monkeypatch, hits):
     return table_tools.build_table_directory_tool()
 
 
-def test_an_off_topic_query_returns_no_table_rather_than_the_top_five(monkeypatch):
-    """A vector search always has a top five. Measured on the live collection,
-    off-topic queries peak at 0.466 while the intended table never falls below
-    0.538, so everything under `MIN_SCORE` is filler the model must not offer."""
+def test_ranked_candidates_are_not_discarded_by_a_global_score_cutoff(monkeypatch):
+    """Relevance is a semantic decision for the supervisor, not a float gate.
+
+    A real sukuk table ranked first at 0.458 and the old 0.50 cutoff converted
+    that correct result into a false claim that no table existed.
+    """
     tool = _tool(monkeypatch, [
-        {"id": "a", "topic": "Kredi Kartı", "category": "ürün", "subcategory": "s",
-         "docstring": "D", "ui_url": "/tr/urunler?tablo=a", "score": 0.38},
+        {"id": "sukuk", "topic": "Kira Sertifikası (Sukuk) İhracı",
+         "category": "ürün", "subcategory": "kira sertifikası",
+         "docstring": "Katılım bankaları arası sukuk karşılaştırmasıdır.",
+         "ui_url": "/tr/urunler?tablo=sukuk", "score": 0.458},
     ])
-    out = tool.invoke({"query": "kedi maması", "intent": "alakasız"})
-    assert "/tr/urunler?tablo=a" not in out
-    assert "tablosu yok" in out
+    out = tool.invoke({"query": "tüm sukuklar", "intent": "tablo var mı"})
+    assert "/tr/urunler?tablo=sukuk" in out
+    assert "Kira Sertifikası (Sukuk) İhracı" in out
+    assert "ADAY TABLO" in out
 
 
 def test_a_matching_table_comes_back_with_its_address_verbatim(monkeypatch):
