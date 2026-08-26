@@ -87,6 +87,7 @@ download_sites/
 # The corpus pipeline's store: raw bytes, the manifest and the clean artifact.
 # Regenerable with `python -m corpus.build`, and gigabytes of it.
 corpus_data/
+TF26_veri_hazirlama/
 # Playwright MCP artifacts and stray screenshots. Images under docs/ are kept.
 .playwright-mcp/
 *.png

@@ -6,7 +6,8 @@
   <p><strong>Evidence-first participation banking intelligence for Türkiye.</strong></p>
   <p>Compare products, investigate official bank sources, converse with bank-bound AI specialists, and turn decisions into reusable tables and scheduled reports.</p>
 
-  [![Competition](https://img.shields.io/badge/TEKNOFEST_2026-Yapay_Zeka_Dil_Ajanları_Yarışması-1599e8?style=for-the-badge)](#teknofest-2026)
+  [![Competition](https://img.shields.io/badge/TEKNOFEST_2026-Yapay_Zeka_Dil_Ajanları_Yarışması-1599e8?style=for-the-badge)](https://www.teknofest.org/tr/yarismalar/yapay-zeka-dil-ajanlari-yarismasi/)
+
   [![Python](https://img.shields.io/badge/Python-3.13-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
   [![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.135-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
@@ -121,14 +122,15 @@ Advanced controls expose clean model names and let the user enable reasoning or 
 
 1. The supervisor reads the conversation, attachments, selected table, and enabled capabilities.
 2. It delegates only the relevant banks to bank-bound specialists.
-3. Each specialist decides which available tools are appropriate:
+3. Each specialist decides which of its own tools are appropriate:
    - live endpoints for current quotes and rates;
    - Qdrant retrieval for indexed official documents;
    - SearXNG and page reading as extra research when enabled and useful.
 4. Specialists return supported findings plus only the sources that materially helped form those findings.
 5. The supervisor synthesizes one answer without exposing internal tool or agent implementation details.
-6. The output guard applies narrow segment-level fixes when a policy is violated.
-7. The guarded answer is streamed to the UI, persisted in PostgreSQL, and retained in the LangGraph checkpoint context.
+6. The output guard reads the finished answer against an editable rule set and returns a verdict.
+7. A failed verdict hands the turn back to the supervisor once; the guard never rewrites the answer and never blocks it.
+8. The published answer is streamed to the UI, persisted in PostgreSQL, and retained in the LangGraph checkpoint.
 
 ```mermaid
 sequenceDiagram
@@ -137,93 +139,213 @@ sequenceDiagram
     participant UI as Next.js chat
     participant API as FastAPI
     participant S as Supervisor
-    participant B as Bank specialists
-    participant L as Live bank endpoints
-    participant Q as Qdrant knowledge base
-    participant W as SearXNG + source reader
+    participant B as Bank specialist
+    participant L as Live bank endpoint
+    participant Q as Qdrant campaigns
+    participant W as SearXNG + reader
     participant G as Output guard
 
     User->>UI: Ask, attach, speak, or select a table
     UI->>API: Authenticated streaming request
     API->>S: Conversation + enabled capabilities
-    S->>B: Delegate only relevant banks
+    S->>B: ask_bankname — one delegated request per relevant bank
     par Current values
-        B->>L: Product/rate/quote tools
-        L-->>B: Live result + official URL
-    and Official knowledge
-        B->>Q: Bank-filtered retrieval
-        Q-->>B: Chunks + source metadata
+        B->>L: finance_quote / profit_share_quote / exchange_rates
+        L-->>B: Live figure + official page URL
+    and Published documents
+        B->>Q: search_bank filtered to this bank
+        Q-->>B: Chunks + url, type, validity
     and Optional research
-        B->>W: Search/read bank-owned pages
-        W-->>B: Extracted evidence + URLs
+        B->>W: search_bank_web / read_bank_source
+        W-->>B: Page evidence + retrieved_at
     end
-    B-->>S: Findings + used citations by source class
-    S->>G: Draft public answer
-    G-->>API: Approved answer or minimal patches
-    API-->>UI: SSE events, tables, citations, suggestions
+    B-->>S: Findings + the citations that were actually used
+    S->>G: Finished answer + specialist handoffs as evidence
+    alt Verdict passes
+        G-->>API: Publish
+    else Verdict fails once
+        G-->>S: What to fix
+        S->>G: Second attempt
+        G-->>API: Publish the second attempt either way
+    end
+    API-->>UI: SSE tokens, citations, tables, suggestions
     UI-->>User: Final persisted answer
 ```
+
+### The agent roster
+
+Seven kinds of agent run in this system. Only the first two touch bank facts; the rest
+shape, schedule, or check what those two produced.
+
+```mermaid
+flowchart LR
+    subgraph Fact[Agents that establish bank facts]
+        SUP["Supervisor<br/>agents/main<br/>thread session:main"]
+        SPEC["10 bank specialists<br/>agents/&lt;bank&gt;<br/>thread session:bank:&lt;bank&gt;"]
+    end
+    subgraph Check[Agent that checks the answer]
+        GUARD["Output guard<br/>agents/output_guard<br/>stateless, policies.json"]
+    end
+    subgraph Assist[One-shot agents behind product features]
+        REC["Recommendation<br/>next questions to ask<br/>thread session:recommendation"]
+        TOV["Table overview<br/>what one table shows<br/>cached per source_hash + model"]
+        TMD["Table metadata<br/>names a saved table"]
+        AUT["Automation draft<br/>free text to a schedule"]
+    end
+
+    SUP -->|delegates one bank at a time| SPEC
+    SPEC -->|private findings| SUP
+    SUP --> GUARD
+    GUARD -->|fail, once| SUP
+
+    Chat[Chat turn] --> SUP
+    Suggest[Suggestion chips] --> REC
+    Page[Comparison page opened] --> TOV
+    Save[Table saved to dashboard] --> TMD
+    Sched[Automation typed in a box] --> AUT
+```
+
+A specialist is bound to its bank before LangChain ever sees a tool, so it cannot be
+prompted into answering for another bank. Each one keeps its own private thread and its
+own compaction window; the supervisor sees only the specialist's final response.
+
+### The tool surface
+
+The supervisor holds no bank tool at all. Everything factual arrives through a specialist.
+
+```mermaid
+flowchart TB
+    subgraph SupTools[Supervisor tools]
+        A1["ask_kuveytturk … ask_adil<br/>10 bank specialists"]
+        A2["find_comparison_table<br/>page directory, never a citation"]
+        A3["create_automation<br/>update_automation<br/>list_automations"]
+    end
+    subgraph SpecTools[Bank specialist tools, bound to one bank]
+        L["Live endpoints — capability gated<br/>list_products · finance_quote<br/>profit_share_quote · exchange_rates<br/>card_installment_quote · convert_currency<br/>mile_earning_rates · check_live_endpoint_health"]
+        R["Corpus retrieval — always present<br/>search_bank · expand_chunk · read_full_page"]
+        WB["Web research — only when the user enables it<br/>search_bank_web · read_bank_source"]
+    end
+
+    A1 --> SpecTools
+    A2 --> TP[("data/_tables<br/>offline table pool")]
+    A3 --> PG[("PostgreSQL<br/>automations")]
+    L --> BANKAPI["Official bank calculators and feeds"]
+    R --> QD[("Qdrant<br/>campaigns collection")]
+    WB --> SX[("SearXNG<br/>+ bounded page/PDF reader")]
+```
+
+Two gates decide what a specialist is actually handed:
+
+| Gate | Effect |
+|---|---|
+| `bank.capabilities` | A bank with no published calculator is never given one. Adil Katılım has no live tools; Kuveyt Türk has all seven. |
+| Advanced web toggle | `search_bank_web` and `read_bank_source` are absent from the schema when the user leaves it off, so no prompt can reach the network. |
+
+Retrieval and web tools carry a per-turn call ceiling; live endpoint tools do not, because a
+question that needs six quotes should make six calls.
 
 ## Architecture
 
 ```mermaid
 flowchart TB
     subgraph Client[Next.js 16 client]
-        Pages[Compare · Products · Campaigns · AI Overview · Profile]
-        Chat[Multimodal chat composer]
+        Pages["Compare · Products · Campaigns<br/>AI Overview · Dashboard · Profile"]
+        Chat["Multimodal composer<br/>text · files · voice · page capture"]
     end
     subgraph Service[FastAPI application]
         Auth[JWT authentication]
-        Routes[REST + SSE + WebSocket routes]
-        Agents[LangGraph supervisor]
-        Guard[Policy-driven output guard]
-        Jobs[Automation scheduler]
+        Routes[REST · SSE · WebSocket]
+        Loop[Automation scheduler]
+        Voice[Whisper transcription]
     end
-    subgraph Specialists[Bank-isolated specialist layer]
-        K[10 bank specialists]
-        Tools[Live · Retrieval · Web research tools]
+    subgraph AgentLayer[Agent layer]
+        SUP[Supervisor]
+        SPEC[10 bank specialists]
+        GUARD[Output guard]
+        ONE[One-shot agents]
     end
-    subgraph Data[State and evidence]
-        PG[(PostgreSQL)]
-        QD[(Qdrant)]
-        SX[(SearXNG)]
-        Banks[Official bank APIs and pages]
+    subgraph Stores[State and evidence]
+        PG[("PostgreSQL 17<br/>app rows + LangGraph checkpoints")]
+        QD[("Qdrant<br/>campaigns · bank_chunks")]
+        SX[("SearXNG")]
+        BANKAPI["Official bank APIs and pages"]
     end
-    subgraph Models[OpenAI-compatible model gateway]
-        Gemma[Gemma 4 31B IT]
-        Qwen[Qwen 3.6 27B]
-        GPT[GPT-OSS 20B]
-        Embed[Qwen3 Embedding 0.6B]
-        Whisper[Whisper large-v3 MLX]
+    subgraph Models["Model gateway — OpenAI-compatible, vLLM"]
+        CHAT["Gemma 4 31B IT · Qwen 3.6 27B · GPT-OSS 20B"]
+        EMB["Qwen3 Embedding 0.6B"]
+        WSP["Whisper large-v3, local MLX"]
     end
-    Client --> Service
-    Routes --> Agents
-    Agents --> Specialists
-    K --> Tools
-    Tools --> Banks
-    Tools --> QD
-    Tools --> SX
+
+    Chat --> Routes
+    Pages --> Routes
+    Routes --> SUP
+    Routes --> ONE
     Auth --> PG
-    Jobs --> PG
-    Agents --> PG
-    Agents --> Models
-    Guard --> Gemma
-    QD --> Embed
-    Chat --> Whisper
+    Loop --> PG
+    Loop --> SUP
+    Voice --> WSP
+    SUP --> SPEC
+    SUP --> GUARD
+    SPEC --> BANKAPI
+    SPEC --> QD
+    SPEC --> SX
+    AgentLayer --> PG
+    AgentLayer --> CHAT
+    QD --- EMB
 ```
+
+### Where state lives
+
+Two stores, and they answer different questions. PostgreSQL holds what the product
+remembers about a user; Qdrant holds what the banks have published.
+
+```mermaid
+flowchart LR
+    subgraph PGS["PostgreSQL — what the product remembers"]
+        T1["users · profiles"]
+        T2["chat_sessions · chat_messages"]
+        T3["saved_views · table_overviews"]
+        T4["automations · automation_reports"]
+        T5["LangGraph checkpoints<br/>one thread per agent per session"]
+    end
+    subgraph QDS["Qdrant — what the banks published"]
+        C1["campaigns<br/>read by the specialists<br/>filtered by bank, ids are uuid5 of url + chunk"]
+        C2["bank_chunks<br/>read by the /search endpoint<br/>campaign feed and citation panel"]
+    end
+
+    Corpus["Crawled bank sites<br/>pages · PDFs · banner images"] --> Clean["Clean and classify"]
+    Clean --> Chunk["Chunk and embed"]
+    Chunk --> C1
+    Chunk --> C2
+
+    Auth2[Sign-in] --> T1
+    ChatTurn[Chat turn] --> T2
+    ChatTurn --> T5
+    Dash[Dashboard save] --> T3
+    Auto[Automation run] --> T4
+
+    SpecA[Bank specialist] --> C1
+    RestA["GET /search"] --> C2
+```
+
+Deleting a chat removes the supervisor thread, the recommendation thread, and all ten bank
+threads together, so no specialist keeps a memory of a conversation the user erased.
 
 ### Source priority
 
 ```mermaid
 flowchart LR
     Request[User request] --> Decide{What evidence is needed?}
-    Decide -->|Current numeric value| Live[Live bank endpoint]
-    Decide -->|Product rules and documents| KB[Official-source Qdrant corpus]
-    Decide -->|More breadth or explicit online research| Web[Bank-scoped web research]
-    Live --> Cite[Finding + official citation]
+    Decide -->|Current numeric value| Live["Live bank endpoint<br/>carries retrieved_at"]
+    Decide -->|Product rules and documents| KB["Qdrant campaigns corpus<br/>published, not a quote"]
+    Decide -->|Breadth or explicit online research| Web["Bank-scoped web research<br/>only when enabled"]
+    Live --> Cite[Claim + its exact source URL]
     KB --> Cite
     Web --> Cite
     Cite --> Answer[Supervisor synthesis]
+    Answer --> Guard{Output guard verdict}
+    Guard -->|pass| Publish[Published answer]
+    Guard -->|fail once| Answer
 ```
 
 ## Technology
@@ -583,7 +705,9 @@ Licensed under the [Apache License 2.0](LICENSE). See `LICENSE` for the complete
 <div align="center">
   <img src="UI/public/vision/images/kermits-logo.png" alt="Kermits AI" width="96" />
   <br />
-  <strong>Built for TEKNOFEST 2026 Yapay Zeka Dil Ajanları Yarışması</strong>
+  <strong>Built for <a href="https://www.teknofest.org/tr/yarismalar/yapay-zeka-dil-ajanlari-yarismasi/">TEKNOFEST 2026 Yapay Zeka Dil Ajanları Yarışması</a></strong>
+  <br />
+  <sub><strong>Kategori 2</strong> — Katılım Bankacılığı Finansal Metin Madenciliği, Bilgi Çıkarımı ve Akıllı Dashboard-Asistan Çözümleri</sub>
   <br />
   <sub>Kermits AI · Evidence-first participation banking intelligence</sub>
 </div>
