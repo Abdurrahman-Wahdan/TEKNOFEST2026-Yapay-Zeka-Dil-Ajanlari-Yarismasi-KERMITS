@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { getAccessToken } from "@/lib/api";
+import { ensureFreshAccessToken } from "@/lib/api";
 
 /** One new report, as the server announces it. */
 export interface ReportEvent {
@@ -61,18 +61,19 @@ export function useReportStream(
       );
 
       socket.onopen = () => {
-        // The token is read here rather than captured when the effect ran: a
-        // reconnect after a long sleep must send the *current* one, and the
-        // access token rotates on refresh.
-        const token = getAccessToken();
-        if (!token) {
-          // Signed out between opening and now. Close rather than sending a
-          // null the server will reject anyway; the backoff handles the retry,
-          // by which time `enabled` has usually gone false.
-          socket?.close();
-          return;
-        }
-        socket?.send(JSON.stringify({ type: "auth", token }));
+        // A reconnect commonly follows a sleeping laptop, which is also when
+        // the old access token has expired. Refresh before the auth frame;
+        // sending the stale token would otherwise create an endless close /
+        // exponential-reconnect loop while the UI still looked signed in.
+        void ensureFreshAccessToken()
+          .then((token) => {
+            if (!token || socket?.readyState !== WebSocket.OPEN) {
+              socket?.close();
+              return;
+            }
+            socket.send(JSON.stringify({ type: "auth", token }));
+          })
+          .catch(() => socket?.close());
       };
 
       socket.onmessage = (event) => {

@@ -28,6 +28,7 @@ export default function LoginPage() {
   // Same idea for a password reset: it never signs the user in either, it
   // just tells them what to do next.
   const justReset = searchParams.get("reset") === "1";
+  const sessionExpired = searchParams.get("reason") === "session-expired";
   const [error, setError] = useState<string | null>(null);
 
   async function handleSignIn(event: React.FormEvent<HTMLFormElement>) {
@@ -81,12 +82,16 @@ export default function LoginPage() {
           {error}
         </p>
       ) : (
-        (justCreated || justReset) && (
+        (justCreated || justReset || sessionExpired) && (
           <p
             role="status"
             className="fixed bottom-6 left-1/2 -translate-x-1/2 rounded-2xl border border-border bg-card px-5 py-3 text-sm text-[var(--ok)] shadow-lg"
           >
-            {justCreated ? t("accountCreated") : t("passwordWasReset")}
+            {justCreated
+              ? t("accountCreated")
+              : justReset
+                ? t("passwordWasReset")
+                : t("sessionExpired")}
           </p>
         )
       )}

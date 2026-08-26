@@ -67,7 +67,8 @@
     "continueWithGoogle": "Google ile devam et",
     "rememberedPassword": "Parolanızı hatırladınız mı?",
     "accountCreated": "Hesabınız oluşturuldu — devam etmek için giriş yapın.",
-    "passwordWasReset": "Parolanız sıfırlandı — yeni parolanızla giriş yapın."
+    "passwordWasReset": "Parolanız sıfırlandı — yeni parolanızla giriş yapın.",
+    "sessionExpired": "Oturumunuz sona erdi. Devam etmek için yeniden giriş yapın."
   },
   "dashboard": {
     "title": "Panel",

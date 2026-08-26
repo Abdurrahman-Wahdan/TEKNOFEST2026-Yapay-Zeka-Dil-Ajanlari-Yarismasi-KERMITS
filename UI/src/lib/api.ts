@@ -64,12 +64,12 @@ const BASE = "/api";
 
 /** An error carrying the status, so callers can branch without parsing strings. */
 export class ApiError extends Error {
-  constructor(
-    readonly status: number,
-    message: string,
-  ) {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
     super(message);
     this.name = "ApiError";
+    this.status = status;
   }
 
   /** The token is missing or expired; the caller should re-authenticate. */
@@ -93,10 +93,43 @@ export class ApiError extends Error {
 }
 
 let accessToken: string | null = null;
+let accessTokenExpiresAt = 0;
+
+type StoredRefreshToken = { token: string; remember: boolean };
+type AuthSessionHooks = {
+  getRefreshToken: () => StoredRefreshToken | null;
+  applyTokens: (tokens: TokenPair, remember: boolean) => void;
+  onSessionExpired: () => void;
+};
+
+let authSessionHooks: AuthSessionHooks | null = null;
+let refreshInFlight: Promise<string | null> | null = null;
+let sessionExpiryNotified = false;
+
+/**
+ * Connect the framework-neutral transport to React's session state.
+ *
+ * Keeping this as callbacks avoids an api -> AuthProvider -> api import cycle,
+ * while still giving every REST/stream consumer one refresh and expiry path.
+ */
+export function setAuthSessionHooks(hooks: AuthSessionHooks | null) {
+  authSessionHooks = hooks;
+}
 
 /** Set by the auth provider on login and cleared on logout. */
-export function setAccessToken(token: string | null) {
+export function setAccessToken(token: string | null, expiresInSeconds?: number) {
   accessToken = token;
+  if (token) sessionExpiryNotified = false;
+  accessTokenExpiresAt =
+    token && expiresInSeconds && expiresInSeconds > 0
+      ? Date.now() + expiresInSeconds * 1000
+      : 0;
+}
+
+function notifySessionExpired() {
+  if (!authSessionHooks || sessionExpiryNotified) return;
+  sessionExpiryNotified = true;
+  authSessionHooks.onSessionExpired();
 }
 
 export function getAccessToken() {
@@ -123,6 +156,79 @@ async function toError(response: Response): Promise<ApiError> {
   return new ApiError(response.status, detail);
 }
 
+function validTokenPair(value: unknown): value is TokenPair {
+  if (!value || typeof value !== "object") return false;
+  const pair = value as Partial<TokenPair>;
+  return (
+    typeof pair.access_token === "string" &&
+    pair.access_token.length > 0 &&
+    typeof pair.refresh_token === "string" &&
+    pair.refresh_token.length > 0 &&
+    typeof pair.expires_in === "number" &&
+    pair.expires_in > 0
+  );
+}
+
+/**
+ * Rotate the session once, shared by every caller that notices expiry.
+ *
+ * A burst of queries after a sleeping laptop therefore sends one refresh, not
+ * one per widget. Only an invalid/expired refresh token ends the session;
+ * network and server failures remain retryable and never log a user out.
+ */
+export function refreshAccessToken(): Promise<string | null> {
+  if (refreshInFlight) return refreshInFlight;
+
+  const refresh = async () => {
+    const stored = authSessionHooks?.getRefreshToken();
+    if (!stored) {
+      notifySessionExpired();
+      return null;
+    }
+
+    const response = await fetch(`${BASE}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: stored.token }),
+    });
+
+    if (!response.ok) {
+      const error = await toError(response);
+      if (error.isUnauthenticated) {
+        notifySessionExpired();
+        return null;
+      }
+      throw error;
+    }
+
+    const tokens: unknown = await response.json();
+    if (!validTokenPair(tokens)) {
+      throw new ApiError(502, "The refresh response was malformed.");
+    }
+    authSessionHooks?.applyTokens(tokens, stored.remember);
+    return tokens.access_token;
+  };
+
+  refreshInFlight = refresh().finally(() => {
+    refreshInFlight = null;
+  });
+  return refreshInFlight;
+}
+
+/** Return a token with enough remaining life for a new request or socket. */
+export async function ensureFreshAccessToken(
+  minimumValidityMs = 60_000,
+): Promise<string | null> {
+  if (!accessToken) return null;
+  if (
+    accessTokenExpiresAt === 0 ||
+    accessTokenExpiresAt - Date.now() > minimumValidityMs
+  ) {
+    return accessToken;
+  }
+  return refreshAccessToken();
+}
+
 type Query = Record<string, string | number | boolean | string[] | null | undefined>;
 
 /** Query string builder that repeats a key per array item, as FastAPI expects. */
@@ -140,20 +246,61 @@ export function queryString(params: Query): string {
   return qs ? `?${qs}` : "";
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const headers = new Headers(init.headers);
+type AuthRequestOptions = {
+  includeAccessToken?: boolean;
+  recoverAuthentication?: boolean;
+};
+
+async function fetchWithAuthentication(
+  path: string,
+  init: RequestInit = {},
+  options: AuthRequestOptions = {},
+): Promise<Response> {
+  const includeAccessToken = options.includeAccessToken ?? true;
+  const recoverAuthentication = options.recoverAuthentication ?? true;
+
+  const send = () => {
+    const headers = new Headers(init.headers);
+    if (
+      init.body &&
+      !(init.body instanceof FormData) &&
+      !headers.has("Content-Type")
+    ) {
+      headers.set("Content-Type", "application/json");
+    }
+    if (includeAccessToken && accessToken) {
+      headers.set("Authorization", `Bearer ${accessToken}`);
+    }
+    return fetch(`${BASE}${path}`, { ...init, headers });
+  };
+
+  let response = await send();
   if (
-    init.body &&
-    !(init.body instanceof FormData) &&
-    !headers.has("Content-Type")
+    response.status !== 401 ||
+    !includeAccessToken ||
+    !recoverAuthentication ||
+    !accessToken
   ) {
-    headers.set("Content-Type", "application/json");
-  }
-  if (accessToken) {
-    headers.set("Authorization", `Bearer ${accessToken}`);
+    return response;
   }
 
-  const response = await fetch(`${BASE}${path}`, { ...init, headers });
+  const refreshed = await refreshAccessToken();
+  if (!refreshed) return response;
+
+  // We will not read the first 401 body. Cancel it before replaying so its
+  // connection can be released immediately rather than waiting for GC.
+  await response.body?.cancel().catch(() => undefined);
+  response = await send();
+  if (response.status === 401) notifySessionExpired();
+  return response;
+}
+
+async function request<T>(
+  path: string,
+  init: RequestInit = {},
+  options: AuthRequestOptions = {},
+): Promise<T> {
+  const response = await fetchWithAuthentication(path, init, options);
   if (!response.ok) throw await toError(response);
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
@@ -162,20 +309,29 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 export const api = {
   // ----- auth -----
   signup: (body: Schemas["SignupRequest"]) =>
-    request<TokenPair>("/auth/signup", { method: "POST", body: JSON.stringify(body) }),
+    request<TokenPair>(
+      "/auth/signup",
+      { method: "POST", body: JSON.stringify(body) },
+      { includeAccessToken: false, recoverAuthentication: false },
+    ),
   login: (body: Schemas["LoginRequest"]) =>
-    request<TokenPair>("/auth/login", { method: "POST", body: JSON.stringify(body) }),
+    request<TokenPair>(
+      "/auth/login",
+      { method: "POST", body: JSON.stringify(body) },
+      { includeAccessToken: false, recoverAuthentication: false },
+    ),
   refresh: (refresh_token: string) =>
-    request<TokenPair>("/auth/refresh", {
-      method: "POST",
-      body: JSON.stringify({ refresh_token }),
-    }),
+    request<TokenPair>(
+      "/auth/refresh",
+      { method: "POST", body: JSON.stringify({ refresh_token }) },
+      { includeAccessToken: false, recoverAuthentication: false },
+    ),
   me: () => request<User>("/auth/me"),
   resetPassword: (body: Schemas["ResetPasswordRequest"]) =>
     request<ResetPasswordResponse>("/auth/reset-password", {
       method: "POST",
       body: JSON.stringify(body),
-    }),
+    }, { includeAccessToken: false, recoverAuthentication: false }),
 
   // ----- banks -----
   banks: () => request<Bank[]>("/banks"),
@@ -420,12 +576,9 @@ export async function* askStream(
   },
   signal?: AbortSignal,
 ): AsyncGenerator<StreamEvent> {
-  const headers = new Headers({ "Content-Type": "application/json" });
-  if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
-
-  const response = await fetch(`${BASE}/chat/ask`, {
+  const response = await fetchWithAuthentication("/chat/ask", {
     method: "POST",
-    headers,
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
     signal,
   });
