@@ -254,6 +254,7 @@ export function AutomationComposer() {
             onEnabled={setEmailEnabled}
             onFormat={setEmailFormat}
             disabled={busy}
+            sx={{ marginInlineEnd: "auto" }}
           />
           {/* Mic then submit, the order and the pairing the chat composer's
               control row uses. It sat in the field's top-right corner before,
