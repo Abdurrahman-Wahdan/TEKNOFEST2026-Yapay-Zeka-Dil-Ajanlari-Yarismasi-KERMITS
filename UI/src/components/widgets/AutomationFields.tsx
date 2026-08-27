@@ -122,24 +122,24 @@ export function EmailDeliveryFields({
 }) {
   const t = useTranslations("automations");
   return (
-    <VuiBox display="flex" alignItems="flex-start" gap="12px" sx={sx}>
-      <Toggle on={enabled} onChange={onEnabled} disabled={disabled} label={t("emailToggle")} />
-      <VuiBox display="flex" flexDirection="column" gap="8px">
+    <VuiBox display="flex" flexDirection="column" gap="8px" sx={sx}>
+      <VuiBox display="flex" alignItems="center" gap="12px">
+        <Toggle on={enabled} onChange={onEnabled} disabled={disabled} label={t("emailToggle")} />
         <VuiTypography variant="caption" sx={{ color: "var(--control-ink)" }}>
           {t("emailToggle")}
         </VuiTypography>
-        {enabled && (
-          <Dropdown
-            label={t("reportFormat")}
-            value={format}
-            options={[{ value: "pdf", label: "PDF" }, { value: "docx", label: "Word" }]}
-            minWidth="10rem"
-            fullWidth={false}
-            disabled={disabled}
-            onChange={(value) => onFormat(value as "pdf" | "docx")}
-          />
-        )}
       </VuiBox>
+      {enabled && (
+        <Dropdown
+          label={t("reportFormat")}
+          value={format}
+          options={[{ value: "pdf", label: "PDF" }, { value: "docx", label: "Word" }]}
+          minWidth="10rem"
+          fullWidth={false}
+          disabled={disabled}
+          onChange={(value) => onFormat(value as "pdf" | "docx")}
+        />
+      )}
     </VuiBox>
   );
 }
