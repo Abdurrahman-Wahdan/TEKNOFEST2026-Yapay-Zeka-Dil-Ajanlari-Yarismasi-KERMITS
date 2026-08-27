@@ -120,7 +120,7 @@ export function EmailDeliveryFields({
 }) {
   const t = useTranslations("automations");
   return (
-    <VuiBox display="flex" alignItems="center" flexWrap="wrap" gap="12px">
+    <VuiBox display="flex" alignItems="center" flexWrap="nowrap" gap="12px">
       <Toggle on={enabled} onChange={onEnabled} disabled={disabled} label={t("emailToggle")} />
       <VuiTypography variant="caption" sx={{ color: "var(--control-ink)" }}>
         {t("emailToggle")}
