@@ -89,6 +89,7 @@ export async function* fetchChat(
     {
       question,
       session_id: request.sessionId,
+      regenerate: request.regenerate,
       context: request.context,
       captures: request.captures,
       attachments: request.attachments,

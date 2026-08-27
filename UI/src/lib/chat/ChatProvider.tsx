@@ -40,6 +40,8 @@ import { toCapturePayloads } from "./capture";
 import { runClientTool } from "./tools";
 import type {
   AgentMessage,
+  AttachedContext,
+  CapturePayload,
   ChatStage,
   ChatStatus,
   ClientToolName,
@@ -81,6 +83,26 @@ type ChatContextValue = {
   /** A private agent's context-aware next user message. */
   recommendation?: string;
   send: (text: string) => void;
+  /**
+   * Ask the last question again, in place of the answer it got.
+   *
+   * The turn is replaced, not appended: the assistant's message is emptied and
+   * rewritten, and the request carries `regenerate` so the server drops the
+   * exchange from the transcript and rewinds the supervisor's checkpoint before
+   * running it. Without that the model would be shown the same question twice
+   * and would answer the second one as a follow-up.
+   *
+   * A no-op when `canRetry` is false; the button that calls it is hidden then.
+   */
+  retry: () => void;
+  /**
+   * Whether the last answer can be asked for again *faithfully*.
+   *
+   * False while a turn is in flight, and false when the question cannot be
+   * reproduced exactly -- see `retryPayload`. A retry that quietly asked a
+   * smaller question than the original would be worse than no retry at all.
+   */
+  canRetry: boolean;
   stop: () => void;
   newChat: () => void;
   /** Whether the popup is showing. Lives here so the expand button can close it. */
@@ -146,6 +168,31 @@ export function useChat(): ChatContextValue {
  * the page says, and asks again would otherwise never return.
  */
 const MAX_TOOL_PASSES = 3;
+
+/**
+ * Everything a turn carries besides the words.
+ *
+ * Named because it is now passed between two functions instead of being built
+ * and used in one, and because it is the unit "try again" has to reproduce: a
+ * retry is the same payload against a possibly different model, which is the
+ * whole reason the field is not folded into `AgentMessage`.
+ *
+ * Already in wire shape -- `captures` split into media type and base64, files
+ * reduced to their opaque ids -- so replaying it needs no re-serialisation and
+ * cannot re-serialise it differently the second time.
+ */
+type TurnPayload = {
+  attachments: { id: string }[];
+  context?: AttachedContext[];
+  captures?: CapturePayload[];
+};
+
+/** A turn as it was sent, kept so it can be sent again. */
+type ReplayableTurn = {
+  assistantId: string;
+  history: AgentMessage[];
+  payload: TurnPayload;
+};
 
 export function ChatProvider({ children }: { children: ReactNode }) {
   // The locale-stripped path, for anything staged from the page the user is on.
@@ -228,6 +275,19 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   // nothing renders differently based on the controller's identity.
   const abortRef = useRef<AbortController | null>(null);
   const recommendationAbortRef = useRef<AbortController | null>(null);
+  /**
+   * The turn that produced the answer currently on screen.
+   *
+   * A ref, not state: nothing renders from it directly -- `retryable` reads it
+   * while deriving from `messages`, which is what re-renders -- and it must be
+   * written during `send` without scheduling a render of its own.
+   *
+   * Not cleared when the conversation changes. It does not need to be: it is
+   * only ever used after matching `assistantId` against the message actually on
+   * screen, and message ids are unique across conversations. Clearing it in the
+   * three places a conversation can change would be three places to forget.
+   */
+  const lastTurnRef = useRef<ReplayableTurn | null>(null);
 
   /**
    * Ask the separate recommendation agent after a complete assistant turn.
@@ -330,135 +390,36 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     [queryClient],
   );
 
-  const send = useCallback(
-    (text: string) => {
-      const trimmed = text.trim();
-      setRecommendation(undefined);
-
-      // Snapshotted before anything else, because they decide whether there is a
-      // message at all and they travel in two directions: into the user's own
-      // turn, and onto the request. Split by kind -- files are metadata (there is
-      // still no upload endpoint) while context *is* its content.
-      const stagedContexts = attachments.contexts;
-      const stagedCaptures = attachments.captures;
-      const reusableFiles = mergeReusableAttachments(
-        stagedReusableAttachments,
-        conversationAttachments(messages),
-      );
-      const mentionedFiles = mentionedAttachments(trimmed, reusableFiles);
-      const stagedFiles = [...attachments.prepared, ...mentionedFiles.map(({ id }) => ({ id }))]
-        .filter((file, index, all) => all.findIndex((candidate) => candidate.id === file.id) === index);
-      const stagedDisplayFiles = [
-        ...attachments.images.map((item) => ({
-          filename: item.filename,
-          kind: "image" as const,
-          attachmentId: item.attachmentId,
-        })),
-        ...attachments.files.map((item) => ({
-          filename: item.filename,
-          kind: item.kind,
-          pageCount: item.pageCount,
-          attachmentId: item.attachmentId,
-        })),
-      ];
-
-      /**
-       * The page outlines that arrived with a capture, as ordinary text context.
-       *
-       * Split out here rather than at the button, so the tray shows one chip for
-       * one press while the request still carries both halves in the fields the
-       * backend expects.
-       */
-      const outgoingContext = [
-        ...stagedContexts,
-        ...stagedCaptures.flatMap((capture) =>
-          capture.outline
-            ? [
-                {
-                  id: `${capture.id}-outline`,
-                  kind: "page" as const,
-                  label: capture.label,
-                  body: capture.outline,
-                  format: "markdown" as const,
-                  location: { path: pathname },
-                },
-              ]
-            : [],
-        ),
-      ];
-
-      // Nothing typed and nothing attached is not a message. But an attachment
-      // with no question is: "here is this table" followed by a look is how
-      // people actually use it, and requiring a word first made that impossible.
-      if (
-        !trimmed &&
-        stagedContexts.length === 0 &&
-        stagedCaptures.length === 0 &&
-        stagedFiles.length === 0
-      ) return;
-
-      // A second send while one is in flight cancels the first. Two concurrent
+  /**
+   * Run one exchange against the agent and write it into `assistantId`.
+   *
+   * Extracted from `send` so that "ask this" and "ask this again" are the same
+   * code path. The two differ in exactly three things -- who builds the user's
+   * message, whether the assistant's bubble is new or being rewritten, and the
+   * `regenerate` flag -- and every hard part below (the tool-use loop, the
+   * abort semantics, which citations are duplicates, what a stopped stream must
+   * not do) is common to both. A second copy of it would drift.
+   *
+   * `think`, `webSearch` and `model` are read from state at call time rather
+   * than captured with the turn. That is deliberate and it is most of the point
+   * of the retry button: the user switches model in the Advanced menu and asks
+   * again, and the answer has to come from the model they just chose.
+   */
+  const runTurn = useCallback(
+    (
+      history: AgentMessage[],
+      assistantId: string,
+      payload: TurnPayload,
+      { regenerate = false }: { regenerate?: boolean } = {},
+    ) => {
+      // A second run while one is in flight cancels the first. Two concurrent
       // streams would interleave their deltas into whichever assistant message
       // happened to be last.
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
-
-      const userMessage: AgentMessage = {
-        id: newMessageId("user"),
-        role: "user",
-        parts: [
-          // Attachments first, above the question, as they sit in the composer.
-          ...stagedContexts.map((context) => ({
-            type: "context" as const,
-            kind: context.kind,
-            label: context.label,
-            body: context.body,
-            // Printed here, not structured: a message part is persisted to
-            // localStorage and read back by the renderer, and the renderer only
-            // ever shows this to a person.
-            source: formatLocation(context.location),
-          })),
-          // Label only, never the bytes: this array is written to localStorage on
-          // every streamed token, and a base64 image would blow the quota and
-          // silently stop history saving.
-          ...stagedCaptures.map((capture) => ({
-            type: "context" as const,
-            kind: "capture" as const,
-            label: capture.label,
-          })),
-          ...stagedDisplayFiles.map((file) => ({
-            type: "attachment" as const,
-            ...file,
-          })),
-          // Omitted when empty rather than sent blank: an empty text part renders
-          // as an empty bubble.
-          ...(trimmed ? [{ type: "text" as const, text: trimmed }] : []),
-        ],
-      };
-      const assistantId = newMessageId("assistant");
-
-      // The assistant's message is appended empty, up front. The alternative --
-      // waiting for the first delta to create it -- means the list has nothing to
-      // scroll to and nothing to attach the "thinking" state to during
-      // `submitted`.
-      setMessages((prev) => [
-        ...prev,
-        userMessage,
-        { id: assistantId, role: "assistant", parts: [{ type: "text", text: "" }] },
-      ]);
       setStatus("submitted");
       setStage(undefined);
-
-      // The request carries the conversation *including* the new user turn, which
-      // `messages` does not yet -- the setState above has not landed. Building it
-      // here rather than reading state back is what keeps the agent from being
-      // asked the previous question.
-      const history = [...messages, userMessage];
-
-      // Cleared only now: everything this turn needed was snapshotted above, so
-      // the request still describes what the user actually attached.
-      attachments.clear();
 
       void (async () => {
         let text = "";
@@ -513,20 +474,19 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                 think,
                 webSearch,
                 model,
-                attachments: stagedFiles,
-                // Omitted rather than sent empty, so the payload says something
-                // only when there is something to say.
-                // The staged text context, plus the page outline that travelled
-                // on any capture -- one press of the eye stages a single chip
-                // carrying both representations, and they leave on their own
-                // fields.
-                context: outgoingContext.length > 0 ? outgoingContext : undefined,
-                // Split into media type and base64 here, so the backend can drop
-                // each one straight into an image content block. A data URL
-                // forwarded as text shows the model the string rather than the
-                // picture, and bills for it. Anything unsplittable is dropped
-                // rather than sent as a broken image.
-                captures: stagedCaptures.length > 0 ? toCapturePayloads(stagedCaptures) : undefined,
+                // Already in wire shape when it reached this function: the files
+                // as opaque ids, the staged text context plus the page outline
+                // that travelled on any capture, and each capture split into
+                // media type and base64.
+                ...payload,
+                /*
+                  Only the first pass regenerates. A client tool suspends the turn
+                  and the request goes again, and a second `regenerate` on that
+                  pass would delete the very turn the first pass had just written
+                  -- rewinding one exchange further back each time the agent asked
+                  to look at the page.
+                */
+                regenerate: regenerate && pass === 0,
                 toolResults,
               },
               { signal: controller.signal },
@@ -636,19 +596,247 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         }
       })();
     },
-    [
-      adoptSessionId,
-      messages,
-      serverSessionId,
-      think,
-      webSearch,
-      model,
-      attachments,
-      pathname,
-      queryClient,
-      stagedReusableAttachments,
-    ],
+    [adoptSessionId, serverSessionId, think, webSearch, model, queryClient],
   );
+
+  const send = useCallback(
+    (text: string) => {
+      const trimmed = text.trim();
+      setRecommendation(undefined);
+
+      // Snapshotted before anything else, because they decide whether there is a
+      // message at all and they travel in two directions: into the user's own
+      // turn, and onto the request. Split by kind -- files are metadata (there is
+      // still no upload endpoint) while context *is* its content.
+      const stagedContexts = attachments.contexts;
+      const stagedCaptures = attachments.captures;
+      const reusableFiles = mergeReusableAttachments(
+        stagedReusableAttachments,
+        conversationAttachments(messages),
+      );
+      const mentionedFiles = mentionedAttachments(trimmed, reusableFiles);
+      const stagedFiles = [...attachments.prepared, ...mentionedFiles.map(({ id }) => ({ id }))]
+        .filter((file, index, all) => all.findIndex((candidate) => candidate.id === file.id) === index);
+      const stagedDisplayFiles = [
+        ...attachments.images.map((item) => ({
+          filename: item.filename,
+          kind: "image" as const,
+          attachmentId: item.attachmentId,
+        })),
+        ...attachments.files.map((item) => ({
+          filename: item.filename,
+          kind: item.kind,
+          pageCount: item.pageCount,
+          attachmentId: item.attachmentId,
+        })),
+      ];
+
+      /**
+       * The page outlines that arrived with a capture, as ordinary text context.
+       *
+       * Split out here rather than at the button, so the tray shows one chip for
+       * one press while the request still carries both halves in the fields the
+       * backend expects.
+       */
+      const outgoingContext = [
+        ...stagedContexts,
+        ...stagedCaptures.flatMap((capture) =>
+          capture.outline
+            ? [
+                {
+                  id: `${capture.id}-outline`,
+                  kind: "page" as const,
+                  label: capture.label,
+                  body: capture.outline,
+                  format: "markdown" as const,
+                  location: { path: pathname },
+                },
+              ]
+            : [],
+        ),
+      ];
+
+      // Nothing typed and nothing attached is not a message. But an attachment
+      // with no question is: "here is this table" followed by a look is how
+      // people actually use it, and requiring a word first made that impossible.
+      if (
+        !trimmed &&
+        stagedContexts.length === 0 &&
+        stagedCaptures.length === 0 &&
+        stagedFiles.length === 0
+      ) return;
+
+      const userMessage: AgentMessage = {
+        id: newMessageId("user"),
+        role: "user",
+        parts: [
+          // Attachments first, above the question, as they sit in the composer.
+          ...stagedContexts.map((context) => ({
+            type: "context" as const,
+            kind: context.kind,
+            label: context.label,
+            body: context.body,
+            // Printed here, not structured: a message part is persisted to
+            // localStorage and read back by the renderer, and the renderer only
+            // ever shows this to a person.
+            source: formatLocation(context.location),
+          })),
+          // Label only, never the bytes: this array is written to localStorage on
+          // every streamed token, and a base64 image would blow the quota and
+          // silently stop history saving.
+          ...stagedCaptures.map((capture) => ({
+            type: "context" as const,
+            kind: "capture" as const,
+            label: capture.label,
+          })),
+          ...stagedDisplayFiles.map((file) => ({
+            type: "attachment" as const,
+            ...file,
+          })),
+          // Omitted when empty rather than sent blank: an empty text part renders
+          // as an empty bubble.
+          ...(trimmed ? [{ type: "text" as const, text: trimmed }] : []),
+        ],
+      };
+      const assistantId = newMessageId("assistant");
+
+      // The assistant's message is appended empty, up front. The alternative --
+      // waiting for the first delta to create it -- means the list has nothing to
+      // scroll to and nothing to attach the "thinking" state to during
+      // `submitted`.
+      setMessages((prev) => [
+        ...prev,
+        userMessage,
+        { id: assistantId, role: "assistant", parts: [{ type: "text", text: "" }] },
+      ]);
+
+      // The request carries the conversation *including* the new user turn, which
+      // `messages` does not yet -- the setState above has not landed. Building it
+      // here rather than reading state back is what keeps the agent from being
+      // asked the previous question.
+      const history = [...messages, userMessage];
+
+      // Cleared only now: everything this turn needed was snapshotted above, so
+      // the request still describes what the user actually attached.
+      attachments.clear();
+
+      const payload: TurnPayload = {
+        attachments: stagedFiles,
+        // Omitted rather than sent empty, so the payload says something only when
+        // there is something to say.
+        context: outgoingContext.length > 0 ? outgoingContext : undefined,
+        // Split into media type and base64 here, so the backend can drop each one
+        // straight into an image content block. A data URL forwarded as text shows
+        // the model the string rather than the picture, and bills for it. Anything
+        // unsplittable is dropped rather than sent as a broken image.
+        captures: stagedCaptures.length > 0 ? toCapturePayloads(stagedCaptures) : undefined,
+      };
+      /*
+        Kept so that "try again" re-sends *this* turn rather than a reconstruction
+        of it. The transcript is a lossy record of a request on purpose -- a
+        capture's bytes are deliberately never persisted -- so rebuilding the
+        payload from the messages would quietly ask a smaller question than the
+        one that was asked. `retryable` falls back to that reconstruction only for
+        turns this ref cannot describe, and refuses when the loss would matter.
+      */
+      lastTurnRef.current = { assistantId, history, payload };
+      runTurn(history, assistantId, payload);
+    },
+    [attachments, messages, pathname, runTurn, stagedReusableAttachments],
+  );
+
+  /**
+   * The last exchange, ready to be run again -- or `null` when it must not be.
+   *
+   * Refusing is a real outcome here, not a defensive shrug. A retry that dropped
+   * the table the question was about would answer a *different, smaller*
+   * question and present it as a second attempt at the first one, which is worse
+   * than having no button. So the turn is retried from `lastTurnRef` when that
+   * describes it, reconstructed from the transcript when the parts carry
+   * everything (a plain question does, and that is the overwhelming majority),
+   * and refused when they do not.
+   *
+   * What the transcript cannot give back: a page capture, whose bytes are never
+   * persisted, and a context part or file whose body or id has been dropped.
+   */
+  const retryable = useMemo(() => {
+    // Not while one is in flight. `stop` then retry is available and unambiguous;
+    // a retry that raced the stream it was replacing would not be.
+    if (status === "submitted" || status === "streaming") return null;
+
+    const assistantIndex = messages.length - 1;
+    const assistant = messages[assistantIndex];
+    if (!assistant || assistant.role !== "assistant") return null;
+
+    let userIndex = assistantIndex - 1;
+    while (userIndex >= 0 && messages[userIndex].role !== "user") userIndex -= 1;
+    if (userIndex < 0) return null;
+
+    const cached = lastTurnRef.current;
+    if (cached && cached.assistantId === assistant.id) return cached;
+
+    // Restored from the server, or from an earlier session of this browser.
+    const user = messages[userIndex];
+    const reproducible = user.parts.every(
+      (part) =>
+        (part.type !== "context" || (part.kind !== "capture" && Boolean(part.body))) &&
+        (part.type !== "attachment" || Boolean(part.attachmentId)),
+    );
+    if (!reproducible) return null;
+
+    const context = user.parts.flatMap<AttachedContext>((part, index) =>
+      part.type === "context" && part.body
+        ? [
+            {
+              id: `${user.id}-${index}`,
+              // Narrowed by `reproducible` above; the ternary is what tells the
+              // compiler so, since `ContextKind` has no `capture` member.
+              kind: part.kind === "capture" ? "page" : part.kind,
+              label: part.label,
+              body: part.body,
+              // The original `format` and `location` are not persisted -- the
+              // transcript keeps a printed `source` line, which is for a reader.
+              // Both only frame the body for the agent; the body itself, which is
+              // what the answer depends on, is exact.
+              format: "markdown",
+              location: { path: pathname },
+            },
+          ]
+        : [],
+    );
+
+    return {
+      assistantId: assistant.id,
+      history: messages.slice(0, assistantIndex),
+      payload: {
+        attachments: user.parts.flatMap((part) =>
+          part.type === "attachment" && part.attachmentId ? [{ id: part.attachmentId }] : [],
+        ),
+        context: context.length > 0 ? context : undefined,
+      },
+    };
+  }, [messages, pathname, status]);
+
+  const retry = useCallback(() => {
+    const turn = retryable;
+    if (!turn) return;
+    setRecommendation(undefined);
+    /*
+      The answer is emptied and rewritten in place rather than removed and
+      re-appended. Keeping the message id keeps the list's keys stable, so the
+      transcript does not jump under the reader at the moment they pressed a
+      button next to it -- and it is what makes a second retry find the same turn.
+    */
+    setMessages((prev) =>
+      prev.map((message) =>
+        message.id === turn.assistantId
+          ? { ...message, parts: [{ type: "text", text: "" }] }
+          : message,
+      ),
+    );
+    lastTurnRef.current = turn;
+    runTurn(turn.history, turn.assistantId, turn.payload, { regenerate: true });
+  }, [retryable, runTurn]);
 
   const newChat = useCallback(() => {
     abortRef.current?.abort();
@@ -765,6 +953,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       stage,
       recommendation,
       send,
+      retry,
+      canRetry: retryable !== null,
       stop,
       newChat,
       popupOpen,
@@ -789,6 +979,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       stage,
       recommendation,
       send,
+      retry,
+      retryable,
       stop,
       newChat,
       popupOpen,

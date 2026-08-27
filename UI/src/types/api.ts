@@ -1212,6 +1212,12 @@ export interface components {
             /** Session Id */
             session_id?: string | null;
             /**
+             * Regenerate
+             * @description Answer the previous question again instead of asking a new one. The last turn is removed from the transcript *and* from the supervisor's checkpoint before this one runs, so the model is asked once rather than shown the same question twice -- which is what makes a second attempt a second attempt and not a follow-up. Ignored without a `session_id`: there is no earlier turn to drop. The question and every attachment must still be sent, because the turn being replaced is deleted, not replayed.
+             * @default false
+             */
+            regenerate: boolean;
+            /**
              * Context
              * @description Pieces of the UI the user attached: a table, a row, a quote.
              */

@@ -10,6 +10,7 @@ import { navLabel } from "@/lib/nav-label";
 import { safeWebSource, siteSection, sourceGroup } from "@/lib/chat/source-group";
 
 import { ContextGlyph } from "./ContextGlyph";
+import { MessageActions } from "./MessageActions";
 
 /**
  * Streamdown pulls in Shiki, and Shiki is large. Loading it lazily keeps it off
@@ -32,11 +33,20 @@ const AgentMarkdown = dynamic(
 export function ChatMessage({
   message,
   streaming,
+  isLast,
   stage,
 }: {
   message: AgentMessage;
   /** True when this is the last message and the stream is still open. */
   streaming?: boolean;
+  /**
+   * True for the newest message in the transcript.
+   *
+   * Only the action row reads it, and only to decide whether to offer a retry:
+   * a retry replaces the turn it sits under, and the one turn that can be
+   * replaced without orphaning the answers built on top of it is the last.
+   */
+  isLast?: boolean;
   /**
    * What the agent is doing, when the server has said. Only ever reaches the
    * pre-answer placeholder below -- once there is text to show, the text is the
@@ -48,6 +58,24 @@ export function ChatMessage({
   // The drawer's own words for the sections our pages live in, so a source card
   // and the page it opens are not labelled two different ways.
   const tNav = useTranslations("nav");
+
+  /**
+   * Whether this message has finished and has something to act on.
+   *
+   * Not while it streams: a copy button next to a half-written answer copies half
+   * an answer, and read-aloud would start reading a sentence that is still being
+   * written. An errored turn qualifies on purpose -- it has no text, so the row
+   * comes down to the retry, which is the one thing a failed answer needs.
+   */
+  const settled =
+    message.role === "assistant" &&
+    !streaming &&
+    message.parts.some(
+      (part) => (part.type === "text" && part.text.trim()) || part.type === "error",
+    );
+  const answerText = message.parts
+    .flatMap((part) => (part.type === "text" && part.text.trim() ? [part.text] : []))
+    .join("\n\n");
 
   return (
     <VuiBox display="flex" flexDirection="column" gap={1}>
@@ -395,6 +423,17 @@ export function ChatMessage({
           </VuiBox>
         );
       })}
+
+      {/* Under the whole message, not inside the parts loop: an answer with a
+          citations block is still one answer, and a row of buttons between the
+          prose and its sources would read as belonging to the prose alone. */}
+      {settled && (
+        <MessageActions
+          messageId={message.id}
+          markdown={answerText}
+          isLast={Boolean(isLast)}
+        />
+      )}
     </VuiBox>
   );
 }
