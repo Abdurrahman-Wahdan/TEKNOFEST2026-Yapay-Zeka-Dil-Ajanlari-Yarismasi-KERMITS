@@ -89,7 +89,8 @@ def _create(
     weekdays: list[int], web_search: bool, kind: str = "scheduled_report",
     condition: dict | None = None, interval_minutes: int | None = None,
     window_start_minute: int | None = None,
-    window_end_minute: int | None = None,
+    window_end_minute: int | None = None, email_enabled: bool = False,
+    email_format: str = "pdf",
 ) -> Automation:
     """The one place a row is written, so `next_run_at` is never forgotten.
 
@@ -108,6 +109,8 @@ def _create(
         minute=minute,
         weekdays=days,
         web_search=web_search,
+        email_enabled=email_enabled,
+        email_format=email_format,
         kind=kind,
         condition=condition or {},
         interval_minutes=interval_minutes,
@@ -171,6 +174,8 @@ def create_automation(
         title=body.title, prompt=body.prompt, hour=body.hour, minute=body.minute,
         weekdays=body.weekdays, web_search=body.web_search,
         kind=body.kind,
+        email_enabled=body.email_enabled,
+        email_format=body.email_format,
         condition=body.condition.model_dump(mode="json") if body.condition else None,
         interval_minutes=body.interval_minutes,
         window_start_minute=body.window_start_minute,
@@ -219,6 +224,8 @@ def describe_automation(
         web_search=(
             body.web_search if body.web_search is not None else draft.web_search
         ),
+        email_enabled=body.email_enabled,
+        email_format=body.email_format,
         kind=draft.kind,
         condition=draft.condition,
         interval_minutes=(

@@ -727,6 +727,14 @@ class Settings(BaseSettings):
         "halves the worst-case lateness for the cost of one indexed query.",
     )
 
+    # ===== Email reports =====
+    EMAIL_SMTP_HOST: str = ""
+    EMAIL_SMTP_PORT: int = Field(default=587, gt=0, lt=65536)
+    EMAIL_SMTP_USERNAME: str = ""
+    EMAIL_SMTP_PASSWORD: str = ""
+    EMAIL_FROM: str = ""
+    EMAIL_USE_TLS: bool = True
+
     # ===== API (the FastAPI service the dashboard talks to) =====
     API_HOST: str = "127.0.0.1"
     API_PORT: int = Field(default=8000, gt=0, lt=65536)

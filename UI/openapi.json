@@ -273,6 +273,76 @@
         ]
       }
     },
+    "/api/me/settings/notifications": {
+      "get": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Get Notification Settings",
+        "operationId": "get_notification_settings",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationSettingsOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Put Notification Settings",
+        "operationId": "put_notification_settings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationSettingsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationSettingsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/me/stats": {
       "get": {
         "tags": [
@@ -3266,6 +3336,20 @@
             ],
             "title": "Web Search"
           },
+          "email_enabled": {
+            "type": "boolean",
+            "title": "Email Enabled",
+            "default": false
+          },
+          "email_format": {
+            "type": "string",
+            "enum": [
+              "pdf",
+              "docx"
+            ],
+            "title": "Email Format",
+            "default": "pdf"
+          },
           "interval_minutes": {
             "anyOf": [
               {
@@ -3351,6 +3435,20 @@
             "type": "boolean",
             "title": "Web Search",
             "default": true
+          },
+          "email_enabled": {
+            "type": "boolean",
+            "title": "Email Enabled",
+            "default": false
+          },
+          "email_format": {
+            "type": "string",
+            "enum": [
+              "pdf",
+              "docx"
+            ],
+            "title": "Email Format",
+            "default": "pdf"
           },
           "kind": {
             "type": "string",
@@ -3453,6 +3551,18 @@
           "web_search": {
             "type": "boolean",
             "title": "Web Search"
+          },
+          "email_enabled": {
+            "type": "boolean",
+            "title": "Email Enabled"
+          },
+          "email_format": {
+            "type": "string",
+            "enum": [
+              "pdf",
+              "docx"
+            ],
+            "title": "Email Format"
           },
           "kind": {
             "type": "string",
@@ -3568,6 +3678,8 @@
           "minute",
           "weekdays",
           "web_search",
+          "email_enabled",
+          "email_format",
           "kind",
           "condition",
           "interval_minutes",
@@ -3661,6 +3773,32 @@
               }
             ],
             "title": "Web Search"
+          },
+          "email_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Enabled"
+          },
+          "email_format": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "pdf",
+                  "docx"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Format"
           },
           "enabled": {
             "anyOf": [
@@ -5483,6 +5621,57 @@
         ],
         "title": "ModelsResponse",
         "description": "Every selectable model, plus which one answers when none is chosen."
+      },
+      "NotificationSettingsIn": {
+        "properties": {
+          "notification_email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "email"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notification Email"
+          }
+        },
+        "type": "object",
+        "title": "NotificationSettingsIn"
+      },
+      "NotificationSettingsOut": {
+        "properties": {
+          "account_email": {
+            "type": "string",
+            "format": "email",
+            "title": "Account Email"
+          },
+          "notification_email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "email"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notification Email"
+          },
+          "effective_email": {
+            "type": "string",
+            "format": "email",
+            "title": "Effective Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account_email",
+          "notification_email",
+          "effective_email"
+        ],
+        "title": "NotificationSettingsOut"
       },
       "PageContext": {
         "properties": {

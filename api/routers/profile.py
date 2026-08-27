@@ -24,7 +24,8 @@ from ..db.models import (
 )
 from ..deps import CurrentUser, DbSession
 from ..schemas.profile import (
-    ProfileIn, ProfileOut, SavedViewIn, SavedViewOut, StatsOut,
+    NotificationSettingsIn, NotificationSettingsOut, ProfileIn, ProfileOut,
+    SavedViewIn, SavedViewOut, StatsOut,
 )
 
 logger = logging.getLogger(__name__)
@@ -69,6 +70,28 @@ def get_profile(user: CurrentUser, session: DbSession) -> ProfileOut:
     """This user's preferences. Empty defaults when they have not answered yet."""
     profile = session.scalar(select(Profile).where(Profile.user_id == user.id))
     return _profile_out(profile)
+
+
+@router.get("/settings/notifications", response_model=NotificationSettingsOut)
+def get_notification_settings(user: CurrentUser) -> NotificationSettingsOut:
+    return NotificationSettingsOut(
+        account_email=user.email,
+        notification_email=user.notification_email,
+        effective_email=user.notification_email or user.email,
+    )
+
+
+@router.put("/settings/notifications", response_model=NotificationSettingsOut)
+def put_notification_settings(
+    body: NotificationSettingsIn, user: CurrentUser, session: DbSession
+) -> NotificationSettingsOut:
+    user.notification_email = str(body.notification_email) if body.notification_email else None
+    session.commit()
+    return NotificationSettingsOut(
+        account_email=user.email,
+        notification_email=user.notification_email,
+        effective_email=user.notification_email or user.email,
+    )
 
 
 @router.put("/profile", response_model=ProfileOut)

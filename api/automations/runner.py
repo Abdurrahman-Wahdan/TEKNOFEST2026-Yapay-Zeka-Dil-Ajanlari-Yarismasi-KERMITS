@@ -25,6 +25,7 @@ from ..db.models import Automation, AutomationReport
 from ..db.session import session_scope
 from ..schemas.automations import ConditionSpec
 from .conditions import ConditionResult, evaluate_condition
+from .email import queue_report_email
 from .notifications import hub, report_event
 from .schedule import describe, next_interval_run, next_run
 
@@ -294,6 +295,8 @@ def run_automation(
     # to forget. `publish` never raises and returns immediately when nobody is
     # listening, which is the usual case for a run that fires overnight.
     hub.publish(due.user_id, report_event(report))
+    if getattr(automation, "email_enabled", False):
+        queue_report_email(report.id)
     return report
 
 

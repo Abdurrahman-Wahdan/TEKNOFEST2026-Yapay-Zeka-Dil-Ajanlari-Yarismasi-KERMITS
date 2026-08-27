@@ -297,6 +297,12 @@
     "typicalTerm": "Genelde düşündüğünüz vade",
     "save": "Kaydet",
     "saved": "Kaydedildi"
+    ,"notificationEmail": "Rapor e-postası"
+    ,"notificationEmailSubtitle": "Otomasyon raporlarının gönderileceği adres"
+    ,"notificationEmailHint": "Boş bırakırsanız hesap adresiniz kullanılır: {email}"
+    ,"saving": "Kaydediliyor…"
+    ,"loading": "Yükleniyor…"
+    ,"loadFailed": "Ayarlar yüklenemedi."
   },
   "common": {
     "loading": "Yükleniyor…",
@@ -514,6 +520,8 @@
     "dayFri": "Cum",
     "daySat": "Cmt",
     "daySun": "Paz"
+    ,"emailToggle": "Raporu e-postayla gönder"
+    ,"reportFormat": "Rapor biçimi"
   },
   "reports": {
     "title": "Raporlar",

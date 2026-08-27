@@ -56,6 +56,9 @@ class User(UUIDMixin, TimestampMixin, Base):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     display_name: Mapped[str] = mapped_column(String(120), nullable=False, default="")
     locale: Mapped[str] = mapped_column(String(5), nullable=False, default="tr")
+    #: Blank means use the account email. This is a delivery preference, not a
+    #: replacement for the authenticated account address.
+    notification_email: Mapped[str | None] = mapped_column(String(320), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     profile: Mapped["Profile | None"] = relationship(
@@ -314,6 +317,9 @@ class Automation(UUIDMixin, TimestampMixin, Base):
     #: for -- new campaigns, this morning's gold price -- are about what changed
     #: since yesterday, which the offline index cannot know.
     web_search: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    #: Email delivery is opt-in per automation; in-app reports remain unchanged.
+    email_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    email_format: Mapped[str] = mapped_column(String(8), nullable=False, default="pdf")
     #: Scheduled reports ask the supervisor a question. Condition alerts read
     #: live endpoints and compare typed numbers without involving a model.
     kind: Mapped[str] = mapped_column(

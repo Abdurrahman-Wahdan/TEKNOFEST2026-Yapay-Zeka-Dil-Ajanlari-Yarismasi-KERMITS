@@ -57,6 +57,7 @@ export type Automation = Schemas["AutomationOut"];
 export type AutomationReport = Schemas["ReportOut"];
 export type AutomationReportSummary = Schemas["ReportSummary"];
 export type PreparedAttachment = Schemas["PreparedAttachmentOut"];
+export type NotificationSettings = Schemas["NotificationSettingsOut"];
 
 /**
  * Relative, so requests go through the Next rewrite to FastAPI and the browser
@@ -458,6 +459,11 @@ export const api = {
   profile: () => request<Profile>("/me/profile"),
   saveProfile: (body: Schemas["ProfileIn"]) =>
     request<Profile>("/me/profile", { method: "PUT", body: JSON.stringify(body) }),
+  notificationSettings: () => request<NotificationSettings>("/me/settings/notifications"),
+  saveNotificationSettings: (body: Schemas["NotificationSettingsIn"]) =>
+    request<NotificationSettings>("/me/settings/notifications", {
+      method: "PUT", body: JSON.stringify(body),
+    }),
   views: () => request<SavedView[]>("/me/views"),
   saveView: (body: Schemas["SavedViewIn"]) =>
     request<SavedView>(`/me/views/${body.slug}`, {

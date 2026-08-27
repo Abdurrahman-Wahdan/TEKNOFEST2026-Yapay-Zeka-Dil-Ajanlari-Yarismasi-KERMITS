@@ -22,6 +22,7 @@ import { formatDateTime } from "@/lib/format";
 
 import {
   FrequencyField,
+  EmailDeliveryFields,
   PromptField,
   ScheduleFields,
   TitleField,
@@ -189,6 +190,8 @@ export interface AutomationEdit {
   minute?: number;
   weekdays?: Weekday[];
   interval_minutes?: number;
+  email_enabled?: boolean;
+  email_format?: "pdf" | "docx";
 }
 
 function Row({
@@ -394,6 +397,8 @@ function RowEditor({
   // every day. `null` is the composer's "the user has not touched this yet".
   const [days, setDays] = useState<Weekday[]>(row.weekdays as Weekday[]);
   const [interval, setInterval] = useState<Chosen>(row.interval_minutes ?? 60);
+  const [emailEnabled, setEmailEnabled] = useState(row.email_enabled);
+  const [emailFormat, setEmailFormat] = useState<"pdf" | "docx">(row.email_format);
 
   const isAlert = row.kind === "condition_alert";
   const isInterval = row.interval_minutes !== null;
@@ -477,6 +482,14 @@ function RowEditor({
         </>
       )}
 
+      <EmailDeliveryFields
+        enabled={emailEnabled}
+        format={emailFormat}
+        onEnabled={setEmailEnabled}
+        onFormat={setEmailFormat}
+        disabled={busy}
+      />
+
       <VuiBox display="flex" alignItems="center" justifyContent="flex-end" gap="8px">
         <ActionButton variant="outlined" color="white" onClick={onCancel} disabled={busy}>
           {tc("cancel")}
@@ -490,6 +503,8 @@ function RowEditor({
                     title: title.trim(),
                     ...(!isAlert ? { prompt: prompt.trim() } : {}),
                     interval_minutes: interval ?? row.interval_minutes ?? 60,
+                    email_enabled: emailEnabled,
+                    email_format: emailFormat,
                   }
                 : {
                     title: title.trim(),
@@ -498,6 +513,8 @@ function RowEditor({
                     hour: hour ?? row.hour,
                     minute: minute ?? row.minute,
                     weekdays: days,
+                    email_enabled: emailEnabled,
+                    email_format: emailFormat,
                   },
             )
           }

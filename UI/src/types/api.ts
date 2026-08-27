@@ -150,6 +150,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/me/settings/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Notification Settings */
+        get: operations["get_notification_settings"];
+        /** Put Notification Settings */
+        put: operations["put_notification_settings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/me/stats": {
         parameters: {
             query?: never;
@@ -1451,6 +1469,17 @@ export interface components {
             /** Web Search */
             web_search?: boolean | null;
             /**
+             * Email Enabled
+             * @default false
+             */
+            email_enabled: boolean;
+            /**
+             * Email Format
+             * @default pdf
+             * @enum {string}
+             */
+            email_format: "pdf" | "docx";
+            /**
              * Interval Minutes
              * @description Optional user-selected frequency for any automation.
              */
@@ -1487,6 +1516,17 @@ export interface components {
              */
             web_search: boolean;
             /**
+             * Email Enabled
+             * @default false
+             */
+            email_enabled: boolean;
+            /**
+             * Email Format
+             * @default pdf
+             * @enum {string}
+             */
+            email_format: "pdf" | "docx";
+            /**
              * Kind
              * @default scheduled_report
              * @enum {string}
@@ -1519,6 +1559,13 @@ export interface components {
             weekdays: number[];
             /** Web Search */
             web_search: boolean;
+            /** Email Enabled */
+            email_enabled: boolean;
+            /**
+             * Email Format
+             * @enum {string}
+             */
+            email_format: "pdf" | "docx";
             /**
              * Kind
              * @enum {string}
@@ -1576,6 +1623,10 @@ export interface components {
             weekdays?: number[] | null;
             /** Web Search */
             web_search?: boolean | null;
+            /** Email Enabled */
+            email_enabled?: boolean | null;
+            /** Email Format */
+            email_format?: ("pdf" | "docx") | null;
             /** Enabled */
             enabled?: boolean | null;
             /** Interval Minutes */
@@ -2550,6 +2601,26 @@ export interface components {
              * @description The key used when AskRequest.model is null.
              */
             default: string;
+        };
+        /** NotificationSettingsIn */
+        NotificationSettingsIn: {
+            /** Notification Email */
+            notification_email?: string | null;
+        };
+        /** NotificationSettingsOut */
+        NotificationSettingsOut: {
+            /**
+             * Account Email
+             * Format: email
+             */
+            account_email: string;
+            /** Notification Email */
+            notification_email: string | null;
+            /**
+             * Effective Email
+             * Format: email
+             */
+            effective_email: string;
         };
         /**
          * PageContext
@@ -3689,6 +3760,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProfileOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_notification_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationSettingsOut"];
+                };
+            };
+        };
+    };
+    put_notification_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotificationSettingsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationSettingsOut"];
                 };
             };
             /** @description Validation Error */

@@ -15,6 +15,7 @@ import { useVoiceSession } from "@/lib/chat/useVoiceSession";
 
 import {
   FrequencyField,
+  EmailDeliveryFields,
   PromptField,
   ScheduleFields,
   toggleDay,
@@ -63,6 +64,8 @@ export function AutomationComposer() {
   const [hour, setHour] = useState<Chosen>(null);
   const [minute, setMinute] = useState<Chosen>(null);
   const [interval, setInterval] = useState<Chosen>(null);
+  const [emailEnabled, setEmailEnabled] = useState(false);
+  const [emailFormat, setEmailFormat] = useState<"pdf" | "docx">("pdf");
   /** `null` until the user touches a day chip, so an untouched set is the agent's. */
   const [days, setDays] = useState<Weekday[] | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
@@ -102,6 +105,8 @@ export function AutomationComposer() {
         ...(minute !== null ? { minute } : {}),
         ...(days !== null ? { weekdays: days } : {}),
         ...(interval !== null ? { interval_minutes: interval } : {}),
+        email_enabled: emailEnabled,
+        email_format: emailFormat,
       }),
     onSuccess: () => {
       setText("");
@@ -109,6 +114,8 @@ export function AutomationComposer() {
       setMinute(null);
       setDays(null);
       setInterval(null);
+      setEmailEnabled(false);
+      setEmailFormat("pdf");
       setFailed(null);
       queryClient.invalidateQueries({ queryKey: AUTOMATIONS_KEY });
       queryClient.invalidateQueries({ queryKey: STATS_KEY });
@@ -220,6 +227,14 @@ export function AutomationComposer() {
           onChange={setInterval}
           disabled={busy}
           allowAuto
+        />
+
+        <EmailDeliveryFields
+          enabled={emailEnabled}
+          format={emailFormat}
+          onEnabled={setEmailEnabled}
+          onFormat={setEmailFormat}
+          disabled={busy}
         />
         <VuiTypography variant="caption" sx={{ color: "var(--text-faint)" }}>
           {t("frequencyHint")}
