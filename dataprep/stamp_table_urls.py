@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import unicodedata
 
 from api import compare_tables_pool as pool
 from api.table_links import ui_url

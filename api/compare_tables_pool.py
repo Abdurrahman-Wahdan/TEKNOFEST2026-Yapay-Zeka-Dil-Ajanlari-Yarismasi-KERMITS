@@ -116,6 +116,59 @@ UNKNOWN = "bilinmiyor"
 # of the source dates below, and it disagrees with them (see the module docstring).
 PRODUCER_VALIDITY_COLUMN = "Geçerlilik"
 
+# The 2026-08 extraction stamps a *per-cell* window beside every column it fills:
+# `Kâr Oranı` is followed by `Kâr Oranı (Geçerlilik)` holding `01/08/2026 -
+# 30/09/2026`. Three facts about it decide how it is read here.
+#
+# **It is a date, not a column.** Drawn as declared it doubles every table --
+# 3022 extra columns across the pool, 20 where the previous dataset had 11 --
+# and 62% of them are blank, because most pages are permanent product pages with
+# no date to stamp. So the suffix is recognised and the column is folded into the
+# row's validity rather than rendered.
+#
+# **It is the only copy.** These windows were read out of the page text and never
+# written back into `cell_sources`: 189 rows carry a date here and nowhere else.
+# Reading validity from the sources alone would silently drop them, so they are
+# merged with the source dates rather than replacing or being replaced by them.
+#
+# **The producer stamps its own summary column too**, which is where the literal
+# `Geçerlilik (Geçerlilik)` in all 402 tables comes from. It is `-` in every one
+# of its 4020 cells; the suffix rule removes it along with the rest.
+VALIDITY_SUFFIX = " (Geçerlilik)"
+
+
+def is_validity_column(column: str) -> bool:
+    """Whether this column holds a per-cell window rather than content."""
+    return column.endswith(VALIDITY_SUFFIX)
+
+
+def _window(value: object) -> tuple[datetime.date | None, datetime.date | None]:
+    """A `dd/mm/yyyy - dd/mm/yyyy` cell as dates, `?` on either side for open.
+
+    Anything else is "no window" rather than an error: this runs over every cell
+    of every table, and one malformed stamp must not take a page down. Measured
+    on the current pool, all 2249 non-blank stamps parse.
+    """
+    if not isinstance(value, str) or value.strip() in BLANK:
+        return None, None
+    halves = value.split(" - ")
+    if len(halves) != 2:
+        logger.warning("Unparseable per-cell validity window %r.", value)
+        return None, None
+    out = []
+    for half in halves:
+        half = half.strip()
+        if half == "?":
+            out.append(None)
+            continue
+        try:
+            day, month, year = half.split("/")
+            out.append(datetime.date(int(year), int(month), int(day)))
+        except (ValueError, TypeError):
+            logger.warning("Unparseable per-cell validity window %r.", value)
+            return None, None
+    return out[0], out[1]
+
 
 def _fold(value: object) -> str:
     """Lowercased and trimmed, for matching a cell against a sentinel set.
@@ -281,7 +334,7 @@ def status_column(table: dict) -> str | None:
     as a whole, which is the previous dataset's convention and still the only
     signal in 172 tables."""
     for column in table.get("columns", []):
-        if column == PRODUCER_VALIDITY_COLUMN:
+        if column == PRODUCER_VALIDITY_COLUMN or is_validity_column(column):
             continue
         filled = [
             _fold(values.get(column))
@@ -321,10 +374,17 @@ def offers(values: dict, column: str | None) -> bool | None:
     # summary, it is written for every row including the empty ones, and one
     # `? - 31/12/2026` in it is enough to make a row of nothing but `sunulmuyor`
     # look like a row with something in it.
+    #
+    # A per-cell `... (Geçerlilik)` stamp is not content either, and for the same
+    # reason: it is written beside a cell whether or not that cell says anything,
+    # so a row of nothing but `sunulmuyor` with one dated stamp would read as a
+    # row with something in it.
     filled = [
         _fold(v)
         for key, v in values.items()
-        if key not in (PRODUCER_VALIDITY_COLUMN, column) and _fold(v) not in BLANK
+        if key not in (PRODUCER_VALIDITY_COLUMN, column)
+        and not is_validity_column(key)
+        and _fold(v) not in BLANK
     ]
     if not filled:
         return None
@@ -332,7 +392,8 @@ def offers(values: dict, column: str | None) -> bool | None:
 
 
 # --- validity -----------------------------------------------------------------
-def validity(sources: list[dict], urls: dict[str, dict], now: datetime.date):
+def validity(sources: list[dict], urls: dict[str, dict], now: datetime.date,
+             values: dict | None = None):
     """This row's validity window and what it means today.
 
     Returns `(valid_from, valid_to, verdict)` with the dates as ISO strings.
@@ -356,6 +417,36 @@ def validity(sources: list[dict], urls: dict[str, dict], now: datetime.date):
         record = urls.get(source.get("url") or "") or {}
         start = _iso(record.get("gecerlilik_baslangic")) or _iso(source.get("gecerlilik_baslangic"))
         end = _iso(record.get("gecerlilik_bitis")) or _iso(source.get("gecerlilik_bitis"))
+        if start:
+            starts.append(start)
+        if end:
+            ends.append(end)
+
+    # The per-cell stamps, merged in rather than preferred or overridden.
+    #
+    # They are the most complete copy of this fact, and not by accident.
+    # `dataprep/compare/tablo_tarih.py` fills each one from three sources in
+    # order -- the `cell_sources` record, then the page's own `content/*.md`
+    # frontmatter or a deterministic extraction from its body, then (opt-in) an
+    # agent that reads the page and its images, because a campaign's dates are
+    # often printed only on the banner. Only the first of those is written back
+    # into `cell_sources`; the other two land here and nowhere else, which is why
+    # 189 rows carry a date in these columns and in neither `sources` nor the url
+    # pool. Deriving validity from the sources alone silently drops them.
+    #
+    # Merged rather than preferred because 24 rows have a date only in `sources`,
+    # so either copy alone loses something. Widening over both is `_en_genis`,
+    # the producer's own rule, applied over every date we hold.
+    #
+    # The cost, stated plainly: on one row (`banka-kartı`/hayatfinans) the cells
+    # end 2026-08-17 and the sources end 2026-12-31, so widening reads a lapsed
+    # offer as live. It buys 24 rows that had no verdict at all and two that are
+    # correctly marked expired, and it errs in the direction this module already
+    # chose -- see the note above about which way to be wrong.
+    for column, value in (values or {}).items():
+        if not is_validity_column(column):
+            continue
+        start, end = _window(value)
         if start:
             starts.append(start)
         if end:
@@ -412,3 +503,43 @@ def cell(value: object) -> str | None:
     if folded in BLANK or folded in NOT_OFFERED:
         return None
     return value.strip()
+
+
+# --- which rows a table actually draws -----------------------------------------
+#
+# Three kinds of row never reach the table body, and each is excluded for its own
+# reason. Gathered here rather than in the router because `list_tables` and the
+# agent's table directory need the same answer, and a table whose every row is
+# excluded is a page with nothing on it -- which neither should offer.
+#
+# `offers is False`   the bank does not offer it; drawn in its own card instead.
+# no content          nothing was found; drawn in its own card instead.
+# EXPIRED             every source behind it has ended (user decision, 2026-08-27:
+#                     an expired offer is not worth comparing, so it is dropped
+#                     rather than carded -- the reader cannot act on it).
+#
+# Recomputed per request rather than cached against the file signature, because
+# only the third depends on today's date: a row live this morning is expired
+# tomorrow, and a table can empty out with no file having changed.
+def row_has_content(values: dict, status: str | None) -> bool:
+    """Whether this row says anything the table body could show."""
+    return any(
+        cell(value) is not None
+        for key, value in values.items()
+        if key not in (PRODUCER_VALIDITY_COLUMN, status) and not is_validity_column(key)
+    )
+
+
+def drawn_rows(table: dict, urls: dict[str, dict], now: datetime.date) -> list[str]:
+    """The banks whose rows this table would actually draw, in file order."""
+    status = status_column(table)
+    out = []
+    for bank, values in (table.get("rows") or {}).items():
+        if offers(values, status) is False:
+            continue
+        if not row_has_content(values, status):
+            continue
+        if validity(table.get("sources", {}).get(bank) or [], urls, now, values)[2] == EXPIRED:
+            continue
+        out.append(bank)
+    return out

@@ -71,7 +71,17 @@ def list_tables(
             status.HTTP_400_BAD_REQUEST,
             f"Unknown category {category!r}. Valid: {', '.join(sorted(pool.CATEGORIES))}.",
         )
-    matched = [t for t in pool.all_tables() if t.get("category") == category]
+    # Not listed if `get_table` would draw nothing. A table whose every row is
+    # expired, not-offered or empty is a page with no table on it, and offering
+    # it in the picker is offering a dead end -- 8 of the 402 are in that state
+    # today. Recomputed per request rather than filtered once at load, because
+    # expiry moves with the date: a table is listable this morning and not
+    # tomorrow with no file having changed.
+    urls, now = pool.url_records(), pool.today()
+    matched = [
+        t for t in pool.all_tables()
+        if t.get("category") == category and pool.drawn_rows(t, urls, now)
+    ]
     subcats = sorted({t.get("subcategory", "") for t in matched if t.get("subcategory")})
     return TableListOut(
         category=category,
@@ -118,20 +128,38 @@ def get_table(
     # validity summary, and a status column that says nothing but the verdict
     # already carried on the row. `pool.status_column` only nominates a column
     # that holds nothing else, so dropping it never takes content with it.
+    # Also minus the per-cell `... (Geçerlilik)` stamps. They are dates, not
+    # content, and `pool.validity` reads them into the row's window below -- so
+    # the fact survives, in the two columns the reader can filter and sort by,
+    # instead of as 3022 extra columns of which 62% are blank.
     hidden = {pool.PRODUCER_VALIDITY_COLUMN, status_column}
-    declared = [c for c in table.get("columns", []) if c not in hidden]
+    declared = [
+        c for c in table.get("columns", [])
+        if c not in hidden and not pool.is_validity_column(c)
+    ]
 
     rows: list[RowOut] = []
     for bank, values in table.get("rows", {}).items():
         sources = table.get("sources", {}).get(bank) or []
         cite = sources[0] if sources else {}
-        valid_from, valid_to, verdict = pool.validity(sources, urls, now)
+        valid_from, valid_to, verdict = pool.validity(sources, urls, now, values)
+
+        # An expired row is dropped outright, not sent and hidden (user decision,
+        # 2026-08-27). The two carded exclusions are things a reader might still
+        # want -- which banks do not offer this, which we found nothing on -- but
+        # an offer that has ended is not comparable and not actionable, so it
+        # leaves the response entirely rather than costing a card and a scroll.
+        if verdict == pool.EXPIRED:
+            continue
 
         cells: dict[str, str | float | bool | None] = {"Banka": pool.BANK_KEY.get(bank, bank)}
         cells.update({c: pool.cell(values.get(c)) for c in declared})
-        cells[VALIDITY_KEY] = verdict
         cells[VALID_TO_KEY] = valid_to
 
+        # The window, on the end date rather than on a verdict chip -- with the
+        # verdict column gone, `Bitiş` is what a reader hovers to ask "until
+        # when, exactly", and an open start (`? – 31/12/2026`) is the answer that
+        # a bare end date cannot give.
         note = pool.window_note(valid_from, valid_to)
         rows.append(
             RowOut(
@@ -139,30 +167,23 @@ def get_table(
                 cite_url=cite.get("url") or None,
                 cite_note=cite.get("note") or None,
                 offers=pool.offers(values, status_column),
-                cell_notes={VALIDITY_KEY: note} if note else {},
-                cell_tones={VALIDITY_KEY: VALIDITY_TONE[verdict]},
+                cell_notes={VALID_TO_KEY: note} if note else {},
+                cell_tones={},
             )
         )
 
-    # Only the rows the page will actually draw. The ones `offers=False` sends to
-    # its own card carry no columns of their own, so an end date only they have
-    # is not a reason to give every other row an empty one.
-    visible = [r for r in rows if r.offers is not False]
-
-    # A derived column earns its place by carrying information, not by existing.
-    # Across the pool, 53% of tables have no end date on any visible row and 48%
-    # have the same verdict on all of them — drawn anyway, that is a column of
-    # dashes and a filter with one option, on tables already 23 columns wide.
+    # `Bitiş` only. The `Geçerlilik` verdict chip is gone (user decision,
+    # 2026-08-27): with expired rows removed above, every row still here is
+    # `aktif`, `başlamadı` or `bilinmiyor`, and the one those three exist to
+    # separate a reader *from* is no longer on the page. A filter whose useful
+    # option can never match is a control that costs a column and answers
+    # nothing.
     #
-    # "Carries information" is not the same as "varies", which is why the second
-    # test names `UNKNOWN` rather than counting distinct values: a table where
-    # every bank is `aktif` says something worth reading, and one where every
-    # bank is `bilinmiyor` says only that nobody published a date.
-    derived = []
-    if any(r.cells[VALIDITY_KEY] != pool.UNKNOWN for r in visible):
-        derived.append(ColumnOut(key=VALIDITY_KEY, label=VALIDITY_KEY, type="badge"))
-    if any(r.cells[VALID_TO_KEY] is not None for r in visible):
-        derived.append(ColumnOut(key=VALID_TO_KEY, label=VALID_TO_KEY, type="date"))
+    # `Bitiş` stays, and stays on every table whether or not it carries a date --
+    # a column that appears on one table and not the next makes its *absence*
+    # carry meaning, and "nobody published an end date" must not read the same as
+    # "this page does not show end dates".
+    derived = [ColumnOut(key=VALID_TO_KEY, label=VALID_TO_KEY, type="date")]
 
     columns = (
         [ColumnOut(key="Banka", label="Banka", type="bank")]

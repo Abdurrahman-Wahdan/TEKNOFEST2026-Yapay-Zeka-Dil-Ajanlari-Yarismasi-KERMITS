@@ -407,7 +407,10 @@
     "overviewNotRecommended": "Öne çıkmayanlar",
     "overviewCaveat": "Nelere dikkat etmeli",
     "overviewDisclaimer": "Aşağıdaki tablodan bir model tarafından yazıldı. Esas kaynak tablonun kendisidir.",
-    "notOfferedPill": "Sunulmuyor"
+    "notOfferedPill": "Sunulmuyor",
+    "noDataTitleUrun": "Bu ürün için bilgi bulunamayan bankalar",
+    "noDataTitleKampanya": "Bu kampanya için bilgi bulunamayan bankalar",
+    "noDataPill": "Bilgi bulunamadı"
   },
   "profile": {
     "title": "Profil",

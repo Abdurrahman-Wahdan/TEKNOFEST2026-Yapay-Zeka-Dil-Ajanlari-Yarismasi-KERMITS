@@ -65,23 +65,58 @@ const KAYNAK_KEY = "Kaynak";
  * to the one place that can hold that knowledge without shipping it to the
  * browser. `null` is not `false`: a row nothing settled stays in the table.
  */
-function splitRows(
-  rows: RowOut[],
-): { offering: RowOut[]; absent: { bank: string; cite_url?: string; cite_note?: string }[] } {
+/**
+ * Columns every row carries whether or not the pipeline found anything: the
+ * bank's own name, and the two validity columns the API derives rather than
+ * reads. A row holding only these is a row of dashes, so they cannot count as
+ * content when deciding whether there is any.
+ */
+const DERIVED_KEYS = new Set(["Banka", "Geçerlilik", "Bitiş"]);
+
+function hasContent(row: RowOut): boolean {
+  return Object.entries(row.cells).some(
+    ([key, value]) =>
+      !DERIVED_KEYS.has(key) && value !== null && value !== undefined && value !== "",
+  );
+}
+
+function splitRows(rows: RowOut[]): {
+  offering: RowOut[];
+  absent: { bank: string; cite_url?: string; cite_note?: string }[];
+  unknown: { bank: string; cite_url?: string; cite_note?: string }[];
+} {
   const offering: RowOut[] = [];
   const absent: { bank: string; cite_url?: string; cite_note?: string }[] = [];
+  const unknown: { bank: string; cite_url?: string; cite_note?: string }[] = [];
   for (const row of rows) {
+    const aside = {
+      bank: String(row.cells.Banka ?? ""),
+      cite_url: row.cite_url ?? undefined,
+      cite_note: row.cite_note ?? undefined,
+    };
     if (row.offers === false) {
-      absent.push({
-        bank: String(row.cells.Banka ?? ""),
-        cite_url: row.cite_url ?? undefined,
-        cite_note: row.cite_note ?? undefined,
-      });
+      absent.push(aside);
+      continue;
+    }
+    // A row with nothing in it, split out for the same reason `absent` is: it
+    // draws as a line of dashes and pushes the banks that do have something
+    // off the screen. It is deliberately NOT folded into `absent`.
+    //
+    // The 2026-08 extraction stopped writing `sunulmuyor` for a bank it could
+    // not find anything about -- the claim was never provable, so it now
+    // writes nothing at all. That is why these rows appeared: the old dataset
+    // said "not offered" and this function moved them, and the new one says
+    // nothing and it did not. But "we found no information" is not "the bank
+    // does not offer it", and in a bank comparison the difference is the whole
+    // point, so they get their own list and their own words rather than being
+    // quietly filed under `Sunulmuyor`.
+    if (!hasContent(row)) {
+      unknown.push(aside);
       continue;
     }
     offering.push(row);
   }
-  return { offering, absent };
+  return { offering, absent, unknown };
 }
 
 /**
@@ -238,8 +273,8 @@ export function CompareTablesBrowser({
     [list.data, t, locale],
   );
 
-  const { offering, absent } = useMemo(
-    () => (detail.data ? splitRows(detail.data.rows) : { offering: [], absent: [] }),
+  const { offering, absent, unknown } = useMemo(
+    () => (detail.data ? splitRows(detail.data.rows) : { offering: [], absent: [], unknown: [] }),
     [detail.data],
   );
 
@@ -452,6 +487,61 @@ export function CompareTablesBrowser({
                             bare host reads as the bank's front page when every
                             citation is a deep link. The host stays reachable in
                             the tooltip. */}
+                        {tc("citeLink")}
+                      </VuiTypography>
+                    </Tooltip>
+                  )}
+                </VuiBox>
+              ))}
+            </VuiBox>
+          </Card>
+        )}
+
+        {/* The same card, for the banks nothing was found about. Separate from
+            `absent` above and worded differently on purpose — see `splitRows`.
+            `data-outline-list` for the same reason it is on the other one: each
+            line is shorter than the outline's minimum, so without it the whole
+            card is invisible to the overview agent and to the chat's page
+            context, and the assistant would describe a ten-bank table as
+            though it had only the four rows that carry data. */}
+        {unknown.length > 0 && (
+          <Card>
+            <VuiBox mb={2}>
+              <VuiTypography variant="lg" color="white">
+                {t(category === "ürün" ? "noDataTitleUrun" : "noDataTitleKampanya")}
+              </VuiTypography>
+            </VuiBox>
+            <VuiBox
+              display="flex"
+              flexDirection="column"
+              gap="10px"
+              data-outline-list={t(
+                category === "ürün" ? "noDataTitleUrun" : "noDataTitleKampanya",
+              )}
+            >
+              {unknown.map(({ bank, cite_url, cite_note }) => (
+                <VuiBox key={bank} display="flex" gap="10px" alignItems="center" flexWrap="wrap">
+                  <VuiTypography variant="button" color="white" fontWeight="medium">
+                    {bankLabels[bank] ?? bank}
+                  </VuiTypography>
+                  <Pill tone="neutral">{t("noDataPill")}</Pill>
+                  {cite_url && (
+                    <Tooltip title={cite_note ?? ""} arrow enterDelay={0} enterNextDelay={0} leaveDelay={0}>
+                      <VuiTypography
+                        component="a"
+                        href={cite_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        variant="caption"
+                        color="info"
+                        sx={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px",
+                          textDecoration: "underline",
+                        }}
+                      >
+                        <IoOpenOutline size="12px" />
                         {tc("citeLink")}
                       </VuiTypography>
                     </Tooltip>

@@ -30,6 +30,8 @@ from corpus.tables import search_tables
 logger = logging.getLogger(__name__)
 
 RESULTS_PER_CALL = 5
+# Candidates fetched per RESULTS_PER_CALL before the publishable filter runs.
+OVERFETCH = 3
 
 
 class FindTableInput(BaseModel):
@@ -91,9 +93,51 @@ def _format(hits: list[dict]) -> str:
     )
 
 
+def _still_published(hits: list[dict]) -> list[dict]:
+    """Drop candidates whose page would open with no table on it.
+
+    The Qdrant collection is a build artifact: a point per table at the moment
+    `dataprep.compare` indexed it. Whether that table still *draws* anything is
+    decided at read time and moves with the date -- once every row on it has
+    expired, `GET /api/compare-tables` stops listing it, and the assistant would
+    be handing the reader a link to an empty page.
+
+    Filtered here rather than by deleting points, because the condition is not a
+    property of the point: a table with one row ending tomorrow is publishable
+    today and not the day after, with nothing having been re-indexed. Deleting
+    would be right for an hour and stale after that.
+    """
+    from api import compare_tables_pool as pool
+
+    urls, now = pool.url_records(), pool.today()
+    kept = []
+    for hit in hits:
+        table = pool.load_table(hit.get("id") or "")
+        # Not in the pool at all: kept, deliberately. That is a stale index, not
+        # an empty page, and this filter answers one question only -- "would this
+        # page draw a table". Dropping on absence would also make the tool refuse
+        # every hit whenever the pool is pointed elsewhere, which is a much
+        # louder failure than the one it guards. A link to a table that does not
+        # exist is already refused where it matters, in `api/agent.py`'s
+        # `site_table_sources`, which rebuilds every link from the pool before a
+        # source card is made.
+        if table is not None and not pool.drawn_rows(table, urls, now):
+            logger.info("table_directory dropped %r: every row expired or empty", hit.get("id"))
+            continue
+        kept.append(hit)
+    return kept
+
+
 def build_table_directory_tool() -> StructuredTool:
     def find_comparison_table(query: str, intent: str = "") -> str:
-        hits = search_tables(query, intent=intent, limit=RESULTS_PER_CALL)
+        # Over-fetched, because `_still_published` removes candidates *after*
+        # ranking. Asking for exactly five and filtering would quietly return
+        # three, and the model reads a short list as "the site has little on
+        # this" rather than as a filter having run. `OVERFETCH` is generous
+        # against the 2% of the pool that is currently unpublishable.
+        hits = _still_published(
+            search_tables(query, intent=intent, limit=RESULTS_PER_CALL * OVERFETCH)
+        )[:RESULTS_PER_CALL]
         logger.info("table_directory query=%r candidates=%d no_score_cutoff",
                     query, len(hits))
         return _format(hits)
