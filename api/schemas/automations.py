@@ -181,6 +181,8 @@ class AutomationIn(BaseModel):
     minute: int = Field(default=0, ge=0, le=59)
     weekdays: list[int] = Field(default_factory=list)
     web_search: bool = True
+    email_enabled: bool = False
+    email_format: Literal["pdf", "docx"] = "pdf"
     kind: Literal["scheduled_report", "condition_alert"] = "scheduled_report"
     condition: ConditionSpec | None = None
     interval_minutes: int | None = Field(
@@ -226,6 +228,8 @@ class AutomationDescribeIn(BaseModel):
     #: defaulting to an empty list.
     weekdays: list[int] | None = None
     web_search: bool | None = None
+    email_enabled: bool = False
+    email_format: Literal["pdf", "docx"] = "pdf"
     interval_minutes: int | None = Field(
         default=None,
         ge=MIN_CHECK_MINUTES,
@@ -260,6 +264,8 @@ class AutomationPatch(BaseModel):
     minute: int | None = Field(default=None, ge=0, le=59)
     weekdays: list[int] | None = None
     web_search: bool | None = None
+    email_enabled: bool | None = None
+    email_format: Literal["pdf", "docx"] | None = None
     enabled: bool | None = None
     interval_minutes: int | None = Field(
         default=None, ge=MIN_CHECK_MINUTES, le=MAX_CHECK_MINUTES
@@ -284,6 +290,8 @@ class AutomationOut(BaseModel):
     minute: int
     weekdays: list[int]
     web_search: bool
+    email_enabled: bool
+    email_format: Literal["pdf", "docx"]
     kind: Literal["scheduled_report", "condition_alert"]
     condition: dict
     interval_minutes: int | None

@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { CONTROL_PADDING_X, controlShape } from "@/components/ui/control";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { ToggleChip } from "@/components/ui/ToggleChip";
+import { Toggle } from "@/components/ui/Toggle";
 import { VuiBox, VuiTypography } from "@/components/vision";
 import { WEEKDAYS, type Weekday } from "@/lib/automations";
 
@@ -103,6 +104,41 @@ export const AUTO = "";
 
 /** Common presets. The agent/API may preserve any value from five minutes up. */
 export const CHECK_INTERVALS = [5, 15, 30, 60, 180, 360, 720, 1440];
+
+export function EmailDeliveryFields({
+  enabled,
+  format,
+  onEnabled,
+  onFormat,
+  disabled = false,
+}: {
+  enabled: boolean;
+  format: "pdf" | "docx";
+  onEnabled: (enabled: boolean) => void;
+  onFormat: (format: "pdf" | "docx") => void;
+  disabled?: boolean;
+}) {
+  const t = useTranslations("automations");
+  return (
+    <VuiBox display="flex" alignItems="center" flexWrap="wrap" gap="12px">
+      <Toggle on={enabled} onChange={onEnabled} disabled={disabled} label={t("emailToggle")} />
+      <VuiTypography variant="caption" sx={{ color: "var(--control-ink)" }}>
+        {t("emailToggle")}
+      </VuiTypography>
+      {enabled && (
+        <Dropdown
+          label={t("reportFormat")}
+          value={format}
+          options={[{ value: "pdf", label: "PDF" }, { value: "docx", label: "Word" }]}
+          minWidth="10rem"
+          fullWidth={false}
+          disabled={disabled}
+          onChange={(value) => onFormat(value as "pdf" | "docx")}
+        />
+      )}
+    </VuiBox>
+  );
+}
 
 export function FrequencyField({
   value,

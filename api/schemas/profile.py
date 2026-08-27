@@ -3,7 +3,17 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+
+class NotificationSettingsIn(BaseModel):
+    notification_email: EmailStr | None = None
+
+
+class NotificationSettingsOut(BaseModel):
+    account_email: EmailStr
+    notification_email: EmailStr | None
+    effective_email: EmailStr
 
 
 class ProfileIn(BaseModel):
