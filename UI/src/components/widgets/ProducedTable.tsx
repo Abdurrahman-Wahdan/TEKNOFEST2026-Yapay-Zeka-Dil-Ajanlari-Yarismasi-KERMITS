@@ -1,11 +1,11 @@
 "use client";
 
 import { Table as MuiTable, TableBody, TableContainer, TableRow, Tooltip } from "@mui/material";
-import { Sparkles } from "lucide-react";
 import { useTheme } from "@mui/material/styles";
 import type { Theme } from "@mui/material/styles";
 import { useLocale, useTranslations } from "next-intl";
 
+import { AttachButton } from "@/components/chat/AttachButton";
 import { Pill, type PillTone } from "@/components/ui/Pill";
 import { VuiBox, VuiTypography } from "@/components/vision";
 import type { CellValue, ResolvedColumn, Row } from "@/lib/contract";
@@ -367,55 +367,6 @@ export function ProducedTable({
         </TableBody>
       </MuiTable>
     </TableContainer>
-  );
-}
-
-/**
- * The "hand this to the assistant" control.
- *
- * Revealed on hover of its row, and always present for the keyboard -- an
- * `opacity: 0` button is still focusable, so hiding it without a `:focus-visible`
- * escape is a tab trap. Same pattern the attachment tray's remove button uses.
- */
-function AttachButton({
-  label,
-  onClick,
-  alwaysVisible,
-}: {
-  label: string;
-  onClick: () => void;
-  alwaysVisible?: boolean;
-}) {
-  return (
-    <VuiBox
-      component="button"
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      title={label}
-      display="inline-flex"
-      alignItems="center"
-      justifyContent="center"
-      sx={{
-        width: 26,
-        height: 26,
-        border: "none",
-        padding: 0,
-        cursor: "pointer",
-        borderRadius: "var(--radius-full)",
-        backgroundColor: "transparent",
-        // The same grey every other quiet control in the app uses. Not
-        // `--text-faint`, which is 2.49:1 and for decoration only.
-        color: "var(--control-ink)",
-        opacity: alwaysVisible ? 1 : 0,
-        transition: "opacity 150ms ease, background-color 150ms ease, color 150ms ease",
-        "tr:hover &, &:focus-visible": { opacity: 1 },
-        "&:hover": { backgroundColor: "var(--muted)", color: "var(--foreground)" },
-        "&:focus-visible": { outline: "2px solid var(--ring)", outlineOffset: 2 },
-      }}
-    >
-      <Sparkles size={15} aria-hidden="true" />
-    </VuiBox>
   );
 }
 

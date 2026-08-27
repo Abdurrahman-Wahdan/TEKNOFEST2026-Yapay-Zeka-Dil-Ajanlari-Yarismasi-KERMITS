@@ -116,9 +116,65 @@ bank_status.json.lock
 
 # Veri hazırlama çıktıları (crawl + pdf metinleri)
 data/
+# data/ dizininin elle alınmış zaman damgalı kopyaları (gigabaytlarca PDF).
+data_backups/
+data_bak/
+data_old/
+data-*/
+*.bak/
 
 # Endpoint keşfi üretilen çıktıları (lokalde kalır)
 dataprep/discovery/out/
+
+
+# ===== Veri dosyası biçimleri =====
+# Depoda kod dışında veri istemiyoruz. tests/fixtures ve docs altındaki
+# küçük örnek JSON'lar bilinçli olarak takip ediliyor, onlar hariç tutuldu.
+*.jsonl
+*.csv
+*.tsv
+*.parquet
+*.sqlite
+*.sqlite3
+*.db
+*.duckdb
+*.pkl
+*.pickle
+*.npy
+*.npz
+*.faiss
+*.pdf
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.gz
+*.7z
+!tests/**/*.jsonl
+!tests/**/*.csv
+!docs/**/*.pdf
+
+# ===== Node =====
+node_modules/
+.next/
+.nuxt/
+.turbo/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ===== Diğer yerel çalışma çıktıları =====
+tmp/
+temp/
+scratch/
+out/
+outputs/
+*.pid
+*.lock
+!UI/package-lock.json
+
+# ===== Uzak daldan gelen =====
 TF26_data/
 
 # ===== Local reference and accidental duplicate files =====
@@ -127,3 +183,4 @@ README-example.md
 example-LICENSE
 config/settings 2.py
 llm/providers/vllm_provider 2.py
+

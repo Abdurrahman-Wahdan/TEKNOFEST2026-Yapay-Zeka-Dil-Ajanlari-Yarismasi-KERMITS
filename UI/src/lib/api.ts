@@ -30,6 +30,8 @@ export type TableListOut = Schemas["TableListOut"];
 export type TableDetailOut = Schemas["TableDetailOut"];
 export type TableOverviewOut = Schemas["TableOverviewOut"];
 export type TableOverviewState = Schemas["TableOverviewState"];
+export type LiveOverviewState = Schemas["LiveOverviewState"];
+export type LiveOverviewRequest = Schemas["LiveOverviewRequest"];
 export type TableOverviewRequest = Schemas["TableOverviewRequest"];
 export type TableOverviewStarted = Schemas["TableOverviewStarted"];
 export type SearchResponse = Schemas["SearchResponse"];
@@ -397,6 +399,29 @@ export const api = {
     category?: "finance" | "profit_share";
     banks?: string[];
   }) => request<Constraints>(`/compare/constraints${queryString(params)}`),
+
+  /**
+   * Read whatever `/compare` is showing and say what it shows.
+   *
+   * One call where the pool needs two. The pool's card knows its key -- the
+   * table id is in the URL it navigated to -- so it can GET to check before it
+   * POSTs to start. A live board has no id, only its content, and having the
+   * browser hash the outline to match Python's SHA-256 forever is a thing that
+   * fails silently and looks like an overview that never arrives. So this posts
+   * the page and gets back either the finished overview or the digest to poll
+   * with.
+   *
+   * Safe to repeat: the digest is the content, so the same board answers from
+   * cache and costs nothing.
+   */
+  startLiveOverview: (body: LiveOverviewRequest) =>
+    request<LiveOverviewState>("/compare/overview", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  /** Poll for one that is being written. Never generates; see the POST. */
+  liveOverview: (digest: string, locale: string) =>
+    request<LiveOverviewState>(`/compare/overview${queryString({ digest, locale })}`),
 
   // ----- comparison-table pool (dataprep.compare, offline) -----
   /** Every table in one category ("ürün" | "kampanya"), for the browse picker. */

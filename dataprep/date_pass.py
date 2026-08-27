@@ -26,9 +26,9 @@ from dataprep.pages import _set_front_dates, _split_front, _url_of
 log = logging.getLogger("dataprep.date_pass")
 
 WORKERS = int(os.environ.get("DATE_WORKERS", "90"))
-MIN_LEN = 40
-SINGLE = 14000       # bu boya kadar TAM metin tek çağrıda (sayfaların ~%99'u)
-WIN, OVERLAP = 12000, 2000    # uzun dokümanda kayan pencere (tarih ortada da olabilir)
+MIN_LEN = 0
+SINGLE = 8196
+WIN, OVERLAP = 8196, 820
 MAX_WIN = 10         # aşırı uzun dosyada patlamayı önle (baş+son garantili örneklenir)
 
 _Q = (
@@ -70,7 +70,7 @@ def _dates_of(body: str) -> dict | None:
     ended_no_date = False
     saw_answer = False
     for win in _windows(body):
-        d = vlm.call_json(vlm.txt_msg(_Q.format(body=win)), max_tokens=200)
+        d = vlm.call_json(vlm.txt_msg(_Q.format(body=win)))   # max_tokens: sunucu karar versin
         if not d:
             continue                               # bu pencere ulaşılamadı, diğerlerini dene
         saw_answer = True

@@ -144,6 +144,35 @@ class TableOverviewStarted(BaseModel):
     )
 
 
+class LiveOverviewRequest(BaseModel):
+    """Ask for an overview of whatever `/compare` is showing right now.
+
+    No table id, because there is no table to name: the live comparator builds
+    its board from bank endpoints and the user's own inputs, and the page the
+    browser is looking at is the whole of the evidence. `page.text` is therefore
+    required here in a way it is only checked for there.
+    """
+
+    locale: str = Field(default="tr", description="'tr' or 'en'. Anything else is Turkish.")
+    page: PageContext = Field(default_factory=PageContext)
+
+
+class LiveOverviewState(BaseModel):
+    """Whether there is an overview for this exact page, and if not, why not.
+
+    The same three answers as `TableOverviewState`, plus the key. `digest` is
+    computed server-side from the outline and handed back so the client can poll
+    without reposting the page or reimplementing the hash -- getting a SHA-256
+    over the same bytes in the browser to agree with Python is a thing that only
+    ever fails silently, and the failure looks like an overview that never
+    arrives.
+    """
+
+    status: Literal["ready", "generating", "missing"]
+    digest: str = Field(description="Poll GET /api/compare/overview with this.")
+    overview: "TableOverviewOut | None" = None
+
+
 class RankedBankOut(BaseModel):
     bank: str
     why: str

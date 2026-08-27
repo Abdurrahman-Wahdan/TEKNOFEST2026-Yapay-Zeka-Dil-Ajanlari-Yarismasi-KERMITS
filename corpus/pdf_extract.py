@@ -155,17 +155,37 @@ def _read_page_retrying(pdf: Path, number: int, llm) -> tuple[str, list]:
     write one with a hole in it.
     """
     last = ""
-    for attempt in range(settings.CORPUS_PDF_PAGE_ATTEMPTS):
+    attempt = 0
+    delay = settings.CORPUS_PDF_RETRY_BACKOFF
+    start = time.time()
+    last_warn = 0.0
+    while True:
+        attempt += 1
         try:
             return _read_page(pdf, number, llm)
         except Exception as exc:  # noqa: BLE001 - any failure is worth retrying
+            # A permanent client error (4xx) never heals, so it is the one case
+            # that still refuses the PDF rather than retrying forever.
+            if any(c in str(exc) for c in ("400", "401", "403", "404", "BadRequest")):
+                raise TransientExtractionError(
+                    f"page {number}: permanent {type(exc).__name__}: {exc}") from exc
             last = f"{type(exc).__name__}: {exc}"
-            logger.warning("page %d of %s attempt %d/%d failed: %s", number,
-                           pdf.name[:40], attempt + 1,
-                           settings.CORPUS_PDF_PAGE_ATTEMPTS, last[:120])
-            if attempt + 1 < settings.CORPUS_PDF_PAGE_ATTEMPTS:
-                time.sleep(settings.CORPUS_PDF_RETRY_BACKOFF * (2 ** attempt))
-    raise TransientExtractionError(f"page {number}: {last}")
+            elapsed = time.time() - start
+            # Repo-wide rule (dataprep/vlm.py::_post, crawl/policy.py,
+            # compare/*): never give up on a transient failure. The old
+            # four-attempt cap turned a tunnel outage lasting longer than ~14
+            # seconds into a refused PDF, which the caller then had to re-run
+            # from scratch -- the retry is far cheaper than the re-run.
+            if elapsed - last_warn >= 300:
+                logger.warning("[PDF_UZUN_SURELI_HATA] page %d of %s failing for %.0fs "
+                               "(attempt %d): %s -- still retrying, not giving up",
+                               number, pdf.name[:40], elapsed, attempt, last[:120])
+                last_warn = elapsed
+            else:
+                logger.warning("page %d of %s attempt %d failed: %s -- retrying in %.0fs",
+                               number, pdf.name[:40], attempt, last[:120], delay)
+            time.sleep(delay)
+            delay = min(delay * 2, 60)
 
 
 def extract(pdf: Path | str, url: str = "", model: str | None = None) -> Extraction:

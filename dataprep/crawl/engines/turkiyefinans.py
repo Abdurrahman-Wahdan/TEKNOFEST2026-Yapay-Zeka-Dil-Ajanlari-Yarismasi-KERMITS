@@ -25,6 +25,7 @@ CONFIG = {'NAME': 'Türkiye Finans', 'BASE': 'https://www.turkiyefinans.com.tr',
 # ---------------------------------------------------------------------------
 import argparse
 import asyncio
+import os
 import io
 import logging
 import re
@@ -161,19 +162,47 @@ def pdf_to_text(data: bytes) -> str:
         return ""
 
 
+# Tek bir web isteğinin TOPLAM süre tavanı (sn). httpx'in faz-bazlı
+# timeout'u yavaş-sızdıran sunucularda tetiklenmediği için gerekli.
+_TOPLAM_SURE = float(os.environ.get("CRAWL_REQ_TOPLAM", "180"))
+
+
 # --- ağ katmanı (retry'li) -------------------------------------------------
 async def fetch(client: "httpx.AsyncClient", url: str, retries: int = 3):
     """Geçici hatalarda üstel geri çekilmeyle birkaç kez dener, sonra vazgeçer."""
     delay, last = 1.0, "bilinmeyen hata"
     for attempt in range(1, retries + 1):
         try:
-            r = await client.get(url)
+            # HOST BAŞINA 1 istek/sn (bkz. dataprep/site_hizi.py) — kullanıcı
+            # kararı 2026-08-23. WAF/IP bloklarının kökü buydu.
+            from dataprep.site_hizi import bekle_async, olu_host, olu_isaretle
+            # DNS'i çözülmeyen host'a hiç gitme (ölü test/staging alt alan
+            # adları): kalıcı hata, retry ile düzelmez, sadece zaman yakar.
+            if olu_host(url):
+                return None, "DNS yok (ölü host)"
+            await bekle_async(url)
+            # TOPLAM SÜRE TAVANI — httpx'in `timeout` ayarı FAZ BAZLIDIR:
+            # `read` fazı paketler ARASINDAKİ boşluğu ölçer, isteğin toplam
+            # süresini DEĞİL. Sunucu her 39 saniyede bir bayt sızdırırsa
+            # 40sn'lik timeout hiç tetiklenmez ve istek sonsuza kadar açık
+            # kalır. Ölçüldü (2026-08-23): emlakkatilim crawl'ı tek bir açık
+            # TLS bağlantısıyla 14 dakika CPU %0'da asılı kaldı; bekçi de
+            # "bağlantı var" gördüğü için müdahale etmedi.
+            # asyncio.wait_for toplam duvar saati süresini sınırlar; aşılırsa
+            # istek iptal edilir ve aşağıdaki retry devreye girer (veri kaybı
+            # yok — URL bir sonraki denemede yeniden çekilir).
+            r = await asyncio.wait_for(client.get(url), timeout=_TOPLAM_SURE)
             if r.status_code in (400, 401, 403, 404, 410):
                 return None, f"HTTP {r.status_code}"   # kalıcı: tekrar deneme
             r.raise_for_status()
             return r, None
         except Exception as exc:  # noqa: BLE001
             last = f"{type(exc).__name__}: {exc}"
+            # DNS çözümlemesi başarısızsa host'u kara listeye al.
+            if "getaddrinfo" in last or "Name or service" in last or "nodename nor servname" in last:
+                from dataprep.site_hizi import olu_isaretle as _oi
+                _oi(url)
+                return None, "DNS yok (ölü host)"
             if attempt < retries:
                 await asyncio.sleep(delay)
                 delay *= 2

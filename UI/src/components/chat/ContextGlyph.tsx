@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, Eye, Quote, Rows3, Table2 } from "lucide-react";
+import { BarChart3, Eye, FileText, Quote, Rows3, Table2 } from "lucide-react";
 
 import type { ContextKind } from "@/lib/chat/types";
 
@@ -27,6 +27,10 @@ export function ContextGlyph({
       return <Table2 size={size} aria-hidden="true" />;
     case "chart":
       return <BarChart3 size={size} aria-hidden="true" />;
+    case "report":
+      // The same sheet of paper the reports list draws, so a chip in the
+      // composer is recognisably the thing the user pressed on that page.
+      return <FileText size={size} aria-hidden="true" />;
     case "page":
     case "capture":
       // An eye, not a camera. What the user needs to know is that the assistant

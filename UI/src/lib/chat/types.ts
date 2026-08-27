@@ -94,7 +94,7 @@ import type { ContextLocation } from "./page-locator";
  * belong to the unmounted template layouts). It is here so the seam is real when
  * a chart widget arrives, not as a promise that something already works.
  */
-export type ContextKind = "quote" | "row" | "table" | "chart" | "page";
+export type ContextKind = "quote" | "row" | "table" | "chart" | "page" | "report";
 
 /**
  * A piece of the UI, staged for the next message.

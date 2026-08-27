@@ -32,6 +32,7 @@ import json
 import logging
 import threading
 from collections import defaultdict
+from contextlib import contextmanager
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -63,6 +64,23 @@ _slots = threading.BoundedSemaphore(settings.TABLE_OVERVIEW_CONCURRENCY)
 def _lock(key: str) -> threading.Lock:
     with _locks_guard:
         return _locks[key]
+
+
+@contextmanager
+def slot():
+    """Hold one of the process-wide generation slots for the duration.
+
+    Public because `api/live_overviews.py` generates through the same model on
+    the same host and has to queue behind the same cap. That is the point of the
+    semaphore, not a tidiness detail: a second, separate cap would let a reader
+    on `/compare` queue vision calls beside six open pool tables, which is
+    exactly the pile-up this was measured to prevent.
+    """
+    _slots.acquire()
+    try:
+        yield
+    finally:
+        _slots.release()
 
 
 def normalise_locale(locale: str | None) -> str:
@@ -208,26 +226,25 @@ def start(
         # Waits, with no expiry. The card polls on this generation's actual
         # state rather than on a clock, so a queued overview that starts in
         # four minutes still lands on the page that asked for it.
-        _slots.acquire()
-        session = SessionLocal()
-        try:
-            generate(
-                session,
-                table=table,
-                table_id=table_id,
-                locale=locale,
-                page_text=page_text,
-            )
-        except Exception:
-            # Logged and dropped: there is no caller left to raise to. The
-            # client is polling the GET, which keeps answering 404 until the
-            # row exists, and gives up on its own deadline.
-            logger.exception("Overview generation failed for %s (%s)", table_id, locale)
-        finally:
-            session.close()
-            _slots.release()
-            with _locks_guard:
-                _running.discard(key)
+        with slot():
+            session = SessionLocal()
+            try:
+                generate(
+                    session,
+                    table=table,
+                    table_id=table_id,
+                    locale=locale,
+                    page_text=page_text,
+                )
+            except Exception:
+                # Logged and dropped: there is no caller left to raise to. The
+                # client is polling the GET, which keeps answering 404 until the
+                # row exists, and gives up on its own deadline.
+                logger.exception("Overview generation failed for %s (%s)", table_id, locale)
+            finally:
+                session.close()
+                with _locks_guard:
+                    _running.discard(key)
 
     threading.Thread(target=run, name=f"overview:{key}", daemon=True).start()
     return True
