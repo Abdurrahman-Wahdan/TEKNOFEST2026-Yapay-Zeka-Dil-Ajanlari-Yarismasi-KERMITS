@@ -10,7 +10,7 @@ import { navLabel } from "@/lib/nav-label";
 import { safeWebSource, siteSection, sourceGroup } from "@/lib/chat/source-group";
 
 import { ContextGlyph } from "./ContextGlyph";
-import { MessageActions } from "./MessageActions";
+import { MessageActions, MessageCopyButton } from "./MessageActions";
 
 /**
  * Streamdown pulls in Shiki, and Shiki is large. Loading it lazily keeps it off
@@ -482,6 +482,12 @@ export function ChatMessage({
           </VuiBox>
         );
       })}
+
+      {message.role === "user" && answerText.trim() && (
+        <VuiBox alignSelf="flex-end" mt={-0.5} mr="-7.5px">
+          <MessageCopyButton text={answerText} label={t("copyMessage")} />
+        </VuiBox>
+      )}
 
       {/* Under the whole message, not inside the parts loop: an answer with a
           citations block is still one answer, and a row of buttons between the
