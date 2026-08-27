@@ -109,6 +109,22 @@ export function FeedbackDialog({
           placeholder={t("feedbackPlaceholder")}
           disabled={saving}
           inputProps={{ maxLength: 4000 }}
+          sx={{
+            "& .MuiInputBase-input": {
+              color: "var(--foreground)",
+              WebkitTextFillColor: "var(--foreground)",
+              caretColor: "var(--primary)",
+            },
+            "& textarea.MuiInputBase-input::placeholder": {
+              color: "var(--control-ink) !important",
+              WebkitTextFillColor: "var(--control-ink) !important",
+              opacity: "1 !important",
+            },
+            "& .MuiInputBase-input.Mui-disabled": {
+              color: "var(--control-ink)",
+              WebkitTextFillColor: "var(--control-ink)",
+            },
+          }}
         />
         {voiceBusy ? (
           <VuiBox sx={{ border: "1px solid var(--border)", borderRadius: "16px" }}>
