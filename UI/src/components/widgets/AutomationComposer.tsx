@@ -229,13 +229,6 @@ export function AutomationComposer() {
           allowAuto
         />
 
-        <EmailDeliveryFields
-          enabled={emailEnabled}
-          format={emailFormat}
-          onEnabled={setEmailEnabled}
-          onFormat={setEmailFormat}
-          disabled={busy}
-        />
         <VuiTypography variant="caption" sx={{ color: "var(--text-faint)" }}>
           {t("frequencyHint")}
         </VuiTypography>
@@ -245,6 +238,7 @@ export function AutomationComposer() {
           alignItems="center"
           justifyContent="flex-end"
           gap="8px"
+          flexWrap="wrap"
         >
           {failed && (
             <VuiTypography
@@ -254,6 +248,14 @@ export function AutomationComposer() {
               {failed}
             </VuiTypography>
           )}
+          <EmailDeliveryFields
+            enabled={emailEnabled}
+            format={emailFormat}
+            onEnabled={setEmailEnabled}
+            onFormat={setEmailFormat}
+            disabled={busy}
+            sx={{ marginInlineEnd: "auto" }}
+          />
           {/* Mic then submit, the order and the pairing the chat composer's
               control row uses. It sat in the field's top-right corner before,
               as an 18px MUI icon with no hit target -- the one control on this

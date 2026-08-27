@@ -26,6 +26,7 @@
     "notificationsEmpty": "Okunmamış raporunuz yok.",
     "notificationsFailed": "Bildirimler yüklenemedi.",
     "notificationsAll": "Tüm raporlar",
+    "notificationsClearAll": "Tümünü temizle",
     "notificationsUnread": "{count} okunmamış rapor",
     "newReport": "Yeni rapor hazır",
     "newReportOpen": "Raporu aç"
@@ -297,12 +298,6 @@
     "typicalTerm": "Genelde düşündüğünüz vade",
     "save": "Kaydet",
     "saved": "Kaydedildi"
-    ,"notificationEmail": "Rapor e-postası"
-    ,"notificationEmailSubtitle": "Otomasyon raporlarının gönderileceği adres"
-    ,"notificationEmailHint": "Boş bırakırsanız hesap adresiniz kullanılır: {email}"
-    ,"saving": "Kaydediliyor…"
-    ,"loading": "Yükleniyor…"
-    ,"loadFailed": "Ayarlar yüklenemedi."
   },
   "common": {
     "loading": "Yükleniyor…",
@@ -462,7 +457,15 @@
     "firstActivity": "İlk konuşma",
     "lastActivity": "Son hareket",
     "never": "Henüz yok",
-    "statsFailed": "Kullanım bilgileriniz yüklenemedi."
+    "statsFailed": "Kullanım bilgileriniz yüklenemedi.",
+    "save": "Kaydet",
+    "saved": "Kaydedildi",
+    "notificationEmail": "Rapor e-postası",
+    "notificationEmailSubtitle": "Otomasyon raporlarının gönderileceği adres",
+    "notificationEmailHint": "Boş bırakırsanız hesap adresiniz kullanılır: {email}",
+    "saving": "Kaydediliyor…",
+    "loading": "Yükleniyor…",
+    "loadFailed": "Ayarlar yüklenemedi."
   },
   "automations": {
     "title": "Otomasyonlar",

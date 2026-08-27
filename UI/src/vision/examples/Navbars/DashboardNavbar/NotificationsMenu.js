@@ -27,6 +27,7 @@ import PropTypes from "prop-types";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import Icon from "@mui/material/Icon";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 // Vision UI Dashboard React components
 import VuiBox from "components/VuiBox";
@@ -36,6 +37,7 @@ import VuiTypography from "components/VuiTypography";
 import NotificationItem from "examples/Items/NotificationItem";
 
 import { useRouter } from "@/i18n/navigation";
+import { api } from "@/lib/api";
 import { REPORTS_PATH, reportSearch } from "@/lib/automations";
 import { formatDateTime } from "@/lib/format";
 import {
@@ -66,8 +68,15 @@ import {
 function NotificationsMenu({ renderTrigger }) {
   const [openMenu, setOpenMenu] = useState(false);
   const router = useRouter();
+  const queryClient = useQueryClient();
   const unread = useUnreadReportCount();
   const { reports, isError, isLoading, locale, t } = useUnreadReports();
+  const clearAll = useMutation({
+    mutationFn: api.markAllReportsRead,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["automation-reports"] });
+    },
+  });
 
   const handleOpenMenu = (event) => setOpenMenu(event.currentTarget);
   const handleCloseMenu = () => setOpenMenu(false);
@@ -138,10 +147,37 @@ function NotificationsMenu({ renderTrigger }) {
           entry point to the Reports page that does not go through Profile, and
           "I read it yesterday, where is it" is a normal thing to want.
         */}
-        <MenuItem onClick={() => open(null)}>
+        <MenuItem
+          onClick={() => open(null)}
+          sx={{ justifyContent: "space-between", gap: 2 }}
+        >
           <VuiTypography variant="button" fontWeight="regular" color="text">
             {t("notificationsAll")}
           </VuiTypography>
+          {unread > 0 && (
+            <VuiTypography
+              component="button"
+              type="button"
+              variant="button"
+              fontWeight="regular"
+              color="text"
+              onClick={(event) => {
+                event.stopPropagation();
+                clearAll.mutate();
+              }}
+              sx={{
+                border: 0,
+                padding: 0,
+                background: "transparent",
+                color: "var(--primary)",
+                cursor: clearAll.isPending ? "wait" : "pointer",
+                opacity: clearAll.isPending ? 0.6 : 1,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {t("notificationsClearAll")}
+            </VuiTypography>
+          )}
         </MenuItem>
       </Menu>
     </>

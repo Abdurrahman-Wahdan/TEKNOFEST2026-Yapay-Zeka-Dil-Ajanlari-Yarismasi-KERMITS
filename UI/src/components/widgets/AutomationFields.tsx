@@ -111,20 +111,24 @@ export function EmailDeliveryFields({
   onEnabled,
   onFormat,
   disabled = false,
+  sx,
 }: {
   enabled: boolean;
   format: "pdf" | "docx";
   onEnabled: (enabled: boolean) => void;
   onFormat: (format: "pdf" | "docx") => void;
   disabled?: boolean;
+  sx?: object;
 }) {
   const t = useTranslations("automations");
   return (
-    <VuiBox display="flex" alignItems="center" flexWrap="wrap" gap="12px">
-      <Toggle on={enabled} onChange={onEnabled} disabled={disabled} label={t("emailToggle")} />
-      <VuiTypography variant="caption" sx={{ color: "var(--control-ink)" }}>
-        {t("emailToggle")}
-      </VuiTypography>
+    <VuiBox display="flex" flexDirection="column" gap="8px" sx={sx}>
+      <VuiBox display="flex" alignItems="center" gap="12px">
+        <Toggle on={enabled} onChange={onEnabled} disabled={disabled} label={t("emailToggle")} />
+        <VuiTypography variant="caption" sx={{ color: "var(--control-ink)" }}>
+          {t("emailToggle")}
+        </VuiTypography>
+      </VuiBox>
       {enabled && (
         <Dropdown
           label={t("reportFormat")}

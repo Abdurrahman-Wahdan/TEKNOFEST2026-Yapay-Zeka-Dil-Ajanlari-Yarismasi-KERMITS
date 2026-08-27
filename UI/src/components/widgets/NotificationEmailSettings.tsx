@@ -10,7 +10,7 @@ import { VuiBox, VuiTypography } from "@/components/vision";
 import { api } from "@/lib/api";
 
 export function NotificationEmailSettings() {
-  const t = useTranslations("settings");
+  const t = useTranslations("profile");
   const settings = useQuery({ queryKey: ["notification-settings"], queryFn: api.notificationSettings });
   const [email, setEmail] = useState("");
   const save = useMutation({
