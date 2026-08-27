@@ -171,6 +171,19 @@ sum to `columns.length`) plus `data-no-outline` so the page snapshot skips it.
 **filtered, sorted, visible** rows, because attaching a 200-row table the user has
 narrowed to three is attaching something they never saw.
 
+**Attach a whole report.** `/profile/reports` puts the same control in the open
+report's header (`ReportsBrowser`, `kind: "report"`), staging `report.body`
+verbatim — a report *is* an assistant answer in markdown, so there is nothing to
+reserialise and nothing to read back out of the rendered DOM. Its `location`
+carries the page and the report's date rather than its title, because the chip is
+already labelled with the title and a subline repeating it says nothing twice.
+
+The button itself is `src/components/chat/AttachButton.tsx` — one copy, shared by
+the table and the report. It started inside `ProducedTable`; a second lookalike is
+how one of them ends up a different size or icon from its neighbour. `alwaysVisible`
+is required outside a table row: the hover reveal is `tr:hover`, so a button that
+lives anywhere else is one nobody can see.
+
 **Formats are not a matter of taste.** Benchmarked across eleven encodings,
 markdown key/value leads (~61% answer accuracy) and a markdown table reaches ~52%,
 while **CSV is last at ~44%**. So: one record as key/value, many as a GFM table.
@@ -234,6 +247,51 @@ answers confidently from nothing, and bills for all of it.
 **The backend still reads none of it.** `streamChat` points at the mock, which
 echoes every payload back — including the serialised context and the page snapshot
 — so all of this is verifiable now. That echo goes away with the mock.
+
+# The AI overview card
+
+One card, two sources, and three cadences. `OverviewCard` draws it; `TableOverview`
+feeds it from the offline pool and `LiveOverview` feeds it from `/compare`. The
+agent is the same one either way (`agents/table_overview`), and what it reads is
+the same thing the assistant's `look_at_page` reads — `readPageText()`, the
+semantic outline. It computes nothing; it quotes the page back.
+
+**The pool is keyed on a table id, the live page is keyed on itself.** That is the
+whole difference. `data/_tables/` is offline, so an overview there is a function of
+a file and lives in a database row with no expiry (`api/table_overviews.py`).
+Nothing on `/compare` is like that — the FX board is a different board every few
+minutes by design and a finance run belongs to one user's amount, term and bank
+selection — so `api/live_overviews.py` hashes the outline and keeps a bounded
+in-memory cache instead. A row per FX tick is landfill with no second reader.
+
+**The client never hashes anything.** `POST /api/compare/overview` takes the page
+and answers with either the finished overview or the digest to poll. The pool's
+card can GET-then-POST because the id is in the URL it navigated to; here, having
+the browser reproduce Python's SHA-256 forever is a thing that fails silently and
+looks like an overview that never arrives.
+
+**The three cadences live in `Comparator`, as `overviewRevision`.** `LiveOverview`
+regenerates when that string changes and at no other time. The FX board rewrites
+itself on a five-minute tick because it is the one thing that moves on its own;
+miles is read once, keyed on the bank, because it is one bank's published table;
+everything with a Compare button is keyed on the submitted parameters *and* on when
+the result landed — which is what makes the card spin from the press and generate
+from the arrival. A tick over a page that has not moved is free: the server keys on
+the outline, so it serves the cache.
+
+**Data first, then the overview.** `overviewReady` holds the generation back until
+the rows are actually in the DOM. Measured in a browser: Compare pressed at 0.00s,
+`/compare/finance` answers at 0.76s, the overview POST goes at 0.82s. Reading
+earlier hands the model a spinner and asks it what the comparison shows.
+
+**The card is `data-no-outline`.** It is written *from* the outline, so leaving it
+visible to one would feed the model its own previous answer — a summary of a
+summary, drifting further from the table every refresh. It costs nothing on the
+pool's card, which is written once; it is load-bearing on the live one.
+
+**The "have we asked yet?" guard is a ref, not `mutation.variables`.** Render state
+is stale when two renders queue in one tick, and both fire — measured, two identical
+POSTs 0ms apart on a second Compare. A ref is written synchronously.
 
 # The AI dashboard (`/ai-overview`)
 

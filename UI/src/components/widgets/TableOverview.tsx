@@ -1,16 +1,13 @@
 "use client";
 
-import CircularProgress from "@mui/material/CircularProgress";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useLocale, useTranslations } from "next-intl";
-import { useEffect, type ReactNode } from "react";
-import { IoAlertCircleOutline, IoSparkles } from "react-icons/io5";
+import { useLocale } from "next-intl";
+import { useEffect } from "react";
 
-import { ActionButton } from "@/components/ui/ActionButton";
-import { CollapsibleCard } from "@/components/ui/CollapsibleCard";
-import { VuiBox, VuiTypography } from "@/components/vision";
-import { api, type TableOverviewOut } from "@/lib/api";
+import { api } from "@/lib/api";
 import { readPageText } from "@/lib/chat/tools";
+
+import { OverviewCard } from "./OverviewCard";
 
 /** How often to ask whether it is written yet. The work takes a minute or
     more, so a tighter poll would only add lines to the server log.
@@ -21,13 +18,10 @@ import { readPageText } from "@/lib/chat/tools";
     as the work takes rather than as long as a number here guessed. A timer was
     tried first and was wrong in both directions: too short for a busy host,
     and still spinning at a dead one. */
-const POLL_MS = 5_000;
+export const POLL_MS = 5_000;
 
 /**
- * What the model made of the table underneath it.
- *
- * Above the table on purpose: it answers "is this table worth reading" before
- * the reader has to work that out from twenty columns of figures themselves.
+ * The overview of one table from the offline pool, keyed on that table's id.
  *
  * Written by a **stateless** agent — no conversation, no retrieval, one call —
  * so the same table produces the same overview, which is what makes it
@@ -39,9 +33,11 @@ const POLL_MS = 5_000;
  * place. No screenshot: it cost minutes of vision prefill per table and carried
  * nothing the outline does not, once the outline learned to keep short-line
  * cards like "banks that do not offer this".
+ *
+ * `LiveOverview` is the sibling for `/compare`, where there is no id to key on.
+ * Both draw `OverviewCard`; only the source differs.
  */
 export function TableOverview({ tableId, ready }: { tableId: string; ready: boolean }) {
-  const t = useTranslations("compareTables");
   const locale = useLocale();
 
   const cached = useQuery({
@@ -64,9 +60,9 @@ export function TableOverview({ tableId, ready }: { tableId: string; ready: bool
     onSuccess: () => cached.refetch(),
   });
 
-  // One automatic attempt, and only once the table has painted -- the
-  // screenshot is of whatever is on screen, so capturing before the rows
-  // arrive would send the model a loading state and ask it what it means.
+  // One automatic attempt, and only once the table has painted -- the outline
+  // is of whatever is on screen, so reading before the rows arrive would send
+  // the model a loading state and ask it what it means.
   //
   // "Have we already asked?" is the mutation's own `isIdle`, not a flag beside
   // it: `mutate()` leaves idle synchronously, so the guard closes on the same
@@ -93,136 +89,11 @@ export function TableOverview({ tableId, ready }: { tableId: string; ready: bool
     (cached.isLoading || generate.isPending || state?.status === "generating");
 
   return (
-    <CollapsibleCard
-      title={
-        <VuiBox display="flex" alignItems="center" gap="8px">
-          <VuiBox color="white" display="flex">
-            <IoSparkles size="17px" />
-          </VuiBox>
-          {t("overviewTitle")}
-        </VuiBox>
-      }
-    >
-      {working && (
-        <VuiBox display="flex" alignItems="center" gap="10px" mt={2}>
-          <CircularProgress size={16} color="info" />
-          <VuiTypography variant="button" color="text" fontWeight="regular">
-            {t("overviewWorking")}
-          </VuiTypography>
-        </VuiBox>
-      )}
-
-      {!working && failed && (
-        <VuiBox display="flex" alignItems="center" gap="12px" flexWrap="wrap" mt={2}>
-          <VuiBox color="text" display="flex">
-            <IoAlertCircleOutline size="18px" />
-          </VuiBox>
-          <VuiTypography variant="button" color="text" fontWeight="regular">
-            {t("overviewFailed")}
-          </VuiTypography>
-          <ActionButton
-            variant="outlined"
-            color="white"
-            onClick={() => generate.mutate()}
-          >
-            {t("overviewRetry")}
-          </ActionButton>
-        </VuiBox>
-      )}
-
-      {!working && overview && <Overview overview={overview} t={t} />}
-    </CollapsibleCard>
-  );
-}
-
-function Overview({
-  overview,
-  t,
-}: {
-  overview: TableOverviewOut;
-  t: ReturnType<typeof useTranslations<"compareTables">>;
-}) {
-  // The generated types make these optional because the API defaults them to
-  // empty lists; an absent list and an empty one mean the same thing here.
-  const recommended = overview.recommended ?? [];
-  const notRecommended = overview.not_recommended ?? [];
-
-  return (
-    <VuiBox display="flex" flexDirection="column" gap="14px" mt={2}>
-      <Paragraph>{overview.summary}</Paragraph>
-
-      {/* Prose, and only the verdict. The table is directly below this card
-          and the reader can sort it themselves, so anything drawn here in rows
-          is the same data twice -- and the sortable copy wins. */}
-      <Verdict label={t("overviewRecommended")} entries={recommended} />
-      <Verdict label={t("overviewNotRecommended")} entries={notRecommended} />
-
-      {overview.caveat && (
-        <VuiBox>
-          <Label>{t("overviewCaveat")}</Label>
-          <Paragraph>{overview.caveat}</Paragraph>
-        </VuiBox>
-      )}
-
-      {/* Said plainly, every time: this was written by a model from the table
-          below it, and the table is the source of record. */}
-      <VuiTypography variant="caption" color="text">
-        {t("overviewDisclaimer")}
-      </VuiTypography>
-    </VuiBox>
-  );
-}
-
-/** One verdict list -- the picks, or the ones to skip. Absent when the model
-    had no honest basis for it, which is a real answer and not a gap. */
-function Verdict({
-  label,
-  entries,
-}: {
-  label: string;
-  entries: { bank: string; why: string }[];
-}) {
-  if (entries.length === 0) return null;
-  return (
-    <VuiBox>
-      <Label>{label}</Label>
-      {entries.map((entry, index) => (
-        <Paragraph key={`${entry.bank}-${index}`}>
-          <Strong>{entry.bank}</Strong>
-          {` — ${entry.why}`}
-        </Paragraph>
-      ))}
-    </VuiBox>
-  );
-}
-
-/** A line of the overview. Reads as text, wraps as text, has no columns. */
-function Paragraph({ children }: { children: ReactNode }) {
-  return (
-    <VuiTypography
-      variant="button"
-      color="text"
-      fontWeight="regular"
-      sx={{ display: "block", lineHeight: 1.7, marginTop: "6px" }}
-    >
-      {children}
-    </VuiTypography>
-  );
-}
-
-/** The bank being spoken about, inline in its own sentence. */
-function Strong({ children }: { children: ReactNode }) {
-  return (
-    <VuiTypography component="span" variant="button" color="white" fontWeight="medium">
-      {children}
-    </VuiTypography>
-  );
-}
-
-function Label({ children }: { children: ReactNode }) {
-  return (
-    <VuiTypography variant="caption" color="text" sx={{ display: "block", opacity: 0.8 }}>
-      {children}
-    </VuiTypography>
+    <OverviewCard
+      working={working}
+      failed={failed}
+      overview={overview}
+      onRetry={() => generate.mutate()}
+    />
   );
 }
