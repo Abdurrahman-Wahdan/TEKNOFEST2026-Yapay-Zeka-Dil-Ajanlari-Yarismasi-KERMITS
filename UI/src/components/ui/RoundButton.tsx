@@ -19,6 +19,11 @@ import { VuiBox } from "@/components/vision";
  * `filled` is the primary action (send, stop, record-as-primary) and carries the
  * brand fill; everything else is a bare glyph that earns a `--muted` disc on
  * hover. Colours are tokens, so both follow the mode.
+ *
+ * `active` is the third: a bare glyph holding the hover treatment because it is
+ * *on* -- reading aloud, or the thumb the user picked. Deliberately not `filled`,
+ * which is the brand disc and belongs to the one primary action in a row; a
+ * pressed thumbs-up rendered that way outranks the answer it is about.
  */
 export function RoundButton({
   label,
@@ -26,6 +31,8 @@ export function RoundButton({
   children,
   disabled,
   filled,
+  active,
+  size = 36,
   ml = 0,
 }: {
   label: string;
@@ -34,6 +41,14 @@ export function RoundButton({
   disabled?: boolean;
   /** The send/stop button: solid, so it reads as the primary action. */
   filled?: boolean;
+  /** Held down: a toggle that is currently on. Ignored when `filled`. */
+  active?: boolean;
+  /**
+   * Hit target, in px. 36 is the composer's; the message action row uses 32,
+   * which is what ChatGPT's own row measures and what keeps a strip of five
+   * buttons from outweighing the answer above it.
+   */
+  size?: number;
   /** Distance from the control on its left, in px. See OPTICAL_GAP_PX. */
   ml?: number;
 }) {
@@ -49,13 +64,16 @@ export function RoundButton({
       }}
       disabled={disabled}
       aria-label={label}
+      // Only when it is a toggle. `aria-pressed` on a plain button announces
+      // "not pressed" on every one of them, which is noise on send and attach.
+      {...(active === undefined ? {} : { "aria-pressed": active })}
       title={label}
       display="flex"
       alignItems="center"
       justifyContent="center"
       sx={{
-        width: 36,
-        height: 36,
+        width: size,
+        height: size,
         flexShrink: 0,
         alignSelf: "center",
         ml: `${ml}px`,
@@ -79,11 +97,15 @@ export function RoundButton({
               },
             }
           : {
-              backgroundColor: "transparent",
+              // On means holding the hover treatment rather than gaining one of
+              // its own, so a toggle that is on and a toggle under the pointer
+              // are the same shape -- the state is legible without adding a
+              // third colour to a row that is already five glyphs wide.
+              backgroundColor: active ? "var(--muted)" : "transparent",
               // At rest these are the only thing marking attach and mic as
               // buttons -- there is no border and no fill -- so the glyph has to
               // clear text contrast, which --muted-foreground did not in dark.
-              color: "var(--control-ink)",
+              color: active ? "var(--foreground)" : "var(--control-ink)",
               "&:hover:not(:disabled)": {
                 backgroundColor: "var(--muted)",
                 color: "var(--foreground)",

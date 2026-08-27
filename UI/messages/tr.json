@@ -211,6 +211,13 @@
     "modelsError": "Modeller alınamadı",
     "copyCode": "Kodu kopyala",
     "copied": "Kopyalandı",
+    "responseActions": "Yanıt işlemleri",
+    "copyResponse": "Yanıtı kopyala",
+    "retry": "Yeniden dene",
+    "readAloud": "Sesli oku",
+    "readAloudStop": "Okumayı durdur",
+    "goodResponse": "İyi yanıt",
+    "badResponse": "Kötü yanıt",
     "acceptRecommendation": "Bu öneriyi kullan",
     "mockNotice": "Asistan henüz bağlı değil — aşağıdaki yanıtlar örnek veridir.",
     "placeholders": [

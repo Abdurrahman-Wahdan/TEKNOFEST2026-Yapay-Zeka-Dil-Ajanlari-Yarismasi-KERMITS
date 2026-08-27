@@ -22,7 +22,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 
-from ..agent import CLIENT_TOOLS, answer
+from ..agent import CLIENT_TOOLS, answer, rewind_last_turn
 from ..chat_attachments import AttachmentError, prepare_attachment, resolve_attachments
 from ..chat_parts import assistant_parts, parts_or_text, user_parts
 from agents.table_metadata import generate_table_metadata
@@ -129,6 +129,39 @@ def _own_session(session, user, session_id: uuid.UUID) -> ChatSession:
     if chat is None or chat.user_id != user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such conversation.")
     return chat
+
+
+def _drop_last_turn(session, chat_id: uuid.UUID) -> None:
+    """Delete the most recent question and whatever it produced.
+
+    From the last `role == "user"` row to the end, rather than "the last two
+    rows". A turn is not reliably a pair: a failed or cancelled answer persists
+    the question and nothing else, and a turn that suspended for a client tool
+    persists the question alone as well. Counting backwards from the question is
+    the only rule that is right in all three cases.
+
+    The caller has already checked ownership. Committed before returning, because
+    the history read that follows is what the agent is seeded from when its
+    checkpoint is empty, and it must not still contain the turn being replaced.
+    """
+    rows = session.scalars(
+        select(ChatMessage)
+        .where(ChatMessage.session_id == chat_id)
+        .order_by(ChatMessage.created_at.asc())
+    ).all()
+    start = next(
+        (
+            index
+            for index in range(len(rows) - 1, -1, -1)
+            if rows[index].role == "user"
+        ),
+        None,
+    )
+    if start is None:
+        return
+    for row in rows[start:]:
+        session.delete(row)
+    session.commit()
 
 
 @router.get("/sessions", response_model=list[ChatSessionOut])
@@ -372,11 +405,16 @@ def ask(body: AskRequest, user: CurrentUser, session: DbSession) -> StreamingRes
     chat_id = chat.id
     user_id = user.id
     logger.info(
-        "chat_turn accepted session=%s web_search_enabled=%s model=%s",
+        "chat_turn accepted session=%s web_search_enabled=%s model=%s regenerate=%s",
         chat_id,
         body.web_search,
         body.model or "default",
+        body.regenerate,
     )
+
+    if body.regenerate and body.session_id is not None:
+        _drop_last_turn(session, chat_id)
+        rewind_last_turn(chat_id, model=body.model, think=body.think)
 
     # Read the history now, inside the request's session. The generator below
     # runs after this function returns and after that session is closed, so

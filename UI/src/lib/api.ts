@@ -591,6 +591,8 @@ export async function* askStream(
   body: {
     question: string;
     session_id?: string;
+    /** Replace the last exchange instead of appending one. See `AskRequest`. */
+    regenerate?: boolean;
     context?: Schemas["AttachedContext"][];
     captures?: Schemas["CapturePayload"][];
     attachments?: Schemas["PreparedAttachmentRef"][];

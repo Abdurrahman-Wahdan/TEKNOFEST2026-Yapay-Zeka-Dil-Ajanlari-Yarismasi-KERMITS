@@ -723,6 +723,64 @@ def _discard_checkpointed_answer(agent, config, original: AIMessage | None) -> N
         logger.exception("Could not remove a rejected supervisor draft")
 
 
+def rewind_last_turn(
+    session_id: uuid.UUID | str,
+    *,
+    model: str | None = None,
+    think: bool = False,
+) -> None:
+    """Drop the supervisor's most recent exchange so it can be asked again.
+
+    "Try again" is not a follow-up. Deleting the stored transcript rows alone
+    would not make it one: `_stream_supervisor` seeds from `history` *only* when
+    the checkpoint is empty, so on a live thread the model reads its own
+    checkpointed messages and would see the same question twice -- and answer the
+    second one as though the user had repeated themselves.
+
+    Everything from the last `HumanMessage` onward goes, not just the final
+    answer. A turn is a question, whatever tool calls it made, and the reply; the
+    `ToolMessage`s in the middle belong to the `AIMessage` that requested them,
+    and leaving them behind would strand tool results against a call that is no
+    longer in the thread.
+
+    Best-effort by design. A checkpoint that cannot be rewound is not a reason to
+    refuse the retry -- the worst case is the model seeing the question twice,
+    which is the behaviour we had before this existed, and it is strictly better
+    than the user being unable to ask again at all.
+    """
+    from agents.main.agent import build_main_agent, main_thread_id
+
+    try:
+        agent = build_main_agent(model=model, thinking=think)
+        config = {
+            "configurable": {
+                "thread_id": main_thread_id(str(session_id)),
+                "tf26_session_id": str(session_id),
+            }
+        }
+        messages = list((agent.get_state(config).values or {}).get("messages") or [])
+        start = next(
+            (
+                index
+                for index in range(len(messages) - 1, -1, -1)
+                if isinstance(messages[index], HumanMessage)
+            ),
+            None,
+        )
+        if start is None:
+            # Nothing has been checkpointed yet -- a first turn, or a thread whose
+            # checkpoints were cleared. `history` seeds it, and the stored rows
+            # have already been deleted, so there is nothing left to rewind.
+            return
+        doomed = [
+            RemoveMessage(id=message.id) for message in messages[start:] if message.id
+        ]
+        if doomed:
+            agent.update_state(config, {"messages": doomed})
+    except Exception:  # noqa: BLE001 - a retry that asks twice beats no retry
+        logger.exception("Could not rewind the last turn of %s", session_id)
+
+
 def _retry_request(problem: str) -> str:
     """The check's finding, handed back to the supervisor as its next turn."""
     return (

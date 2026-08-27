@@ -76,6 +76,7 @@ export function ChatMessageList({
             key={message.id}
             message={message}
             streaming={streaming && index === messages.length - 1}
+            isLast={index === messages.length - 1}
             stage={stage}
           />
         ))}

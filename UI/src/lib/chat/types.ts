@@ -227,6 +227,19 @@ export type ChatRequest = {
   /** Called when the API creates the server-side session on the first turn. */
   onSessionId?: (sessionId: string) => void;
   /**
+   * Ask the previous question again instead of asking a new one.
+   *
+   * The last exchange is deleted from the stored transcript and rewound out of
+   * the supervisor's checkpoint before this one runs, so the model is asked
+   * once. Without it a retry reaches the agent as the user repeating themselves,
+   * and gets answered as a follow-up rather than as a second attempt.
+   *
+   * The question and every attachment still travel: the turn being replaced is
+   * dropped, not replayed. Meaningless without a `sessionId`, and ignored by the
+   * server in that case -- there is no earlier turn to drop.
+   */
+  regenerate?: boolean;
+  /**
    * The Advanced menu's thinking switch: keep chain-of-thought on.
    *
    * Only models that reason by default are affected -- `supports_thinking` on
