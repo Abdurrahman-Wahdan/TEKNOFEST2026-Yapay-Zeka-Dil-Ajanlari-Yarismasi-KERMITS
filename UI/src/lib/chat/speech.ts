@@ -4,7 +4,6 @@ import { useCallback, useEffect, useSyncExternalStore } from "react";
 
 import { speakText } from "@/lib/api";
 
-import { speakableText } from "./speech-text";
 
 /**
  * Reading an answer out loud, in the app's own Turkish voice.
@@ -263,23 +262,19 @@ export function useSpeech(id: string, lang: string) {
   }, [id]);
 
   const toggle = useCallback(
-    (markdown: string) => {
+    (text: string) => {
       if (!supported()) return;
       if (speakingId === id) {
         stopSpeaking();
         return;
       }
-      // Markdown is turned into prose *here* rather than on the server, because
-      // this is the side that knows a table should be read "column: value" and
-      // that a code block should not be read at all.
-      const spoken = speakableText(markdown);
-      if (!spoken) return;
+      if (!text.trim()) return;
 
       stopSpeaking();
       generation += 1;
       const run = generation;
       publish(id);
-      play(id, spoken, run).catch((error: unknown) => {
+      play(id, text, run).catch((error: unknown) => {
         if (run !== generation) return;
         /*
           A stop is not a failure -- `stopSpeaking` aborts the fetch, and the

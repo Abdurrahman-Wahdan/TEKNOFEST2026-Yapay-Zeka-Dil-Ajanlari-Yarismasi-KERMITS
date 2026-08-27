@@ -91,12 +91,15 @@ export function MessageActions({
   messageId,
   /** The answer's markdown, exactly as the model wrote it. */
   markdown,
+  /** Markdown already converted to concise spoken prose by ChatMessage. */
+  speechText,
   /** Whether this is the newest answer, and so the one a retry would replace. */
   isLast,
   feedback,
 }: {
   messageId: string;
   markdown: string;
+  speechText: string;
   isLast: boolean;
   feedback?: MessageFeedback;
 }) {
@@ -161,7 +164,7 @@ export function MessageActions({
                 : t("readAloud")
           }
           active={speech.speaking}
-          onClick={() => speech.toggle(markdown)}
+          onClick={() => speech.toggle(speechText)}
         >
           {speech.speaking ? (
             <Square size={GLYPH_PX - 2} fill="currentColor" />

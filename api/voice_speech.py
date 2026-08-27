@@ -26,6 +26,7 @@ import logging
 import re
 import threading
 import time
+from collections import OrderedDict
 from pathlib import Path
 
 from config.settings import PROJECT_ROOT, settings
@@ -40,6 +41,16 @@ logger = logging.getLogger(__name__)
 _INFERENCE_LOCK = threading.Lock()
 _MODEL_LOCK = threading.Lock()
 _MODEL = None
+
+# Completed readings are safe to reuse because the voice and generation settings
+# belong to this API process. Keep this deliberately small: a long answer at
+# 48kHz mono PCM can consume several megabytes, and the cache must never compete
+# with the resident model for MPS/unified memory.
+_AUDIO_CACHE_LOCK = threading.Lock()
+_AUDIO_CACHE: OrderedDict[str, tuple[bytes, ...]] = OrderedDict()
+_AUDIO_CACHE_BYTES = 0
+_AUDIO_CACHE_MAX_ENTRIES = 8
+_AUDIO_CACHE_MAX_BYTES = 32 * 1024 * 1024
 
 
 class VoiceSpeechUnavailable(RuntimeError):
@@ -193,6 +204,45 @@ def sample_rate() -> int:
 def warm_speech_model() -> None:
     """Load the checkpoint during startup so the first reader does not wait 5.6 s."""
     _load_model()
+
+
+def cached_audio(text: str) -> tuple[bytes, ...] | None:
+    """Return a completed reading, promoting it as the most-recent cache item."""
+    with _AUDIO_CACHE_LOCK:
+        chunks = _AUDIO_CACHE.get(text)
+        if chunks is None:
+            return None
+        _AUDIO_CACHE.move_to_end(text)
+        return chunks
+
+
+def remember_audio(text: str, chunks: list[bytes]) -> None:
+    """Store only a fully generated reading, bounded by entries and bytes."""
+    global _AUDIO_CACHE_BYTES
+    frozen = tuple(chunks)
+    size = sum(len(chunk) for chunk in frozen)
+    if not frozen or size > _AUDIO_CACHE_MAX_BYTES:
+        return
+    with _AUDIO_CACHE_LOCK:
+        previous = _AUDIO_CACHE.pop(text, None)
+        if previous is not None:
+            _AUDIO_CACHE_BYTES -= sum(len(chunk) for chunk in previous)
+        _AUDIO_CACHE[text] = frozen
+        _AUDIO_CACHE_BYTES += size
+        while (
+            len(_AUDIO_CACHE) > _AUDIO_CACHE_MAX_ENTRIES
+            or _AUDIO_CACHE_BYTES > _AUDIO_CACHE_MAX_BYTES
+        ):
+            _, evicted = _AUDIO_CACHE.popitem(last=False)
+            _AUDIO_CACHE_BYTES -= sum(len(chunk) for chunk in evicted)
+
+
+def clear_audio_cache() -> None:
+    """Clear completed readings, primarily for tests and local model changes."""
+    global _AUDIO_CACHE_BYTES
+    with _AUDIO_CACHE_LOCK:
+        _AUDIO_CACHE.clear()
+        _AUDIO_CACHE_BYTES = 0
 
 
 def prepare() -> int:

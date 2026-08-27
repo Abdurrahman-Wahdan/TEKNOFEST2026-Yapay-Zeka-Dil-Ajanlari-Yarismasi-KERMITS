@@ -122,6 +122,20 @@ def create_speech(body: VoiceSpeechRequest, user: CurrentUser) -> StreamingRespo
             f"Readings are limited to {settings.SPEECH_MAX_CHARS} characters.",
         )
 
+    cached = voice_speech.cached_audio(text)
+    if cached is not None:
+        return StreamingResponse(
+            iter(cached),
+            media_type="audio/L16",
+            headers={
+                "X-Sample-Rate": str(voice_speech.sample_rate()),
+                "X-Channels": "1",
+                "X-Speech-Cache": "hit",
+                "Cache-Control": "no-store",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
     # The model is not thread-safe, so readings queue. Claimed here rather than
     # inside the generator because this is the last moment a status code can
     # still be sent -- once the first bytes of a stream are out, a busy model has
@@ -147,8 +161,12 @@ def create_speech(body: VoiceSpeechRequest, user: CurrentUser) -> StreamingRespo
         raise
 
     def frames():
+        chunks: list[bytes] = []
         try:
-            yield from voice_speech.speak(text)
+            for chunk in voice_speech.speak(text):
+                chunks.append(chunk)
+                yield chunk
+            voice_speech.remember_audio(text, chunks)
         except VoiceSpeechFailed as exc:
             # Too late for a status code -- the model loaded and then failed
             # part-way. Closing the stream is the only signal left, and the

@@ -85,6 +85,27 @@ def test_question_and_exclamation_end_a_sentence_too():
     assert segments("Öyle mi? Evet! Tamam.", 8) == ["Öyle mi?", "Evet!", "Tamam."]
 
 
+# --- completed-reading cache -------------------------------------------------
+
+
+def test_completed_audio_cache_returns_the_same_chunks_and_promotes(monkeypatch):
+    voice_speech.clear_audio_cache()
+    voice_speech.remember_audio("Merhaba.", [b"one", b"two"])
+    assert voice_speech.cached_audio("Merhaba.") == (b"one", b"two")
+    assert voice_speech.cached_audio("missing") is None
+    voice_speech.clear_audio_cache()
+
+
+def test_audio_cache_does_not_store_empty_or_oversized_readings(monkeypatch):
+    voice_speech.clear_audio_cache()
+    monkeypatch.setattr(voice_speech, "_AUDIO_CACHE_MAX_BYTES", 3)
+    voice_speech.remember_audio("empty", [])
+    voice_speech.remember_audio("large", [b"1234"])
+    assert voice_speech.cached_audio("empty") is None
+    assert voice_speech.cached_audio("large") is None
+    voice_speech.clear_audio_cache()
+
+
 # --- the queue ---------------------------------------------------------------
 
 

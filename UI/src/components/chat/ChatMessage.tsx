@@ -2,12 +2,14 @@
 
 import dynamic from "next/dynamic";
 import { ArrowRight, ExternalLink, File as FileGlyph, Image as ImageGlyph } from "lucide-react";
+import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 
 import { VuiBox, VuiTypography } from "@/components/vision";
 import type { AgentMessage, ChatStage } from "@/lib/chat/types";
 import { navLabel } from "@/lib/nav-label";
 import { safeWebSource, siteSection, sourceGroup } from "@/lib/chat/source-group";
+import { speakableText } from "@/lib/chat/speech-text";
 
 import { ContextGlyph } from "./ContextGlyph";
 import { MessageActions, MessageCopyButton } from "./MessageActions";
@@ -79,6 +81,9 @@ export function ChatMessage({
   const answerText = message.parts
     .flatMap((part) => (part.type === "text" && part.text.trim() ? [part.text] : []))
     .join("\n\n");
+  // Prepare spoken prose during message rendering so a sound-button press can
+  // start the request immediately, even for a large comparison table.
+  const speechText = useMemo(() => speakableText(answerText), [answerText]);
 
   return (
     <VuiBox
@@ -559,6 +564,7 @@ export function ChatMessage({
         <MessageActions
           messageId={message.id}
           markdown={answerText}
+          speechText={speechText}
           isLast={Boolean(isLast)}
           feedback={message.feedback}
         />
