@@ -162,11 +162,23 @@ def create_speech(body: VoiceSpeechRequest, user: CurrentUser) -> StreamingRespo
 
     def frames():
         chunks: list[bytes] = []
+        cached_bytes = 0
+        cache_limit = voice_speech.audio_cache_max_bytes()
+        cacheable = True
         try:
             for chunk in voice_speech.speak(text):
-                chunks.append(chunk)
+                if cacheable:
+                    if cached_bytes + len(chunk) <= cache_limit:
+                        chunks.append(chunk)
+                        cached_bytes += len(chunk)
+                    else:
+                        # Keep streaming the response, but do not retain a
+                        # long reading just to populate the optional cache.
+                        chunks.clear()
+                        cacheable = False
                 yield chunk
-            voice_speech.remember_audio(text, chunks)
+            if cacheable:
+                voice_speech.remember_audio(text, chunks)
         except VoiceSpeechFailed as exc:
             # Too late for a status code -- the model loaded and then failed
             # part-way. Closing the stream is the only signal left, and the

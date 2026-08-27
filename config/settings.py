@@ -579,7 +579,7 @@ class Settings(BaseSettings):
         description="Hard cap on one compressed browser recording.",
     )
     VOICE_WARM_ON_STARTUP: bool = Field(
-        default=True,
+        default=False,
         description="Load and compile Whisper during API startup so the first "
         "voice request has warm-request latency.",
     )
@@ -677,9 +677,15 @@ class Settings(BaseSettings):
         "reading that stops halfway is indistinguishable from a crash.",
     )
     SPEECH_WARM_ON_STARTUP: bool = Field(
-        default=True,
+        default=False,
         description="Load Trendyol-TTS during API startup. Without it the first "
         "reader pays the ~5.6s load.",
+    )
+    SPEECH_MPS_HIGH_WATERMARK_RATIO: float = Field(
+        default=1.0,
+        gt=0,
+        le=1.7,
+        description="MPS allocation ceiling for the unified-memory speech process.",
     )
     SPEECH_DEVICE: str = Field(
         default="mps",

@@ -22,7 +22,9 @@ Measured on an M5 Max / 128 GB / MPS, per `TTS_ENTEGRASYON.md`:
 
 from __future__ import annotations
 
+import gc
 import logging
+import os
 import re
 import threading
 import time
@@ -42,6 +44,13 @@ _INFERENCE_LOCK = threading.Lock()
 _MODEL_LOCK = threading.Lock()
 _MODEL = None
 
+# Set before torch is imported so its MPS allocator cannot exceed the
+# recommended working set and take the API/UI down on unified-memory Macs.
+os.environ.setdefault(
+    "PYTORCH_MPS_HIGH_WATERMARK_RATIO",
+    str(settings.SPEECH_MPS_HIGH_WATERMARK_RATIO),
+)
+
 # Completed readings are safe to reuse because the voice and generation settings
 # belong to this API process. Keep this deliberately small: a long answer at
 # 48kHz mono PCM can consume several megabytes, and the cache must never compete
@@ -49,8 +58,8 @@ _MODEL = None
 _AUDIO_CACHE_LOCK = threading.Lock()
 _AUDIO_CACHE: OrderedDict[str, tuple[bytes, ...]] = OrderedDict()
 _AUDIO_CACHE_BYTES = 0
-_AUDIO_CACHE_MAX_ENTRIES = 8
-_AUDIO_CACHE_MAX_BYTES = 32 * 1024 * 1024
+_AUDIO_CACHE_MAX_ENTRIES = 2
+_AUDIO_CACHE_MAX_BYTES = 8 * 1024 * 1024
 
 
 class VoiceSpeechUnavailable(RuntimeError):
@@ -245,6 +254,25 @@ def clear_audio_cache() -> None:
         _AUDIO_CACHE_BYTES = 0
 
 
+def audio_cache_max_bytes() -> int:
+    """Return the maximum completed audio retained for one reading."""
+    return _AUDIO_CACHE_MAX_BYTES
+
+
+def release_memory() -> None:
+    """Return unused inference allocations to the MPS allocator after a read."""
+    try:
+        import torch
+
+        if torch.backends.mps.is_available():
+            torch.mps.synchronize()
+            torch.mps.empty_cache()
+    except (ImportError, RuntimeError):
+        logger.debug("Could not release MPS cache", exc_info=True)
+    finally:
+        gc.collect()
+
+
 def prepare() -> int:
     """Make sure the model is loaded, and report the rate it generates at.
 
@@ -361,6 +389,7 @@ def speak(text: str):
     except Exception as exc:
         raise VoiceSpeechFailed("The answer could not be spoken.") from exc
     finally:
+        release_memory()
         rate = sample_rate()
         logger.info(
             "speech_read chars=%d first_audio=%s audio=%.1fs elapsed=%.1fs",
