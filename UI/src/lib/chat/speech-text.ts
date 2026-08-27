@@ -1,22 +1,18 @@
 /**
- * Turning an agent answer into something a synthesiser can read.
+ * Turning an agent answer into something worth reading aloud.
  *
  * Apart from `speech.ts` because it is the half worth testing and the half with
- * no browser in it: the hook next door owns the utterance queue and cannot be
- * loaded outside one, while everything here is a string going in and a string
- * coming out.
- */
-
-/**
- * Roughly how much text goes into one utterance.
+ * no browser in it: the hook next door owns an audio graph and a fetch and
+ * cannot be loaded outside a browser, while everything here is a string going in
+ * and a string coming out.
  *
- * Not a cosmetic choice. Chrome stops mid-sentence on a long utterance -- a
- * watchdog fires after about fifteen seconds and the rest is simply never
- * spoken -- so a whole comparison answer handed over in one piece dies partway
- * through with no error. Short utterances queued back to back stay under it, and
- * draining a queue is what the platform is built to do.
+ * This stays on the client even though the voice is now the server's. The server
+ * is handed prose and asked to say it; deciding that a table should be read
+ * "column: value" and that a code block should not be read at all is a question
+ * about *this* app's answers, and the API has no business knowing it. Cutting
+ * that prose into model-sized pieces is the server's job and lives in
+ * `api/voice_speech.py`.
  */
-export const CHUNK_CHARS = 180;
 
 /**
  * Markdown, as something worth hearing.
@@ -156,60 +152,4 @@ function inlineText(text: string): string {
     .replace(/\\([\\`*_{}[\]()#+\-.!|])/g, "$1")
     .replace(/\s{2,}/g, " ")
     .trim();
-}
-
-/**
- * Where one sentence ends, in a language that writes 3.031.200 for three million.
- *
- * A full stop only ends a sentence when whitespace or the end of the text
- * follows it. Turkish groups thousands with full stops and writes dates as
- * 27.08.2026, and this app's answers are made of both -- splitting on every dot
- * cut "3.031.200 TL" into "3.031." and "200 TL", which the synthesiser reads as
- * two sentences with a pause down the middle of the number.
- */
-function splitSentences(text: string): string[] {
-  const pieces: string[] = [];
-  const terminator = /[.!?…]+/g;
-  let start = 0;
-  let match: RegExpExecArray | null;
-
-  while ((match = terminator.exec(text)) !== null) {
-    const end = match.index + match[0].length;
-    const next = text[end];
-    if (next !== undefined && !/\s/.test(next)) continue;
-    pieces.push(text.slice(start, end));
-    start = end;
-  }
-  // Whatever follows the last terminator, or the whole text when there is none.
-  if (start < text.length) pieces.push(text.slice(start));
-  return pieces;
-}
-
-/**
- * Cut an answer into utterance-sized pieces, on sentence boundaries.
- *
- * Splitting mid-sentence would put a hard stop where the prose has none, which
- * is audible. A sentence longer than the budget is spoken whole rather than cut:
- * a wrong pause is worse than a long utterance, and the fifteen-second watchdog
- * this exists for takes many sentences to trip, not one.
- *
- * Lossless when rejoined with a single space, which is what makes it safe to
- * cut the text at all: `speakableText` has already collapsed every whitespace
- * run to one space, so the separators the pieces carry are exactly recoverable.
- */
-export function speechChunks(text: string, size: number = CHUNK_CHARS): string[] {
-  const chunks: string[] = [];
-  let current = "";
-
-  for (const piece of splitSentences(text)) {
-    const next = current ? `${current}${piece}` : piece;
-    if (current && next.trim().length > size) {
-      chunks.push(current.trim());
-      current = piece;
-      continue;
-    }
-    current = next;
-  }
-  if (current.trim()) chunks.push(current.trim());
-  return chunks;
 }

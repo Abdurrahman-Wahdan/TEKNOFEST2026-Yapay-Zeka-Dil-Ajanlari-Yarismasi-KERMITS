@@ -145,6 +145,70 @@ all, and `src/components/chat/AgentMarkdown.tsx` restyles its code-block chrome
 through the `data-streamdown` hooks. It is dynamically imported (`ssr: false`) —
 Shiki is large and the popup mounts on every page.
 
+# Reading answers aloud
+
+The speaker under an answer streams **Trendyol-TTS** (VoxCPM2 + a Turkish LoRA,
+MIT) from the machine the API runs on. It was the browser's `speechSynthesis`
+first, which was right while there was no model; the swap was confined to
+`src/lib/chat/speech.ts`, and `useSpeech(id, lang)` kept its signature so
+`MessageActions` did not change. Settings, measurements and the elimination
+notes live in `TTS_ENTEGRASYON.md` — **read it before touching a parameter**,
+because every value in `SPEECH_*` is measured rather than chosen.
+
+**The split of work is markdown here, sentences there.** The browser turns
+markdown into prose (`speech-text.ts`) because it is the side that knows a table
+should be read "column: value" and a code block not at all. The server cuts that
+prose into model-sized pieces (`api/voice_speech.py::segments`) because
+`max_len` is the server's constraint — and text over it comes back *silently
+short*, so segmenting is what stops the end of an answer never being spoken. The
+Turkish sentence rule exists in both languages and must agree: a full stop only
+ends a sentence when whitespace follows, or `3.031.200 TL` is read as two
+sentences with a pause down the middle of the number.
+
+**Plain HTTP, not a WebSocket**, though the guide shows one. Same argument
+`chat.py` already makes for SSE: this is one-directional. Two concrete gains —
+the browser's WebSocket API cannot set an `Authorization` header, so a socket
+would put the bearer token in a query string where proxies log it; and aborting a
+`fetch` is already how the client stops a stream.
+
+**Raw 16-bit PCM, no container.** Audio is generated in ~160 ms pieces and
+scheduled into one `AudioContext`, which wants samples, not a decoded file. The
+rate travels on `X-Sample-Rate` and is never assumed: an `AudioContext` built at
+the wrong rate does not fail, it plays the answer at the wrong pitch. Two things
+the client must keep doing — carry the odd byte between reads, since a chunk can
+split a sample and misreading it shifts everything after into noise; and book
+each buffer where the previous one ends rather than "now", or generation lag
+becomes gaps and generation lead becomes overlap.
+
+**The model is not thread-safe and weighs ~5 GB.** One instance, one lock,
+readings queue — and the lock is claimed in the endpoint rather than in the
+generator, because once the first byte of a stream is out there is no status code
+left to say "busy". Same reason the model is *loaded* before the response starts:
+a missing dependency discovered inside the generator would arrive after a 200 and
+look like a successful, silent reading.
+
+**The checkpoint is local, like Whisper's.** `TF26_data/models/Trendyol-TTS`,
+fetched by `scripts/download_speech_model.py`, and the loader is pinned to
+`local_files_only=True` — because the alternative is a cache miss turning one
+user's request into a five-gigabyte download while they stare at a button. It
+sits beside the Whisper checkpoint so `du -sh TF26_data/models` accounts for
+both.
+
+**MPS, not MLX**, and that is the one place this deliberately diverges from the
+Whisper side. `TTS_ENTEGRASYON.md` §9 records MLX as tried and eliminated:
+`mlx-audio` supports the voxcpm2 architecture, but Trendyol keeps `audiovae.pth`
+as a separate PyTorch file where MLX wants one safetensors, so the weights fail
+to load (`Missing 233 parameters`) — and the ready-made `mlx-community/VoxCPM2-4bit`
+port is *base* VoxCPM2, which buys speed by giving up the Turkish finetune. The
+device is named rather than left to `auto`, so a machine that quietly fell back
+to CPU is visible in the startup log.
+
+`voxcpm` is an optional extra and a heavy one (it pulls gradio, funasr,
+modelscope, torchaudio, datasets, and pins `fsspec` down to 2025.3.0 — checked,
+and compatible with what `huggingface_hub` and `torch` ask for). The import is
+lazy and the API starts without it, exactly as `mlx-whisper` does; the endpoint
+answers 503.
+
 # Bringing the page into the conversation
 
 The assistant can see what the user is looking at. Three ways in, one concept

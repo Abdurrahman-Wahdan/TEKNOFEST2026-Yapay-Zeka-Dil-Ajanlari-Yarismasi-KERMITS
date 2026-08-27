@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { speakableText, speechChunks } from "./speech-text.ts";
+import { speakableText } from "./speech-text.ts";
 
 describe("speakableText", () => {
   it("drops the marks that only mean something to the eye", () => {
@@ -70,48 +70,5 @@ describe("speakableText", () => {
 
   it("keeps a bar that is not a table", () => {
     assert.equal(speakableText("A | B ayrımı yok"), "A | B ayrımı yok");
-  });
-});
-
-describe("speechChunks", () => {
-  it("splits on sentence boundaries, not mid-sentence", () => {
-    const chunks = speechChunks("Bir cümle. İki cümle. Üç cümle.", 16);
-    assert.deepEqual(chunks, ["Bir cümle.", "İki cümle.", "Üç cümle."]);
-  });
-
-  it("keeps a sentence whole even when it is over the budget", () => {
-    const long = `${"a".repeat(400)}.`;
-    assert.deepEqual(speechChunks(long, 180), [long]);
-  });
-
-  it("packs short sentences together rather than one utterance each", () => {
-    assert.deepEqual(speechChunks("Bir. İki. Üç.", 180), ["Bir. İki. Üç."]);
-  });
-
-  it("does not cut a Turkish thousands separator in half", () => {
-    // 3.031.200 read as "3.031." then "200" is the number spoken as two
-    // sentences with a pause down the middle of it.
-    const text = "Toplam 3.031.200 TL tutuyor. Taksit 25.260 TL.";
-    assert.deepEqual(speechChunks(text, 20), [
-      "Toplam 3.031.200 TL tutuyor.",
-      "Taksit 25.260 TL.",
-    ]);
-  });
-
-  it("does not treat a date as three sentences", () => {
-    assert.deepEqual(speechChunks("Oranlar 27.08.2026 tarihlidir.", 10), [
-      "Oranlar 27.08.2026 tarihlidir.",
-    ]);
-  });
-
-  it("reassembles losslessly, which is what makes cutting it safe", () => {
-    const text = speakableText(
-      "## Başlık\nBir cümle. Toplam 3.031.200 TL. Son cümle burada.",
-    );
-    assert.equal(speechChunks(text, 12).join(" "), text);
-  });
-
-  it("has nothing to say about an empty answer", () => {
-    assert.deepEqual(speechChunks(""), []);
   });
 });

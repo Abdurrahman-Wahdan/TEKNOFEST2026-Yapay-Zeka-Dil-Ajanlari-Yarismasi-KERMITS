@@ -9,6 +9,7 @@ import {
   ThumbsDown,
   ThumbsUp,
   Volume2,
+  VolumeX,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 
@@ -141,17 +142,34 @@ export function MessageActions({
         </RoundButton>
       )}
 
-      {/* Hidden rather than disabled where the browser has no synthesiser: this
-          is an enhancement, and a permanently dead button is worse than no
-          button. */}
+      {/* Hidden rather than disabled where the browser cannot play audio at all:
+          this is an enhancement, and a permanently dead button is worse than no
+          button.
+
+          A *failed* reading is the opposite case and says so. The model serves
+          one reader at a time, so "busy" is a routine outcome rather than an
+          edge case, and a button that just returned to its speaker icon would be
+          indistinguishable from a press that never registered. */}
       {hasText && speech.supported && (
         <RoundButton
           size={BUTTON_PX}
-          label={speech.speaking ? t("readAloudStop") : t("readAloud")}
+          label={
+            speech.error
+              ? t(`readAloudError.${speech.error}`)
+              : speech.speaking
+                ? t("readAloudStop")
+                : t("readAloud")
+          }
           active={speech.speaking}
           onClick={() => speech.toggle(markdown)}
         >
-          {speech.speaking ? <Square size={GLYPH_PX - 2} fill="currentColor" /> : <Volume2 size={GLYPH_PX} />}
+          {speech.speaking ? (
+            <Square size={GLYPH_PX - 2} fill="currentColor" />
+          ) : speech.error ? (
+            <VolumeX size={GLYPH_PX} color="var(--danger)" />
+          ) : (
+            <Volume2 size={GLYPH_PX} />
+          )}
         </RoundButton>
       )}
 

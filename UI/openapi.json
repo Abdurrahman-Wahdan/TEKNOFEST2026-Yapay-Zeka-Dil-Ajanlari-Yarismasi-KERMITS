@@ -2933,6 +2933,49 @@
         ]
       }
     },
+    "/api/voice/speech": {
+      "post": {
+        "tags": [
+          "voice"
+        ],
+        "summary": "Create Speech",
+        "description": "Read a passage aloud. Returns raw 16-bit PCM as it is generated.\n\n**Streamed over plain HTTP, not a WebSocket.** `TTS_ENTEGRASYON.md` shows a\nWebSocket, and it works, but nothing here needs one: the client sends text\nonce and receives audio, which is the one-directional case, and it is the\nsame argument `chat.py` already makes for SSE over WebSockets. Two concrete\ngains for this endpoint in particular -- the browser's WebSocket API cannot\nset an `Authorization` header, so a socket would push this account's bearer\ntoken into a query string where proxies log it; and aborting a `fetch` is\nalready how the client stops a stream, so pressing stop closes the response\nand the generator below is closed with it.\n\n**Raw PCM, no container.** The audio is generated in ~160 ms pieces and the\nbrowser schedules them into an `AudioContext`, which wants samples rather\nthan a decoded file. Wrapping each piece as WAV would put a 44-byte header\nin the middle of the stream every 160 ms; wrapping the whole reading as one\nfile would mean holding it to the end, which is what streaming exists to\navoid. `audio/L16` is the registered type for exactly this.",
+        "operationId": "create_speech",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoiceSpeechRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "audio/L16": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/health": {
       "get": {
         "tags": [
@@ -7040,6 +7083,22 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VoiceSpeechRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Text",
+            "description": "The passage to speak. Bounded by SPEECH_MAX_CHARS and refused rather than truncated when over it: a reading that stops halfway is indistinguishable from a crash, so the caller is told."
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "VoiceSpeechRequest",
+        "description": "Text to read aloud.\n\nProse, not markdown. The browser strips the marks before sending, because it\nis the side that knows a table should be read \"column: value\" and that a code\nblock should not be read at all -- see `UI/src/lib/chat/speech-text.ts`.\nSending markdown here would have the model pronounce the asterisks."
       },
       "VoiceTranscriptionOut": {
         "properties": {

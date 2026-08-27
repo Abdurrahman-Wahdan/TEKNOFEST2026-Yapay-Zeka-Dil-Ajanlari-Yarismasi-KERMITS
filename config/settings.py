@@ -584,6 +584,116 @@ class Settings(BaseSettings):
         "voice request has warm-request latency.",
     )
 
+    # ===== Speech synthesis (reading answers aloud) =====
+    SPEECH_MODEL_PATH: str = Field(
+        default=str(PROJECT_ROOT / "TF26_data" / "models" / "Trendyol-TTS"),
+        description="Local checkpoint for Turkish speech output, downloaded by "
+        "`scripts/download_speech_model.py`. A local path for the same reason "
+        "VOICE_MODEL_PATH is one: serving a request must never be able to "
+        "trigger a multi-gigabyte network download, and a checkpoint that lives "
+        "beside the Whisper one is a checkpoint operators can see, size and "
+        "delete.",
+    )
+    SPEECH_MODEL_ID: str = Field(
+        default="Trendyol/Trendyol-TTS",
+        description="Hugging Face repository the local checkpoint is downloaded "
+        "from. VoxCPM2 with a 20+ hour Turkish LoRA, MIT licensed. Read by the "
+        "download script, not at request time.",
+    )
+    SPEECH_SAMPLE_RATE: int = Field(
+        default=48_000,
+        gt=0,
+        description="What the model generates at, used only until the model is "
+        "loaded and can be asked directly. The browser must build its "
+        "AudioContext at this rate -- a mismatch does not fail, it plays the "
+        "answer at the wrong pitch, so the real value travels on the response.",
+    )
+    SPEECH_TIMESTEPS: int = Field(
+        default=4,
+        ge=4,
+        le=32,
+        description="Diffusion steps, and the setting that decides whether the "
+        "stream keeps up with playback. **Hardware-dependent -- re-measure when "
+        "the machine changes.** TTS_ENTEGRASYON.md recommends 10, measured on an "
+        "M5 Max where every setting generates faster than real time (10 gives "
+        "1.94x) so the choice comes down to first-chunk stability. On the M1 Max "
+        "this runs on, that is not the situation: measured 4=1.22x, 6=1.02x, "
+        "8=0.95x, 10=0.81x, 16=0.57x -- at 10 the audio is produced *slower* "
+        "than it plays, so a long reading runs dry and stutters. The guide's "
+        "objection to 4 (first audio 0.41s ±0.44, unstable) does not reproduce "
+        "here either: first audio is flat at 0.50-0.70s across every setting. So "
+        "4 on this hardware, and 10 on anything that clears real time at 10. "
+        "Floor of 4 is deliberate -- at 2 the model silently skips parts of the "
+        "text (a 55s passage came out 29s).",
+    )
+    SPEECH_CFG_VALUE: float = Field(
+        default=2.0,
+        gt=0,
+        le=2.4,
+        description="Classifier-free guidance, per the model card. 1.5 gives "
+        "livelier intonation. Capped below 2.5, where peak amplitude approaches "
+        "0 dBFS and clips.",
+    )
+    SPEECH_MAX_LEN: int = Field(
+        default=4096,
+        gt=0,
+        description="Per-call generation bound. Text longer than this comes back "
+        "silently short, which is why SPEECH_SEGMENT_CHARS splits first.",
+    )
+    SPEECH_NORMALIZE: bool = Field(
+        default=False,
+        description="voxcpm's built-in text normalisation. OFF, and this is the "
+        "one place we contradict TTS_ENTEGRASYON.md -- measured against the "
+        "installed package, `normalize=True` runs wetext's *English* normaliser "
+        "and it is actively wrong for Turkish banking text. It raises "
+        "AssertionError on `%2,89` (percent before the number, the Turkish "
+        "convention), reads the Turkish thousands separator as a decimal point, "
+        "and expands TL (Türk Lirası) as 'teraliters': `24.180 TL` becomes "
+        "'twenty four point one eight oh teraliters' and `27.08.2026` becomes "
+        "'the twenty seventh of august twenty twenty six'. The guide's example "
+        "text was prose with no numbers, which is why it never surfaced there. "
+        "Turkish-finetuned weights read Turkish digits without help.",
+    )
+    SPEECH_SEGMENT_CHARS: int = Field(
+        default=1_500,
+        gt=0,
+        description="How much text goes into one generate_streaming call. Cut on "
+        "sentence boundaries and streamed back to back, so a long answer is one "
+        "continuous reading with nothing dropped.",
+    )
+    SPEECH_QUEUE_TIMEOUT_SECONDS: float = Field(
+        default=2.0,
+        ge=0,
+        description="How long a second reader waits for the model before being "
+        "told it is busy. The model is not thread-safe, so readings queue; this "
+        "bounds the wait to something a person will sit through rather than "
+        "leaving a request hanging behind a long answer.",
+    )
+    SPEECH_MAX_CHARS: int = Field(
+        default=20_000,
+        gt=0,
+        description="Hard cap on one request's text. Not a truncation -- text "
+        "over this is refused with 422 rather than read in part, because a "
+        "reading that stops halfway is indistinguishable from a crash.",
+    )
+    SPEECH_WARM_ON_STARTUP: bool = Field(
+        default=True,
+        description="Load Trendyol-TTS during API startup. Without it the first "
+        "reader pays the ~5.6s load.",
+    )
+    SPEECH_DEVICE: str = Field(
+        default="mps",
+        description="Torch device. MPS is the Metal path for this model and what "
+        "every figure in TTS_ENTEGRASYON.md was measured on. Deliberately *not* "
+        "MLX, unlike the Whisper side: section 9 of that guide records MLX as "
+        "tried and eliminated -- mlx-audio supports the voxcpm2 architecture but "
+        "Trendyol's weights fail to load (`Missing 233 parameters`) because "
+        "Trendyol keeps audiovae.pth as a separate PyTorch file where MLX wants "
+        "one safetensors, and the ready-made mlx-community/VoxCPM2-4bit port is "
+        "base VoxCPM2 rather than the Turkish finetune. Set to `cpu` to prove a "
+        "Metal problem is a Metal problem.",
+    )
+
     # ===== Chat attachments =====
     CHAT_ATTACHMENT_MAX_UPLOAD_MB: int = Field(default=20, gt=0, le=100)
     CHAT_ATTACHMENT_MAX_FILES: int = Field(default=8, gt=0, le=20)

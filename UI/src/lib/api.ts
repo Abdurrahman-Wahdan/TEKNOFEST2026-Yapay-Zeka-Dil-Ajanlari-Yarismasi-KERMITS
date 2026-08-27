@@ -596,6 +596,37 @@ export const api = {
  * URL and the token with it — a user's question in a query string ends up in
  * every access log it passes through.
  */
+/**
+ * Read a passage aloud. Resolves once the audio has started arriving.
+ *
+ * The response body is raw 16-bit PCM at the rate named in `X-Sample-Rate`,
+ * still being generated — the caller reads it with a stream reader and schedules
+ * the samples as they land, which is what makes the answer start playing in
+ * ~0.13s instead of after the whole reading has been produced.
+ *
+ * The rate is read off the response rather than assumed. An `AudioContext` built
+ * at the wrong rate does not fail; it plays the answer at the wrong pitch, which
+ * is the kind of bug that survives a review because it still makes a sound.
+ */
+export async function speakText(
+  text: string,
+  signal?: AbortSignal,
+): Promise<{ body: ReadableStream<Uint8Array>; sampleRate: number }> {
+  const response = await fetchWithAuthentication("/voice/speech", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+    signal,
+  });
+  if (!response.ok) throw await toError(response);
+  if (!response.body) throw new ApiError(500, "The reading carried no audio.");
+  const declared = Number(response.headers.get("X-Sample-Rate"));
+  return {
+    body: response.body,
+    sampleRate: Number.isFinite(declared) && declared > 0 ? declared : 48_000,
+  };
+}
+
 export async function* askStream(
   body: {
     question: string;

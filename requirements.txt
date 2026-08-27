@@ -56,6 +56,22 @@ email-validator==2.3.0
 # rest of the API remains importable on Linux CI and non-Mac deployments.
 python-multipart==0.0.20
 mlx-whisper==0.4.3; platform_system == "Darwin" and platform_machine == "arm64"
+# Reading answers back out: Trendyol-TTS (VoxCPM2 + Turkish LoRA, MIT), streamed
+# as PCM by `api/voice_speech.py`.
+#
+# A heavy install, and worth knowing before running it: voxcpm declares
+# `datasets<4`, `gradio>=6`, `funasr`, `modelscope`, `matplotlib`, `librosa` and
+# `torchaudio` among others. The `datasets` pin is what drags `fsspec` down to
+# 2025.3.0, which `TTS_ENTEGRASYON.md` warns about. Checked against this
+# environment and compatible: `huggingface_hub` asks for fsspec>=2023.5.0 and
+# `torch` for >=0.8.5, so nothing already installed objects -- the guide's
+# warning is for environments needing a *newer* fsspec, and this is not one.
+#
+# `soundfile` and `librosa` are voxcpm's own dependencies and are not repeated
+# here. `sounddevice` from the guide's install line is deliberately absent: it
+# plays audio on the machine running it, and this API only hands bytes to a
+# browser.
+voxcpm==2.0.3
 
 # Dataprep (agentic crawl + VLM extraction + embed)
 pypdf==6.16.0

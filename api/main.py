@@ -15,6 +15,7 @@ from config.settings import settings
 
 from .automations import loop as automation_loop
 from .routers import ROUTERS
+from .voice_speech import VoiceSpeechUnavailable, warm_speech_model
 from .voice_transcription import VoiceTranscriptionUnavailable, warm_voice_model
 from agents.shared.checkpoints import close_checkpointer, get_checkpointer
 
@@ -71,6 +72,26 @@ def start_voice_transcription() -> None:
         # A corrupt/incompatible optional checkpoint must be loud in the logs,
         # but it must not take banking, comparison and text chat down with it.
         logger.exception("Voice model warm-up failed")
+
+
+@app.on_event("startup")
+def start_speech_synthesis() -> None:
+    """Load Trendyol-TTS before the first user asks for an answer to be read.
+
+    Worth doing here and not lazily: a cold Hugging Face cache downloads ~5 GB,
+    and a warm one still costs ~5.6s. Both belong in startup rather than in the
+    request of whoever happens to press the speaker first.
+    """
+    if not settings.SPEECH_WARM_ON_STARTUP:
+        return
+    try:
+        warm_speech_model()
+    except VoiceSpeechUnavailable as exc:
+        # The speech extra is optional. Everything else stays useful without it,
+        # and POST /voice/speech reports the same 503.
+        logger.warning("Speech model was not warmed: %s", exc)
+    except Exception:
+        logger.exception("Speech model warm-up failed")
 
 
 @app.on_event("startup")

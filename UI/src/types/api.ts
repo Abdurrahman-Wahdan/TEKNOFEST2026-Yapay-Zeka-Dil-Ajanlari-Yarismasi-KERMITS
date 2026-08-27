@@ -1220,6 +1220,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/voice/speech": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Speech
+         * @description Read a passage aloud. Returns raw 16-bit PCM as it is generated.
+         *
+         *     **Streamed over plain HTTP, not a WebSocket.** `TTS_ENTEGRASYON.md` shows a
+         *     WebSocket, and it works, but nothing here needs one: the client sends text
+         *     once and receives audio, which is the one-directional case, and it is the
+         *     same argument `chat.py` already makes for SSE over WebSockets. Two concrete
+         *     gains for this endpoint in particular -- the browser's WebSocket API cannot
+         *     set an `Authorization` header, so a socket would push this account's bearer
+         *     token into a query string where proxies log it; and aborting a `fetch` is
+         *     already how the client stops a stream, so pressing stop closes the response
+         *     and the generator below is closed with it.
+         *
+         *     **Raw PCM, no container.** The audio is generated in ~160 ms pieces and the
+         *     browser schedules them into an `AudioContext`, which wants samples rather
+         *     than a decoded file. Wrapping each piece as WAV would put a 44-byte header
+         *     in the middle of the stream every 160 ms; wrapping the whole reading as one
+         *     file would mean holding it to the end, which is what streaming exists to
+         *     avoid. `audio/L16` is the registered type for exactly this.
+         */
+        post: operations["create_speech"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -3238,6 +3275,22 @@ export interface components {
             ctx?: Record<string, never>;
         };
         /**
+         * VoiceSpeechRequest
+         * @description Text to read aloud.
+         *
+         *     Prose, not markdown. The browser strips the marks before sending, because it
+         *     is the side that knows a table should be read "column: value" and that a code
+         *     block should not be read at all -- see `UI/src/lib/chat/speech-text.ts`.
+         *     Sending markdown here would have the model pronounce the asterisks.
+         */
+        VoiceSpeechRequest: {
+            /**
+             * Text
+             * @description The passage to speak. Bounded by SPEECH_MAX_CHARS and refused rather than truncated when over it: a reading that stops halfway is indistinguishable from a crash, so the caller is told.
+             */
+            text: string;
+        };
+        /**
          * VoiceTranscriptionOut
          * @description A completed Turkish transcription.
          */
@@ -4977,6 +5030,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VoiceTranscriptionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_speech: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VoiceSpeechRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "audio/L16": unknown;
                 };
             };
             /** @description Validation Error */
