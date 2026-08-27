@@ -216,6 +216,11 @@
     "retry": "Yeniden dene",
     "readAloud": "Sesli oku",
     "readAloudStop": "Okumayı durdur",
+    "readAloudError": {
+      "busy": "Asistan şu anda başka bir yanıtı okuyor. Birazdan tekrar deneyin.",
+      "unavailable": "Bu yanıt sesli okunamıyor.",
+      "failed": "Sesli okuma başarısız oldu."
+    },
     "goodResponse": "İyi yanıt",
     "badResponse": "Kötü yanıt",
     "acceptRecommendation": "Bu öneriyi kullan",
