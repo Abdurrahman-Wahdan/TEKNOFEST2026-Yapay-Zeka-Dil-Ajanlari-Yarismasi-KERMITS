@@ -21,7 +21,7 @@ import threading
 import uuid
 
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, status
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 
 from ..automations.notifications import hub
 from ..automations.runner import Due, run_automation
@@ -413,6 +413,21 @@ def unread_count(user: CurrentUser, session: DbSession) -> UnreadCount:
         )
     )
     return UnreadCount(unread=total or 0)
+
+
+@router.post("/reports/read-all", response_model=UnreadCount)
+def mark_all_reports_read(user: CurrentUser, session: DbSession) -> UnreadCount:
+    """Clear this user's unread report notifications in one database update."""
+    session.execute(
+        update(AutomationReport)
+        .where(
+            AutomationReport.user_id == user.id,
+            AutomationReport.read_at.is_(None),
+        )
+        .values(read_at=utcnow())
+    )
+    session.commit()
+    return UnreadCount(unread=0)
 
 
 @router.get("/reports/{report_id}", response_model=ReportOut)

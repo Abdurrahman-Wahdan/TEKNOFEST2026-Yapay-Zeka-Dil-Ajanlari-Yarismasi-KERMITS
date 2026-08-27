@@ -517,6 +517,10 @@ export const api = {
   /** The notification badge. One indexed count, polled on a timer. */
   unreadReportCount: () =>
     request<{ unread: number }>("/me/automations/reports/unread-count"),
+  markAllReportsRead: () =>
+    request<{ unread: number }>("/me/automations/reports/read-all", {
+      method: "POST",
+    }),
   automationReport: (id: string) =>
     request<AutomationReport>(`/me/automations/reports/${id}`),
   /**
