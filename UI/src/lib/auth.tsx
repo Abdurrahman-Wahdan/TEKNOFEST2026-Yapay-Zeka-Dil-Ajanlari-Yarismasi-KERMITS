@@ -6,11 +6,24 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
-import { api, setAccessToken, type TokenPair, type User } from "./api";
+import { useRouter } from "@/i18n/navigation";
+
+import {
+  api,
+  ApiError,
+  ensureFreshAccessToken,
+  refreshAccessToken,
+  setAccessToken,
+  setAuthSessionHooks,
+  type TokenPair,
+  type User,
+} from "./api";
 
 /**
  * Where the tokens live, and why.
@@ -88,18 +101,79 @@ function writeRefresh(token: string | null, remember: boolean) {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const queryClient = useQueryClient();
+  const router = useRouter();
 
-  const apply = useCallback(async (tokens: TokenPair, remember: boolean) => {
-    setAccessToken(tokens.access_token);
-    writeRefresh(tokens.refresh_token, remember);
-    setUser(await api.me());
+  const clearRefreshTimer = useCallback(() => {
+    if (refreshTimer.current) clearTimeout(refreshTimer.current);
+    refreshTimer.current = null;
   }, []);
 
+  /**
+   * Renew before expiry. The request transport remains the authoritative
+   * fallback because browsers throttle timers in sleeping/background tabs.
+   */
+  const scheduleRefresh = useCallback(
+    (expiresInSeconds: number) => {
+      clearRefreshTimer();
+      const lifetimeMs = expiresInSeconds * 1000;
+      const leadMs = Math.min(60_000, Math.max(5_000, lifetimeMs * 0.1));
+      const delayMs = Math.max(1_000, lifetimeMs - leadMs);
+
+      const renew = () => {
+        refreshTimer.current = null;
+        void refreshAccessToken().catch(() => {
+          // A network/server failure is not an expired session. Retry later;
+          // a request made meanwhile has the same single-flight fallback.
+          refreshTimer.current = setTimeout(renew, 30_000);
+        });
+      };
+      refreshTimer.current = setTimeout(renew, delayMs);
+    },
+    [clearRefreshTimer],
+  );
+
+  const acceptTokens = useCallback(
+    (tokens: TokenPair, remember: boolean) => {
+      setAccessToken(tokens.access_token, tokens.expires_in);
+      writeRefresh(tokens.refresh_token, remember);
+      scheduleRefresh(tokens.expires_in);
+    },
+    [scheduleRefresh],
+  );
+
+  const apply = useCallback(async (tokens: TokenPair, remember: boolean) => {
+    acceptTokens(tokens, remember);
+    setUser(await api.me());
+  }, [acceptTokens]);
+
   const logout = useCallback(() => {
+    clearRefreshTimer();
     setAccessToken(null);
     writeRefresh(null, true);
     setUser(null);
-  }, []);
+    // Cached profile/chat rows belong to the old session. Keeping them until
+    // garbage collection can briefly expose one user's data after another logs
+    // in on the same browser.
+    queryClient.clear();
+  }, [clearRefreshTimer, queryClient]);
+
+  const expireSession = useCallback(() => {
+    logout();
+    router.replace("/login?reason=session-expired");
+  }, [logout, router]);
+
+  // The transport owns retry/single-flight mechanics; React owns storage,
+  // visible user state, query caches, and navigation.
+  useEffect(() => {
+    setAuthSessionHooks({
+      getRefreshToken: readRefresh,
+      applyTokens: acceptTokens,
+      onSessionExpired: expireSession,
+    });
+    return () => setAuthSessionHooks(null);
+  }, [acceptTokens, expireSession]);
 
   // On mount: trade a stored refresh token for a session. This is what makes a
   // reload keep you signed in.
@@ -119,10 +193,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const tokens = await api.refresh(stored.token);
         if (!cancelled) await apply(tokens, stored.remember);
-      } catch {
+      } catch (error) {
         // Expired or tampered with. Clear it rather than retrying: a bad token
         // will not become good, and looping would hammer the endpoint.
-        if (!cancelled) logout();
+        // A temporary network/5xx failure is not proof the credential is bad,
+        // so preserve the stored refresh token for a later reload/retry.
+        if (!cancelled && error instanceof ApiError && error.isUnauthenticated) {
+          logout();
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -133,6 +211,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   }, [apply, logout]);
+
+  // A background tab may sleep through its timer. Refresh as soon as it is
+  // visible/focused again, before widgets fire their foreground refetches.
+  useEffect(() => {
+    const resume = () => {
+      if (document.visibilityState === "hidden") return;
+      void ensureFreshAccessToken().catch(() => undefined);
+    };
+    window.addEventListener("focus", resume);
+    document.addEventListener("visibilitychange", resume);
+    return () => {
+      window.removeEventListener("focus", resume);
+      document.removeEventListener("visibilitychange", resume);
+      clearRefreshTimer();
+    };
+  }, [clearRefreshTimer]);
 
   const value = useMemo<AuthState>(
     () => ({

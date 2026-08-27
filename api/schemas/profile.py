@@ -50,7 +50,7 @@ class Component(BaseModel):
 
 class SavedViewIn(BaseModel):
     slug: str = Field(pattern="^[a-z0-9-]{1,80}$")
-    title: str = Field(min_length=1, max_length=160)
+    title: str
     components: list[Component] = Field(default_factory=list)
     generated: bool = False
 
@@ -64,3 +64,29 @@ class SavedViewOut(BaseModel):
     components: list[Component]
     generated: bool
     updated_at: datetime
+
+
+class StatsOut(BaseModel):
+    """What this user has actually done with the product.
+
+    Counted at request time from rows that already exist. Nothing here is
+    maintained as a running total: a counter column would be a second source of
+    truth for a number whose first source is one indexed `COUNT`, and it would be
+    wrong the first time a delete missed it.
+
+    **There is deliberately no token count.** Nothing in this application records
+    model usage -- the supervisor asks for `stream_usage` but no handler collects
+    it, and the ten bank specialists' spend is unobserved entirely. A "tokens"
+    field would therefore have to read zero for every conversation ever held,
+    which says something false rather than nothing.
+    """
+
+    chat_sessions: int
+    messages_sent: int = Field(description="Turns the user wrote.")
+    messages_received: int = Field(description="Answers the assistant wrote.")
+    saved_tables: int
+    automations: int
+    reports: int
+    unread_reports: int
+    first_activity: datetime | None
+    last_activity: datetime | None

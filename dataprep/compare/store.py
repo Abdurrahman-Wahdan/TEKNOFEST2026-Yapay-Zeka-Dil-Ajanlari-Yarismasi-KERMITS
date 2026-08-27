@@ -56,6 +56,17 @@ def load_subcategories() -> list[str]:
     return json.loads(SUBCATS.read_text(encoding="utf-8")) if SUBCATS.exists() else []
 
 
+def subcategory_examples(limit: int = 5) -> dict[str, list[str]]:
+    """Her alt kategori için örnek tablo docstring'leri — synth.py'nin yeni tablo/
+    birleştirme kararında SADECE alt kategori adına değil, altındaki GERÇEK
+    tabloların neyi kapsadığına bakabilmesi için (isim benzerliği yeterli değil,
+    içerik uyumu gerekiyor)."""
+    by_sub: dict[str, list[str]] = {}
+    for r in load_registry():
+        by_sub.setdefault(r.get("subcategory", ""), []).append(r.get("docstring", ""))
+    return {k: v[:limit] for k, v in by_sub.items() if k}
+
+
 def register_subcategory(cat: str) -> None:
     if not cat:
         return

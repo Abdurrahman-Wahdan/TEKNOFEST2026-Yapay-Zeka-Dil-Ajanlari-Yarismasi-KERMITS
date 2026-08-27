@@ -41,6 +41,8 @@ from llm.providers.vllm_provider import reset_http_pool
 from config import tunnel
 
 from ..net_limit import NET_SEM
+from corpus.search import prune_entries
+
 from .json_mod import llm_kwargs
 from ..vlm import _BACKOFF_MAX
 from .retrieval import (make_bank_search_tool, make_full_page_tool,
@@ -114,6 +116,68 @@ _SYSTEM = (
     "biz eşleştiririz (senin yeniden yazman hataya açık). UYDURMA — yalnız arama "
     "sonuçlarında GERÇEKTEN gördüğün point_id'leri kullan."
 )
+
+
+def _msg_len(m) -> int:
+    c = m.content
+    return len(c) if isinstance(c, str) else len(str(c))
+
+
+def _block_has_marked(block: list, marked: set[str]) -> bool:
+    if not marked:
+        return False
+    for m in block:
+        if isinstance(m, ToolMessage):
+            c = m.content if isinstance(m.content, str) else str(m.content)
+            if any(f"point_id={pid}" in c for pid in marked):
+                return True
+    return False
+
+
+def _prune_discarded(messages: list, discarded: set[str]) -> list:
+    """CHUNK bazlı budama — model 'gereksiz' dediği tek tek parçaları o
+    ToolMessage'ın içinden çıkarır (kalanlara dokunmadan). Karar mantığı
+    corpus.search.prune_entries'te: canlı banka uzmanları da AYNI budamayı
+    kullanıyor, iki ayrı uygulama olmamalı."""
+    if not discarded:
+        return messages
+    for m in messages:
+        if not isinstance(m, ToolMessage):
+            continue
+        c = m.content if isinstance(m.content, str) else str(m.content)
+        pruned = prune_entries(c, discarded)
+        if pruned is not None:
+            m.content = pruned
+    return messages
+
+
+def _trim_history(messages: list, marked: set[str], discarded: set[str] = frozenset()) -> list:
+    """1) Model 'gereksiz' dediği chunk'ları (discarded) HER turda, bağlam
+    dolmasını beklemeden hemen budar — bu asıl mekanizma, model kararına
+    dayalı. 2) Bağlam yine de MAX_CONTEXT_CHARS'ı aşarsa (son çare, model
+    henüz karar vermediği eski turlar için) İKİ geçişli fiziksel budama:
+    önce işaretlenmemiş turlar atılır, hâlâ sığmıyorsa işaretliler de
+    atılmaya başlar. system+human (ilk 2 mesaj) hep kalır."""
+    messages = _prune_discarded(messages, discarded)
+    total = sum(_msg_len(m) for m in messages)
+    if total <= MAX_CONTEXT_CHARS or len(messages) <= 3:
+        return messages
+    head, rest = messages[:2], messages[2:]
+    for protect_marked in (True, False):
+        i = 0
+        while total > MAX_CONTEXT_CHARS and i < len(rest):
+            end = i + 1
+            while end < len(rest) and isinstance(rest[end], ToolMessage):
+                end += 1
+            block = rest[i:end]
+            if protect_marked and _block_has_marked(block, marked):
+                i = end                 # işaretli, koru — bir sonraki bloğa geç
+                continue
+            total -= sum(_msg_len(m) for m in block)
+            del rest[i:end]
+        if total <= MAX_CONTEXT_CHARS:
+            break
+    return head + rest
 
 
 def _is_permanent(exc: Exception) -> bool:

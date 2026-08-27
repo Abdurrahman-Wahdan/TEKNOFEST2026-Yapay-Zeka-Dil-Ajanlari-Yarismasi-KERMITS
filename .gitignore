@@ -64,6 +64,7 @@ $RECYCLE.BIN/
 # ===== Editors and IDEs =====
 .vscode/
 .idea/
+.claude/
 *.iml
 *.swp
 *.swo
@@ -86,6 +87,7 @@ download_sites/
 # The corpus pipeline's store: raw bytes, the manifest and the clean artifact.
 # Regenerable with `python -m corpus.build`, and gigabytes of it.
 corpus_data/
+TF26_veri_hazirlama/
 # Playwright MCP artifacts and stray screenshots. Images under docs/ are kept.
 .playwright-mcp/
 *.png
@@ -93,6 +95,10 @@ corpus_data/
 *.jpeg
 !docs/**/*.png
 !docs/**/*.jpg
+# The production logo is a real application asset, not a generated screenshot.
+!UI/public/vision/images/kermits-logo.png
+# Curated contributor portraits used by the public README.
+!assets/*.jpeg
 
 # ===== Notebooks =====
 .ipynb_checkpoints/
@@ -119,6 +125,7 @@ data-*/
 
 # Endpoint keşfi üretilen çıktıları (lokalde kalır)
 dataprep/discovery/out/
+
 
 # ===== Veri dosyası biçimleri =====
 # Depoda kod dışında veri istemiyoruz. tests/fixtures ve docs altındaki
@@ -166,3 +173,14 @@ outputs/
 *.pid
 *.lock
 !UI/package-lock.json
+
+# ===== Uzak daldan gelen =====
+TF26_data/
+
+# ===== Local reference and accidental duplicate files =====
+# These remain on the workstation but are not part of the public project.
+README-example.md
+example-LICENSE
+config/settings 2.py
+llm/providers/vllm_provider 2.py
+

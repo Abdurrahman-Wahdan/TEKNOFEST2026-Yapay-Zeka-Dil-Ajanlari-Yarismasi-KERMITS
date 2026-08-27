@@ -44,6 +44,21 @@ def _compact_reports(reports: list[dict]) -> list[dict]:
     import copy
     return copy.deepcopy(reports)
 
+def _format_subcats(subcats: dict[str, list[str]] | list[str] | None) -> str:
+    """Alt kategorileri LLM'e BAĞLAMLI göster: sadece isim değil, altındaki
+    örnek tabloların ne olduğu da (docstring) — isim benzerliğine değil,
+    GERÇEK İÇERİK uyumuna dayalı bir karar verebilsin diye. Eski çağıranlar
+    hâlâ düz bir isim listesi (list[str]) verebilir; o durumda örneksiz gösterilir."""
+    if not subcats:
+        return "(henüz yok)"
+    if isinstance(subcats, list):
+        return ", ".join(subcats)
+    lines = []
+    for sub, examples in subcats.items():
+        ex = " | ".join(e for e in examples if e) or "(örnek yok)"
+        lines.append(f"- {sub}: {ex}")
+    return "\n".join(lines)
+
 # classify_page (kıyaslanabilir mi + mevcut tablo havuzunda erken eşleşen var mı)
 # BURADA değil, classify_agent.py'de — tablo havuzu büyüdükçe (yüzlerce olabilir)
 # TÜMÜNÜ tek prompt'a sığdırmak mümkün değil; o yüzden sabit-listeli tek çağrı

@@ -4,6 +4,8 @@ import IconButton from "@mui/material/IconButton";
 
 import VuiBox from "components/VuiBox";
 
+import { useTranslations } from "next-intl";
+
 import { ThemeGlyph } from "@/components/ui/ThemeGlyph";
 import { useTheme } from "@/lib/theme";
 
@@ -18,12 +20,24 @@ import { useTheme } from "@/lib/theme";
  * shared with the sign-in and sign-up screens, so every theme switch in the app
  * looks the same and stays in step. Icons come from lucide-react, not MUI's
  * <Icon>, so the app reads as one icon family.
+ *
+ * The label is "Tema: Koyu" — the theme a press would give you, in the same
+ * `${t("theme")}: ${…}` shape `SidenavActions` already uses for its own toggle.
+ * These read the `nav` namespace rather than carrying a Turkish literal so the
+ * three switches cannot drift into three different phrasings.
  */
+
+/** "Tema: Koyu" / "Tema: Açık" — the theme pressing the control would give. */
+function useThemeLabel(next) {
+  const t = useTranslations("nav");
+  return `${t("theme")}: ${next === "dark" ? t("themeDark") : t("themeLight")}`;
+}
 
 /** The floating circular button, matching the Configurator button it replaces. */
 export function ThemeToggleFab() {
   const { theme, toggle } = useTheme();
   const next = theme === "dark" ? "light" : "dark";
+  const label = useThemeLabel(next);
 
   return (
     <VuiBox
@@ -43,8 +57,8 @@ export function ThemeToggleFab() {
       sx={{ cursor: "pointer" }}
       onClick={toggle}
       role="button"
-      aria-label={`Switch to ${next} mode`}
-      title={`Switch to ${next} mode`}
+      aria-label={label}
+      title={label}
     >
       {/* The same lucide glyph the sign-in and sign-up screens use. */}
       <ThemeGlyph theme={theme} size={24} />
@@ -56,6 +70,7 @@ export function ThemeToggleFab() {
 export function ThemeToggleIconButton({ sx }) {
   const { theme, toggle } = useTheme();
   const next = theme === "dark" ? "light" : "dark";
+  const label = useThemeLabel(next);
 
   return (
     <IconButton
@@ -63,8 +78,8 @@ export function ThemeToggleIconButton({ sx }) {
       color="inherit"
       sx={sx}
       onClick={toggle}
-      aria-label={`Switch to ${next} mode`}
-      title={`Switch to ${next} mode`}
+      aria-label={label}
+      title={label}
     >
       <ThemeGlyph theme={theme} />
     </IconButton>

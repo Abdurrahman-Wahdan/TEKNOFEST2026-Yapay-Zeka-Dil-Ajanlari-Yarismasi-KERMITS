@@ -21,8 +21,11 @@ import PropTypes from "prop-types";
 
 // @mui material components
 import Collapse from "@mui/material/Collapse";
+import useMediaQuery from "@mui/material/useMediaQuery";
+import { useTheme } from "@mui/material/styles";
 import ListItem from "@mui/material/ListItem";
 import ListItemIcon from "@mui/material/ListItemIcon";
+import Tooltip from "@mui/material/Tooltip";
 import ListItemText from "@mui/material/ListItemText";
 import Icon from "@mui/material/Icon";
 
@@ -44,10 +47,30 @@ function SidenavCollapse({ color = "info", icon, name, children = false, active 
   const [controller] = useVisionUIController();
   const { miniSidenav, transparentSidenav } = controller;
 
+  /**
+   * On a phone the drawer is a full-width overlay, so the labels belong on show
+   * whatever the user's desktop rail preference was.
+   *
+   * `miniSidenav` is that preference and it is persisted, so a user who collapsed
+   * the drawer on their laptop arrived on their phone to an overlay 250px wide
+   * showing bare icons -- all the room for a label and no label in it.
+   */
+  const theme = useTheme();
+  const isPhone = useMediaQuery(theme.breakpoints.down("md"));
+  const railed = miniSidenav && !isPhone;
+
   return (
     <>
       <ListItem component="li">
-        <VuiBox {...rest} sx={(theme) => collapseItem(theme, { active, transparentSidenav })}>
+        {/* Collapsed, the label is the only thing naming the destination and it
+            is faded to nothing -- so the tooltip carries the name instead. Not
+            rendered when expanded, where it would just repeat the visible
+            label under the pointer. */}
+        <Tooltip title={railed ? name : ""} placement="right" disableInteractive>
+        <VuiBox
+          {...rest}
+          sx={(theme) => collapseItem(theme, { active, transparentSidenav, miniSidenav: railed })}
+        >
           <ListItemIcon
             sx={(theme) => collapseIconBox(theme, { active, transparentSidenav, color })}
           >
@@ -60,9 +83,10 @@ function SidenavCollapse({ color = "info", icon, name, children = false, active 
 
           <ListItemText
             primary={name}
-            sx={(theme) => collapseText(theme, { miniSidenav, transparentSidenav, active })}
+            sx={(theme) => collapseText(theme, { miniSidenav: railed, transparentSidenav, active })}
           />
         </VuiBox>
+        </Tooltip>
       </ListItem>
       {children && (
         <Collapse in={open} unmountOnExit>

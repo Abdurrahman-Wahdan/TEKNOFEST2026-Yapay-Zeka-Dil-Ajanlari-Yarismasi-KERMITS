@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     # cömert tutulur; gerçekten asılı kalan bir bağlantı yine de buradan kopar.
     LLM_TIMEOUT: float = Field(default=900.0, gt=0)
     LLM_MAX_RETRIES: int = Field(default=1, ge=0)
+    # Üstel backoff'un tavanı — llm/providers/vllm_provider.py ve
+    # embeddings/providers/remote_provider.py bu alanı okur.
+    LLM_RETRY_MAX_DELAY_SECONDS: float = Field(default=60.0, gt=0)
     LLM_TEMPERATURE: float = Field(
         default=0.0,
         description="Extraction favours repeatability over variety.",
@@ -58,6 +61,125 @@ class Settings(BaseSettings):
     CHAT_MODEL: str = Field(default="gemma", description="Fastest, cleanest Turkish.")
     EXTRACTOR_MODEL: str = Field(default="qwen", description="Best structured output.")
     REASONER_MODEL: str = "gpt"
+
+    # ===== Public answer output guard =====
+    OUTPUT_GUARD_MODEL: str = Field(
+        default="gemma",
+        description="Fast local model used for the final policy checklist.",
+    )
+    OUTPUT_GUARD_MAX_TOKENS: int = Field(
+        default=1400,
+        ge=300,
+        description="Small structured checklist/patch budget; never an answer rewrite.",
+    )
+    OUTPUT_GUARD_POLICY_FILE: Path = Field(
+        default=PROJECT_ROOT / "agents" / "output_guard" / "policies.json",
+        description="Editable public-answer policy set, reloaded for every turn.",
+    )
+
+    # ===== Compaction (summarising a thread before it fills its window) =====
+    #
+    # Every agent is compacted the same way -- the supervisor and all ten bank
+    # specialists -- because each is a separate instance with its own thread and
+    # its own history. The two tiers get their own keys so they can be tuned
+    # apart: a specialist's thread fills with bank JSON at a different rate than
+    # a conversation does, and nobody is watching it.
+    COMPACT_AT_FRACTION: float = Field(
+        default=0.7,
+        gt=0.0,
+        le=1.0,
+        description="Compact the supervisor's thread once its messages reach "
+        "this share of the usable window. Measured against what the server "
+        "reports for the model, not a constant.",
+    )
+    COMPACT_SPECIALIST_AT_FRACTION: float = Field(
+        default=0.7,
+        gt=0.0,
+        le=1.0,
+        description="The same, for one bank specialist's private thread.",
+    )
+    COMPACT_KEEP_MESSAGES: int = Field(
+        default=10,
+        gt=0,
+        description="Messages left untouched at the end of the supervisor's "
+        "thread. Everything before them is replaced by the summary; these are "
+        "carried through verbatim so the last exchanges keep their exact wording.",
+    )
+    COMPACT_SPECIALIST_KEEP_MESSAGES: int = Field(
+        default=10,
+        gt=0,
+        description="The same, for one bank specialist's private thread.",
+    )
+    COMPACT_MODEL: str = Field(
+        default="chat",
+        description="Role or model key that writes the summary. A role, so it "
+        "follows CHAT_MODEL rather than pinning a model that may not be served.",
+    )
+
+    # ===== Corpus retrieval (a specialist reading its own bank's documents) =====
+    #
+    # A physical ceiling on one delegated turn, not a judgement about content.
+    # The agent decides what to search for and when it has enough; these only
+    # stop a loop, and a loop is what happens without them: the offline
+    # researcher, which has the same tools, was measured going 42 `next=true`
+    # calls deep on a single topic and 50 calls into a marking cycle that
+    # returned nothing. `exit_behavior="continue"` means hitting one of these
+    # blocks that tool and lets the specialist answer with what it has, rather
+    # than failing the turn.
+    RETRIEVE_SEARCH_LIMIT: int = Field(
+        default=8,
+        gt=0,
+        description="Most `search_bank` calls in one delegated turn. Lower than "
+        "the offline pipeline's budget on purpose: a user is waiting on this "
+        "one, and each call now returns whole chunks rather than previews.",
+    )
+    RETRIEVE_EXPAND_LIMIT: int = Field(
+        default=8,
+        gt=0,
+        description="Most `expand_chunk` calls in one delegated turn. Roughly one "
+        "per search: widening a cut-off passage is the normal follow-up to a "
+        "hit, and walking a long document outward is several.",
+    )
+    RETRIEVE_PAGE_LIMIT: int = Field(
+        default=3,
+        gt=0,
+        description="Most `read_full_page` calls in one delegated turn. The "
+        "smallest of the three because it is the largest payload and the one "
+        "`expand_chunk` usually replaces.",
+    )
+
+    # ===== On-demand web research (specialists only) =====
+    WEB_SEARCH_URL: str = Field(default="http://127.0.0.1:8888")
+    WEB_SEARCH_TIMEOUT: float = Field(default=15.0, gt=0)
+    WEB_SEARCH_MAX_RESULTS: int = Field(default=6, gt=0, le=20)
+    WEB_RESEARCH_CACHE_SECONDS: float = Field(default=300.0, ge=0)
+    WEB_READ_SOURCE_ENABLED: bool = Field(
+        default=True,
+        description=(
+            "Expose read_bank_source beside search_bank_web. Set false only for "
+            "a search-only assessment; production research should keep it true."
+        ),
+    )
+    WEB_RESEARCH_USER_AGENT: str = "TF26-web-research/1.0"
+    WEB_READ_TIMEOUT: float = Field(default=30.0, gt=0)
+    WEB_READ_MAX_BYTES: int = Field(default=10_000_000, gt=0)
+    WEB_READ_MAX_CHARS: int = Field(default=35_000, gt=0)
+    WEB_READ_MAX_REDIRECTS: int = Field(default=5, ge=0, le=15)
+    WEB_READ_MAX_PDF_PAGES: int = Field(default=40, gt=0)
+    WEB_SEARCH_TOOL_LIMIT: int = Field(default=4, gt=0)
+    WEB_READ_TOOL_LIMIT: int = Field(default=8, gt=0)
+
+    # ===== Table overviews =====
+    TABLE_OVERVIEW_CONCURRENCY: int = Field(
+        default=2,
+        gt=0,
+        description="How many overviews may be generated at once, process-wide. "
+        "The per-table lock stops two readers of the *same* table racing; this "
+        "stops a reader who opens six tables in a minute queueing six vision "
+        "calls on a single-GPU host that is also serving the chat. Measured: "
+        "the engine had 14 requests in flight during testing and stopped "
+        "answering a ten-token prompt inside 90 seconds.",
+    )
 
     # ===== Embeddings =====
     EMBEDDING_PROVIDER: str = Field(
@@ -417,6 +539,84 @@ class Settings(BaseSettings):
         "because one check may call a catalogue and then a quote.",
     )
 
+    # ===== Voice transcription =====
+    VOICE_MODEL_PATH: str = Field(
+        default=str(
+            PROJECT_ROOT
+            / "TF26_data"
+            / "models"
+            / "whisper-large-v3-mlx-4bit"
+        ),
+        description="Local MLX checkpoint for Turkish voice input. A local path "
+        "is deliberate: serving a request must never trigger a multi-gigabyte "
+        "network download. The default is exact Whisper large-v3 with 4-bit "
+        "weights, ready for the on-device M1 Max benchmark.",
+    )
+    VOICE_LANGUAGE: str = Field(
+        default="tr",
+        min_length=2,
+        max_length=5,
+        description="Forced source language. Skipping language detection removes "
+        "work from every short recording and prevents Turkish speech being "
+        "misclassified from a one- or two-word prompt.",
+    )
+    VOICE_MODEL_BYTES: int = Field(
+        default=973_563_040,
+        gt=0,
+        description="Expected byte size of the configured MLX weights.npz.",
+    )
+    VOICE_MODEL_SHA256: str = Field(
+        default="3bfa3c4e42344ea87a5b81a73992a867088ae076d377042e384b657adea81db9",
+        min_length=64,
+        max_length=64,
+        description="Official Hugging Face LFS SHA-256 for the configured "
+        "checkpoint. Verified once before any model bytes are executed.",
+    )
+    VOICE_MAX_UPLOAD_MB: int = Field(
+        default=10,
+        gt=0,
+        le=100,
+        description="Hard cap on one compressed browser recording.",
+    )
+    VOICE_WARM_ON_STARTUP: bool = Field(
+        default=True,
+        description="Load and compile Whisper during API startup so the first "
+        "voice request has warm-request latency.",
+    )
+
+    # ===== Chat attachments =====
+    CHAT_ATTACHMENT_MAX_UPLOAD_MB: int = Field(default=20, gt=0, le=100)
+    CHAT_ATTACHMENT_MAX_FILES: int = Field(default=8, gt=0, le=20)
+    CHAT_ATTACHMENT_MAX_PAGES: int = Field(default=40, gt=0, le=200)
+    CHAT_ATTACHMENT_MAX_TOTAL_IMAGES: int = Field(default=40, gt=0, le=200)
+    CHAT_ATTACHMENT_MAX_TEXT_CHARS: int = Field(default=100_000, gt=0)
+    CHAT_ATTACHMENT_MAX_TOTAL_TEXT_CHARS: int = Field(default=200_000, gt=0)
+    CHAT_ATTACHMENT_TTL_SECONDS: int = Field(default=3600, gt=0)
+    CHAT_ATTACHMENT_PROCESS_TIMEOUT_SECONDS: int = Field(default=120, gt=0)
+    CHAT_ATTACHMENT_RENDER_LONG_EDGE: int = Field(default=1800, gt=0)
+    CHAT_ATTACHMENT_JPEG_QUALITY: int = Field(default=88, gt=0, le=100)
+    CHAT_ATTACHMENT_SOFFICE_PATH: str = Field(
+        default="",
+        description="Optional explicit path to LibreOffice's soffice binary for DOCX rendering.",
+    )
+
+    # ===== Automations (the user's scheduled agent runs) =====
+    AUTOMATIONS_ENABLED: bool = Field(
+        default=True,
+        description="Run the background loop that fires the user's scheduled "
+        "automations. Off leaves the API fully usable -- automations can still "
+        "be created, edited and run on demand -- they simply do not fire on "
+        "their own, which is what a second API instance or a CI run wants.",
+    )
+    AUTOMATIONS_POLL_SECONDS: int = Field(
+        default=30,
+        gt=0,
+        le=600,
+        description="How often the loop looks for a due automation. Schedules "
+        "have minute granularity, so anything under 60 is already exact; 30 "
+        "halves the worst-case lateness for the cost of one indexed query.",
+    )
+
     # ===== API (the FastAPI service the dashboard talks to) =====
     API_HOST: str = "127.0.0.1"
     API_PORT: int = Field(default=8000, gt=0, lt=65536)
@@ -448,13 +648,6 @@ class Settings(BaseSettings):
         "session. A leaked access token expires before it is useful.",
     )
     API_REFRESH_TOKEN_DAYS: int = Field(default=30, gt=0)
-    API_CHAT_HISTORY_TURNS: int = Field(
-        default=12,
-        gt=0,
-        description="Turns replayed into the agent's context. The window is "
-        "bounded rather than whole-session: an unbounded history eventually "
-        "costs more than the retrieved chunks it is meant to support.",
-    )
 
     # ===== Application =====
     LOG_LEVEL: str = "INFO"
@@ -477,6 +670,7 @@ class Settings(BaseSettings):
             "CHAT_MODEL": self.CHAT_MODEL,
             "EXTRACTOR_MODEL": self.EXTRACTOR_MODEL,
             "REASONER_MODEL": self.REASONER_MODEL,
+            "OUTPUT_GUARD_MODEL": self.OUTPUT_GUARD_MODEL,
         }
         for field, value in roles.items():
             if value not in MODEL_KEYS:

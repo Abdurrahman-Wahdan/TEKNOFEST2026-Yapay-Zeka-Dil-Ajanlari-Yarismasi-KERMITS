@@ -1,20 +1,20 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 
 import { VuiBox, VuiTypography } from "@/components/vision";
-import { api } from "@/lib/api";
 import { resolveTable, type TableProps } from "@/lib/contract";
 import {
   EMPTY_FILTERS,
   applyFilters,
   sortRows,
   type FilterState,
-  type SortState,
 } from "@/lib/table-filter";
+import { useBankLabels } from "@/lib/use-bank-labels";
+import { useTableSort } from "@/lib/use-table-sort";
 
+import { useAttachTable } from "@/lib/chat/use-attach-table";
 import { ProducedTable } from "./ProducedTable";
 import { TableFilters } from "./TableFilters";
 
@@ -32,17 +32,11 @@ export function TableWidget(props: TableProps) {
   const locale = useLocale() as "tr" | "en";
 
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
-  const [sort, setSort] = useState<SortState | null>(null);
 
-  // Display names for bank keys. Shares the cache with every other consumer of
-  // GET /api/banks, so several tables on a page cost one request. A failure
-  // here is not the table's problem: keys render raw and everything else works.
-  const { data: banks } = useQuery({ queryKey: ["banks"], queryFn: api.banks });
-  const bankLabels = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const bank of banks ?? []) map[bank.name] = bank.display_name;
-    return map;
-  }, [banks]);
+  // `TableWidget` is mounted with the table's id as its `key`, so switching
+  // tables remounts it and the sort resets for free -- no `resetSort` here.
+  const { sort, toggleSort } = useTableSort();
+  const bankLabels = useBankLabels();
 
   const table = useMemo(() => resolveTable(props), [props]);
 
@@ -56,16 +50,14 @@ export function TableWidget(props: TableProps) {
     return sortRows(matched, sort, table.columns, locale, bankLabels);
   }, [table.rows, table.columns, filters, sort, locale, bankLabels]);
 
-  const toggleSort = (key: string) =>
-    setSort((current) =>
-      current?.key === key
-        ? current.direction === "asc"
-          ? { key, direction: "desc" }
-          : // Third click clears it, so a user can always get back to the
-            // producer's original ordering — which is itself information.
-            null
-        : { key, direction: "asc" },
-    );
+  // The filtered, sorted, visible rows -- what the user is actually looking at.
+  const attach = useAttachTable({
+    columns: visible,
+    rows,
+    title: table.title || undefined,
+    about: [table.subtitle, table.notes].filter(Boolean).join(" — ") || undefined,
+    bankLabels,
+  });
 
   return (
     <VuiBox>
@@ -80,26 +72,25 @@ export function TableWidget(props: TableProps) {
         rows={table.rows}
         state={filters}
         onChange={setFilters}
+        bankLabels={bankLabels}
         matched={rows.length}
         total={table.rows.length}
       />
 
-      <VuiBox
-        sx={{
-          "& .MuiTableRow-root:hover td": {
-            background: "rgba(255, 255, 255, 0.03)",
-          },
-        }}
-      >
-        <ProducedTable
-          columns={visible}
-          rows={rows}
-          sort={sort}
-          onSort={toggleSort}
-          bankLabels={bankLabels}
-          emptyLabel={table.rows.length === 0 ? t("tableEmpty") : t("noRowsMatch")}
-        />
-      </VuiBox>
+      {/* No hover wrapper here any more: row hover is `ProducedTable`'s own,
+          so every table in the app gets it and no call site can forget it. */}
+      <ProducedTable
+        columns={visible}
+        rows={rows}
+        sort={sort}
+        onSort={toggleSort}
+        bankLabels={bankLabels}
+        emptyLabel={table.rows.length === 0 ? t("tableEmpty") : t("noRowsMatch")}
+        title={table.title || undefined}
+        about={[table.subtitle, table.notes].filter(Boolean).join(" — ") || undefined}
+        onAttachRow={attach.onAttachRow}
+        onAttachTable={attach.onAttachTable}
+      />
 
       {table.notes && (
         <VuiBox mt={2}>

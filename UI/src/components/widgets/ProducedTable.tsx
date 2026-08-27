@@ -1,15 +1,17 @@
 "use client";
 
-import { Table as MuiTable, TableBody, TableContainer, TableRow } from "@mui/material";
+import { Table as MuiTable, TableBody, TableContainer, TableRow, Tooltip } from "@mui/material";
+import { Sparkles } from "lucide-react";
 import { useTheme } from "@mui/material/styles";
 import type { Theme } from "@mui/material/styles";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
-import { Pill } from "@/components/ui/Pill";
+import { Pill, type PillTone } from "@/components/ui/Pill";
 import { VuiBox, VuiTypography } from "@/components/vision";
 import type { CellValue, ResolvedColumn, Row } from "@/lib/contract";
-import { formatDate, formatMoney, formatNumber, formatRate } from "@/lib/format";
+import { BLANK_CELL, cellDisplayText, isBlankCell } from "@/lib/cell-display";
 import { sortHint } from "@/lib/sort-hint";
+import { TABLE_GUTTER, tableRowHoverSx, tableRule } from "@/lib/table-style";
 import type { SortState } from "@/lib/table-filter";
 
 /**
@@ -36,6 +38,10 @@ export function ProducedTable({
   best,
   rowKey,
   groups,
+  title,
+  about,
+  onAttachRow,
+  onAttachTable,
 }: {
   columns: ResolvedColumn[];
   rows: Row[];
@@ -68,11 +74,56 @@ export function ProducedTable({
    * covers the columns that belong to no group.
    */
   groups?: { key: string; label: string; span: number }[];
+  /**
+   * What this table is, and what it is for.
+   *
+   * Neither is drawn -- the pages render their own headings, and adding a second
+   * one inside the table would show the title twice. They are here so the table
+   * can *say* what it is in the markup, which is the only way anything reading
+   * the page afterwards can tell one table from another.
+   *
+   * That reader is the assistant. A quote lifted out of a cell arrives with the
+   * row and the column already, but "which table" and "what is this table about"
+   * were blank, and without them the agent has to ask the user what they are
+   * looking at -- which defeats the point of attaching it. `about` is the
+   * producer's own description (`subtitle`/`notes`), which is usually the one
+   * sentence that explains what is being compared.
+   *
+   * Passed as data rather than inferred from nearby headings: the call site knows
+   * the title exactly, and guessing it from the closest markup gets it wrong the
+   * moment a page changes its layout.
+   */
+  title?: string;
+  about?: string;
+  /**
+   * Hand this row, or this whole table, to the assistant.
+   *
+   * Both live here rather than being bolted on at the call sites, for the reason
+   * this file already records about row hover: it used to be added by one caller
+   * and so only one of four pages had it. A trailing column appears only when a
+   * handler is passed, so a table that does not opt in is byte-for-byte unchanged.
+   *
+   * `onAttachRow` gets the row and its index because a `Row` has no id -- the
+   * React key here is `cite_url` plus index -- so index is the only stable way to
+   * say "that one".
+   */
+  onAttachRow?: (row: Row, index: number) => void;
+  onAttachTable?: () => void;
 }) {
   const locale = useLocale() as "tr" | "en";
-  const { grey } = useTheme().palette;
-  const { size, fontWeightBold } = useTheme().typography;
-  const { borderWidth } = useTheme().borders;
+  const theme = useTheme();
+  const { grey } = theme.palette;
+  const { size, fontWeightBold } = theme.typography;
+  const { borderWidth } = theme.borders;
+
+  // One decision, read in four places: the two header rows, the body cells, and
+  // the group spans. Computing it per-site is how a header and its body get one
+  // column out of step.
+  // The assistant's own namespace, not the table's: these two labels name an
+  // assistant action, and the strings for that live together.
+  const tChat = useTranslations("chat");
+
+  const hasActions = Boolean(onAttachRow || onAttachTable);
 
   if (columns.length === 0 || rows.length === 0) {
     return (
@@ -85,7 +136,14 @@ export function ProducedTable({
   }
 
   return (
-    <TableContainer sx={{ overflowX: "auto" }}>
+    <TableContainer
+      sx={{ overflowX: "auto" }}
+      // Read by `describeLocation` when something inside a cell is quoted. Empty
+      // strings would answer "which table?" with "" and read as a fact, so the
+      // attributes are omitted entirely when unknown.
+      {...(title ? { "data-table-title": title } : {})}
+      {...(about ? { "data-table-about": about } : {})}
+    >
       <MuiTable>
         <VuiBox component="thead">
           {groups && groups.length > 0 && (
@@ -112,6 +170,10 @@ export function ProducedTable({
                   {group.label}
                 </VuiBox>
               ))}
+              {/* The group spans must add up to the number of columns, so an
+                  extra column at the end needs an extra group to sit under or
+                  the whole grouped header shifts left by one. */}
+              {hasActions && <VuiBox component="th" aria-hidden data-no-outline="" />}
             </TableRow>
           )}
           <TableRow>
@@ -132,7 +194,7 @@ export function ProducedTable({
                   // the indicator inside it -- 0,7 x 0,35 left the marker at
                   // about a quarter visible, which is why it read as absent.
                   opacity={column.sortable ? 1 : 0.7}
-                  borderBottom={`${borderWidth[1]} solid ${grey[700]}`}
+                  borderBottom={tableRule(theme)}
                   sx={{
                     whiteSpace: "nowrap",
                     px: GUTTER,
@@ -164,6 +226,12 @@ export function ProducedTable({
                       {active && (
                         <VuiBox
                           component="span"
+                          // Marked so anything reading the header as text can
+                          // leave it out. Without this the column a quoted cell
+                          // sits under came back as "INSTALMENT▲", and on a text
+                          // column as "PRODUCT A–Z" -- the sort state welded onto
+                          // the column's name.
+                          data-sort-hint=""
                           sx={(theme: Theme) => ({
                             fontSize: "1em",
                             fontWeight: 700,
@@ -181,12 +249,54 @@ export function ProducedTable({
                 </VuiBox>
               );
             })}
+            {hasActions && (
+              <VuiBox
+                component="th"
+                pt={1.5}
+                pb={1.25}
+                textAlign="right"
+                borderBottom={tableRule(theme)}
+                // A column of controls, not data. Marked so the page outline the
+                // assistant reads leaves it out rather than reporting an empty
+                // trailing column on every row.
+                data-no-outline=""
+                sx={{ whiteSpace: "nowrap", px: GUTTER, width: 1 }}
+              >
+                {onAttachTable && (
+                  <AttachButton
+                    label={tChat("attachTable")}
+                    onClick={onAttachTable}
+                    // The table-level control is always visible. Row buttons
+                    // appear on hover because there is one per row and forty of
+                    // them at once is a column of clutter; there is only ever one
+                    // of this, and a control nobody can see is a control nobody
+                    // uses.
+                    alwaysVisible
+                  />
+                )}
+              </VuiBox>
+            )}
           </TableRow>
         </VuiBox>
 
         <TableBody>
           {rows.map((row, index) => (
-            <TableRow key={row.cite_url ? `${row.cite_url}-${index}` : index}>
+            <TableRow
+              key={row.cite_url ? `${row.cite_url}-${index}` : index}
+              // Row hover lives here, on the one component every table page
+              // renders, rather than in an sx wrapper around it — which is how
+              // it used to work, and why only /finansman had it while
+              // /compare, /urunler and /kampanyalar did not.
+              //
+              // Scoped to the body row on purpose. A `MuiTableRow` override in
+              // the theme would be tidier still, but `<thead>` rows are
+              // `TableRow` too, so it would light up the headers as well.
+              //
+              // The tint is on the `td`, not the `tr`: a table row generates no
+              // background box of its own under `border-collapse`, so painting
+              // the row paints nothing. The cells are what is visible.
+              sx={tableRowHoverSx}
+            >
               {columns.map((column) => {
                 const cellKey = rowKey
                   ? `${String(row.cells[rowKey] ?? "")}|${column.key}`
@@ -202,7 +312,7 @@ export function ProducedTable({
                   borderBottom={
                     index === rows.length - 1
                       ? null
-                      : `${borderWidth[1]} solid ${grey[700]}`
+                      : tableRule(theme)
                   }
                   sx={{
                     whiteSpace: "nowrap",
@@ -223,10 +333,35 @@ export function ProducedTable({
                     bankLabels={bankLabels}
                     moved={moved}
                     best={isBest}
+                    // A note on this one cell wins over the row's citation note:
+                    // it was written about this value, and the row note is about
+                    // where the row came from. Only the `link` cell falls back to
+                    // the row note, which is the cell that citation belongs to.
+                    title={row.cell_notes?.[column.key] ?? row.cite_note}
+                    tone={row.cell_tones?.[column.key]}
                   />
                 </VuiBox>
                 );
               })}
+              {hasActions && (
+                <VuiBox
+                  component="td"
+                  py={1}
+                  textAlign="right"
+                  borderBottom={
+                    index === rows.length - 1 ? null : tableRule(theme)
+                  }
+                  data-no-outline=""
+                  sx={{ whiteSpace: "nowrap", px: GUTTER, lineHeight: 0 }}
+                >
+                  {onAttachRow && (
+                    <AttachButton
+                      label={tChat("attachRow")}
+                      onClick={() => onAttachRow(row, index)}
+                    />
+                  )}
+                </VuiBox>
+              )}
             </TableRow>
           ))}
         </TableBody>
@@ -235,6 +370,58 @@ export function ProducedTable({
   );
 }
 
+/**
+ * The "hand this to the assistant" control.
+ *
+ * Revealed on hover of its row, and always present for the keyboard -- an
+ * `opacity: 0` button is still focusable, so hiding it without a `:focus-visible`
+ * escape is a tab trap. Same pattern the attachment tray's remove button uses.
+ */
+function AttachButton({
+  label,
+  onClick,
+  alwaysVisible,
+}: {
+  label: string;
+  onClick: () => void;
+  alwaysVisible?: boolean;
+}) {
+  return (
+    <VuiBox
+      component="button"
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      display="inline-flex"
+      alignItems="center"
+      justifyContent="center"
+      sx={{
+        width: 26,
+        height: 26,
+        border: "none",
+        padding: 0,
+        cursor: "pointer",
+        borderRadius: "var(--radius-full)",
+        backgroundColor: "transparent",
+        // The same grey every other quiet control in the app uses. Not
+        // `--text-faint`, which is 2.49:1 and for decoration only.
+        color: "var(--control-ink)",
+        opacity: alwaysVisible ? 1 : 0,
+        transition: "opacity 150ms ease, background-color 150ms ease, color 150ms ease",
+        "tr:hover &, &:focus-visible": { opacity: 1 },
+        "&:hover": { backgroundColor: "var(--muted)", color: "var(--foreground)" },
+        "&:focus-visible": { outline: "2px solid var(--ring)", outlineOffset: 2 },
+      }}
+    >
+      <Sparkles size={15} aria-hidden="true" />
+    </VuiBox>
+  );
+}
+
+/** The tones `Pill` knows. Anything else a producer sends is drawn neutral. */
+const PILL_TONES = new Set<PillTone>(["neutral", "ok", "warn", "bad"]);
+
 function Cell({
   value,
   column,
@@ -242,6 +429,8 @@ function Cell({
   bankLabels,
   moved,
   best,
+  title,
+  tone,
 }: {
   value: CellValue | undefined;
   column: ResolvedColumn;
@@ -251,7 +440,14 @@ function Cell({
   moved?: "up" | "down";
   /** Set when this figure is the best on its row. */
   best?: boolean;
+  /** A note about this cell, or failing that the row's own `cite_note`. Shown
+      as an instant tooltip on `link` and `badge` cells; other types ignore it. */
+  title?: string;
+  /** What this `badge` cell's state means, from the row's `cell_tones`. */
+  tone?: string;
 }) {
+  const t = useTranslations("components");
+
   const base = {
     variant: "button" as const,
     fontWeight: "regular" as const,
@@ -260,26 +456,32 @@ function Cell({
 
   // Absent is not zero and not false. A dash says "the producer did not find
   // this", which is a different fact from any value we could substitute.
-  if (value === undefined || value === null || value === "") {
+  if (isBlankCell(value)) {
     return (
       <VuiTypography {...base} color="text" opacity={0.5}>
-        —
+        {BLANK_CELL}
       </VuiTypography>
     );
   }
+
+  // What the cell says. Shared with `cellDisplayText` rather than restated here,
+  // because the assistant is now a second reader of these tables: when the two
+  // drifted, an agent answered about "kuveytturk" while the user was looking at
+  // "Kuveyt Türk". Only the *presentation* below is this component's own.
+  const text = cellDisplayText(value, column, locale, bankLabels);
 
   switch (column.type) {
     case "money":
       return (
         <VuiTypography {...base} color="white">
-          {typeof value === "number" ? formatMoney(value, locale, column.currency) : String(value)}
+          {text}
         </VuiTypography>
       );
 
     case "percent":
       return (
         <VuiTypography {...base} color="white">
-          {typeof value === "number" ? formatRate(value, locale) : String(value)}
+          {text}
         </VuiTypography>
       );
 
@@ -298,9 +500,7 @@ function Cell({
           fontWeight={best ? "bold" : "regular"}
           sx={{ transition: "color 900ms ease-out" }}
         >
-          {typeof value === "number"
-            ? formatNumber(value, locale, column.decimals)
-            : String(value)}
+          {text}
           {moved && (
             <VuiBox
               component="span"
@@ -316,19 +516,24 @@ function Cell({
     case "date":
       return (
         <VuiTypography {...base} color="text">
-          {formatDate(String(value), locale)}
+          {text}
         </VuiTypography>
       );
 
     case "bank":
       return (
         <VuiTypography {...base} color="white" fontWeight="medium">
-          {bankLabels?.[String(value)] ?? String(value)}
+          {text}
         </VuiTypography>
       );
 
-    case "link":
-      return (
+    case "link": {
+      // The native `title` attribute puts the browser's own hover delay in
+      // charge -- Chrome, Firefox and Safari each pick their own, and none
+      // of them can be told to show sooner. `Tooltip` with `enterDelay={0}`
+      // shows the instant the cursor lands, which a citation link needs: the
+      // note is the only thing that says *why* the source supports this row.
+      const link = (
         <VuiTypography
           {...base}
           component="a"
@@ -338,48 +543,68 @@ function Cell({
           color="info"
           sx={{ ...base.sx, textDecoration: "underline" }}
         >
-          {hostOf(String(value))}
+          {/* The call to action, not the bare host. Every citation points at a
+              deep page -- a specific campaign, a specific rate table -- and a
+              link reading "vakifkatilim.com.tr" says the bank's front page,
+              which is not where it goes. The host has not been dropped though:
+              it moves into the tooltip below, because a reader is entitled to
+              know which domain a link will take them to before they click. */}
+          {t("citeLink")}
         </VuiTypography>
       );
+      // The note only. The host is deliberately not shown anywhere -- not as
+      // the link text and not in the tooltip -- because a domain on its own
+      // reads as the bank's front page, which is never where a citation goes.
+      return title ? (
+        <Tooltip title={title} arrow enterDelay={0} enterNextDelay={0} leaveDelay={0}>
+          {link}
+        </Tooltip>
+      ) : (
+        link
+      );
+    }
 
     case "bool":
       // A definite "no" must not render as the same glyph as "we don't know" —
       // both would be a dash, and absent and false are different facts.
       return (
         <VuiTypography {...base} color={value === true ? "success" : "text"}>
-          {value === true ? "✓" : "✕"}
+          {text}
         </VuiTypography>
       );
 
-    case "badge":
-      return <Pill>{String(value)}</Pill>;
+    case "badge": {
+      // An unrecognised tone is drawn `neutral` rather than dropping the cell —
+      // the same forgiveness `resolveTable` gives an unrecognised column type.
+      const pill = <Pill tone={PILL_TONES.has(tone as PillTone) ? (tone as PillTone) : "neutral"}>{text}</Pill>;
+      // Same instant tooltip the citation link uses, and for the same reason:
+      // the note is what explains the chip, and a hover that takes the browser's
+      // own second and a half to appear may as well not be there. Wrapped in a
+      // span because `Pill` is a plain function component and cannot hold the
+      // ref `Tooltip` hands its child.
+      return title ? (
+        <Tooltip title={title} arrow enterDelay={0} enterNextDelay={0} leaveDelay={0}>
+          <span style={{ display: "inline-block" }}>{pill}</span>
+        </Tooltip>
+      ) : (
+        pill
+      );
+    }
 
     default:
       return (
         <VuiTypography {...base} color="text">
-          {String(value)}
+          {text}
         </VuiTypography>
       );
   }
 }
 
 /**
- * The gutter between columns, applied identically to headers and cells.
+ * The gutter between columns.
  *
- * Only the *inner* spacing. The outer edges — the first column's left and the
- * last column's right — belong to the table theme
- * (`assets/theme/components/table/tableContainer`), which sets them with
- * `!important` for every table in the app so they cannot drift per table. The
- * template's own Table derives padding from `align` instead, which is how a
- * header on 24px ended up above a cell on 8px in the same column.
+ * Now the shared `TABLE_GUTTER` from `@/lib/table-style`, so the markdown table
+ * the assistant produces lines its columns up with this one. Aliased rather than
+ * inlined at the call sites to keep the diff honest about what changed.
  */
-const GUTTER = 1.5;
-
-/** A link reads better as its host than as 90 characters of path. */
-function hostOf(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return url;
-  }
-}
+const GUTTER = TABLE_GUTTER;

@@ -90,6 +90,31 @@ export function formatDate(value: string | Date, locale: Locale) {
 }
 
 /**
+ * A moment, with the time of day: "26 Ağustos 2026 09:00".
+ *
+ * Separate from `formatDate` rather than a flag on it, because the two answer
+ * different questions and almost every caller wants the date alone. The ones
+ * that want this are about a *clock*: when an automation runs next, when a
+ * report was written. For those the hour is the whole point, and a date with no
+ * time reads as though the schedule were a day rather than a moment.
+ *
+ * Istanbul, like every other date in this app. An automation's hour is stored as
+ * Turkish wall clock (`api/automations/schedule.py::TZ`), so rendering it in the
+ * browser's zone would show a user abroad a schedule they never set.
+ */
+export function formatDateTime(value: string | Date, locale: Locale) {
+  const date = typeof value === "string" ? new Date(value) : value;
+  return new Intl.DateTimeFormat(tag(locale), {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Europe/Istanbul",
+  }).format(date);
+}
+
+/**
  * Days until a campaign ends. Negative means it already has.
  *
  * Compared at Istanbul midnight, not the browser's: a campaign ending "today"
@@ -116,4 +141,39 @@ export function daysUntil(isoDate: string): number {
  */
 export function fold(value: string, locale: Locale) {
   return value.toLocaleLowerCase(tag(locale));
+}
+
+/**
+ * Capitalizes only the first letter, locale-aware.
+ *
+ * The offline table pipeline writes `topic`/`subcategory` all-lowercase —
+ * `"teverruk finansmanı"` — which reads as a slug, not a heading, on a banking
+ * site. `.toLocaleUpperCase("tr-TR")` on just the first character is enough to
+ * fix that without title-casing every word (Turkish does not capitalize
+ * conjunctions like "ve"/"ile" the way English titles do), and the locale tag
+ * matters: plain `.toUpperCase()` turns a leading "i" into ASCII "I" instead
+ * of the dotted "İ" Turkish needs.
+ */
+export function capitalize(value: string, locale: Locale) {
+  if (!value) return value;
+  return value.charAt(0).toLocaleUpperCase(tag(locale)) + value.slice(1);
+}
+
+/**
+ * The host of a URL, without `www.`.
+ *
+ * Currently unused. It was how citation links were labelled, until a bare host
+ * turned out to misrepresent them: every citation points at a deep page — a
+ * named campaign, a specific rate table — and "vakifkatilim.com.tr" reads as
+ * the bank's front page. Those links now say what they are instead, and the
+ * host is not shown at all. Kept because it is a correct, tested helper, and
+ * hosts may well be worth showing somewhere they are not standing in for a
+ * link's destination.
+ */
+export function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
 }

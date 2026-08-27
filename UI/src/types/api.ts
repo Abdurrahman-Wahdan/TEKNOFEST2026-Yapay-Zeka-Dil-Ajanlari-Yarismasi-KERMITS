@@ -150,6 +150,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/me/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Stats
+         * @description This user's own usage, for the profile overview.
+         *
+         *     Eight counts and two timestamps, all from tables that already exist. Written
+         *     as separate queries rather than one join with conditional aggregates: they hit
+         *     four unrelated tables, each count is an index-only scan, and a single clever
+         *     statement here would be harder to read than the page it feeds.
+         *
+         *     Message counts go through the session join rather than a `user_id` on
+         *     `chat_messages`, because there is no such column -- a message belongs to a
+         *     conversation, and the conversation belongs to the user. That is the right
+         *     shape; it just means these two counts are the only ones with a subquery.
+         */
+        get: operations["get_stats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/me/views": {
         parameters: {
             query?: never;
@@ -192,6 +222,218 @@ export interface paths {
         post?: never;
         /** Delete View */
         delete: operations["delete_view"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/automations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Automations
+         * @description Every automation this user has, oldest first.
+         *
+         *     Oldest first, not newest: this is a list someone maintains rather than a feed
+         *     they read, and a list whose rows move when you add one is hard to keep track
+         *     of. The newly created row appearing at the bottom is also where the composer
+         *     that made it is.
+         */
+        get: operations["list_automations"];
+        put?: never;
+        /**
+         * Create Automation
+         * @description Create one from an explicit schedule.
+         */
+        post: operations["create_automation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/automations/describe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Describe Automation
+         * @description Create one from a sentence, with any hand-set field overriding the agent.
+         *
+         *     One round trip, not draft-then-confirm. The list is the confirmation: the row
+         *     appears with the schedule the agent read, and every field on it is editable
+         *     from the same page -- so a misread hour costs a click rather than a step
+         *     everybody has to take every time.
+         *
+         *     A field the user set by hand **wins**. They moved the picker after reading
+         *     their own sentence; a model's reading of "akşam" does not outrank that.
+         */
+        post: operations["describe_automation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/automations/{automation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Automation
+         * @description Delete an automation. **Its reports are kept.**
+         *
+         *     `automation_id` on a report is ON DELETE SET NULL, and the report carries its
+         *     own snapshot of the title -- cancelling tomorrow's report must not delete
+         *     yesterday's.
+         */
+        delete: operations["delete_automation"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Automation
+         * @description Edit an automation. Only the fields present in the body are written.
+         *
+         *     Any change to the schedule recomputes `next_run_at` from *now*. Keeping the
+         *     old value would fire the automation once more at the time the user just
+         *     changed away from, which is exactly the correction they were making.
+         */
+        patch: operations["update_automation"];
+        trace?: never;
+    };
+    "/api/me/automations/{automation_id}/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Now
+         * @description Run one automation immediately, without touching its schedule.
+         *
+         *     Not a convenience: without it, checking that an automation does what the user
+         *     meant means waiting for a wall clock.
+         *
+         *     In a thread, and 202 rather than 200, because a run is a full supervisor pass
+         *     over ten bank specialists -- minutes. The report appears when it appears; the
+         *     notification bell is how the user learns it did, which is the same way a
+         *     scheduled run tells them.
+         *
+         *     `next_run_at` is deliberately untouched. This is an extra run, not a
+         *     rescheduled one, so tomorrow's report still arrives at the usual time.
+         */
+        post: operations["run_now"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/automations/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Reports
+         * @description This user's reports, newest first. Bodies excluded -- see `ReportSummary`.
+         */
+        get: operations["list_reports"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/automations/reports/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Unread Count
+         * @description What the notification badge shows.
+         *
+         *     Its own route rather than `len(list_reports(unread_only=True))`: this is
+         *     polled on a timer by every open tab, and it must stay one indexed count
+         *     (`ix_automation_reports_unread`) rather than a row fetch.
+         */
+        get: operations["unread_count"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/automations/reports/{report_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Report
+         * @description One report, with its body and citations.
+         *
+         *     Reading does not mark it read. Opening it does, through the route below --
+         *     separate because the report page fetches this to render and a refetch
+         *     (a retry, a cache revalidation) must not silently clear a notification the
+         *     user never saw.
+         */
+        get: operations["get_report"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/automations/reports/{report_id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Report Read
+         * @description Mark one report read, which is what removes it from the bell.
+         *
+         *     Idempotent: an already-read report keeps its original `read_at`. Re-stamping
+         *     would make "when did I first see this" unanswerable for no gain.
+         */
+        post: operations["mark_report_read"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -569,6 +811,111 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/compare-tables": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Tables
+         * @description Every table in one category, for the browse-by-subcategory picker.
+         */
+        get: operations["list_tables"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/compare-tables/{table_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Table
+         * @description One table, shaped for `<ProducedTable />`.
+         *
+         *     Column order is: a `Banka` column first (bank keys the frontend already
+         *     knows how to render), then every column the table itself declared in the
+         *     order the producer chose, then the two derived validity columns.
+         *
+         *     The validity pair is split rather than shown as one range string because the
+         *     two halves are read differently: the verdict is a `badge`, which
+         *     `resolveTable` makes filterable, and the end date is a `date`, which it makes
+         *     sortable. One combined column would be neither — and filtering by whether an
+         *     offer is still live, and sorting by when it ends, are the two things this
+         *     data is for.
+         */
+        get: operations["get_table"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/compare-tables/{table_id}/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Overview
+         * @description The overview, or what is happening instead.
+         *
+         *     Deliberately not "generate one if it is missing". Writing an overview needs
+         *     the page as the browser sees it — an outline and a screenshot this endpoint
+         *     has no way to produce — so the client asks here first and only pays for a
+         *     capture when the answer is `missing`. A GET that quietly cost a
+         *     vision-model call would also be a GET that is not safe to retry.
+         *
+         *     `generating` is the reason this returns a wrapper instead of a 404. A model
+         *     reading a screenshot takes a minute on a quiet host and several on a busy
+         *     one, and a client that cannot tell "still working" from "nothing here" has
+         *     to guess a timeout — which is either too short for the busy host or leaves
+         *     a card spinning at a dead one.
+         */
+        get: operations["get_overview"];
+        put?: never;
+        /**
+         * Create Overview
+         * @description Start writing the overview for one table. Poll the GET for the result.
+         *
+         *     **Accepted, not written.** A generation takes 70-120 seconds, which is
+         *     longer than the things between this and the browser are willing to hold a
+         *     socket open -- the dev server's `/api` proxy cuts it at 30. So the work
+         *     starts in a thread and the client polls the GET it already calls on
+         *     arrival, which is the same row every later visitor will read.
+         *
+         *     The table the agent reads is `get_table`'s own output, not the payload the
+         *     caller sent: the browser supplies what it *saw* -- the outline and the
+         *     screenshot -- and the figures come from the same function that rendered
+         *     them, so nothing on the wire can talk the agent into summarising a table
+         *     the server does not have.
+         *
+         *     No authentication, like the rest of this router: the pool is public data.
+         *     The cost of that is bounded by the cache, which answers every repeat for
+         *     free, and by the single-flight lock, which collapses a stampede on one
+         *     table into one call. If it ever needs a gate, it needs a rate limit rather
+         *     than a login.
+         */
+        post: operations["create_overview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/search": {
         parameters: {
             query?: never;
@@ -583,6 +930,26 @@ export interface paths {
         get: operations["search_corpus"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chat/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload Chat Attachment
+         * @description Prepare one file without exposing document page images to the browser.
+         */
+        post: operations["upload_chat_attachment"];
         delete?: never;
         options?: never;
         head?: never;
@@ -630,6 +997,94 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/chat/sessions/{session_id}/recommendation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Recommendation
+         * @description Generate the next composer message from this conversation's private agent.
+         */
+        post: operations["create_recommendation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chat/sessions/{session_id}/context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Context Level
+         * @description How full this conversation is, and how far it is from compacting.
+         *
+         *     Only the supervisor's thread. Each bank specialist has its own, compacted the
+         *     same way, but they are private working memory rather than the conversation
+         *     and nothing asks after them.
+         */
+        get: operations["get_context_level"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chat/sessions/{session_id}/compact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Compact Session
+         * @description Summarise this conversation now, without waiting for the threshold.
+         *
+         *     The stored transcript is untouched: this rewrites the agent's thread, not
+         *     `chat_messages`, so the user keeps every message they can scroll back to
+         *     while the model continues from the summary.
+         */
+        post: operations["compact_session"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chat/table-metadata": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Table Metadata
+         * @description Give one kept table a durable title and future-chat handoff.
+         */
+        post: operations["create_table_metadata"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/chat/ask": {
         parameters: {
             query?: never;
@@ -649,6 +1104,46 @@ export interface paths {
          *     everything else instead of being the one hand-written surface in the app.
          */
         post: operations["ask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Models
+         * @description Every selectable model, with the facts the picker needs to describe it.
+         */
+        get: operations["list_models"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/voice/transcriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Voice Transcription
+         * @description Create a Turkish transcript without sending audio off the machine.
+         */
+        post: operations["create_voice_transcription"];
         delete?: never;
         options?: never;
         head?: never;
@@ -708,10 +1203,250 @@ export interface components {
          * @description A question. `session_id` omitted starts a new conversation.
          */
         AskRequest: {
-            /** Question */
+            /**
+             * Question
+             * @description Deliberately unbounded. There was a max_length of 4000 here and it was wrong: the UI can attach a whole table, a quoted row, or a page snapshot to a question, and those run to tens of thousands of characters. Capping the field truncates what the agent is asked about, so it answers from part of the data or asks a follow-up the attachment existed to prevent. `ChatMessage.content` is a `Text` column, so nothing narrows downstream either. If a payload ever exceeds the model's window, failing loudly is the safer outcome.
+             * @default
+             */
             question: string;
             /** Session Id */
             session_id?: string | null;
+            /**
+             * Context
+             * @description Pieces of the UI the user attached: a table, a row, a quote.
+             */
+            context?: components["schemas"]["AttachedContext"][];
+            /**
+             * Clienttools
+             * @description Tools this client can execute. The tool is only offered to the model when the caller says it can run it -- a plain API consumer has no page to look at, and asking it to would strand the exchange waiting for a result that can never come.
+             */
+            clientTools?: "look_at_page"[];
+            /**
+             * Toolresults
+             * @description Answers to `look_at_page` calls the agent made on a previous pass. Scoped to the exchange that asked for them, which is why they are here and not on `messages`.
+             */
+            toolResults?: components["schemas"]["ToolResult"][];
+            /**
+             * Captures
+             * @description Screenshots of the page. Passed to the model as image content blocks -- Gemma 4 takes image input, and screen/UI understanding is one of its stated vision capabilities.
+             */
+            captures?: components["schemas"]["CapturePayload"][];
+            /**
+             * Attachments
+             * @description Opaque ids from POST /api/chat/attachments. The server resolves text or page images only for the authenticated owner and never persists their bytes in the conversation transcript.
+             */
+            attachments?: components["schemas"]["PreparedAttachmentRef"][];
+            /**
+             * Think
+             * @description Keep the model's chain-of-thought on. Only changes the request for models that reason by default -- `GET /api/models` reports which with `supports_thinking`, and for the rest the flag is discarded downstream rather than silently altering the answer.
+             * @default false
+             */
+            think: boolean;
+            /**
+             * Websearch
+             * @description Permit bank specialists to search and read current public pages on their own bank domains for this turn. The supervisor never receives a direct web tool.
+             * @default false
+             */
+            webSearch: boolean;
+            /**
+             * Model
+             * @description A key from `GET /api/models`. Null answers with the configured chat model, which is what every caller that does not care should send.
+             */
+            model?: string | null;
+        };
+        /**
+         * AttachedContext
+         * @description A piece of the UI the user handed to the agent.
+         *
+         *     Serialised by the browser at the moment of the click -- a table as a GFM
+         *     table, a row as a key/value list, a selection as its text -- because what the
+         *     user pointed at is what should travel, not whatever the page looks like by the
+         *     time they press send.
+         */
+        AttachedContext: {
+            /**
+             * Id
+             * @default
+             */
+            id: string;
+            /**
+             * Kind
+             * @default table
+             */
+            kind: string;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+            /**
+             * Body
+             * @default
+             */
+            body: string;
+            /**
+             * Format
+             * @default markdown
+             */
+            format: string;
+            location?: components["schemas"]["ContextLocation"];
+            /** Count */
+            count?: number | null;
+        };
+        /**
+         * AutomationDescribeIn
+         * @description Free text, plus whatever the user set by hand.
+         *
+         *     A field left `None` is one the agent decides. A field with a value **wins**:
+         *     the user who moved the hour picker did so after reading their own sentence,
+         *     and a model's reading of "akşam" does not outrank that.
+         */
+        AutomationDescribeIn: {
+            /** Text */
+            text: string;
+            /** Hour */
+            hour?: number | null;
+            /** Minute */
+            minute?: number | null;
+            /** Weekdays */
+            weekdays?: number[] | null;
+            /** Web Search */
+            web_search?: boolean | null;
+            /**
+             * Interval Minutes
+             * @description Optional user-selected frequency for any automation.
+             */
+            interval_minutes?: number | null;
+            /** Window Start Minute */
+            window_start_minute?: number | null;
+            /** Window End Minute */
+            window_end_minute?: number | null;
+        };
+        /**
+         * AutomationIn
+         * @description A new automation with its schedule given explicitly.
+         *
+         *     The form's path. `POST /me/automations/describe` is the other one, where the
+         *     schedule is read out of a sentence.
+         */
+        AutomationIn: {
+            /** Title */
+            title: string;
+            /** Prompt */
+            prompt: string;
+            /** Hour */
+            hour: number;
+            /**
+             * Minute
+             * @default 0
+             */
+            minute: number;
+            /** Weekdays */
+            weekdays?: number[];
+            /**
+             * Web Search
+             * @default true
+             */
+            web_search: boolean;
+            /**
+             * Kind
+             * @default scheduled_report
+             * @enum {string}
+             */
+            kind: "scheduled_report" | "condition_alert";
+            condition?: components["schemas"]["ConditionSpec"] | null;
+            /** Interval Minutes */
+            interval_minutes?: number | null;
+            /** Window Start Minute */
+            window_start_minute?: number | null;
+            /** Window End Minute */
+            window_end_minute?: number | null;
+        };
+        /** AutomationOut */
+        AutomationOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Title */
+            title: string;
+            /** Prompt */
+            prompt: string;
+            /** Hour */
+            hour: number;
+            /** Minute */
+            minute: number;
+            /** Weekdays */
+            weekdays: number[];
+            /** Web Search */
+            web_search: boolean;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "scheduled_report" | "condition_alert";
+            /** Condition */
+            condition: {
+                [key: string]: unknown;
+            };
+            /** Interval Minutes */
+            interval_minutes: number | null;
+            /** Window Start Minute */
+            window_start_minute: number | null;
+            /** Window End Minute */
+            window_end_minute: number | null;
+            /** Enabled */
+            enabled: boolean;
+            /**
+             * Next Run At
+             * Format: date-time
+             */
+            next_run_at: string;
+            /** Last Run At */
+            last_run_at: string | null;
+            /** Last Error */
+            last_error: string;
+            /** Last Condition Met */
+            last_condition_met: boolean | null;
+            /** Last Observation */
+            last_observation: {
+                [key: string]: unknown;
+            };
+            /** Last Triggered At */
+            last_triggered_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * AutomationPatch
+         * @description A partial edit. Only the fields present are written.
+         */
+        AutomationPatch: {
+            /** Title */
+            title?: string | null;
+            /** Prompt */
+            prompt?: string | null;
+            /** Hour */
+            hour?: number | null;
+            /** Minute */
+            minute?: number | null;
+            /** Weekdays */
+            weekdays?: number[] | null;
+            /** Web Search */
+            web_search?: boolean | null;
+            /** Enabled */
+            enabled?: boolean | null;
+            /** Interval Minutes */
+            interval_minutes?: number | null;
+            /** Window Start Minute */
+            window_start_minute?: number | null;
+            /** Window End Minute */
+            window_end_minute?: number | null;
+            condition?: components["schemas"]["ConditionSpec"] | null;
         };
         /**
          * BankLimitsOut
@@ -760,6 +1495,8 @@ export interface components {
             display_name: string;
             /** Publishes */
             publishes: string[];
+            /** Finance Input Capabilities */
+            finance_input_capabilities?: string[];
             /**
              * Maintenance
              * @description Capabilities the last health check found failing.
@@ -770,6 +1507,84 @@ export interface components {
              * @default
              */
             notes: string;
+        };
+        /**
+         * BankRateOperand
+         * @description One buy/sell cell from a bank's live FX or precious-metal table.
+         */
+        BankRateOperand: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            source: "bank_rate";
+            /** Bank */
+            bank: string;
+            /**
+             * Code
+             * @description Canonical code such as XAU, USD or XAG.
+             */
+            code: string;
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "buy" | "sell";
+        };
+        /** Body_create_voice_transcription */
+        Body_create_voice_transcription: {
+            /**
+             * File
+             * @description One complete browser voice recording.
+             */
+            file: string;
+        };
+        /** Body_upload_chat_attachment */
+        Body_upload_chat_attachment: {
+            /** File */
+            file: string;
+        };
+        /**
+         * CapturePayload
+         * @description A screenshot of the page, ready to become an image content block.
+         *
+         *     `media_type` and `data` arrive separately rather than as a `data:` URL: the
+         *     browser splits them so nothing here has to parse a URL, and so this can be
+         *     handed to the model as an image rather than accidentally as text. Forwarding
+         *     base64 as text shows the model a wall of characters, answers confidently from
+         *     nothing, and bills for every token of it.
+         */
+        CapturePayload: {
+            /**
+             * Id
+             * @default
+             */
+            id: string;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+            /**
+             * Mediatype
+             * @default image/webp
+             */
+            mediaType: string;
+            /**
+             * Data
+             * @default
+             */
+            data: string;
+            /**
+             * Width
+             * @default 0
+             */
+            width: number;
+            /**
+             * Height
+             * @default 0
+             */
+            height: number;
         };
         /** CardInstallmentQuoteOut */
         CardInstallmentQuoteOut: {
@@ -823,6 +1638,13 @@ export interface components {
             content: string;
             /** Citations */
             citations?: components["schemas"]["ChunkOut"][];
+            /**
+             * Parts
+             * @description The turn as the browser drew it -- a `MessagePart[]`, the shape in UI/src/lib/chat/types.ts. `content` is the same turn flattened for the model and stays the authority for replay; this is what lets a restored conversation show the table that was attached to a question rather than a bracketed note about it. Typed as `dict` on purpose: the part union belongs to the renderer, and mirroring five variants here would be a second definition to keep in step. A row written before this field existed comes back with a single text part rebuilt from `content`.
+             */
+            parts?: {
+                [key: string]: unknown;
+            }[];
             /**
              * Created At
              * Format: date-time
@@ -914,6 +1736,28 @@ export interface components {
              */
             from_vision: boolean;
         };
+        /** ColumnOut */
+        ColumnOut: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Type */
+            type?: string | null;
+        };
+        /**
+         * CompactionResult
+         * @description What a hand-triggered compaction did.
+         */
+        CompactionResult: {
+            /**
+             * Compacted
+             * @description False when there was nothing ahead of the preserved tail to summarise -- a short thread is not an error.
+             */
+            compacted: boolean;
+            /** @description The level afterwards. */
+            context: components["schemas"]["ContextLevelOut"];
+        };
         /** ComparisonOut */
         ComparisonOut: {
             /** Category */
@@ -982,6 +1826,40 @@ export interface components {
             /** Components */
             components?: components["schemas"]["Component"][];
         };
+        /**
+         * ConditionSpec
+         * @description Versioned, deterministic condition evaluated without an LLM.
+         */
+        ConditionSpec: {
+            /**
+             * Version
+             * @default 1
+             * @constant
+             */
+            version: 1;
+            /** Left */
+            left: components["schemas"]["FinanceOperand"] | components["schemas"]["BankRateOperand"] | components["schemas"]["ProfitShareOperand"];
+            /**
+             * Operator
+             * @enum {string}
+             */
+            operator: "lt" | "lte" | "gt" | "gte";
+            /** Right */
+            right: components["schemas"]["FinanceOperand"] | components["schemas"]["BankRateOperand"] | components["schemas"]["ProfitShareOperand"] | components["schemas"]["ConstantOperand"];
+        };
+        /**
+         * ConstantOperand
+         * @description A literal threshold on the right side of an alert.
+         */
+        ConstantOperand: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            source: "constant";
+            /** Value */
+            value: number;
+        };
         /** ConstraintsOut */
         ConstraintsOut: {
             /** Category */
@@ -993,6 +1871,77 @@ export interface components {
             /** Unavailable */
             unavailable?: components["schemas"]["UnavailableOut"][];
             intersection: components["schemas"]["IntersectionOut"];
+        };
+        /**
+         * ContextLevelOut
+         * @description How full one conversation's thread is, and when it compacts.
+         *
+         *     Every figure is in the units the agent's own threshold uses, read from the
+         *     middleware that governs that thread. The alternative -- counting separately
+         *     for display -- produces a number that drifts from the one that actually
+         *     fires, which is worse than showing nothing.
+         */
+        ContextLevelOut: {
+            /**
+             * Used Tokens
+             * @description Tokens the conversation currently occupies.
+             */
+            used_tokens: number;
+            /**
+             * Usable Tokens
+             * @description What the conversation can occupy: the window the model's host reports, less the system prompt and tool schemas that ride on every request and no summary can remove.
+             */
+            usable_tokens: number;
+            /**
+             * Fraction
+             * @description used/usable, clamped to 1.0.
+             */
+            fraction: number;
+            /**
+             * Compact At Tokens
+             * @description The level at which compaction happens without being asked.
+             */
+            compact_at_tokens: number;
+            /**
+             * Tokens Until Compaction
+             * @description Headroom before that, floored at 0.
+             */
+            tokens_until_compaction: number;
+            /**
+             * Keep Messages
+             * @description Messages left verbatim when it does; the rest become a summary.
+             */
+            keep_messages: number;
+            /**
+             * Message Count
+             * @description Messages currently on the thread.
+             */
+            message_count: number;
+        };
+        /**
+         * ContextLocation
+         * @description Where on the page a piece of attached context came from.
+         */
+        ContextLocation: {
+            /**
+             * Path
+             * @default
+             */
+            path: string;
+            /** Page */
+            page?: string | null;
+            /** Section */
+            section?: string | null;
+            /** Table */
+            table?: string | null;
+            /** About */
+            about?: string | null;
+            /** Row */
+            row?: string | null;
+            /** Column */
+            column?: string | null;
+            /** Kind */
+            kind?: string | null;
         };
         /** ConversionOut */
         ConversionOut: {
@@ -1036,6 +1985,11 @@ export interface components {
             /** Label */
             label: string;
             /**
+             * Group
+             * @description Semantic picker group for this family.
+             */
+            group: string;
+            /**
              * Category
              * @description finance | profit_share
              */
@@ -1045,6 +1999,43 @@ export interface components {
              * @description Banks that sell it.
              */
             banks: string[];
+        };
+        /**
+         * FinanceOperand
+         * @description One metric from a like-for-like live financing quote.
+         */
+        FinanceOperand: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            source: "finance";
+            /** Bank */
+            bank: string;
+            /**
+             * Family
+             * @description Comparison family, e.g. tasit-0km.
+             */
+            family: string;
+            /**
+             * Amount
+             * @description Financing amount in TRY.
+             */
+            amount: number;
+            /** Term Months */
+            term_months: number;
+            /**
+             * Metric
+             * @default monthly_installment
+             * @enum {string}
+             */
+            metric: "monthly_installment" | "total_repayment" | "profit_rate" | "annual_cost_rate";
+            /**
+             * Variant
+             * @description Required only when a bank returns several variants for the family.
+             * @default
+             */
+            variant: string;
         };
         /** FinanceQuoteOut */
         FinanceQuoteOut: {
@@ -1156,6 +2147,67 @@ export interface components {
             /** Per Lira */
             per_lira: number;
         };
+        /**
+         * ModelOut
+         * @description One model the user can pick.
+         */
+        ModelOut: {
+            /**
+             * Key
+             * @description The value to send back on AskRequest.model: "gemma" | "qwen" | "gpt".
+             */
+            key: string;
+            /**
+             * Model Id
+             * @description What vLLM serves it as, e.g. google/gemma-4-31B-it.
+             */
+            model_id: string;
+            /**
+             * Notes
+             * @description Measured behaviour, shown as the row's one-line description.
+             */
+            notes: string;
+            /**
+             * Context Window
+             * @description Tokens the model accepts. Currently the value measured into MODELS; it becomes the number vLLM reports once /v1/models is probed.
+             */
+            context_window: number;
+            /**
+             * Supports Thinking
+             * @description Whether the thinking switch does anything for this model. False for models that ignore enable_thinking, or whose output is unusable with it on -- the UI disables the switch and says why rather than offering a toggle that changes nothing.
+             */
+            supports_thinking: boolean;
+        };
+        /**
+         * ModelsResponse
+         * @description Every selectable model, plus which one answers when none is chosen.
+         */
+        ModelsResponse: {
+            /** Models */
+            models: components["schemas"]["ModelOut"][];
+            /**
+             * Default
+             * @description The key used when AskRequest.model is null.
+             */
+            default: string;
+        };
+        /**
+         * PageContext
+         * @description What the browser saw, for the overview agent to read.
+         *
+         *     Text only. A screenshot used to travel here too, and it was dropped: it cost
+         *     minutes of vision prefill per table and carried nothing the outline does not
+         *     — once `data-outline-list` taught the outline to keep short-line cards like
+         *     "banks that do not offer this", which is the one thing the picture had been
+         *     covering for.
+         */
+        PageContext: {
+            /**
+             * Text
+             * @description The page as a semantic outline, in markdown, wrapped in a `<page-snapshot>` element. Deliberately unbounded, like every other payload on its way to a model in this app: half a page answers a question about the other half wrongly.
+             */
+            text?: string | null;
+        };
         /** PaymentRowOut */
         PaymentRowOut: {
             /** Order */
@@ -1175,6 +2227,35 @@ export interface components {
              * @default
              */
             due_date: string;
+        };
+        /**
+         * PreparedAttachmentOut
+         * @description Browser-visible metadata; preprocessed content remains server-side.
+         */
+        PreparedAttachmentOut: {
+            /** Id */
+            id: string;
+            /** Filename */
+            filename: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "image" | "text" | "document";
+            /** Mediatype */
+            mediaType: string;
+            /** Size */
+            size: number;
+            /** Pagecount */
+            pageCount?: number | null;
+        };
+        /**
+         * PreparedAttachmentRef
+         * @description An opaque id returned by the authenticated attachment upload endpoint.
+         */
+        PreparedAttachmentRef: {
+            /** Id */
+            id: string;
         };
         /** ProductOut */
         ProductOut: {
@@ -1241,6 +2322,47 @@ export interface components {
             /** Completed At */
             completed_at: string | null;
         };
+        /**
+         * ProfitShareOperand
+         * @description One metric from a live participation-account quote.
+         */
+        ProfitShareOperand: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            source: "profit_share";
+            /** Bank */
+            bank: string;
+            /** Family */
+            family: string;
+            /** Amount */
+            amount: number;
+            /** Term */
+            term: number;
+            /**
+             * Term Unit
+             * @default month
+             * @enum {string}
+             */
+            term_unit: "day" | "month";
+            /**
+             * Currency
+             * @default TRY
+             */
+            currency: string;
+            /**
+             * Metric
+             * @default net_profit
+             * @enum {string}
+             */
+            metric: "net_profit" | "gross_profit" | "net_annual_rate" | "gross_annual_rate";
+            /**
+             * Variant
+             * @default
+             */
+            variant: string;
+        };
         /** ProfitShareQuoteOut */
         ProfitShareQuoteOut: {
             /** Bank */
@@ -1275,6 +2397,13 @@ export interface components {
              */
             general: boolean;
         };
+        /** RankedBankOut */
+        RankedBankOut: {
+            /** Bank */
+            bank: string;
+            /** Why */
+            why: string;
+        };
         /** RateOut */
         RateOut: {
             /** Code */
@@ -1290,6 +2419,12 @@ export interface components {
              * @default 1
              */
             unit: string;
+            /**
+             * Quote Currency
+             * @description Currency the bank used to quote one unit. The main FX board compares TRY quotes only.
+             * @default TRY
+             */
+            quote_currency: string;
             /**
              * As Of
              * @default
@@ -1318,10 +2453,88 @@ export interface components {
             /** Dependencies */
             dependencies: components["schemas"]["DependencyOut"][];
         };
+        /** RecommendationOut */
+        RecommendationOut: {
+            /** Text */
+            text: string;
+        };
+        /**
+         * RecommendationRequest
+         * @description The display language for one context-aware composer recommendation.
+         */
+        RecommendationRequest: {
+            /**
+             * Locale
+             * @default en
+             * @enum {string}
+             */
+            locale: "en" | "tr";
+        };
         /** RefreshRequest */
         RefreshRequest: {
             /** Refresh Token */
             refresh_token: string;
+        };
+        /**
+         * ReportOut
+         * @description One report. `body` is markdown, rendered by the chat answer renderer.
+         */
+        ReportOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Automation Id */
+            automation_id: string | null;
+            /** Title */
+            title: string;
+            /** Body */
+            body: string;
+            /** Citations */
+            citations: {
+                [key: string]: unknown;
+            }[];
+            /** Status */
+            status: string;
+            /** Error */
+            error: string;
+            /** Read At */
+            read_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * ReportSummary
+         * @description A report without its body, for the list and the notification menu.
+         *
+         *     The body is the whole point of a report and also all of its weight -- a
+         *     gold-price report with ten citations is several kilobytes of markdown. The
+         *     notification menu polls on a timer and shows five lines; sending it every
+         *     body would make the badge the most expensive request in the app.
+         */
+        ReportSummary: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Automation Id */
+            automation_id: string | null;
+            /** Title */
+            title: string;
+            /** Status */
+            status: string;
+            /** Read At */
+            read_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** ResetPasswordRequest */
         ResetPasswordRequest: {
@@ -1337,6 +2550,39 @@ export interface components {
         ResetPasswordResponse: {
             /** Detail */
             detail: string;
+        };
+        /** RowOut */
+        RowOut: {
+            /** Cells */
+            cells: {
+                [key: string]: string | number | boolean | null;
+            };
+            /** Cite Url */
+            cite_url?: string | null;
+            /**
+             * Cite Note
+             * @description The pipeline's own note on why this source supports the row — shown as a hover title on the citation link, not a second dashboard.
+             */
+            cite_note?: string | null;
+            /**
+             * Offers
+             * @description Whether this bank offers the thing at all. Read here rather than in the browser because the producer answers it in a column it names itself — 93 different names across the pool, and in some tables no column at all. `null` means nothing in the row settles it, which is not the same as `false`: an unclassified row stays in the table.
+             */
+            offers?: boolean | null;
+            /**
+             * Cell Notes
+             * @description Column key -> a note to hover on that one cell. Carries the full validity window behind the verdict chip, so a table already running to 22 columns does not need a second date column to show a start date.
+             */
+            cell_notes?: {
+                [key: string]: string;
+            };
+            /**
+             * Cell Tones
+             * @description Column key -> the tone its badge cell carries ('neutral' | 'ok' | 'warn' | 'bad'). Sent as data because only this layer knows which of its own values is the good one; the table renderer draws badges for every producer and cannot infer it from the string.
+             */
+            cell_tones?: {
+                [key: string]: string;
+            };
         };
         /** SavedViewIn */
         SavedViewIn: {
@@ -1403,6 +2649,47 @@ export interface components {
             locale: string;
         };
         /**
+         * StatsOut
+         * @description What this user has actually done with the product.
+         *
+         *     Counted at request time from rows that already exist. Nothing here is
+         *     maintained as a running total: a counter column would be a second source of
+         *     truth for a number whose first source is one indexed `COUNT`, and it would be
+         *     wrong the first time a delete missed it.
+         *
+         *     **There is deliberately no token count.** Nothing in this application records
+         *     model usage -- the supervisor asks for `stream_usage` but no handler collects
+         *     it, and the ten bank specialists' spend is unobserved entirely. A "tokens"
+         *     field would therefore have to read zero for every conversation ever held,
+         *     which says something false rather than nothing.
+         */
+        StatsOut: {
+            /** Chat Sessions */
+            chat_sessions: number;
+            /**
+             * Messages Sent
+             * @description Turns the user wrote.
+             */
+            messages_sent: number;
+            /**
+             * Messages Received
+             * @description Answers the assistant wrote.
+             */
+            messages_received: number;
+            /** Saved Tables */
+            saved_tables: number;
+            /** Automations */
+            automations: number;
+            /** Reports */
+            reports: number;
+            /** Unread Reports */
+            unread_reports: number;
+            /** First Activity */
+            first_activity: string | null;
+            /** Last Activity */
+            last_activity: string | null;
+        };
+        /**
          * StreamEvent
          * @description One SSE frame. Only the fields belonging to `type` are populated.
          *
@@ -1414,10 +2701,10 @@ export interface components {
              * Type
              * @enum {string}
              */
-            type: "status" | "token" | "citation" | "done" | "error";
+            type: "status" | "token" | "citation" | "tool_call" | "saved_view" | "automation" | "done" | "error";
             /**
              * Stage
-             * @description status only: retrieving | pricing | writing.
+             * @description status only: retrieving | pricing | writing | reviewing.
              */
             stage?: string | null;
             /**
@@ -1442,6 +2729,235 @@ export interface components {
              * @description error only.
              */
             detail?: string | null;
+            /**
+             * Tool Call Id
+             * @description tool_call only: echo back on the result.
+             */
+            tool_call_id?: string | null;
+            /**
+             * Tool Name
+             * @description tool_call only.
+             */
+            tool_name?: "look_at_page" | null;
+            /**
+             * Mode
+             * @description tool_call only: how the model wants to see the page. `text` for the semantic outline (exact figures, current filters), `image` for a screenshot (layout), `both` for one round trip carrying each.
+             */
+            mode?: ("text" | "image" | "both") | null;
+            /**
+             * View Slug
+             * @description saved_view only: identifies the saved table.
+             */
+            view_slug?: string | null;
+            /**
+             * View Title
+             * @description saved_view only: the table's heading, as stored.
+             */
+            view_title?: string | null;
+            /**
+             * Automation Action
+             * @description automation only: which tool the agent used.
+             */
+            automation_action?: ("created" | "updated") | null;
+        };
+        /**
+         * TableDetailOut
+         * @description Shaped exactly like the frontend's `TableProps` (`UI/src/lib/contract.ts`)
+         *     so it can be spread straight into `<TableWidget />` with no translation
+         *     layer on the client.
+         */
+        TableDetailOut: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /**
+             * Subtitle
+             * @default
+             */
+            subtitle: string;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /** Columns */
+            columns: components["schemas"]["ColumnOut"][];
+            /** Rows */
+            rows: components["schemas"]["RowOut"][];
+        };
+        /**
+         * TableListOut
+         * @description Every table in one category, plus the subcategories present in it.
+         *
+         *     `subcategories` is derived from the tables actually returned, not the
+         *     global registry — a category-scoped dropdown should never offer a
+         *     subcategory that has zero tables under this category.
+         */
+        TableListOut: {
+            /** Category */
+            category: string;
+            /** Subcategories */
+            subcategories: string[];
+            /** Tables */
+            tables: components["schemas"]["TableSummaryOut"][];
+        };
+        /** TableMetadataColumn */
+        TableMetadataColumn: {
+            /** Key */
+            key: string;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+        };
+        /**
+         * TableMetadataContextMessage
+         * @description One visible chat turn supplied to the table-metadata specialist.
+         */
+        TableMetadataContextMessage: {
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "user" | "assistant";
+            /** Content */
+            content: string;
+        };
+        /** TableMetadataOut */
+        TableMetadataOut: {
+            /** Title */
+            title: string;
+            /** Description */
+            description: string;
+        };
+        /** TableMetadataRequest */
+        TableMetadataRequest: {
+            /**
+             * Session Id
+             * Format: uuid
+             */
+            session_id: string;
+            /** Conversation */
+            conversation: components["schemas"]["TableMetadataContextMessage"][];
+            table: components["schemas"]["TableMetadataSnapshot"];
+        };
+        /** TableMetadataRow */
+        TableMetadataRow: {
+            /** Cells */
+            cells: {
+                [key: string]: string | number | boolean | null;
+            };
+        };
+        /**
+         * TableMetadataSnapshot
+         * @description The exact table selected in the browser, without inferred prose.
+         */
+        TableMetadataSnapshot: {
+            /** Columns */
+            columns: components["schemas"]["TableMetadataColumn"][];
+            /** Rows */
+            rows: components["schemas"]["TableMetadataRow"][];
+        };
+        /**
+         * TableOverviewOut
+         * @description One table, as the overview agent read it.
+         */
+        TableOverviewOut: {
+            /** Table Id */
+            table_id: string;
+            /** Locale */
+            locale: string;
+            /** Summary */
+            summary: string;
+            /**
+             * Recommended
+             * @description At most two, best first. Empty when the page supports no pick.
+             */
+            recommended?: components["schemas"]["RankedBankOut"][];
+            /**
+             * Not Recommended
+             * @description At most two: weakest terms, or banks that do not offer this.
+             */
+            not_recommended?: components["schemas"]["RankedBankOut"][];
+            /**
+             * Caveat
+             * @default
+             */
+            caveat: string;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /**
+             * Model
+             * @default
+             */
+            model: string;
+        };
+        /**
+         * TableOverviewRequest
+         * @description Ask for an overview of one table, offering the page as evidence.
+         */
+        TableOverviewRequest: {
+            /**
+             * Locale
+             * @description 'tr' or 'en'. Anything else is Turkish.
+             * @default tr
+             */
+            locale: string;
+            page?: components["schemas"]["PageContext"];
+        };
+        /**
+         * TableOverviewStarted
+         * @description The answer to "please write one": it is being written.
+         */
+        TableOverviewStarted: {
+            /**
+             * Status
+             * @description `already_running` means another reader asked first and the same row will answer both. Either way the client polls the GET.
+             * @enum {string}
+             */
+            status: "generating" | "already_running";
+        };
+        /**
+         * TableOverviewState
+         * @description Whether there is an overview for this table, and if not, why not.
+         *
+         *     A wrapper rather than "200 or 404", because "nobody has asked for one" and
+         *     "one is being written right now" are different answers and the client acts
+         *     on each differently: the first means start one, the second means keep
+         *     waiting. Told apart by a 404 alone, a card either gives up on a slow model
+         *     or spins forever on a dead one.
+         */
+        TableOverviewState: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "generating" | "missing";
+            overview?: components["schemas"]["TableOverviewOut"] | null;
+        };
+        /**
+         * TableSummaryOut
+         * @description One table, without its rows — enough to list and pick from.
+         */
+        TableSummaryOut: {
+            /** Id */
+            id: string;
+            /** Topic */
+            topic: string;
+            /** Docstring */
+            docstring: string;
+            /**
+             * Category
+             * @description 'ürün' or 'kampanya'.
+             */
+            category: string;
+            /** Subcategory */
+            subcategory: string;
         };
         /**
          * TokenPair
@@ -1464,6 +2980,41 @@ export interface components {
             expires_in: number;
         };
         /**
+         * ToolResult
+         * @description What the browser sent back after looking at the page.
+         *
+         *     One tool, `look_at_page`, taking a mode: `text` for the semantic outline,
+         *     `image` for a screenshot, `both` for one round trip carrying each. Two separate
+         *     tools made the agent commit before it knew which it needed, then cost a second
+         *     exchange whenever it guessed wrong.
+         *
+         *     `text` and `image` are populated according to the mode asked for, so a `both`
+         *     call comes back with each. `text` is finished markdown and belongs in a text
+         *     block; `image` is base64 and must become an image content block -- see
+         *     `_human_content` in `api/agent.py`.
+         */
+        ToolResult: {
+            /**
+             * Id
+             * @default
+             */
+            id: string;
+            /**
+             * Name
+             * @default look_at_page
+             * @constant
+             */
+            name: "look_at_page";
+            /** Text */
+            text?: string | null;
+            image?: components["schemas"]["CapturePayload"] | null;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+        };
+        /**
          * UnavailableOut
          * @description A bank absent from a ranking, and why.
          *
@@ -1481,6 +3032,14 @@ export interface components {
              * @default
              */
             detail: string;
+        };
+        /** UnreadCount */
+        UnreadCount: {
+            /**
+             * Unread
+             * @description Reports this user has not opened yet.
+             */
+            unread: number;
         };
         /** UserOut */
         UserOut: {
@@ -1518,6 +3077,18 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /**
+         * VoiceTranscriptionOut
+         * @description A completed Turkish transcription.
+         */
+        VoiceTranscriptionOut: {
+            /** Text */
+            text: string;
+            /** Language */
+            language: string;
+            /** Processing Ms */
+            processing_ms: number;
         };
     };
     responses: never;
@@ -1733,6 +3304,26 @@ export interface operations {
             };
         };
     };
+    get_stats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatsOut"];
+                };
+            };
+        };
+    };
     list_views: {
         parameters: {
             query?: never;
@@ -1805,6 +3396,303 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_automations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationOut"][];
+                };
+            };
+        };
+    };
+    create_automation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutomationIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    describe_automation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutomationDescribeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_automation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                automation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_automation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                automation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutomationPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_now: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                automation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_reports: {
+        parameters: {
+            query?: {
+                unread_only?: boolean;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unread_count: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnreadCount"];
+                };
+            };
+        };
+    };
+    get_report: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_report_read: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportOut"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -1932,6 +3820,7 @@ export interface operations {
                 amount: number;
                 /** @description Months. */
                 term: number;
+                monthly_profit_rate?: number | null;
             };
             header?: never;
             path: {
@@ -2109,6 +3998,8 @@ export interface operations {
                 amount: number;
                 /** @description Months. */
                 term: number;
+                /** @description Optional customer-supplied monthly profit-rate scenario, as a percentage. */
+                monthly_profit_rate?: number | null;
                 /** @description Limit to these banks. Omitted, every bank that sells it is asked. */
                 banks?: string[] | null;
             };
@@ -2331,6 +4222,141 @@ export interface operations {
             };
         };
     };
+    list_tables: {
+        parameters: {
+            query: {
+                /** @description 'ürün' or 'kampanya'. */
+                category: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TableListOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_table: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description An id from GET /api/compare-tables. */
+                table_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TableDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_overview: {
+        parameters: {
+            query?: {
+                /** @description 'tr' or 'en'. */
+                locale?: string;
+            };
+            header?: never;
+            path: {
+                /** @description An id from GET /api/compare-tables. */
+                table_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TableOverviewState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_overview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description An id from GET /api/compare-tables. */
+                table_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TableOverviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TableOverviewStarted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     search_corpus: {
         parameters: {
             query: {
@@ -2359,6 +4385,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SearchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_chat_attachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_chat_attachment"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreparedAttachmentOut"];
                 };
             };
             /** @description Validation Error */
@@ -2452,6 +4511,136 @@ export interface operations {
             };
         };
     };
+    create_recommendation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecommendationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecommendationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_context_level: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContextLevelOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    compact_session: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompactionResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_table_metadata: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TableMetadataRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TableMetadataOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     ask: {
         parameters: {
             query?: never;
@@ -2473,6 +4662,59 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["StreamEvent"];
                     "text/event-stream": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_models: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelsResponse"];
+                };
+            };
+        };
+    };
+    create_voice_transcription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_create_voice_transcription"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VoiceTranscriptionOut"];
                 };
             };
             /** @description Validation Error */

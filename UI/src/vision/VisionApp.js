@@ -12,7 +12,15 @@ import Sidenav from "examples/Sidenav";
 // panel) is deliberately not mounted. The component is kept intact at
 // `examples/Configurator` so it can be brought back: re-add the import, render
 // <Configurator /> beside the Sidenav, and restore the button below.
-import { ThemeToggleFab } from "components/VuiThemeToggle";
+//
+// The bottom-right corner now belongs to the assistant. `ThemeToggleFab` is
+// still exported from `components/VuiThemeToggle` and can come back the same
+// way, but nothing was lost by moving it out: the theme toggle it provided is
+// also in the navbar (`examples/Navbars/DashboardNavbar`), which is where every
+// other page-level control lives anyway.
+import { AgentPopup } from "@/components/chat/AgentPopup";
+import { SelectionReply } from "@/components/chat/SelectionReply";
+import { ReportToasts } from "@/components/widgets/ReportToasts";
 
 // Vision UI Dashboard React themes
 import createVisionTheme from "assets/theme";
@@ -27,7 +35,7 @@ import createCache from "@emotion/cache";
 import routes from "routes";
 
 // Vision UI Dashboard React contexts
-import { useVisionUIController, setMiniSidenav } from "context";
+import { useVisionUIController } from "context";
 
 // The app-wide light/dark state, shared with the sign-in screen's toggle.
 import { useTheme as useColorMode } from "@/lib/theme";
@@ -42,8 +50,7 @@ import { useTheme as useColorMode } from "@/lib/theme";
  */
 export default function VisionApp({ children }) {
   const [controller, dispatch] = useVisionUIController();
-  const { miniSidenav, direction, layout, sidenavColor } = controller;
-  const [onMouseEnter, setOnMouseEnter] = useState(false);
+  const { direction, layout, sidenavColor } = controller;
   const [rtlCache, setRtlCache] = useState(null);
 
   // Rebuild the MUI theme whenever the mode changes. This is what makes the
@@ -63,21 +70,12 @@ export default function VisionApp({ children }) {
     setRtlCache(cacheRtl);
   }, []);
 
-  // Open sidenav when mouse enter on mini sidenav
-  const handleOnMouseEnter = () => {
-    if (miniSidenav && !onMouseEnter) {
-      setMiniSidenav(dispatch, false);
-      setOnMouseEnter(true);
-    }
-  };
-
-  // Close sidenav when mouse leave mini sidenav
-  const handleOnMouseLeave = () => {
-    if (onMouseEnter) {
-      setMiniSidenav(dispatch, true);
-      setOnMouseEnter(false);
-    }
-  };
+  // The template's hover-to-expand handlers used to live here and are gone.
+  // They could never fire -- their `if (miniSidenav)` guard only passed below
+  // 1200px, where the drawer was translated off-screen and so could not be
+  // hovered -- and the behaviour is not what we want anyway: `Sidenav` now
+  // tracks hover itself, and uses it only to reveal the expand button. A rail
+  // that expands on hover moves the page out from under the pointer.
 
   // Setting the dir attribute for the body element
   useEffect(() => {
@@ -89,16 +87,18 @@ export default function VisionApp({ children }) {
       <CssBaseline />
       {layout === "dashboard" && (
         <>
-          <Sidenav
-            color={sidenavColor}
-            brand=""
-            brandName="KERMİTS"
-            routes={routes}
-            onMouseEnter={handleOnMouseEnter}
-            onMouseLeave={handleOnMouseLeave}
-          />
-          {/* Where the Configurator's settings button used to sit. */}
-          <ThemeToggleFab />
+          <Sidenav color={sidenavColor} brand="" brandName="KERMİTS" routes={routes} />
+          {/* Where the Configurator's settings button, and then the theme
+              toggle, used to sit. */}
+          <AgentPopup />
+          {/* One selection listener for the whole dashboard, rather than one per
+              page. It renders nothing until there is a selection to act on. */}
+          <SelectionReply />
+          {/* One socket for the whole dashboard, for the same reason. A report
+              lands while the user is reading something else -- that is the
+              entire point of it -- so the thing that announces it cannot live
+              on the page they would have found out on anyway. */}
+          <ReportToasts />
         </>
       )}
       {children}

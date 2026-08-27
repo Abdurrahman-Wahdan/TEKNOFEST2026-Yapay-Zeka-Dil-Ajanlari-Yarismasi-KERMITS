@@ -1,27 +1,36 @@
-import { getTranslations, setRequestLocale } from "next-intl/server";
+import { setRequestLocale } from "next-intl/server";
 
-import { Card, CardGrid } from "@/components/ui/Card";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { ChatHistoryMenu } from "@/components/chat/ChatHistoryMenu";
+import { ChatPanel } from "@/components/chat/ChatPanel";
+import { AppPage } from "@/components/layout/AppPage";
 import { RequireAuth } from "@/components/layout/RequireAuth";
 
-/** Route stub. The chat panel itself is not built yet. */
+/**
+ * The assistant, full screen.
+ *
+ * No `PageHeader`: the empty state carries its own heading, and once there is a
+ * transcript the page title is just height taken from the conversation.
+ *
+ * `emptyState="center"` is what makes this read like a fresh chat client — the
+ * composer starts in the middle of the page and moves to the bottom on the first
+ * message. The conversation itself lives in `ChatProvider` up in the (app)
+ * layout, so arriving here from the popup's expand button shows the conversation
+ * already in progress rather than an empty page.
+ */
 export default async function ChatPage({
   params,
 }: {
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+  // Without this the route opts out of static rendering.
   setRequestLocale(locale);
-  const t = await getTranslations("chat");
 
   return (
     <RequireAuth>
-      <PageHeader title={t("title")} />
-      <CardGrid>
-        <Card span={4}>
-          <p>{t("placeholder")}</p>
-        </Card>
-      </CardGrid>
+      <AppPage fullHeight brandTitle headerActions={<ChatHistoryMenu />}>
+        <ChatPanel emptyState="center" autoFocus />
+      </AppPage>
     </RequireAuth>
   );
 }

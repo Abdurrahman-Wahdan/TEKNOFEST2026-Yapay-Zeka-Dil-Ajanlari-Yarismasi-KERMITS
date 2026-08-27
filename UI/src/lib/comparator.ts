@@ -462,10 +462,11 @@ export function spreadLooksBroken(buy: number, sell: number): boolean {
  * gram at one bank and an ounce at another, and burying that in the label is
  * how two different prices end up looking like the same one.
  */
-export function unitLabel(unit: string, t: Labels): string {
+export function unitLabel(unit: string, canonical: string, t: Labels): string {
   if (unit === "gram") return t.perGram;
   if (unit === "coin") return t.perCoin;
-  return t.perUnit;
+  if (unit === "ounce") return "1 TROY OUNCE";
+  return `1 ${canonical.toUpperCase()}`;
 }
 
 /**
@@ -503,6 +504,9 @@ export function ratesBoard(
   const groups = new Map<string, { canonical: string; unit: string; name: string; byBank: Map<string, BankRate> }>();
 
   for (const r of rates) {
+    // This board compares how many lira one unit costs. A live ounce quote in
+    // USD is useful data, but not comparable with a TRY quote.
+    if ((r.quote_currency ?? "TRY") !== "TRY") continue;
     const canonical = r.canonical || r.code;
     if (isSelfQuote(canonical)) continue;
     const key = `${canonical}|${r.unit}`;
@@ -514,7 +518,11 @@ export function ratesBoard(
         byBank: new Map(),
       });
     }
-    groups.get(key)!.byBank.set(r.bank, r);
+    const byBank = groups.get(key)!.byBank;
+    if (byBank.has(r.bank)) {
+      throw new Error(`Duplicate live rate identity: ${canonical} / ${r.unit} / TRY for ${r.bank}`);
+    }
+    byBank.set(r.bank, r);
   }
 
   // Widest board first. Kuveyt Türk quotes 27 instruments and Hayat 4, so
@@ -570,7 +578,7 @@ export function ratesBoard(
     .map((g) => {
       const cells: Row["cells"] = {
         instrument: pairLabel(g.canonical),
-        unit: unitLabel(g.unit, t),
+        unit: unitLabel(g.unit, g.canonical, t),
       };
       for (const bank of ordered) {
         const r = g.byBank.get(bank);

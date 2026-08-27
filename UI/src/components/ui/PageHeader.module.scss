@@ -12,6 +12,11 @@
 }
 
 .title {
+  // Set explicitly, like .subtitle below, rather than inherited. Inside
+  // `AppPage` the Vision dashboard container sets a near-white text colour for
+  // its own dark template, so an inherited heading came out invisible on the
+  // light theme.
+  color: var(--foreground);
   font-size: var(--text-2xl);
 
   @include md {

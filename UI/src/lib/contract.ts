@@ -91,6 +91,41 @@ const CellValueSchema = z.union([z.string(), z.number(), z.boolean(), z.null()])
 const RowSchema = z.object({
   cells: z.record(z.string(), CellValueSchema),
   cite_url: z.string().optional(),
+  /** Why `cite_url` supports this row — shown as a hover title on the
+      citation link a producer's row carries, not a second visible column. */
+  cite_note: z.string().optional(),
+  /**
+   * Column key -> a note to hover on that one cell.
+   *
+   * `cite_note` above answers "where did this row come from" and belongs to the
+   * whole row. This answers "what is behind this particular figure", which is a
+   * different question and could not be asked before: a validity chip reading
+   * `aktif` is the verdict, and the window it was computed from is the reason —
+   * worth a hover, not worth a column on a table that already runs to 22.
+   */
+  cell_notes: z.record(z.string(), z.string()).optional(),
+  /**
+   * Column key -> the tone its `badge` cell should carry.
+   *
+   * A badge is the one cell type whose *state* is the content, and only the
+   * producer knows which of its own values is the good one — "aktif" is `ok`
+   * and "süresi geçmiş" is `bad`, but nothing generic could work that out from
+   * the strings. Ignored for every other column type, and an unrecognised tone
+   * falls back to `neutral` rather than failing the table, the same forgiveness
+   * `type` gets above.
+   */
+  cell_tones: z.record(z.string(), z.string()).optional(),
+  /**
+   * Whether the row's subject offers the thing at all.
+   *
+   * Optional and absent for most producers, who only send rows for things that
+   * exist. The comparison-table pool is the case that needs it: every table
+   * there carries all ten banks whether or not they offer the product, so
+   * "offers nothing" is a row rather than a missing row, and the page splits
+   * those out instead of drawing ten columns of dashes. `undefined` is not
+   * `false` — it means nothing settled the question, and such a row stays.
+   */
+  offers: z.boolean().nullish(),
 });
 
 export const TablePropsSchema = z.object({

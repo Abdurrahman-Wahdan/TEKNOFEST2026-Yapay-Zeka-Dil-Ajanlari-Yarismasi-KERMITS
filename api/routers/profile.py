@@ -13,15 +13,19 @@ is silently empty, with nothing to point at.
 import logging
 
 from fastapi import APIRouter, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from banks import families as families_mod
 from banks import list_banks
 
 from ..db.base import utcnow
-from ..db.models import Profile, SavedView
+from ..db.models import (
+    Automation, AutomationReport, ChatMessage, ChatSession, Profile, SavedView,
+)
 from ..deps import CurrentUser, DbSession
-from ..schemas.profile import ProfileIn, ProfileOut, SavedViewIn, SavedViewOut
+from ..schemas.profile import (
+    ProfileIn, ProfileOut, SavedViewIn, SavedViewOut, StatsOut,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +101,67 @@ def put_profile(body: ProfileIn, user: CurrentUser, session: DbSession) -> Profi
 
     session.commit()
     return _profile_out(profile)
+
+
+def _count(session, model, *where) -> int:
+    """One indexed COUNT. Returns 0 rather than None for an empty table."""
+    return session.scalar(
+        select(func.count()).select_from(model).where(*where)
+    ) or 0
+
+
+@router.get("/stats", response_model=StatsOut)
+def get_stats(user: CurrentUser, session: DbSession) -> StatsOut:
+    """This user's own usage, for the profile overview.
+
+    Eight counts and two timestamps, all from tables that already exist. Written
+    as separate queries rather than one join with conditional aggregates: they hit
+    four unrelated tables, each count is an index-only scan, and a single clever
+    statement here would be harder to read than the page it feeds.
+
+    Message counts go through the session join rather than a `user_id` on
+    `chat_messages`, because there is no such column -- a message belongs to a
+    conversation, and the conversation belongs to the user. That is the right
+    shape; it just means these two counts are the only ones with a subquery.
+    """
+    own_sessions = select(ChatSession.id).where(ChatSession.user_id == user.id)
+    return StatsOut(
+        chat_sessions=_count(session, ChatSession, ChatSession.user_id == user.id),
+        messages_sent=_count(
+            session, ChatMessage,
+            ChatMessage.session_id.in_(own_sessions),
+            ChatMessage.role == "user",
+        ),
+        messages_received=_count(
+            session, ChatMessage,
+            ChatMessage.session_id.in_(own_sessions),
+            ChatMessage.role == "assistant",
+        ),
+        saved_tables=_count(session, SavedView, SavedView.user_id == user.id),
+        automations=_count(session, Automation, Automation.user_id == user.id),
+        reports=_count(
+            session, AutomationReport, AutomationReport.user_id == user.id
+        ),
+        unread_reports=_count(
+            session, AutomationReport,
+            AutomationReport.user_id == user.id,
+            AutomationReport.read_at.is_(None),
+        ),
+        # The first conversation started and the last one touched. `updated_at`
+        # for the latter because a reply written into an old thread is activity,
+        # and ordering by `created_at` would report the user as idle since the day
+        # they opened that thread.
+        first_activity=session.scalar(
+            select(func.min(ChatSession.created_at)).where(
+                ChatSession.user_id == user.id
+            )
+        ),
+        last_activity=session.scalar(
+            select(func.max(ChatSession.updated_at)).where(
+                ChatSession.user_id == user.id
+            )
+        ),
+    )
 
 
 @router.get("/views", response_model=list[SavedViewOut])

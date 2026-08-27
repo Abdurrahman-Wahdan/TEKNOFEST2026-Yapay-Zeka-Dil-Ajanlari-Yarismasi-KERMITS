@@ -71,6 +71,10 @@ class Ziraat(BaseBank):
     # alongside it on the same claim -- disproved 2026-08-16, see the module
     # docstring -- and is a real capability now.
     capabilities = frozenset({"products", "finance", "profit_share"})
+    # The public finance calculator exposes “Kâr Oranını Kendim
+    # Belirleyeceğim”. Its Drupal form uses `finansman_is_bank_ratio=false`
+    # when selected and sends the requested rate in `finans_kar_orani`.
+    finance_input_capabilities = frozenset({"monthly_profit_rate"})
     notes = (
         "Its leasing calculator is browser-only: it submits a Drupal form "
         "that answers 493 to any non-browser client, and no JSON route "
@@ -233,7 +237,10 @@ class Ziraat(BaseBank):
 
     # ----- finance -----
 
-    def finance_quote(self, product: str, amount: float, term: int) -> FinanceQuote:
+    def finance_quote(
+        self, product: str, amount: float, term: int,
+        monthly_profit_rate: float | None = None,
+    ) -> FinanceQuote:
         self._check_limits(Product(code="", name="", category="finance"),
                            amount=amount, term=term)
         chosen = self._resolve(product, amount, term)
@@ -243,10 +250,14 @@ class Ziraat(BaseBank):
             headers=HEADERS,
             data={
                 "lang": "tr",
-                "finansman_is_bank_ratio": "true",
+                "finansman_is_bank_ratio": "false" if monthly_profit_rate is not None else "true",
                 "finans_type": chosen.code,
                 # The bank's own rate, handed straight back from get-vade.
-                "finans_kar_orani": chosen.raw.get("ratio"),
+                "finans_kar_orani": (
+                    str(monthly_profit_rate)
+                    if monthly_profit_rate is not None
+                    else chosen.raw.get("ratio")
+                ),
                 "finans_vade": str(int(term)),
                 "finans_tutari": str(int(amount)),
                 "_drupal_ajax": "1",
@@ -276,7 +287,11 @@ class Ziraat(BaseBank):
             term=int(term),
             installment=figures[1],
             total=figures[2],
-            profit_rate=chosen.rate or 0.0,
+            profit_rate=(
+                float(monthly_profit_rate)
+                if monthly_profit_rate is not None
+                else chosen.rate or 0.0
+            ),
             # Checked 2026-08-16 against the full text of a live payment-plan
             # response and the bank's homepage: the summary row states
             # "Finansman Tutarı / Taksit Tutarı / Vade / Kâr Oranı / Toplam

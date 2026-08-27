@@ -11,24 +11,54 @@ Qwen3-Embedding (MPS) ile embed edilir, Qdrant 'campaigns' koleksiyonuna
 canlı-referans metadata (url, gecerlilik_baslangic/bitis, validity_status) ile
 upsert edilir.
 
-Kullanım: python -m dataprep.embed [bank ...]   (boş = tüm bankalar)
+ÜÇ ŞEY ÖNEMLİ, üçü de canlı koleksiyondan ölçüldü (7030 point):
+
+1. **METADATA İSİMLERİ.** Koleksiyondaki her point şunları taşıyor: bank, url,
+   type (metin/gorsel), chunk_index, validity_status (+ tarih varsa
+   gecerlilik_baslangic/bitis). Bu dosyanın ESKİ sürümü source_url/pdf_url/
+   campaign_end yazıyordu — canlı koleksiyonun HİÇBİR point'inde bu isimler yok.
+   Farklı isim yazmak, aynı koleksiyona okuyan tarafın göremediği satırlar
+   eklemek demek (bkz. dataprep/compare/retrieval.py).
+
+2. **DETERMİNİSTİK ID.** Point id'si uuid5(url + chunk_index). Eskiden id yoktu:
+   langchain her Document'a rastgele bir uuid4 veriyordu, yani her yeniden
+   gömme TÜM id'leri değiştiriyordu. Tablolardaki 3378 point_id atıfının 1051'i
+   (%31) tam olarak bu yüzden artık hiçbir şeye denk gelmiyor. Deterministik id
+   ile aynı chunk her koşuda aynı id'yi alır; atıflar yaşamaya devam eder.
+
+3. **ÖNCE SİL, SONRA YAZ.** Bir url'in tüm point'leri upsert'ten önce silinir.
+   Böylece koşu tekrarlanabilir: sayfa kısaldıysa artakalan chunk'lar ortada
+   kalmaz, ve eski rastgele-id'li point'ler yeni deterministik olanların
+   yanında ikinci bir kopya olarak durmaz.
+
+Kullanım:
+  python -m dataprep.embed --only-missing       # sadece Qdrant'ta olmayan url'ler
+  python -m dataprep.embed                      # tüm korpus (idempotent)
+  python -m dataprep.embed --only-missing albaraka kuveytturk
 """
 from __future__ import annotations
 
 import argparse
-import glob
+import json
 import logging
 import os
 import re
 import time
+import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-from langchain_core.documents import Document
+from qdrant_client import models
+
+from embeddings import get_embedding
+from vector_stores.client import get_qdrant_client
 
 from dataprep.embed_kilit import banka_kilidi
 
 log = logging.getLogger("dataprep.embed")
 
+CORPUS = Path(os.environ.get("CORPUS_DIR")
+              or Path(__file__).resolve().parents[1] / "TF26_data" / "data")
 COLLECTION = os.environ.get("QDRANT_COLLECTION_CAMPAIGNS", "campaigns")
 # Kullanıcı kararı 2026-08-19: metin temizleme dışındaki TÜM chunk'lar 8196
 # karakter, %10 (~820) overlap. Overlap yalnız 8196'yı AŞAN metinler bölünürken
@@ -38,9 +68,20 @@ OVERLAP = int(os.environ.get("EMBED_CHUNK_OVERLAP", "820"))
 # EŞİK YOK (kullanıcı kararı 2026-08-19): en kısa içerik bile indekslenir.
 MIN_CHUNK = int(os.environ.get("EMBED_MIN_CHUNK", "0"))
 BATCH = int(os.environ.get("EMBED_BATCH_SIZE", "32"))
+MIN_IMG_CHUNK = 0    # eşik yok
 
 
 # --- frontmatter + chunk yardımcıları --------------------------------------
+# Sınırlayıcı, YALNIZCA kendi başına bir satır olan `---`. Bu satır-bağı önemli:
+# eski sürüm `text.split("---", 2)` yapıyordu ve korpusta `---` İÇEREN url'ler var
+# (ör. .../anlasmali-kurumlar-listesi---kolej.pdf). Böyle bir dosyada bölme
+# url'in ORTASINDA gerçekleşiyor: frontmatter yarıda kesiliyor, url budanmış
+# haliyle okunuyor (.../anlasmali-kurumlar-listesi), gövde ise "kolej.pdf" ile
+# başlayıp frontmatter'ın kalanını metin sanıyordu. 25 dosya bu şekilde yanlış
+# url ile gömülecekti.
+_FRONT = re.compile(r"\A---[ \t]*\n(.*?)\n---[ \t]*\n?", re.S)
+
+
 def _parse(text: str) -> tuple[dict, str]:
     """(frontmatter dict, gövde). Frontmatter yoksa ({}, text).
 
@@ -108,7 +149,6 @@ def _chunks(text: str, size: int = CHUNK, overlap: int = OVERLAP) -> list[str]:
             out.append(cur); cur = b
     if cur:
         out.append(cur)
-    # overlap: her chunk'ın başına öncekinin son OVERLAP karakteri
     if overlap and len(out) > 1:
         merged = [out[0]]
         for i in range(1, len(out)):
@@ -118,8 +158,20 @@ def _chunks(text: str, size: int = CHUNK, overlap: int = OVERLAP) -> list[str]:
     return [c for c in out if c.strip()]
 
 
-# --- kaynak -> Document üret -------------------------------------------------
-_IMG_BLOCK = re.compile(r"<!--\s*görsel:\s*(\S+)\s*-->\s*(.*?)(?=<!--\s*görsel:|$)", re.S)
+# --- geçerlilik: _url_havuzu.json ÖNCE ---------------------------------------
+def load_url_pool() -> dict[str, dict]:
+    """url -> {gecerlilik_baslangic, gecerlilik_bitis, validity_status}.
+
+    Sayfanın kendi frontmatter'ından daha eksiksiz: 6614 kaynak kaydının
+    5797'sinde ikisi aynı, farklı olan 817'nin neredeyse tamamı havuzun
+    doldurduğu boş alanlar (763 damgasız durum, 58 eksik tarih); gerçek çelişki
+    13228 tarih alanında yalnızca 10 tane. Bu yüzden havuz önce okunur."""
+    path = CORPUS / URL_POOL
+    if not path.exists():
+        log.warning("%s yok — geçerlilik yalnız frontmatter'dan okunacak", path)
+        return {}
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    return {url: rec for urls in raw.values() for url, rec in urls.items()}
 
 
 def iter_docs(slug: str):
@@ -237,12 +289,81 @@ def iter_docs(slug: str):
                 yield Document(page_content=ch, metadata={**common, "type": "gorsel", "chunk_index": i})
 
 
-# --- ana ------------------------------------------------------------------
-def main():
+_IMG_BLOCK = re.compile(r"<!--\s*görsel:\s*(\S+?)\s*-->[ \t]*\n?(.*?)(?=<!--\s*görsel:|\Z)", re.S)
+
+
+def split_images(body: str) -> tuple[str, list[tuple[str, str]]]:
+    """(görsellerden arındırılmış sayfa metni, [(görsel_url, görsel_metni), ...]).
+
+    Görseller sayfa metninden ÇIKARILIR ve kendi point'leri olur — koleksiyonun
+    kurulduğu düzen bu: 3000 'metin' point'i tarandı, HİÇBİRİNDE görsel bloğu
+    yok, buna karşılık 1308 ayrı 'gorsel' point'i var. Blokları sayfa gövdesinde
+    bırakmak aynı metni iki farklı biçimde indekslemek olurdu.
+
+    Bu ayrım yapılmazsa görsel metni HİÇBİR YERE girmiyordu: disk üzerindeki 748
+    görselin 517'sinin point'i vardı, kalan 231'inin metni ne sayfa chunk'ında ne
+    de ayrı bir point'te bulunuyordu — örneklenen 35 bloğun 30'u tam olarak böyle
+    kayıptı ("Toplam 5.000TL'ye kadar bonus kazan!" gibi kampanya metinleri)."""
+    images = [(url, text.strip()) for url, text in _IMG_BLOCK.findall(body)]
+    return _IMG_BLOCK.sub("", body).strip(), images
+
+
+def indexed_text(client) -> str:
+    """Koleksiyondaki TÜM metin, tek normalize blob.
+
+    Önbellekteki bir görsel metninin zaten gömülü olup olmadığını, KENDİ
+    ürettiğimiz chunk'lara değil, Qdrant'ta GERÇEKTEN duranlara bakarak
+    anlamak için. İkisi aynı değil: koleksiyondaki sayfaların çoğu başka bir
+    koşuda, başka sınırlarla parçalanmış. Kendi çıktımıza bakmak, orada duran
+    ama koleksiyonda olmayan üç Adil Katılım metnini "zaten var" saydırıyordu."""
+    parts = []
+    offset = None
+    while True:
+        points, offset = client.scroll(
+            collection_name=COLLECTION, limit=1000, offset=offset,
+            with_payload=True, with_vectors=False)
+        parts.extend(" ".join(((p.payload or {}).get("page_content") or "").split())
+                     for p in points)
+        if offset is None:
+            return "\n".join(parts)
+
+
+def indexed_keys(client) -> set[tuple[str, str]]:
+    """Koleksiyonda ŞU AN ne var: {("metin", sayfa_url), ("gorsel", görsel_url)}.
+
+    Tür ayrımı şart: bir sayfa indekslenmişken ona gömülü görselin point'i
+    eksik olabiliyor — 231 görsel tam olarak böyleydi. Yalnız sayfa url'ine
+    bakan bir kontrol onları hep "zaten var" sayar ve hiç düzeltmez."""
+    seen: set[tuple[str, str]] = set()
+    offset = None
+    while True:
+        points, offset = client.scroll(
+            collection_name=COLLECTION, limit=1000, offset=offset,
+            with_payload=["metadata"], with_vectors=False)
+        for p in points:
+            meta = (p.payload or {}).get("metadata") or {}
+            if meta.get("type") == "gorsel":
+                key = meta.get("gorsel_kaynak")
+                if key:
+                    seen.add(("gorsel", key))
+            elif meta.get("url"):
+                seen.add(("metin", meta["url"]))
+        if offset is None:
+            return seen
+
+
+def indexed_urls(client) -> set[str]:
+    """Yalnız sayfa/PDF url'leri — kapsama raporu için."""
+    return {u for kind, u in indexed_keys(client) if kind == "metin"}
+
+
+def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(message)s")
-    ap = argparse.ArgumentParser(description="LLM-friendly veri -> Qdrant (Qwen3, MPS)")
-    ap.add_argument("banks", nargs="*")
-    ap.add_argument("--recreate", action="store_true", help="koleksiyonu sıfırdan oluştur")
+    ap = argparse.ArgumentParser(description="Korpus -> Qdrant 'campaigns'")
+    ap.add_argument("banks", nargs="*", help="gömülecek bankalar (boş = tümü)")
+    ap.add_argument("--only-missing", action="store_true",
+                    help="yalnız koleksiyonda HİÇ olmayan url'leri göm")
+    ap.add_argument("--dry-run", action="store_true", help="yazma, sadece say")
     args = ap.parse_args()
 
     from concurrent.futures import ThreadPoolExecutor
@@ -356,3 +477,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

@@ -57,6 +57,7 @@ class Tom(BaseBank):
     name = "tom"
     display_name = "T.O.M. Katılım Bankası"
     capabilities = frozenset({"products", "finance"})
+    finance_input_capabilities = frozenset({"monthly_profit_rate"})
     notes = (
         "Its consumer financing calculator is public; the loan API's HTTP Basic "
         "credential is embedded in the calculator page's own JavaScript. It "
@@ -108,12 +109,18 @@ class Tom(BaseBank):
 
     # ----- financing -----
 
-    def finance_quote(self, product: str, amount: float, term: int) -> FinanceQuote:
+    def finance_quote(
+        self,
+        product: str,
+        amount: float,
+        term: int,
+        monthly_profit_rate: float | None = None,
+    ) -> FinanceQuote:
         chosen = self.find_product("finance", product)
         self._check_limits(chosen, amount=amount, term=term, term_label="months")
 
         table = self._rate_table()
-        monthly = table.get(int(term))
+        monthly = monthly_profit_rate if monthly_profit_rate is not None else table.get(int(term))
         if monthly is None:
             raise UnsupportedProduct(
                 f"{self.display_name} prices {chosen.name} over 1–{_MAX_TERM} "

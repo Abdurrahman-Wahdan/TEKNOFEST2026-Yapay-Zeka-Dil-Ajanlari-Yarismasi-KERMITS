@@ -60,6 +60,10 @@ class Dunya(BaseBank):
     )
     # Plain httpx plus the homepage's anti-forgery token on every call.
     transport = "csrf"
+    # The homepage calculator's “Kâr Oranını Kendim Belirleyeceğim” toggle
+    # submits these existing fields with `userSelected=true` and the value in
+    # `userRate`.
+    finance_input_capabilities = frozenset({"monthly_profit_rate"})
 
     def _post(self, action: str, **fields):
         """POST a calculator action with the homepage token in the body.
@@ -170,7 +174,10 @@ class Dunya(BaseBank):
 
     # ----- finance -----
 
-    def finance_quote(self, product: str, amount: float, term: int) -> FinanceQuote:
+    def finance_quote(
+        self, product: str, amount: float, term: int,
+        monthly_profit_rate: float | None = None,
+    ) -> FinanceQuote:
         chosen = self.find_product("finance", product)
         # It declares a ceiling per product and will still quote past it.
         self._check_limits(chosen, amount=amount, term=term)
@@ -184,8 +191,15 @@ class Dunya(BaseBank):
             # answers with a plausible instalment a hundred times too large.
             amount=str(int(amount)),
             installmentCount=str(int(term)),
-            userRate="0",
-            userSelected="false",
+            # The UI lets users type a dot but normalises the form field to
+            # Turkish decimal notation before submit; the endpoint reads a
+            # dot as an out-of-range integer (2.6 -> 26).
+            userRate=(
+                f"{float(monthly_profit_rate):.2f}".replace(".", ",")
+                if monthly_profit_rate is not None
+                else "0"
+            ),
+            userSelected="true" if monthly_profit_rate is not None else "false",
         )
         payload = payload or {}
         # "monthlyInterest" is the instalment, despite the name.

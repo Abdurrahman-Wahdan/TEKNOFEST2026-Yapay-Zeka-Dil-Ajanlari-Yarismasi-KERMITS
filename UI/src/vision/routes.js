@@ -44,66 +44,123 @@
 
 // Vision UI Dashboard React icons
 import { BsFillPersonFill } from "react-icons/bs";
-import { BsCreditCardFill } from "react-icons/bs";
-import { IoStatsChart } from "react-icons/io5";
-import { IoHome } from "react-icons/io5";
+// Icons for the unmounted entries below, commented out with them so the
+// remount is an uncomment and not a hunt for which glyph the page used:
+// import { BsCreditCardFill } from "react-icons/bs";  // Billing
+// import { IoHome } from "react-icons/io5";           // Dashboard
+// import { IoStatsChart } from "react-icons/io5";     // Tables
+// import { IoBusiness } from "react-icons/io5";       // Bankalar
+// import { IoDocumentText } from "react-icons/io5";   // Finansman
 // Filled variants, not the `*Outline` ones: every icon already in this Sidenav
 // is a solid glyph (IoHome, IoStatsChart, BsCreditCardFill), and an outline
 // icon sitting among them reads as a different weight rather than a different
 // page.
-import { IoDocumentText } from "react-icons/io5";
-import { IoBusiness } from "react-icons/io5";
 import { IoAlbums } from "react-icons/io5";
+import { IoPricetags } from "react-icons/io5";
+import { IoMegaphone } from "react-icons/io5";
+import { IoChatbubbles } from "react-icons/io5";
+import { IoSparkles } from "react-icons/io5";
 
+// Dashboard, Finansman, Bankalar, Tables and Billing are unmounted — no drawer entry and
+// no route. Their pages are kept verbatim at
+// `src/app/[locale]/(app)/_unmounted/`, and every component they render is
+// still live under `src/vision/layouts/` and `src/components/widgets/`. The
+// entries stay here, commented, so remounting one is an uncomment plus a file
+// move; see that folder's README.md. Same treatment RTL already gets.
 const routes = [
-  {
-    type: "collapse",
-    name: "Dashboard",
-    key: "dashboard",
-    route: "/dashboard",
-    icon: <IoHome size="15px" color="inherit" />,
-    noCollapse: true,
-  },
-  {
-    type: "collapse",
-    name: "Finansman",
-    key: "finansman",
-    route: "/finansman",
-    icon: <IoDocumentText size="15px" color="inherit" />,
-    noCollapse: true,
-  },
+  // {
+  //   type: "collapse",
+  //   name: "Dashboard",
+  //   key: "dashboard",
+  //   route: "/dashboard",
+  //   icon: <IoHome size="20px" color="inherit" />,
+  //   noCollapse: true,
+  // },
+  // {
+  //   type: "collapse",
+  //   name: "Finansman",
+  //   key: "finansman",
+  //   route: "/finansman",
+  //   icon: <IoDocumentText size="20px" color="inherit" />,
+  //   noCollapse: true,
+  // },
   {
     type: "collapse",
     name: "Karşılaştır",
     key: "compare",
     route: "/compare",
-    icon: <IoAlbums size="15px" color="inherit" />,
+    icon: <IoAlbums size="20px" color="inherit" />,
     noCollapse: true,
   },
   {
     type: "collapse",
-    name: "Bankalar",
-    key: "banks",
-    route: "/banks",
-    icon: <IoBusiness size="15px" color="inherit" />,
+    name: "Ürünler",
+    key: "urunler",
+    route: "/urunler",
+    icon: <IoPricetags size="20px" color="inherit" />,
     noCollapse: true,
   },
   {
     type: "collapse",
-    name: "Tables",
-    key: "tables",
-    route: "/tables",
-    icon: <IoStatsChart size="15px" color="inherit" />,
+    name: "Kampanyalar",
+    key: "kampanyalar",
+    route: "/kampanyalar",
+    icon: <IoMegaphone size="20px" color="inherit" />,
     noCollapse: true,
   },
+  // The tables the assistant saved for this user. Sits beside Asistan because
+  // the two are one feature seen from two ends: the conversation writes this
+  // page. Sparkles for the same reason ProducedTable uses it on its attach
+  // button -- it is already this app's glyph for "the assistant did this".
   {
     type: "collapse",
-    name: "Billing",
-    key: "billing",
-    route: "/billing",
-    icon: <BsCreditCardFill size="15px" color="inherit" />,
+    name: "AI Görünümü",
+    key: "ai-overview",
+    route: "/ai-overview",
+    icon: <IoSparkles size="20px" color="inherit" />,
     noCollapse: true,
   },
+  // The assistant. `key` must match the first path segment -- Sidenav derives
+  // the active state from `pathname.split("/").slice(1)[0]`, so a key of
+  // "assistant" here would leave the entry unhighlighted on /chat.
+  //
+  // The name is a Turkish literal like every entry above it, but it is now the
+  // *fallback*: as of 2026-08-25 Sidenav looks `nav.<key>` up in
+  // messages/tr.json and only falls back to this string. That is also where
+  // DashboardNavbar gets the page title, so a new page needs a `nav` key or its
+  // header reads as the URL slug. See `@/lib/nav-label`.
+  {
+    type: "collapse",
+    name: "Asistan",
+    key: "chat",
+    route: "/chat",
+    icon: <IoChatbubbles size="20px" color="inherit" />,
+    noCollapse: true,
+  },
+  // {
+  //   type: "collapse",
+  //   name: "Bankalar",
+  //   key: "banks",
+  //   route: "/banks",
+  //   icon: <IoBusiness size="20px" color="inherit" />,
+  //   noCollapse: true,
+  // },
+  // {
+  //   type: "collapse",
+  //   name: "Tables",
+  //   key: "tables",
+  //   route: "/tables",
+  //   icon: <IoStatsChart size="20px" color="inherit" />,
+  //   noCollapse: true,
+  // },
+  // {
+  //   type: "collapse",
+  //   name: "Billing",
+  //   key: "billing",
+  //   route: "/billing",
+  //   icon: <BsCreditCardFill size="20px" color="inherit" />,
+  //   noCollapse: true,
+  // },
   // RTL is unmounted: no drawer entry and no route. The layout itself is kept
   // at `layouts/rtl/` — it is the template's worked example of a right-to-left
   // page, and the RTL machinery it demonstrates (theme-rtl, the stylis-plugin-rtl
@@ -113,10 +170,10 @@ const routes = [
   // with everything else. Worth restoring only if the account section grows.
   {
     type: "collapse",
-    name: "Profile",
+    name: "Profil",
     key: "profile",
     route: "/profile",
-    icon: <BsFillPersonFill size="15px" color="inherit" />,
+    icon: <BsFillPersonFill size="20px" color="inherit" />,
     noCollapse: true,
   },
   // Vision UI's own Sign In / Sign Up entries are gone: reaching the dashboard

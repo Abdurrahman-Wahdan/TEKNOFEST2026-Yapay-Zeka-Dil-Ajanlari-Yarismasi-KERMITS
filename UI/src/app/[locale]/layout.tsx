@@ -39,8 +39,10 @@ export const metadata: Metadata = {
 };
 
 /**
- * Both locales are prerendered rather than generated on demand — there are two
- * of them, and the alternative is a cold render for the first English visitor.
+ * Turkish is the only locale, so this prerenders the single `/tr` segment. It
+ * still reads from `routing.locales` rather than hardcoding `"tr"` — the list
+ * is the one place a locale is declared, and a hardcoded copy here is what
+ * would go stale if a second language ever came back.
  */
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
@@ -81,6 +83,7 @@ export default async function LocaleLayout({
     <html
       lang={locale}
       className={`${openSans.variable} ${geist.variable}${theme === "dark" ? " dark" : ""}`}
+      data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
       <head>

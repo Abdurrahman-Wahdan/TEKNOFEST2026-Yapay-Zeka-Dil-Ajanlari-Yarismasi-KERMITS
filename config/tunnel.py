@@ -187,3 +187,55 @@ def _kullanilmayan_eski_yol() -> bool:
         _persist_to_env(live)
         log.warning("  [TÜNEL] URL değişti: %s -> %s", old, live)
         return True
+
+
+# --- Uzak daldan gelen ortak API (llm/providers, embeddings/providers ve
+# llm/context.py bu ikisini çağırır; testler de doğrudan kullanır). Gövdeleri
+# bu modülün KENDİ altyapısına (_lock, log, _fetch_live_url) bağlandı.
+
+def is_tunnel_failure(exc: BaseException) -> bool:
+    """Yeni yayınlanmış bir tünele karşı tekrar denemenin işe yarayıp
+    yaramayacağı.
+
+    Doğrulama/kimlik hatalarında gist'e GİDİLMEZ: onlar uygulama hatasıdır,
+    ters vekilin adresinin değiştiğine kanıt değildir. Bayat tünel 404 olarak
+    görünür; vekil kesintileri listelenen ağ geçidi durumlarını ya da bir
+    taşıma hatasını üretir.
+
+    Burada durur çünkü konu *tünel*, sohbet değil: bu vekilden geçen her şey
+    adres değiştiğinde aynı biçimde başarısız olur ve embedding istemcisinin
+    de birebir aynı yanıta ihtiyacı vardır."""
+    # OpenAI SDK'sı httpx bağlantı/reset/timeout istisnalarını kendi
+    # APIConnectionError hiyerarşisine sarar. Yalnız httpx istisnalarına
+    # bakmak LangChain'in verdiği asıl hatayı kaçırır. Zinciri de yürü ki
+    # ileride bir sarmalayıcı bir katman daha eklerse doğru kalsın.
+    from openai import APIConnectionError, APITimeoutError
+
+    current: BaseException | None = exc
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if isinstance(current, (APIConnectionError, APITimeoutError,
+                                ConnectionError, TimeoutError, OSError)):
+            return True
+        if getattr(current, "status_code", None) in {404, 502, 503, 504}:
+            return True
+        current = current.__cause__ or current.__context__
+    return False
+
+
+def refresh_after_failure(failed_base_url: str | None = None) -> bool:
+    """Başarısız olmuş bir tünel adresini bir kez tazele, sonucu paylaş.
+
+    Normal model kurulumunda ÇAĞRILMAZ — bedeli yalnız bir istek zaten
+    başarısız olduktan sonra ödenir. ``failed_base_url`` sürü etkisini önler:
+    başka bir istek o adresi çoktan değiştirmişse, bu çağıran gist'e ikinci
+    kez gitmeden yenisini benimser."""
+    failed = failed_base_url.rstrip("/") if failed_base_url else None
+    with _lock:
+        configured = (settings.VLLM_BASE_URL or "").rstrip("/")
+        if failed is not None and configured != failed:
+            log.info("  [TÜNEL] başka bir istek zaten tazelemiş: %s -> %s",
+                     failed, configured)
+            return True
+    return refresh_if_needed()

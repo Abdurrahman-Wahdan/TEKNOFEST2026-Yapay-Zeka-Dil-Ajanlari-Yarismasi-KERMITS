@@ -24,7 +24,7 @@ from banks.providers.base import TemporarilyUnavailable
 
 from ..converters import (
     card_quote_out, family_list, finance_quote_out, mile_rate_out, product_out,
-    profit_share_quote_out, rate_out,
+    profit_share_quote_out, rate_list_out,
 )
 from ..schemas.banks import (
     BankOut, CardInstallmentQuoteOut, FamilyOut, FinanceQuoteOut, MileRateOut,
@@ -73,6 +73,7 @@ def all_banks() -> list[BankOut]:
             name=name,
             display_name=entry["display_name"],
             publishes=entry["publishes"],
+            finance_input_capabilities=entry["finance_input_capabilities"],
             maintenance=entry.get("maintenance", []),
             notes=entry.get("notes") or "",
         )
@@ -98,6 +99,7 @@ def one_bank(bank: str = BankName) -> BankOut:
         name=provider.name,
         display_name=entry["display_name"],
         publishes=entry["publishes"],
+        finance_input_capabilities=entry["finance_input_capabilities"],
         maintenance=entry.get("maintenance", []),
         notes=entry.get("notes") or "",
     )
@@ -122,6 +124,7 @@ def bank_finance_quote(
     product: str = Query(description="A product code from /products."),
     amount: float = Query(gt=0),
     term: int = Query(gt=0, le=360, description="Months."),
+    monthly_profit_rate: float | None = Query(default=None, gt=0, le=100),
 ) -> FinanceQuoteOut:
     """A live financing quote, including the full payment schedule.
 
@@ -131,7 +134,15 @@ def bank_finance_quote(
     """
     provider = _bank(bank)
     try:
-        return finance_quote_out(provider.finance_quote(product, amount, term))
+        if monthly_profit_rate is not None and "monthly_profit_rate" not in provider.finance_input_capabilities:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                f"{provider.display_name}'s calculator does not accept a customer-supplied monthly profit rate.",
+            )
+        return finance_quote_out(provider.finance_quote(
+            product, amount, term,
+            **({"monthly_profit_rate": monthly_profit_rate} if monthly_profit_rate is not None else {}),
+        ))
     except UnsupportedProduct as exc:
         raise _handle(exc) from exc
 
@@ -153,8 +164,13 @@ def bank_profit_share_quote(
     """
     provider = _bank(bank)
     try:
+        # `term_unit`, not `unit`: the query parameter is named for the caller
+        # but every provider's parameter is `term_unit`, and passing it by the
+        # query's name raised TypeError before reaching any bank -- a 500 on
+        # every request to this route, for every bank. `banks/tools.py` passes
+        # the same value positionally, which is why the agent never hit it.
         quote = provider.profit_share_quote(
-            product, amount, term, unit=unit, currency=currency.upper()
+            product, amount, term, term_unit=unit, currency=currency.upper()
         )
     except UnsupportedProduct as exc:
         raise _handle(exc) from exc
@@ -172,7 +188,7 @@ def bank_rates(bank: str = BankName) -> list[RateOut]:
     """
     provider = _bank(bank)
     try:
-        return cache.rates.get(provider.name, lambda: [rate_out(r) for r in provider.rates()])
+        return cache.rates.get(provider.name, lambda: rate_list_out(provider.rates()))
     except UnsupportedProduct as exc:
         raise _handle(exc) from exc
 

@@ -3,6 +3,7 @@ langchain==1.3.14
 langchain-core==1.5.3
 langchain-openai==1.4.2
 langgraph==1.2.10
+langgraph-checkpoint-postgres==3.0.3
 
 # Embeddings (local, on-premise)
 langchain-huggingface==1.2.2
@@ -10,7 +11,7 @@ sentence-transformers==5.7.0
 
 # Vector store
 langchain-qdrant==1.1.0
-qdrant-client==1.19.0
+qdrant-client==1.15.1
 
 # Config
 pydantic==2.13.4
@@ -50,6 +51,11 @@ argon2-cffi==25.1.0
 pyjwt==2.13.0
 # EmailStr's validator. pydantic does not pull it in on its own.
 email-validator==2.3.0
+# Browser voice input posts multipart audio. `mlx-whisper` is conditional: it
+# uses Metal and only publishes a useful runtime for Apple Silicon, while the
+# rest of the API remains importable on Linux CI and non-Mac deployments.
+python-multipart==0.0.20
+mlx-whisper==0.4.3; platform_system == "Darwin" and platform_machine == "arm64"
 
 # Dataprep (agentic crawl + VLM extraction + embed)
 pypdf==6.16.0

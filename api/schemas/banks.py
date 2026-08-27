@@ -26,6 +26,7 @@ class BankOut(BaseModel):
     name: str = Field(description="The key every other endpoint takes.")
     display_name: str
     publishes: list[str]
+    finance_input_capabilities: list[str] = Field(default_factory=list)
     maintenance: list[str] = Field(
         default_factory=list,
         description="Capabilities the last health check found failing.",
@@ -38,6 +39,7 @@ class FamilyOut(BaseModel):
 
     key: str
     label: str
+    group: str = Field(description="Semantic picker group for this family.")
     category: str = Field(description="finance | profit_share")
     banks: list[str] = Field(description="Banks that sell it.")
 
@@ -180,6 +182,10 @@ class RateOut(BaseModel):
     buy: float
     sell: float
     unit: str = "1"
+    quote_currency: str = Field(
+        default="TRY",
+        description="Currency the bank used to quote one unit. The main FX board compares TRY quotes only.",
+    )
     as_of: str = ""
     derived: bool = Field(
         default=False,

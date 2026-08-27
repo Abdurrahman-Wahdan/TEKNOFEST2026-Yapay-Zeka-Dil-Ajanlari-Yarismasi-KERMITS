@@ -1,8 +1,10 @@
-"""Banka-scoped retrieval tool — bir subagent'ın ELİNE VERİLEN tek araç.
+"""Karşılaştırma hattının retrieval araçları.
 
-search_bank(query, k): subagent kendi query'sini yazar, k'yı kendi seçer, yetmezse
-farklı query'yle veya daha büyük k ile TEKRAR çağırabilir. Banka sabittir (closure) —
-subagent kendi bankasının dışına çıkamaz, "sadece o bankanın sorumlusu" tasarımı.
+Banka-scoped olanların üçü (search_bank, expand_chunk, read_full_page) artık
+`corpus/search.py`'de: aynı araçları canlı banka uzmanları da kullanıyor
+(agents/shared/bank_tools.py) ve Türkçe metin, süresi-geçmiş kuralı, metadata
+okuması ile parça budama TEK yerde tanımlı olmalı. Buradan yeniden dışa
+aktarılıyorlar, böylece bank_agent.py'nin importları değişmiyor.
 
 Qdrant 'campaigns' koleksiyonunu, metadata.bank filtresiyle arar. Süresi geçmiş
 kaynaklar (metadata.gecerlilik_bitis damgalıysa) elenir — bu tarih KIYASI CANLI
@@ -19,7 +21,10 @@ import time
 
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
-from qdrant_client import models
+
+# Testler ve canlı süpervizör bu üç yardımcıyı retrieval üzerinden
+# import ediyor; tek gerçek kaynakları corpus/search.py.
+from corpus.search import _end_date, _expired, _source_url  # noqa: F401
 
 from config import tunnel
 from corpus import dates
@@ -589,24 +594,19 @@ def make_table_search_tool(registry_loader, marked: set | None = None,
         mark_note = _apply_mark(useful, not_useful, marked, discarded)
         if not registry_loader():
             return "Henüz hiç karşılaştırma tablosu yok — bu kesin olarak yeni bir konu."
-        _ensure_tables_collection()
-        embedder, client = _shared()
         key = query.strip().lower()
         offset = (_offsets.get(key, 0) + 5) if next else 0
         _offsets[key] = offset
-        # `intent`: statik/sabit bir talimat metni BİZ yazmıyoruz — modelin kendi
-        # ifade ettiği arama niyeti kullanılıyor (asimetrik retrieval talimatı).
-        with _lock:
-            qvec = _embed_query_safe(embedder, query, task=intent or None)
-        hits = client.query_points(collection_name=TABLES_COLLECTION, query=qvec,
-                                    limit=5, offset=offset, with_payload=True).points
+        hits = search_tables(query, intent=intent, limit=5, offset=offset)
         if not hits:
             body = "Sonuç yok."
         else:
+            # `ui_url` KASITLI olarak yazılmıyor: bu araç bir tablonun VAR OLUP
+            # OLMADIĞINA karar vermek için, kullanıcıya link vermek için değil —
+            # çevrimdışı hattın kullanıcısı yok.
             body = "\n---\n".join(
-                f"id={h.payload['id']} [{h.payload.get('category', '')}/"
-                f"{h.payload.get('subcategory', '')}] benzerlik={h.score:.2f}\n"
-                f"{h.payload['docstring']}"
+                f"id={h['id']} [{h['category']}/{h['subcategory']}] "
+                f"benzerlik={h['score']:.2f}\n{h['docstring']}"
                 for h in hits)
         return f"{mark_note}\n\n{body}" if mark_note else body
 

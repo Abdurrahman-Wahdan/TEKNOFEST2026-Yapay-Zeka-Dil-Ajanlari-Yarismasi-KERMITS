@@ -56,6 +56,24 @@ class Site:
 
     raw: dict = field(default_factory=dict)
 
+    @property
+    def corpus_slug(self) -> str:
+        """The name this bank's chunks are stamped with in the vector store.
+
+        Not the same string as `slug`, and that difference is load-bearing.
+        `slug` names the bank in `banks/providers` -- "vakif", "ziraat", "tom" --
+        while the crawl wrote its documents into `<root domain>_site` and the
+        embedder took the bank name from that directory, so the store holds
+        "vakifkatilim", "ziraatkatilim", "tombank". Seven of the ten differ.
+
+        The failure mode is why this is a property rather than something each
+        caller derives: a Qdrant filter on the wrong name matches nothing and
+        raises nothing. A specialist handed "vakif" searches its own bank
+        forever and is told, truthfully as far as it can see, that the bank has
+        published nothing at all.
+        """
+        return self.root_domain.split(".")[0]
+
 
 @dataclass(frozen=True)
 class RawDoc:

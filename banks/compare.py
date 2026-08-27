@@ -182,13 +182,42 @@ def _prepare(category: str, capability: str, family: str, banks: list[str] | Non
     return asking, missing
 
 
-def finance(family: str, amount: float, term_months: int,
-            banks: list[str] | None = None) -> Comparison:
-    """One financing product at every bank that sells it."""
+def finance(
+    family: str,
+    amount: float,
+    term_months: int,
+    banks: list[str] | None = None,
+    monthly_profit_rate: float | None = None,
+) -> Comparison:
+    """One financing product at every bank that sells it.
+
+    A supplied rate is a calculator scenario, not a request for each bank's
+    current rate. Banks whose own calculator does not accept that control are
+    returned as explicit declines rather than being silently given a value.
+    """
     started = time.monotonic()
     asking, missing = _prepare("finance", "finance", family, banks)
+    if monthly_profit_rate is not None:
+        supported, unsupported = [], []
+        for bank, member in asking:
+            if "monthly_profit_rate" in bank.finance_input_capabilities:
+                supported.append((bank, member))
+            else:
+                unsupported.append(Unavailable(
+                    bank.name,
+                    DECLINED,
+                    f"{bank.display_name}'s calculator does not accept a customer-supplied monthly profit rate.",
+                ))
+        asking = supported
+        missing.extend(unsupported)
     work = [
-        (bank, partial(_quote_finance, member=member, amount=amount, term=term_months))
+        (bank, partial(
+            _quote_finance,
+            member=member,
+            amount=amount,
+            term=term_months,
+            monthly_profit_rate=monthly_profit_rate,
+        ))
         for bank, member in asking
     ]
     quotes, problems = _fan_out(work)
@@ -284,7 +313,7 @@ def exchange(source: str, target: str, amount: float,
 # Named rather than lambdas so a traceback says which call failed, and so the
 # loop cannot accidentally close over the last product it saw.
 
-def _quote_finance(bank, *, member, amount, term):
+def _quote_finance(bank, *, member, amount, term, monthly_profit_rate=None):
     """Quote one family member, stamping the row with how it got here.
 
     The provider knows the product; only the family table knows that this row
@@ -292,7 +321,16 @@ def _quote_finance(bank, *, member, amount, term):
     is answering a question about 0 km cars. Attached after the fact so no
     provider has to carry a concept that belongs to the comparison.
     """
-    quote = bank.finance_quote(member.query, amount, term)
+    quote = bank.finance_quote(
+        member.query,
+        amount,
+        term,
+        **(
+            {"monthly_profit_rate": monthly_profit_rate}
+            if monthly_profit_rate is not None
+            else {}
+        ),
+    )
     if not member.variant and not member.general:
         return quote
     return replace(quote, variant=member.variant, general=member.general)

@@ -22,7 +22,7 @@ import VuiTypography from "components/VuiTypography";
 
 // Same mark and file the sidenav header pairs with "KERMİTS" -- one logo, one
 // place it is defined, so the two never end up showing different marks.
-const kermitsLogo = "/vision/images/kermits-logo.png";
+import { BRAND_LOGO as kermitsLogo } from "@/components/ui/brand";
 
 // `item` removed from the VuiBox tags below: it is a Grid prop, and VuiBox is a
 // Box, so it fell through to the DOM and React warned

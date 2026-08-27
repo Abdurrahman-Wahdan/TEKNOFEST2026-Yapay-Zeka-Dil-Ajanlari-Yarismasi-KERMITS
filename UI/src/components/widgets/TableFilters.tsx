@@ -28,12 +28,23 @@ export function TableFilters({
   rows,
   state,
   onChange,
+  bankLabels,
 }: {
   columns: ResolvedColumn[];
   /** The unfiltered rows — the tick-lists must offer values a filter hid. */
   rows: Row[];
   state: FilterState;
   onChange: (next: FilterState) => void;
+  /**
+   * Display names for a `bank` column's values.
+   *
+   * A bank cell holds the provider's own key (`kuveytturk`) and the table draws
+   * *Kuveyt Türk*, so a tick-list built from the raw cell text offers a list of
+   * keys nobody recognises next to a table of names. The same lookup `sortRows`
+   * already takes for the same reason. Optional: a table with no bank column
+   * never needs it.
+   */
+  bankLabels?: Record<string, string>;
   /**
    * Still passed by `TableWidget`, deliberately not destructured: the row count
    * they feed is unmounted (see below), and keeping them on the contract is
@@ -66,7 +77,10 @@ export function TableFilters({
           <MultiSelect
             key={column.key}
             label={column.label}
-            options={options.map((v) => ({ value: v, label: v }))}
+            options={options.map((v) => ({
+              value: v,
+              label: column.type === "bank" ? (bankLabels?.[v] ?? v) : v,
+            }))}
             selected={chosen !== undefined ? chosen : options}
             allLabel={t("selectAll")}
             allSelectedLabel={t("allSelected")}

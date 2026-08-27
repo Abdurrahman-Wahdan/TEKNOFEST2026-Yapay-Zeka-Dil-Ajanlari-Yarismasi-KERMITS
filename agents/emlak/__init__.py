@@ -1,0 +1,1 @@
+"""Emlak Katılım specialist identity."""

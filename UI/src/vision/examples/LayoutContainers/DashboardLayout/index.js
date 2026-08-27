@@ -29,6 +29,7 @@ import VuiBox from "components/VuiBox";
 
 // Vision UI Dashboard React context
 import { useVisionUIController, setLayout } from "context";
+import { SIDENAV_GUTTER, SIDENAV_RAIL, SIDENAV_WIDTH } from "vision/sidenavWidths";
 
 function DashboardLayout({ children }) {
   const [controller, dispatch] = useVisionUIController();
@@ -45,13 +46,24 @@ function DashboardLayout({ children }) {
         p: 3,
         position: "relative",
 
-        [breakpoints.up("xl")]: {
-          marginLeft: miniSidenav ? pxToRem(120) : pxToRem(274),
-          transition: transitions.create(["margin-left", "margin-right"], {
-            easing: transitions.easing.easeInOut,
-            duration: transitions.duration.standard,
-          }),
+        // No longer gated on `xl`. The drawer is a rail at every width now
+        // rather than sliding off-screen below 1440, so the content has to make
+        // room for it everywhere -- otherwise the rail sits on top of the page.
+        // The offset is derived from the drawer's own widths rather than the
+        // pre-summed 120/274 this used to hardcode.
+        marginLeft: pxToRem((miniSidenav ? SIDENAV_RAIL : SIDENAV_WIDTH) + SIDENAV_GUTTER),
+
+        // Below `md` the drawer is a temporary overlay rather than a docked rail,
+        // so there is nothing for the content to make room for -- it takes the
+        // full width and the drawer floats over it when opened.
+        [breakpoints.down("md")]: {
+          marginLeft: 0,
+          p: 2,
         },
+        transition: transitions.create(["margin-left", "margin-right"], {
+          easing: transitions.easing.easeInOut,
+          duration: transitions.duration.standard,
+        }),
       })}
     >
       {children}

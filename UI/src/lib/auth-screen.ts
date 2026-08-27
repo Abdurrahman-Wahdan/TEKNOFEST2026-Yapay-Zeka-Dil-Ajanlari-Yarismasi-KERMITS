@@ -1,4 +1,5 @@
 import type { Testimonial } from "@/components/ui/sign-in";
+import { BRAND_LOGO } from "@/components/ui/brand";
 
 /**
  * The artwork and quotes shared by the sign-in and sign-up screens.
@@ -10,25 +11,26 @@ import type { Testimonial } from "@/components/ui/sign-in";
 export const HERO_IMAGE =
   "https://images.unsplash.com/photo-1642615835477-d303d7dc9ee9?w=2160&q=80";
 
-// Placeholder copy from the component's own demo — not real customers. Replace
-// before this is shown to anyone outside the team.
+// These are product highlights, not fabricated customer testimonials. The
+// shared KERMİTS mark keeps every auth screen on-brand and avoids loading
+// third-party profile photos.
 export const TESTIMONIALS: Testimonial[] = [
   {
-    avatarSrc: "https://randomuser.me/api/portraits/women/57.jpg",
-    name: "Sarah Chen",
-    handle: "@sarahdigital",
-    text: "Amazing platform! The user experience is seamless and the features are exactly what I needed.",
+    avatarSrc: BRAND_LOGO,
+    name: "KERMİTS AI",
+    handle: "@akilli-asistan",
+    text: "Katılım bankacılığı ürünlerini Türkçe yapay zekâ asistanıyla kolayca keşfedin.",
   },
   {
-    avatarSrc: "https://randomuser.me/api/portraits/men/64.jpg",
-    name: "Marcus Johnson",
-    handle: "@marcustech",
-    text: "This service has transformed how I work. Clean design, powerful features, and excellent support.",
+    avatarSrc: BRAND_LOGO,
+    name: "Akıllı Karşılaştırma",
+    handle: "@kermitsai",
+    text: "Bankaların oranlarını, kampanyalarını ve ürün koşullarını tek ekranda karşılaştırın.",
   },
   {
-    avatarSrc: "https://randomuser.me/api/portraits/men/32.jpg",
-    name: "David Martinez",
-    handle: "@davidcreates",
-    text: "I've tried many platforms, but this one stands out. Intuitive, reliable, and genuinely helpful for productivity.",
+    avatarSrc: BRAND_LOGO,
+    name: "Kaynaklı Araştırma",
+    handle: "@kermitsai",
+    text: "Bilgi tabanı, canlı banka verileri ve güvenilir kaynaklarla açıklanabilir yanıtlar alın.",
   },
 ];

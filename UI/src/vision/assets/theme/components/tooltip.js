@@ -25,11 +25,12 @@ import borders from "assets/theme/base/borders";
 
 // Vision UI Dashboard React helper functions
 import pxToRem from "assets/theme/functions/pxToRem";
+import rgba from "assets/theme/functions/rgba";
 
 // Takes `colors` so the theme can be rebuilt per light/dark mode; it used to
 // read a module-scope object frozen at import time.
 export default (colors) => {
-  const { black, light } = colors;
+  const { black, onImage } = colors;
   const { size, fontWeightRegular } = typography(colors);
   const { borderRadius } = borders(colors);
 
@@ -41,19 +42,29 @@ export default (colors) => {
 
     styleOverrides: {
       tooltip: {
-        maxWidth: pxToRem(200),
-        backgroundColor: black.main,
-        color: light.main,
-        fontSize: size.sm,
+        maxWidth: pxToRem(240),
+        // The alpha belongs on the background alone, not the whole element:
+        // CSS `opacity` used to fade the text along with it, which left a
+        // white-on-near-black tooltip reading as barely more than a grey
+        // smudge. `rgba` keeps the box translucent and the text fully
+        // legible.
+        backgroundColor: rgba(black.main, 0.92),
+        // Not `light.main` -- that token is `muted`, a dark surface colour
+        // in this palette, not a readable light text colour. The tooltip's
+        // own background is always dark regardless of the app's light/dark
+        // mode, so its text needs the same mode-independent "ink" token the
+        // rest of the app uses over a fixed-dark surface (`onImage`), not one
+        // of the two that swap with the theme.
+        color: onImage.main,
+        fontSize: size.xs,
         fontWeight: fontWeightRegular,
         textAlign: "center",
         borderRadius: borderRadius.md,
-        opacity: 0.7,
-        padding: `${pxToRem(5)} ${pxToRem(8)} ${pxToRem(4)}`,
+        padding: `${pxToRem(8)} ${pxToRem(12)}`,
       },
 
       arrow: {
-        color: black.main,
+        color: rgba(black.main, 0.92),
       },
     },
   };

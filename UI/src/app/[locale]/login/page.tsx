@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
@@ -17,6 +18,7 @@ import { useAuth } from "@/lib/auth";
  * imports client-side, which is what the `useState` inside the component needs.
  */
 export default function LoginPage() {
+  const t = useTranslations("auth");
   const { login } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -26,6 +28,7 @@ export default function LoginPage() {
   // Same idea for a password reset: it never signs the user in either, it
   // just tells them what to do next.
   const justReset = searchParams.get("reset") === "1";
+  const sessionExpired = searchParams.get("reason") === "session-expired";
   const [error, setError] = useState<string | null>(null);
 
   async function handleSignIn(event: React.FormEvent<HTMLFormElement>) {
@@ -38,7 +41,11 @@ export default function LoginPage() {
       // than a value comparison.
       const remember = data.get("rememberMe") !== null;
       await login(String(data.get("email")), String(data.get("password")), remember);
-      router.replace("/dashboard");
+      // /compare: both /dashboard and /finansman are unmounted (see
+      // `src/app/[locale]/(app)/_unmounted/README.md`), and Karşılaştır is now
+      // the first live page in the drawer. Keep this in step with the root
+      // redirect in `src/app/[locale]/page.tsx`.
+      router.replace("/compare");
     } catch {
       // One message for a wrong password and for an unknown address, matching
       // what the API returns — telling them apart would confirm which accounts
@@ -75,14 +82,16 @@ export default function LoginPage() {
           {error}
         </p>
       ) : (
-        (justCreated || justReset) && (
+        (justCreated || justReset || sessionExpired) && (
           <p
             role="status"
             className="fixed bottom-6 left-1/2 -translate-x-1/2 rounded-2xl border border-border bg-card px-5 py-3 text-sm text-[var(--ok)] shadow-lg"
           >
             {justCreated
-              ? "Account created — sign in to continue."
-              : "Password reset — sign in with your new password."}
+              ? t("accountCreated")
+              : justReset
+                ? t("passwordWasReset")
+                : t("sessionExpired")}
           </p>
         )
       )}

@@ -125,10 +125,29 @@ def canonical_code(code: str) -> str:
 def rate_out(rate: Rate) -> RateOut:
     return RateOut(
         code=rate.code, name=rate.name, buy=rate.buy,
-        sell=rate.sell, unit=rate.unit, as_of=rate.as_of,
+        sell=rate.sell, unit=rate.unit, quote_currency=rate.quote_currency, as_of=rate.as_of,
         derived=rate.derived,
         canonical=canonical_code(rate.code),
     )
+
+
+class DuplicateRateIdentity(ValueError):
+    """A bank published two live rows for the same comparable quote."""
+
+
+def rate_list_out(rates: list[Rate]) -> list[RateOut]:
+    """Convert one bank board only after proving its comparable identities are unique."""
+    seen: set[tuple[str, str, str]] = set()
+    converted: list[RateOut] = []
+    for rate in rates:
+        identity = (canonical_code(rate.code), rate.unit, rate.quote_currency.upper())
+        if identity in seen:
+            raise DuplicateRateIdentity(
+                f"duplicate live rate identity: {identity[0]} / {identity[1]} / {identity[2]}"
+            )
+        seen.add(identity)
+        converted.append(rate_out(rate))
+    return converted
 
 
 def card_quote_out(quote: CardInstallmentQuote) -> CardInstallmentQuoteOut:
@@ -196,6 +215,7 @@ def family_list() -> list[FamilyOut]:
         FamilyOut(
             key=key,
             label=families_mod.label(key),
+            group=families_mod.group(key),
             category=category,
             # Distinct banks, not entries: Türkiye Finans holds two entries in
             # most finance families and "sold by 6 banks" must not count it
