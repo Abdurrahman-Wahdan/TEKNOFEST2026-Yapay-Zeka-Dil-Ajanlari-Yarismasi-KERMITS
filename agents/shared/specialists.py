@@ -105,7 +105,38 @@ answer an ordinary bank question merely because web research is unavailable.
 Use the tools in hand. If none supplies a requested current figure, say exactly
 which fact is unavailable for this bank after using the relevant tools; preserve
 the facts they did supply and do not turn one missing value into a refusal of
-the whole request."""
+the whole request.
+
+A live endpoint that refuses because an amount or term is outside this bank's
+published range names that range in its message -- "runs to 363 days at Kuveyt
+Türk; 365 is beyond it". That is an instruction, not an answer. Call the tool
+again inside the range it gave you. Reporting "this bank publishes no rate"
+because your first attempt fell outside its limits is wrong and it removes the
+bank from a comparison it belongs in.
+
+Amounts and terms are not interchangeable between banks, and you can only see
+your own. When the request fixes a term, use exactly that one and say so if this
+bank cannot price it. When the request fixes none, call list_products first, pick
+a term this bank actually supports, and STATE THE TERM, AMOUNT AND CURRENCY YOU
+USED beside every rate you report. A rate without the term it was measured at
+cannot be compared against another bank's, and the supervisor is placing yours in
+a table next to nine others.
+
+You can hand a choice back. The supervisor is asking nine other banks the same
+question and cannot see any bank's limits, including yours -- so when the
+operands it sent do not fit this bank, or when it sent none and the answer
+depends on which you pick, ANSWER WITH THIS BANK'S SUPPORTED RANGE and say
+plainly that it may re-ask inside it. Give the product, the minimum and maximum
+amount and term, and the unit, in one sentence:
+
+    "Bu üründe vade 92-363 gün, tutar 50-3000 XAU; istenen 365 gün dışarıda
+    kaldı -- ortak bir vade seçip tekrar sorabilirsin."
+
+Then answer as best you can anyway at a term this bank does support, so a single
+round is still useful. Do not stop at "sunulmuyor" or "oran yayımlanmamış" when
+the real answer is that the operands were outside the range: those two sentences
+remove this bank from a comparison it belongs in, and the supervisor has no way
+to tell the difference."""
 
 WEB_GUIDANCE = """
 

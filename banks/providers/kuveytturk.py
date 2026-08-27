@@ -295,11 +295,34 @@ class KuveytTurk(BaseBank):
 
         refusal = ""
         low, high = chosen.raw.get("_limits", {}).get(currency, (None, None))
-        self._check_limits(
-            chosen.__class__(**{**chosen.__dict__, "min_amount": low, "max_amount": high}),
-            amount=amount,
-        )
-        for days in _day_attempts(term, self._require_unit(term, term_unit)):
+        limited = chosen.__class__(**{**chosen.__dict__, "min_amount": low, "max_amount": high})
+        self._check_limits(limited, amount=amount)
+
+        # The term is checked too, and in days, because that is the unit this
+        # product's own `min_term`/`max_term` are published in.
+        #
+        # Omitting it is what made a 365-day request for `Altına Altın Katılma
+        # Hesabı` (92-363 days) come back as "published no profit-share rate":
+        # the endpoint was asked, answered with nothing, and a term one day past
+        # the ceiling was reported as the bank having no gold rate at all. The
+        # same account answers normally at 360. A model comparing banks over
+        # "one year" read that as Kuveyt Türk not offering the product and left
+        # it out of the comparison -- a wrong answer built from a true-looking
+        # refusal, which is worse than an error.
+        #
+        # Checked against the attempt list rather than the raw `term`, since a
+        # month request becomes `n*30` and `n*30+1` days before it is sent, and
+        # it is those day counts the published limits apply to. Refused only
+        # when *every* attempt is out of range: the pair straddles nothing, so
+        # the smallest deciding the ceiling and the largest deciding the floor
+        # is exact, not an approximation.
+        attempts = _day_attempts(term, self._require_unit(term, term_unit))
+        if limited.max_term and min(attempts) > limited.max_term:
+            self._check_limits(limited, term=min(attempts), term_label="days")
+        if limited.min_term and max(attempts) < limited.min_term:
+            self._check_limits(limited, term=max(attempts), term_label="days")
+
+        for days in attempts:
             body = {
                 "i": False,
                 "p1": str(int(amount)),

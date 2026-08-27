@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 
 import { VuiBox } from "@/components/vision";
-import type { AgentMessage, ChatStatus } from "@/lib/chat/types";
+import type { AgentMessage, ChatStage, ChatStatus } from "@/lib/chat/types";
 
 import { ChatMessage } from "./ChatMessage";
 
@@ -22,9 +22,12 @@ import { ChatMessage } from "./ChatMessage";
 export function ChatMessageList({
   messages,
   status,
+  stage,
 }: {
   messages: AgentMessage[];
   status: ChatStatus;
+  /** What the agent is doing, for the label on the last, empty bubble. */
+  stage?: ChatStage;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   /** Whether to keep the newest content in view. Released by scrolling away. */
@@ -73,6 +76,7 @@ export function ChatMessageList({
             key={message.id}
             message={message}
             streaming={streaming && index === messages.length - 1}
+            stage={stage}
           />
         ))}
       </VuiBox>

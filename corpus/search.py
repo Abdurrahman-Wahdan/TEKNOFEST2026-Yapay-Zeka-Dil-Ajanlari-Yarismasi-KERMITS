@@ -43,6 +43,7 @@ from config.settings import settings
 
 from . import dates
 
+
 COLLECTION = os.environ.get("QDRANT_COLLECTION_CAMPAIGNS", "campaigns")
 
 RESULTS_PER_CALL = 5   # sabit grup boyutu — model sayı seçmez
@@ -148,6 +149,81 @@ def embed_query(query: str, task: str | None = None):
 def _source_url(meta: dict) -> str:
     return (meta.get("url") or meta.get("source_url") or meta.get("pdf_url")
             or meta.get("source_page") or "")
+
+
+def _document_key(meta: dict) -> tuple[str, str, str]:
+    """The retrievable document a chunk belongs to.
+
+    Text chunks are pages/PDFs and use their page URL. Images need a composite
+    identity: every image starts at chunk zero and carries ``gorsel_kaynak``, but
+    shared banners/logos recur on hundreds of pages. Page URL alone mixes images
+    on one page; image URL alone mixes occurrences across pages. Keeping both
+    prevents ``expand_chunk`` from splicing unrelated OCR together.
+    """
+    kind = str(meta.get("type") or "")
+    page = _source_url(meta)
+    if kind == "gorsel":
+        image = meta.get("gorsel_kaynak") or meta.get("gorsel_url") or ""
+        return page, str(image), kind
+    return page, "", kind
+
+
+def _document_filter(page: str, image: str, kind: str) -> models.Filter:
+    """Qdrant conditions selecting exactly one text page or one image."""
+    must = [
+        models.Filter(should=[
+            models.FieldCondition(
+                key=f"metadata.{key}", match=models.MatchValue(value=page)
+            )
+            for key in ("url", "source_url", "pdf_url", "source_page")
+        ]),
+        models.FieldCondition(
+            key="metadata.type", match=models.MatchValue(value=kind)
+        ),
+    ]
+    if kind == "gorsel":
+        must.append(models.Filter(should=[
+            models.FieldCondition(
+                key=f"metadata.{key}", match=models.MatchValue(value=image)
+            )
+            for key in ("gorsel_kaynak", "gorsel_url")
+        ]))
+    return models.Filter(must=must)
+
+
+def _point_key(point) -> tuple[tuple[str, str], int, str]:
+    """Stable equality key for duplicate-safe retrieval.
+
+    The transferred snapshot deliberately preserves historical point IDs used
+    by table citations. Some extraction runs therefore contain two IDs for the
+    same active chunk. We must not delete those IDs, but returning both consumes
+    the specialist's five-result budget and inflates document spans. Equality is
+    based on document, chunk index and exact text; distinct evidence is never
+    collapsed merely because it has the same URL.
+    """
+    payload = point.payload or {}
+    meta = payload.get("metadata", {}) or {}
+    return (
+        _document_key(meta),
+        int(meta.get("chunk_index", 0) or 0),
+        str(payload.get("page_content") or ""),
+    )
+
+
+def _unique_points(points) -> list:
+    """Preserve ranking/order while removing exact active duplicates."""
+    seen = set()
+    out = []
+    for point in points:
+        payload = point.payload or {}
+        if payload.get("removed") is True:
+            continue
+        key = _point_key(point)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(point)
+    return out
 
 
 def _end_date(meta: dict) -> str:
@@ -286,37 +362,94 @@ def _bank_filter(bank: str, *extra) -> models.Filter:
     ÖNCESİNDE uygular — başka bir bankanın parçası aday bile olmaz, dolayısıyla
     hiçbir sırada görünemez. Banka closure'da; araçların hiçbirinde `bank`
     argümanı yok, yani model başka bir bankayı isteyecek bir alan bulamaz."""
-    return models.Filter(must=[
-        models.FieldCondition(key="metadata.bank", match=models.MatchValue(value=bank)),
-        *extra,
-    ])
+    return models.Filter(
+        must=[
+            models.FieldCondition(key="metadata.bank", match=models.MatchValue(value=bank)),
+            *extra,
+        ],
+        # ``removed`` is top-level migration metadata. Missing means active;
+        # only the literal boolean true is excluded. Keeping this in the Qdrant
+        # filter prevents retired chunks from entering vector ranking at all,
+        # with the Python checks in ``_unique_points`` as defence in depth.
+        must_not=[
+            models.FieldCondition(key="removed", match=models.MatchValue(value=True))
+        ],
+    )
 
 
-def _doc_spans(client, bank: str, keys: set[tuple[str, str]]) -> dict[tuple[str, str], int]:
-    """(url, type) -> o belgedeki parça sayısı. TEK sorguda, sadece chunk_index
+def _doc_spans(client, bank: str, keys: set[tuple[str, str, str]]) -> dict[tuple[str, str, str], int]:
+    """(page, image, type) -> unique chunk count. TEK sorguda, sadece chunk_index
     payload'ı çekilerek: amaç bir sonucun kesilmiş OLABİLECEĞİNİ ajana söylemek,
     metni buraya taşımak değil."""
     keys = {k for k in keys if k[0]}
     if not keys:
         return {}
-    flt = _bank_filter(bank, models.Filter(should=[
-        models.Filter(must=[
-            models.FieldCondition(key="metadata.url", match=models.MatchValue(value=url)),
-            models.FieldCondition(key="metadata.type", match=models.MatchValue(value=kind)),
-        ]) for url, kind in keys
-    ]))
-    spans: dict[tuple[str, str], int] = {}
+    flt = _bank_filter(
+        bank, models.Filter(should=[
+            _document_filter(page, image, kind) for page, image, kind in keys
+        ])
+    )
+    indexes: dict[tuple[str, str, str], set[int]] = {}
     offset = None
     while True:
         points, offset = client.scroll(
             collection_name=COLLECTION, scroll_filter=flt, limit=500, offset=offset,
-            with_payload=["metadata.url", "metadata.type"])
+            with_payload=[
+                "metadata.url", "metadata.source_url", "metadata.pdf_url",
+                "metadata.source_page", "metadata.type", "metadata.gorsel_kaynak",
+                "metadata.gorsel_url", "metadata.chunk_index", "removed",
+            ])
         for p in points:
-            meta = (p.payload or {}).get("metadata", {}) or {}
-            key = (meta.get("url", ""), meta.get("type", ""))
-            spans[key] = spans.get(key, 0) + 1
+            payload = p.payload or {}
+            if payload.get("removed") is True:
+                continue
+            meta = payload.get("metadata", {}) or {}
+            key = _document_key(meta)
+            indexes.setdefault(key, set()).add(int(meta.get("chunk_index", 0) or 0))
         if offset is None:
-            return spans
+            return {key: (max(values) + 1 if values else 0) for key, values in indexes.items()}
+
+
+def _query_unique_current(client, vector, bank: str, *, offset: int, limit: int):
+    """Return a page of unique, current hits rather than a page of raw points.
+
+    Pagination is over the evidence the specialist can actually see. Advancing
+    Qdrant's raw offset by five used to skip useful records when those five were
+    expired or duplicated. We read ranked batches from the beginning, discard
+    invalid copies, and slice only after enough unique current results exist.
+    """
+    wanted = offset + limit
+    raw_offset = 0
+    batch_size = max(25, wanted * 2)
+    unique = []
+    seen = set()
+    while len(unique) < wanted:
+        hits = client.query_points(
+            collection_name=COLLECTION,
+            query=vector,
+            query_filter=_bank_filter(bank),
+            limit=batch_size,
+            offset=raw_offset,
+            with_payload=True,
+        ).points
+        if not hits:
+            break
+        raw_offset += len(hits)
+        for hit in hits:
+            payload = hit.payload or {}
+            if payload.get("removed") is True:
+                continue
+            meta = payload.get("metadata", {}) or {}
+            if _expired(meta, _end_date(meta)):
+                continue
+            key = _point_key(hit)
+            if key in seen:
+                continue
+            seen.add(key)
+            unique.append(hit)
+        if len(hits) < batch_size:
+            break
+    return unique[offset:wanted]
 
 
 def _entry(index: int, point_id, meta: dict, text: str, total: int | None = None) -> str:
@@ -455,30 +588,24 @@ def make_bank_search_tool(bank: str, marked: set, discarded: set) -> StructuredT
 
         vector = embed_query(query, task=intent or None)
         _, client = _shared()
-        hits = client.query_points(
-            collection_name=COLLECTION, query=vector, query_filter=_bank_filter(bank),
-            limit=RESULTS_PER_CALL, offset=offset, with_payload=True).points
+        hits = _query_unique_current(
+            client, vector, bank, offset=offset, limit=RESULTS_PER_CALL
+        )
+        kept = [
+            (h, (h.payload or {}).get("metadata", {}) or {},
+             ((h.payload or {}).get("page_content") or "").strip())
+            for h in hits
+        ]
 
-        kept = []
-        for h in hits:
-            payload = h.payload or {}
-            meta = payload.get("metadata", {}) or {}
-            if _expired(meta, _end_date(meta)):     # süresi geçmiş -> gösterme
-                continue
-            kept.append((h, meta, (payload.get("page_content") or "").strip()))
-
-        spans = _doc_spans(client, bank, {(_source_url(m), m.get("type", ""))
-                                          for _, m, _ in kept})
-        if not kept and not hits:
+        spans = _doc_spans(client, bank, {_document_key(m) for _, m, _ in kept})
+        if not kept:
             body = ("Sonuç yok" + (" (bu sorgu için artık daha fazla sonuç kalmadı)"
                     if next else " (bu banka için bu sorguyla hiçbir güncel içerik "
                     "bulunamadı)") + ".")
-        elif not kept:
-            body = "Bu gruptaki sonuçların hepsi süresi geçmiş kampanyaydı, gösterilmedi."
         else:
             body = _ENTRY_SEP.join(
                 _entry(i + 1, h.id, meta, text,
-                       spans.get((_source_url(meta), meta.get("type", ""))))
+                       spans.get(_document_key(meta)))
                 for i, (h, meta, text) in enumerate(kept))
         return f"{mark_note}\n\n{body}" if mark_note else body
 
@@ -542,22 +669,21 @@ def make_expand_chunk_tool(bank: str, marked: set, discarded: set) -> Structured
                           "ya da başka bir bankaya ait).")
 
         meta = (anchor[0].payload or {}).get("metadata", {}) or {}
-        url, kind = _source_url(meta), meta.get("type", "")
+        page, image, kind = _document_key(meta)
         index = int(meta.get("chunk_index", 0) or 0)
         # `type` de filtreye giriyor: bir kampanya sayfasının görselleri sayfanın
         # URL'sini PAYLAŞIYOR ve onların chunk_index'i metin parçalarını değil
         # görselleri sayıyor (bir Ziraat sayfasında 28 tane). İkisi karışırsa bir
         # görsel açıklaması cümlenin ortasına giriyor.
-        same_doc = [
-            models.FieldCondition(key="metadata.url", match=models.MatchValue(value=url)),
-            models.FieldCondition(key="metadata.type", match=models.MatchValue(value=kind)),
-        ]
-        span = _bank_filter(bank, *same_doc, models.FieldCondition(
+        span = _bank_filter(bank, _document_filter(page, image, kind), models.FieldCondition(
             key="metadata.chunk_index",
             range=models.Range(gte=index - before, lte=index + after)))
         points, _ = client.scroll(collection_name=COLLECTION, scroll_filter=span,
                                   limit=200, with_payload=True)
-        total = _doc_spans(client, bank, {(url, kind)}).get((url, kind), len(points))
+        points = _unique_points(points)
+        total = _doc_spans(client, bank, {(page, image, kind)}).get(
+            (page, image, kind), len(points)
+        )
 
         rows = sorted(
             (int(((p.payload or {}).get("metadata", {}) or {}).get("chunk_index", 0) or 0),
@@ -641,27 +767,29 @@ def make_full_page_tool(bank: str, marked: set | None = None,
         points, _ = client.scroll(
             collection_name=COLLECTION, limit=200, with_payload=True,
             scroll_filter=_bank_filter(bank, url_match))
+        points = _unique_points(points)
         if not points:
             return answer("Bu URL için parça bulunamadı (yanlış url ya da başka "
                           "bankaya ait olabilir).")
 
         rows = sorted(
-            (int(((p.payload or {}).get("metadata", {}) or {}).get("chunk_index", 0) or 0),
+            (_document_key((p.payload or {}).get("metadata", {}) or {}),
+             int(((p.payload or {}).get("metadata", {}) or {}).get("chunk_index", 0) or 0),
              p.id,
              (p.payload or {}).get("metadata", {}) or {},
              ((p.payload or {}).get("page_content") or "").strip())
             for p in points)
-        chars = sum(len(text) for _, _, _, text in rows)
+        chars = sum(len(text) for _, _, _, _, text in rows)
         if chars > MAX_TOOL_CHARS:
-            first = rows[0][1]
+            first = rows[0][2]
             return answer(_too_large(
                 chars, len(rows),
                 f"Bu belgede 0..{len(rows) - 1} arası parça var. İhtiyacın olan "
                 f"yeri expand_chunk ile aç (ör. point_id={first}, after=3)."))
 
         body = _ENTRY_SEP.join(
-            _entry(i + 1, pid, m, text, len(rows))
-            for i, (_, pid, m, text) in enumerate(rows))
+            _entry(i + 1, pid, m, text, None)
+            for i, (_, _, pid, m, text) in enumerate(rows))
         return answer(body)
 
     return StructuredTool.from_function(

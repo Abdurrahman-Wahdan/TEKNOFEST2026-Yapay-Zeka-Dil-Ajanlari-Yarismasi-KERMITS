@@ -142,7 +142,8 @@ def get_table(
     for bank, values in table.get("rows", {}).items():
         sources = table.get("sources", {}).get(bank) or []
         cite = sources[0] if sources else {}
-        valid_from, valid_to, verdict = pool.validity(sources, urls, now, values)
+        valid_from, valid_to, verdict = pool.validity(sources, urls, now)
+        effective = pool.current_values(values, now)
 
         # An expired row is dropped outright, not sent and hidden (user decision,
         # 2026-08-27). The two carded exclusions are things a reader might still
@@ -153,7 +154,7 @@ def get_table(
             continue
 
         cells: dict[str, str | float | bool | None] = {"Banka": pool.BANK_KEY.get(bank, bank)}
-        cells.update({c: pool.cell(values.get(c)) for c in declared})
+        cells.update({c: pool.cell(effective.get(c)) for c in declared})
         cells[VALID_TO_KEY] = valid_to
 
         # The window, on the end date rather than on a verdict chip -- with the
@@ -161,14 +162,26 @@ def get_table(
         # when, exactly", and an open start (`? – 31/12/2026`) is the answer that
         # a bare end date cannot give.
         note = pool.window_note(valid_from, valid_to)
+        cell_notes = {VALID_TO_KEY: note} if note else {}
+        for column in declared:
+            start, end, _cell_verdict = pool.cell_validity(values, column, now)
+            cell_note = pool.window_note(start, end)
+            if cell_note and cells.get(column) is not None:
+                cell_notes[column] = cell_note
         rows.append(
             RowOut(
                 cells=cells,
                 cite_url=cite.get("url") or None,
                 cite_note=cite.get("note") or None,
-                offers=pool.offers(values, status_column),
-                cell_notes={VALID_TO_KEY: note} if note else {},
-                cell_tones={},
+                offers=pool.offers(effective, status_column),
+                cell_notes=cell_notes,
+                cell_tones={
+                    column: VALIDITY_TONE[cell_verdict]
+                    for column in declared
+                    if cells.get(column) is not None
+                    and (cell_verdict := pool.cell_validity(values, column, now)[2])
+                    in (pool.ACTIVE, pool.SCHEDULED)
+                },
             )
         )
 

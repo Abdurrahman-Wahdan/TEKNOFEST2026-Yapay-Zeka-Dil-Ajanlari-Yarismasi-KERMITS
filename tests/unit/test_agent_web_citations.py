@@ -129,14 +129,17 @@ def test_agent_stream_emits_one_clickable_citation_per_web_url(monkeypatch):
         ),
     }
     assert all("unused" not in citation.cite_url for citation in citations)
-    assert [event.text for event in events if event.type == "token"] == [
-        (
-            "Answer with [online source]"
-            "(https://www.vakifkatilim.com.tr/tr/musteri-ol) and "
-            "[knowledge source]"
-            "(https://www.vakifkatilim.com.tr/tr/bilgi-bankasi)."
-        )
-    ]
+    # Joined, not compared frame by frame: the accepted answer is chunked across
+    # several `token` events and the client concatenates them, so the contract
+    # this asserts is the assembled text -- not how many pieces it arrived in.
+    assert "".join(
+        event.text or "" for event in events if event.type == "token"
+    ) == (
+        "Answer with [online source]"
+        "(https://www.vakifkatilim.com.tr/tr/musteri-ol) and "
+        "[knowledge source]"
+        "(https://www.vakifkatilim.com.tr/tr/bilgi-bankasi)."
+    )
 
 
 class _UncitedEvidenceAgent:
@@ -309,15 +312,15 @@ def test_a_linked_comparison_table_becomes_its_own_kind_of_source():
     answer = (
         "Kuveyt Türk %10 indirim sunuyor.\n\n"
         "Daha detaylı karşılaştırma için: "
-        "[araç bakım ve onarım indirimi kampanyası]"
-        "(/tr/kampanyalar?tablo=ara%C3%A7-bak%C4%B1m-ve-onar%C4%B1m-indirimi-kampanyas%C4%B1)"
+        "[elektrikli araç şarj istasyonu indirim kampanyası]"
+        "(/tr/kampanyalar?tablo=elektrikli-ara%C3%A7-%C5%9Farj-istasyonu-indirim-kampanyas%C4%B1)"
     )
     (source,) = site_table_sources(answer)
     assert source["url"] == (
-        "/tr/kampanyalar?tablo=ara%C3%A7-bak%C4%B1m-ve-onar%C4%B1m-indirimi-kampanyas%C4%B1")
+        "/tr/kampanyalar?tablo=elektrikli-ara%C3%A7-%C5%9Farj-istasyonu-indirim-kampanyas%C4%B1")
     # The pool's own name for the table, not the model's link text: the card and
     # the page it opens cannot then disagree.
-    assert source["title"] == "araç bakım ve onarım indirimi kampanyası"
+    assert source["title"] == "elektrikli araç şarj istasyonu indirim kampanyası"
 
 
 def test_an_invented_table_slug_is_dropped_rather_than_shown():

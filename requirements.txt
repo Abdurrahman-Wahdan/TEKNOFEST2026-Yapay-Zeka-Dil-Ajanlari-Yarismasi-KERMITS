@@ -11,7 +11,7 @@ sentence-transformers==5.7.0
 
 # Vector store
 langchain-qdrant==1.1.0
-qdrant-client==1.19.0
+qdrant-client==1.15.1
 
 # Config
 pydantic==2.13.4

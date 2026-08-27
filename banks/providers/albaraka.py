@@ -356,7 +356,32 @@ class Albaraka(BaseBank):
                 f"{currency} at {self.display_name}; {amount:,.0f} is below it."
             )
 
-        for unit in _units(self._require_unit(term, term_unit)):
+        # And the term, from the same per-currency band, for the same reason the
+        # amount is checked here. Without it a term past the ceiling reaches the
+        # endpoint, comes back empty, and is reported as "published no
+        # profit-share rate" -- which reads as "this bank has no gold account"
+        # rather than "ask for a shorter term". A model comparing banks acts on
+        # the first and drops the bank from the comparison entirely.
+        #
+        # `MinDate`/`MaxDate` are day counts (32..1095 on every currency), so a
+        # term given in months is converted before comparing. Thirty days to the
+        # month, the same convention `kuveytturk._day_attempts` uses, and it
+        # under-counts slightly -- which errs toward accepting a borderline term
+        # rather than refusing one the bank would have priced.
+        unit_given = self._require_unit(term, term_unit)
+        days = term if unit_given == "day" else term * 30
+        if band.get("max_term") and days > band["max_term"]:
+            raise UnsupportedProduct(
+                f"{chosen.name} runs to {band['max_term']} days in {currency} at "
+                f"{self.display_name}; {days} is beyond it."
+            )
+        if band.get("min_term") and days < band["min_term"]:
+            raise UnsupportedProduct(
+                f"{chosen.name} starts at {band['min_term']} days in {currency} "
+                f"at {self.display_name}; {days} is below it."
+            )
+
+        for unit in _units(unit_given):
             payload = self._plugin(
                 "getProfitShareCalculate",
                 PROFIT_PAGE,

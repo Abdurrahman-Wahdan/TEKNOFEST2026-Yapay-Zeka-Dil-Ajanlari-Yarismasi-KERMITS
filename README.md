@@ -473,6 +473,20 @@ EMBEDDING_DEVICE=mps  # use cuda or cpu on other machines
 
 The multi-gigabyte corpus and Qdrant storage are intentionally excluded from Git. A new clone starts with an empty knowledge base until the corpus is built or a prepared snapshot is restored.
 
+The competition dataset is processed outside this repository and copied to the
+runtime machine. It is intentionally **not** a Git artifact. After placing the
+prepared `TF26_data/data/_tables` directory and restoring the `campaigns` and
+`compare_tables` snapshots, validate and normalize the restored index:
+
+```bash
+python -m dataprep.clean_migrated_qdrant          # read-only plan
+python -m dataprep.clean_migrated_qdrant --apply  # backup snapshot, soft cleanup, indexes
+```
+
+The cleanup never deletes point IDs: table citations depend on them. Redundant
+copies are retained with `removed=true`, excluded from retrieval, and recorded
+under the ignored `TF26_data/migration_audits/` directory.
+
 ### Build official-source documents
 
 ```bash

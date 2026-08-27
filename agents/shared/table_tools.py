@@ -1,6 +1,6 @@
 """The supervisor's one non-bank tool: a directory of this site's comparison tables.
 
-TF26 already publishes 403 comparison tables at `/tr/urunler` and
+TF26 currently publishes 402 comparison tables at `/tr/urunler` and
 `/tr/kampanyalar` -- one per product or campaign topic, every participation bank
 side by side. Before this tool the assistant could not see them, so it would
 answer a question the site already answers on a page, and never mention that the
@@ -113,15 +113,13 @@ def _still_published(hits: list[dict]) -> list[dict]:
     kept = []
     for hit in hits:
         table = pool.load_table(hit.get("id") or "")
-        # Not in the pool at all: kept, deliberately. That is a stale index, not
-        # an empty page, and this filter answers one question only -- "would this
-        # page draw a table". Dropping on absence would also make the tool refuse
-        # every hit whenever the pool is pointed elsewhere, which is a much
-        # louder failure than the one it guards. A link to a table that does not
-        # exist is already refused where it matters, in `api/agent.py`'s
-        # `site_table_sources`, which rebuilds every link from the pool before a
-        # source card is made.
-        if table is not None and not pool.drawn_rows(table, urls, now):
+        # A Qdrant point without a file is migration drift. It cannot render and
+        # must never be offered as a page merely because a later source-card
+        # layer may reject it. The prose link itself is user-visible too.
+        if table is None:
+            logger.warning("table_directory dropped stale Qdrant id %r", hit.get("id"))
+            continue
+        if not pool.drawn_rows(table, urls, now):
             logger.info("table_directory dropped %r: every row expired or empty", hit.get("id"))
             continue
         kept.append(hit)
@@ -130,14 +128,24 @@ def _still_published(hits: list[dict]) -> list[dict]:
 
 def build_table_directory_tool() -> StructuredTool:
     def find_comparison_table(query: str, intent: str = "") -> str:
-        # Over-fetched, because `_still_published` removes candidates *after*
-        # ranking. Asking for exactly five and filtering would quietly return
-        # three, and the model reads a short list as "the site has little on
-        # this" rather than as a filter having run. `OVERFETCH` is generous
-        # against the 2% of the pool that is currently unpublishable.
-        hits = _still_published(
-            search_tables(query, intent=intent, limit=RESULTS_PER_CALL * OVERFETCH)
-        )[:RESULTS_PER_CALL]
+        # Filtered pagination, rather than one fixed over-fetch. A future dataset
+        # may place more than 2% dead entries at the top of one particular query;
+        # keep reading ranked batches until five publishable tables are found or
+        # Qdrant is exhausted.
+        hits = []
+        offset = 0
+        batch_size = RESULTS_PER_CALL * OVERFETCH
+        while len(hits) < RESULTS_PER_CALL:
+            candidates = search_tables(
+                query, intent=intent, limit=batch_size, offset=offset
+            )
+            if not candidates:
+                break
+            hits.extend(_still_published(candidates))
+            offset += len(candidates)
+            if len(candidates) < batch_size:
+                break
+        hits = hits[:RESULTS_PER_CALL]
         logger.info("table_directory query=%r candidates=%d no_score_cutoff",
                     query, len(hits))
         return _format(hits)

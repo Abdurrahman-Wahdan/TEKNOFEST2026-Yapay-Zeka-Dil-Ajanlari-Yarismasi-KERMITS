@@ -13,7 +13,7 @@ point id türetmesi ve payload isimleri TEK yerde tanımlı olmalı. Aynı gerek
 banka-scoped araçlar da `corpus/search.py`'ye taşınmıştı; `retrieval.py` bunları
 yeniden dışa aktarıyor, böylece çevrimdışı hattın importları değişmiyor.
 
-PAYLOAD. Canlı koleksiyonun 403 point'inin tamamı şunları taşıyor: `id`, `topic`,
+PAYLOAD. Canlı koleksiyonun 402 point'inin tamamı şunları taşıyor: `id`, `topic`,
 `category`, `subcategory`, `docstring`, `text`, `indexed_at` — ve `ui_url`
 (bkz. `dataprep/stamp_table_urls.py`). `index_table` bunların hepsini yazar;
 BİR ZAMANLAR `topic` ve `text` yazmıyordu ve o sürümle yeniden indekslenen bir
@@ -99,7 +99,7 @@ def index_table(table_id: str, topic: str, category: str, subcategory: str,
                                    with_payload=["ui_url"], with_vectors=False)
         ui_url = (existing[0].payload or {}).get("ui_url") if existing else None
     text = index_text(topic, category, subcategory, docstring)
-    # `topic` ve `text` de yazılıyor: canlı koleksiyonun 403 point'inin tamamında
+    # `topic` ve `text` de yazılıyor: canlı koleksiyonun 402 point'inin tamamında
     # varlar ve arama sonucunda tablonun ADI olarak okunan alan `topic`. Bunları
     # yazmayan bir sürüm, dokunduğu her tablonun adını sessizce siliyordu.
     payload = {"id": table_id, "topic": topic, "category": category,

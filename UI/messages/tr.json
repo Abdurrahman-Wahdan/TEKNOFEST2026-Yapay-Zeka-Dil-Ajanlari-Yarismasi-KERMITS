@@ -167,7 +167,8 @@
     "stage": {
       "retrieving": "Kaynaklar aranıyor…",
       "pricing": "Bankalara soruluyor…",
-      "writing": "Yanıt yazılıyor…"
+      "writing": "Yanıt yazılıyor…",
+      "reviewing": "Yanıt denetleniyor…"
     },
     "stop": "Durdur",
     "attach": "Dosya ekle",

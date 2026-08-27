@@ -40,6 +40,7 @@ import { toCapturePayloads } from "./capture";
 import { runClientTool } from "./tools";
 import type {
   AgentMessage,
+  ChatStage,
   ChatStatus,
   ClientToolName,
   MessagePart,
@@ -69,6 +70,14 @@ type ChatContextValue = {
   /** Persisted server conversation used when a kept table gets its context. */
   serverSessionId?: string;
   status: ChatStatus;
+  /**
+   * What the agent is doing, while it is doing it.
+   *
+   * Undefined once the turn ends, and undefined for the whole turn if the server
+   * sends no stage -- the transcript falls back to its generic label, which is
+   * what it showed before this existed.
+   */
+  stage?: ChatStage;
   /** A private agent's context-aware next user message. */
   recommendation?: string;
   send: (text: string) => void;
@@ -163,6 +172,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [activeId, setActiveId] = useState<string>(() => newConversationId());
   const [serverSessionId, setServerSessionId] = useState<string | undefined>();
   const [status, setStatus] = useState<ChatStatus>("ready");
+  // Cleared rather than left on the last stage when a turn ends, so a finished
+  // answer never sits under "Yanıt denetleniyor…".
+  const [stage, setStage] = useState<ChatStage | undefined>(undefined);
   const [recommendation, setRecommendation] = useState<string | undefined>();
   const [popupOpen, setPopupOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -284,6 +296,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     abortRef.current?.abort();
     abortRef.current = null;
     setStatus("ready");
+    setStage(undefined);
   }, []);
 
   /**
@@ -435,6 +448,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         { id: assistantId, role: "assistant", parts: [{ type: "text", text: "" }] },
       ]);
       setStatus("submitted");
+      setStage(undefined);
 
       // The request carries the conversation *including* the new user turn, which
       // `messages` does not yet -- the setState above has not landed. Building it
@@ -544,6 +558,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                 continue;
               }
 
+              if (chunk.type === "status") {
+                // A label for the spinner and nothing more. The stages are not
+                // monotonic -- a turn the output check hands back returns to
+                // `pricing` -- so this is a plain assignment, not a ratchet.
+                setStage(chunk.stage);
+                continue;
+              }
+
               if (chunk.type === "citation") {
                 // The same source can surface once from the nested web tool and
                 // again from the specialist's evidence handoff. The API also
@@ -604,6 +626,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           if (abortRef.current === controller) {
             abortRef.current = null;
             setStatus("ready");
+            setStage(undefined);
             // The thread just grew, so the composer's context ring is stale.
             // Invalidated on completion rather than polled: the level only
             // moves when a turn does, and a timer would ask the agent for its
@@ -638,6 +661,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     setMessages([]);
     setRecommendation(undefined);
     setStatus("ready");
+    setStage(undefined);
     attachments.clear();
   }, [attachments]);
 
@@ -671,6 +695,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       setMessages([]);
       setRecommendation(undefined);
       setStatus("ready");
+      setStage(undefined);
       attachments.clear();
 
       void queryClient
@@ -725,6 +750,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         setMessages([]);
         setRecommendation(undefined);
         setStatus("ready");
+        setStage(undefined);
         attachments.clear();
       }
     },
@@ -736,6 +762,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       messages,
       serverSessionId,
       status,
+      stage,
       recommendation,
       send,
       stop,
@@ -759,6 +786,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       messages,
       serverSessionId,
       status,
+      stage,
       recommendation,
       send,
       stop,

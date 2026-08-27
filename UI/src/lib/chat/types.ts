@@ -21,6 +21,19 @@
  */
 export type ChatStatus = "ready" | "submitted" | "streaming" | "idle";
 
+/**
+ * What the agent is doing right now, as the server reports it.
+ *
+ * A closed list rather than the server's raw string: these are keys into
+ * `chat.stage.*`, so an unknown one would render a missing-message error in the
+ * middle of an answer. `transport.ts` drops anything not listed here.
+ *
+ * Worth having because the wait is long and uninformative without it. Measured
+ * on a ten-bank comparison: 10s deciding, 36s asking banks, 31s writing, 6s
+ * being checked -- 83 seconds during which the panel said only "Düşünüyor…".
+ */
+export type ChatStage = "retrieving" | "pricing" | "writing" | "reviewing";
+
 /** A claim-used source proven by an actual bank-specialist tool call. */
 export type WebCitation = {
   url: string;
@@ -267,6 +280,14 @@ export type ChatRequest = {
  */
 export type ChatChunk =
   | { type: "text-delta"; delta: string }
+  /**
+   * Which part of the turn the agent has reached.
+   *
+   * Advisory and lossy on purpose: frames may be missed or repeated (the agent
+   * returns to `pricing` when the output check hands a turn back), so this only
+   * ever labels a spinner. Nothing about the answer depends on it.
+   */
+  | { type: "status"; stage: ChatStage }
   | { type: "citation"; citation: WebCitation }
   | { type: "error"; message: string; title?: string }
   /**

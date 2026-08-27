@@ -93,6 +93,30 @@ def _payment_row(row) -> dict:
     }
 
 
+def _pct(value: float | None) -> float | None:
+    """A rate for the model: already a percentage, rounded so it reads as one.
+
+    Every `*_rate` a provider produces is in percent -- 33.85 means 33,85%, not
+    3385%. Nothing in the payload said so, and on 2026-08-27 that cost a wrong
+    answer: asked to compare gold accounts, the assistant read Kuveyt Türk's
+    `gross_annual_rate` of 0.140654802226138 as a fraction, multiplied by a
+    hundred, and reported %14,07 for an account paying %0,14. In the same table
+    it read Vakıf's 0.05 correctly -- the only difference between the two was
+    that one arrived unrounded and the other did not, so a fifteen-decimal float
+    was doing the talking.
+
+    Rounding is the fix that stops it happening rather than merely documenting
+    it: `0.14` does not look like something waiting to be multiplied out. Four
+    decimals, not two, because gold and FX accounts genuinely pay fractions of a
+    percent and `0.14` must not collapse to `0.1`.
+
+    Only the model's copy is rounded. `api/converters.py` keeps full precision
+    for the UI, which formats it, and for automation conditions, which compare
+    it numerically.
+    """
+    return None if value is None else round(value, 4)
+
+
 def _finance(quote: FinanceQuote, schedule: bool = False) -> dict:
     rows = {"payment_schedule": [_payment_row(r) for r in quote.schedule]} if schedule else {}
     return {
@@ -103,8 +127,8 @@ def _finance(quote: FinanceQuote, schedule: bool = False) -> dict:
         "term_months": quote.term,
         "monthly_installment": quote.installment,
         "total_payable": quote.total,
-        "monthly_profit_rate": quote.profit_rate,
-        "annual_cost_rate": quote.annual_cost_rate,
+        "monthly_profit_rate_pct": _pct(quote.profit_rate),
+        "annual_cost_rate_pct": _pct(quote.annual_cost_rate),
         "fees": quote.fees,
         "schedule_rows": len(quote.schedule),
         # Only present when they say something, so a row from a bank that does
@@ -131,8 +155,8 @@ def _profit_share(quote: ProfitShareQuote) -> dict:
         "participation_ratio": quote.ratio,
         "gross_profit": quote.gross_profit,
         "net_profit": quote.net_profit,
-        "gross_annual_rate": quote.gross_annual_rate,
-        "net_annual_rate": quote.net_annual_rate,
+        "gross_annual_rate_pct": _pct(quote.gross_annual_rate),
+        "net_annual_rate_pct": _pct(quote.net_annual_rate),
     }
 
 
@@ -145,7 +169,7 @@ def _card(quote: CardInstallmentQuote) -> dict:
         "installments": quote.installments,
         "monthly_installment": quote.installment,
         "total_payable": quote.total,
-        "profit_rate": quote.profit_rate,
+        "monthly_profit_rate_pct": _pct(quote.profit_rate),
         # Only present when true, so a bank that states a real payment carries
         # no empty key. Türkiye Finans runs its instalment schedule in the
         # browser and publishes only the rate -- see _finance's same note.

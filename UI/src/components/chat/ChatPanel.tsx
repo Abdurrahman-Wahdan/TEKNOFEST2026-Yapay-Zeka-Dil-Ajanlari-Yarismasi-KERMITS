@@ -34,7 +34,7 @@ export function ChatPanel({
   autoFocus?: boolean;
 }) {
   const t = useTranslations("chat");
-  const { messages, status } = useChat();
+  const { messages, status, stage } = useChat();
 
   const isEmpty = messages.length === 0;
   const centred = isEmpty && emptyState === "center";
@@ -70,7 +70,7 @@ export function ChatPanel({
         </VuiBox>
       ) : (
         <>
-          <ChatMessageList messages={messages} status={status} />
+          <ChatMessageList messages={messages} status={status} stage={stage} />
           <VuiBox px={2} pb={2} sx={{ flexShrink: 0 }}>
             <ChatComposer autoFocus={autoFocus} placeholder={placeholder} />
           </VuiBox>

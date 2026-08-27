@@ -164,8 +164,13 @@ def bank_profit_share_quote(
     """
     provider = _bank(bank)
     try:
+        # `term_unit`, not `unit`: the query parameter is named for the caller
+        # but every provider's parameter is `term_unit`, and passing it by the
+        # query's name raised TypeError before reaching any bank -- a 500 on
+        # every request to this route, for every bank. `banks/tools.py` passes
+        # the same value positionally, which is why the agent never hit it.
         quote = provider.profit_share_quote(
-            product, amount, term, unit=unit, currency=currency.upper()
+            product, amount, term, term_unit=unit, currency=currency.upper()
         )
     except UnsupportedProduct as exc:
         raise _handle(exc) from exc

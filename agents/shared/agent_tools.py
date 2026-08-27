@@ -125,6 +125,30 @@ def _tool_evidence(messages: list, cited: dict[str, str] | None = None) -> list[
                     evidence[key] = value
             if message.name in _LIVE_ENDPOINT_TOOLS and "source_type" not in evidence:
                 evidence["source_type"] = "live_endpoint"
+
+            # The operands a live quote was actually measured at.
+            #
+            # Everything above is read from the envelope; the inputs live one
+            # level down in `data`, and dropping them is what makes a bad
+            # cross-bank table possible. Each specialist is scoped to one bank
+            # by design and picks a term that suits it -- so when the supervisor
+            # asks ten banks "what is your gold rate" without naming a term, it
+            # gets ten answers measured at ten different terms and no way to
+            # tell. Observed on 2026-08-27: Kuveyt Türk answered at 92 days,
+            # Vakıf at 180, Albaraka at 32, and the three were tabled side by
+            # side as if comparable.
+            #
+            # The privacy boundary is unchanged in spirit: this is not the tool
+            # payload, it is the handful of fields that say what the number
+            # means. A rate without its term is not a smaller fact than a rate
+            # with one, it is a different and unusable fact.
+            data = payload.get("data")
+            if message.name in _LIVE_ENDPOINT_TOOLS and isinstance(data, dict):
+                for key in ("product", "amount", "currency", "term", "term_unit",
+                            "installments"):
+                    value = data.get(key)
+                    if value not in (None, "", []):
+                        evidence[key] = value
             used_sources: list[dict] = []
             if (
                 message.name in _LIVE_ENDPOINT_TOOLS

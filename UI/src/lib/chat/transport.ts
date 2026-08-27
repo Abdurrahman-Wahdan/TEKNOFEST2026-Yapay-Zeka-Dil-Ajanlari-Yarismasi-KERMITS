@@ -1,5 +1,24 @@
 import { askStream } from "@/lib/api";
-import type { ChatChunk, ChatRequest } from "./types";
+import type { ChatChunk, ChatRequest, ChatStage } from "./types";
+
+/**
+ * The stages the UI has a label for.
+ *
+ * The server's `stage` is a free string in the OpenAPI schema, and this is a
+ * key into `chat.stage.*`. Anything unlisted is dropped rather than rendered,
+ * so a newer API adding a stage leaves the old spinner alone instead of putting
+ * a missing-translation error where the answer goes.
+ */
+const KNOWN_STAGES: readonly ChatStage[] = [
+  "retrieving",
+  "pricing",
+  "writing",
+  "reviewing",
+];
+
+function asStage(stage: string | null | undefined): ChatStage | undefined {
+  return KNOWN_STAGES.find((known) => known === stage);
+}
 
 /**
  * The one seam between the chat UI and the live banking agent.
@@ -84,6 +103,11 @@ export async function* fetchChat(
   )) {
     if (event.type === "token" && event.text) {
       yield { type: "text-delta", delta: event.text };
+    } else if (event.type === "status") {
+      // These were emitted by the API from the start and dropped here, so the
+      // panel showed one generic spinner for the whole turn however long it ran.
+      const stage = asStage(event.stage);
+      if (stage) yield { type: "status", stage };
     } else if (event.type === "citation" && event.citation?.cite_url) {
       // The API emits only claim-used web or indexed-document evidence on the
       // live supervisor path. Keep the UI shape small rather than persisting

@@ -23,11 +23,11 @@ here instead, once, into `offers`.
 is derived from the source dates instead, which is the same data the summary was
 made from, minus the summarising.
 
-**`_url_havuzu.json` is the better copy of those dates.** Every one of the pool's
-6614 source URLs appears in it, and where the two disagree it is almost always the
-table's copy that is missing something the pool has (763 unstamped statuses, 58
-absent dates, against 10 genuine date conflicts). So dates are read from the pool
-first and the table's own copy is the fallback.
+**`_url_havuzu.json` is optional supplementary metadata.** The transferred 2026-08
+tables already carry their source URLs and validity fields inside each source
+record, so citations never depend on the pool. When a migration also ships the
+central registry its newer date is preferred; otherwise the table copy is the
+authoritative fallback.
 
 Nothing here decides how any of it *looks*. `routers/compare_tables.py` turns what
 this module returns into columns and rows.
@@ -123,13 +123,13 @@ PRODUCER_VALIDITY_COLUMN = "Geçerlilik"
 # **It is a date, not a column.** Drawn as declared it doubles every table --
 # 3022 extra columns across the pool, 20 where the previous dataset had 11 --
 # and 62% of them are blank, because most pages are permanent product pages with
-# no date to stamp. So the suffix is recognised and the column is folded into the
-# row's validity rather than rendered.
+# no date to stamp. So the suffix is recognised as metadata and is not rendered.
 #
 # **It is the only copy.** These windows were read out of the page text and never
 # written back into `cell_sources`: 189 rows carry a date here and nowhere else.
-# Reading validity from the sources alone would silently drop them, so they are
-# merged with the source dates rather than replacing or being replaced by them.
+# Reading validity from the sources alone would silently drop them. They remain
+# attached to their individual claims: an expired campaign cell is suppressed
+# without expiring unrelated permanent facts in the same bank row.
 #
 # **The producer stamps its own summary column too**, which is where the literal
 # `Geçerlilik (Geçerlilik)` in all 402 tables comes from. It is `-` in every one
@@ -392,8 +392,7 @@ def offers(values: dict, column: str | None) -> bool | None:
 
 
 # --- validity -----------------------------------------------------------------
-def validity(sources: list[dict], urls: dict[str, dict], now: datetime.date,
-             values: dict | None = None):
+def validity(sources: list[dict], urls: dict[str, dict], now: datetime.date):
     """This row's validity window and what it means today.
 
     Returns `(valid_from, valid_to, verdict)` with the dates as ISO strings.
@@ -422,36 +421,6 @@ def validity(sources: list[dict], urls: dict[str, dict], now: datetime.date,
         if end:
             ends.append(end)
 
-    # The per-cell stamps, merged in rather than preferred or overridden.
-    #
-    # They are the most complete copy of this fact, and not by accident.
-    # `dataprep/compare/tablo_tarih.py` fills each one from three sources in
-    # order -- the `cell_sources` record, then the page's own `content/*.md`
-    # frontmatter or a deterministic extraction from its body, then (opt-in) an
-    # agent that reads the page and its images, because a campaign's dates are
-    # often printed only on the banner. Only the first of those is written back
-    # into `cell_sources`; the other two land here and nowhere else, which is why
-    # 189 rows carry a date in these columns and in neither `sources` nor the url
-    # pool. Deriving validity from the sources alone silently drops them.
-    #
-    # Merged rather than preferred because 24 rows have a date only in `sources`,
-    # so either copy alone loses something. Widening over both is `_en_genis`,
-    # the producer's own rule, applied over every date we hold.
-    #
-    # The cost, stated plainly: on one row (`banka-kartı`/hayatfinans) the cells
-    # end 2026-08-17 and the sources end 2026-12-31, so widening reads a lapsed
-    # offer as live. It buys 24 rows that had no verdict at all and two that are
-    # correctly marked expired, and it errs in the direction this module already
-    # chose -- see the note above about which way to be wrong.
-    for column, value in (values or {}).items():
-        if not is_validity_column(column):
-            continue
-        start, end = _window(value)
-        if start:
-            starts.append(start)
-        if end:
-            ends.append(end)
-
     valid_from = min(starts) if starts else None
     valid_to = max(ends) if ends else None
 
@@ -469,6 +438,46 @@ def validity(sources: list[dict], urls: dict[str, dict], now: datetime.date,
         valid_to.isoformat() if valid_to else None,
         verdict,
     )
+
+
+def cell_validity(values: dict, column: str, now: datetime.date):
+    """Validity of one claim, from its adjacent ``(Geçerlilik)`` field.
+
+    A row may combine a permanent product description with a short campaign or
+    fee. Folding all those windows into one row date made an expired cell look
+    current whenever any other source ended later. Per-cell validity is kept at
+    the same granularity as the claim instead.
+    """
+    start, end = _window(values.get(f"{column}{VALIDITY_SUFFIX}"))
+    if end is not None and end < now:
+        verdict = EXPIRED
+    elif start is not None and start > now:
+        verdict = SCHEDULED
+    elif start is not None or end is not None:
+        verdict = ACTIVE
+    else:
+        verdict = UNKNOWN
+    return (
+        start.isoformat() if start else None,
+        end.isoformat() if end else None,
+        verdict,
+    )
+
+
+def current_values(values: dict, now: datetime.date) -> dict:
+    """A row copy with only individually expired claims removed.
+
+    Scheduled claims remain visible: they are real upcoming information and
+    their start date travels as a cell note. Only claims whose own end date has
+    passed are suppressed. The original migrated files are never rewritten.
+    """
+    out = dict(values)
+    for column in tuple(values):
+        if is_validity_column(column) or column == PRODUCER_VALIDITY_COLUMN:
+            continue
+        if cell_validity(values, column, now)[2] == EXPIRED:
+            out[column] = None
+    return out
 
 
 def window_note(valid_from: str | None, valid_to: str | None) -> str:
@@ -535,11 +544,12 @@ def drawn_rows(table: dict, urls: dict[str, dict], now: datetime.date) -> list[s
     status = status_column(table)
     out = []
     for bank, values in (table.get("rows") or {}).items():
-        if offers(values, status) is False:
+        effective = current_values(values, now)
+        if offers(effective, status) is False:
             continue
-        if not row_has_content(values, status):
+        if not row_has_content(effective, status):
             continue
-        if validity(table.get("sources", {}).get(bank) or [], urls, now, values)[2] == EXPIRED:
+        if validity(table.get("sources", {}).get(bank) or [], urls, now)[2] == EXPIRED:
             continue
         out.append(bank)
     return out

@@ -1,7 +1,7 @@
 """The normalisation between the table files and the wire.
 
 Every case here is one the real pool contains — the counts in the docstrings
-came from running these rules over all 403 tables — because the failures this
+came from running these rules over all 402 tables — because the failures this
 guards against are not crashes. They are a table that renders ten banks when
 four offer the product, or a column of product names deleted because one cell
 in it said `sunulmuyor`.
@@ -103,7 +103,7 @@ def test_no_status_column_at_all():
 
 
 def test_producer_validity_column_is_never_the_status_column():
-    """`Geçerlilik` is in all 403 tables and is mostly `-`, which must not be
+    """`Geçerlilik` is in all 402 tables and is mostly `-`, which must not be
     mistaken for a verdict."""
     table = _table(
         ["Geçerlilik", "Vade"],
@@ -230,9 +230,9 @@ def test_window_note_writes_an_open_end_as_open():
 # --- ids across filesystems ---------------------------------------------------
 def test_an_id_in_either_unicode_form_finds_its_table():
     """macOS writes these filenames in NFD while the id inside each file is NFC,
-    so `kredi-kartı-doğum-günü-kampanyaları` read off the disk did not equal the
+    so `18-yaş-altı-bankacılık-ürünleri` read off the disk did not equal the
     same name read out of the JSON. Half of a random sample of ten 404'd."""
-    table_id = "kredi-kartı-doğum-günü-kampanyaları"
+    table_id = "18-yaş-altı-bankacılık-ürünleri"
     nfc = unicodedata.normalize("NFC", table_id)
     nfd = unicodedata.normalize("NFD", table_id)
     assert nfc != nfd, "this id must actually differ between the two forms"

@@ -25,6 +25,40 @@ not depend on a text-pattern parser. If a requested bank
 does not support it, report it as unavailable. Never replace the requested rate
 with that bank's standard live rate, and never place the two in the same ranking.
 
+Anything you rank or table must have been measured the same way. A specialist can
+only see its own bank, so if you do not name the amount, term and currency when
+you delegate, each one picks whatever suits it and you get ten answers measured
+ten different ways. Fix those operands yourself and send the SAME ones to every
+specialist you ask. Where the user named none, choose one and say in the answer
+which you used.
+
+Specialists report the term, amount and currency each figure came from. Read
+them. If they differ across banks, the figures are not comparable and a table
+placing them side by side is wrong. "En yüksek" over rates measured at 92, 180
+and 32 days is not a finding, it is an artefact.
+
+A specialist that answers with its bank's supported range -- "vade 92-363 gün,
+tutar 50-3000 XAU" -- is handing you a decision, because it cannot see the other
+nine and you can. That is the second half of a normal exchange, not a failure.
+Take the ranges every bank reported, pick one amount and term that falls inside
+all of them, and ASK THEM ALL AGAIN with those exact operands. Asking a
+specialist twice in one turn is expected and costs you nothing: each keeps its
+own thread, so the second call continues the first conversation rather than
+starting over.
+
+Only when the ranges genuinely do not overlap is there nothing to choose. Say so
+in as many words, give each figure with its own term labelled, and do not present
+one ranking over them. Narrowing the comparison to the banks that do overlap is
+also a real answer, as long as you name the ones you left out and why.
+
+When a specialist returns several terms, do not take that bank's best one. "En
+yüksek/en uygun" asks which BANK wins at one set of operands, not what each
+bank's best number is -- picking every bank's maximum gives a table whose rows
+sit at different terms and whose ranking is decided by which bank was quoted at
+the friendliest one. Choose the term first, take each bank's figure AT THAT TERM,
+and if a bank has no figure there, ask it again for that term rather than
+substituting a nearer one it happened to send.
+
 Do not make up rates, products, endpoint results, or source URLs. Live results
 are authoritative only at their supplied retrieval time: name the bank and
 surface that time in the final answer. A specialist's unavailable response is a

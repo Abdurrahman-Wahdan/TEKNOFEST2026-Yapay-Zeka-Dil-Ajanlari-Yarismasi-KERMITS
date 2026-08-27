@@ -5,7 +5,7 @@ import { ArrowRight, ExternalLink, File as FileGlyph, Image as ImageGlyph } from
 import { useTranslations } from "next-intl";
 
 import { VuiBox, VuiTypography } from "@/components/vision";
-import type { AgentMessage } from "@/lib/chat/types";
+import type { AgentMessage, ChatStage } from "@/lib/chat/types";
 import { navLabel } from "@/lib/nav-label";
 import { safeWebSource, siteSection, sourceGroup } from "@/lib/chat/source-group";
 
@@ -32,10 +32,17 @@ const AgentMarkdown = dynamic(
 export function ChatMessage({
   message,
   streaming,
+  stage,
 }: {
   message: AgentMessage;
   /** True when this is the last message and the stream is still open. */
   streaming?: boolean;
+  /**
+   * What the agent is doing, when the server has said. Only ever reaches the
+   * pre-answer placeholder below -- once there is text to show, the text is the
+   * status.
+   */
+  stage?: ChatStage;
 }) {
   const t = useTranslations("chat");
   // The drawer's own words for the sections our pages live in, so a source card
@@ -356,6 +363,12 @@ export function ChatMessage({
 
         // The assistant, mid-stream, before its first token: nothing to render
         // yet, and an empty bubble would flash on every send.
+        //
+        // The wait here is long -- 83s on a ten-bank comparison -- and it used to
+        // read "Düşünüyor…" for all of it, which is indistinguishable from being
+        // stuck. `stage` names the part of the turn the server has reached; the
+        // generic label stays as the fallback for the gap before the first stage
+        // frame and for any stage this build has no word for.
         if (!part.text) {
           return streaming ? (
             <VuiTypography
@@ -365,7 +378,7 @@ export function ChatMessage({
               color="text"
               sx={{ opacity: 0.6 }}
             >
-              {t("thinking")}
+              {stage ? t(`stage.${stage}`) : t("thinking")}
             </VuiTypography>
           ) : null;
         }

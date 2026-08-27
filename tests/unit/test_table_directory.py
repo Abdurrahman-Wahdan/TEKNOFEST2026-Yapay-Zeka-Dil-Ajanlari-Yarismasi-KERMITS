@@ -101,7 +101,7 @@ def test_a_brand_new_table_is_written_without_an_address(stub):
 
 
 def test_topic_and_text_are_written_because_the_search_reads_them(stub):
-    """Every one of the 403 live points carries both, and `topic` is what the
+    """Every one of the 402 live points carries both, and `topic` is what the
     directory prints as the table's name. An earlier version wrote neither, so
     any table it touched lost its name with nothing raising."""
     client = stub(_FakeClient())
@@ -133,6 +133,7 @@ def test_a_point_written_before_topic_existed_falls_back_to_its_slug(stub):
 # --- the supervisor's tool ---------------------------------------------------
 def _tool(monkeypatch, hits):
     monkeypatch.setattr(table_tools, "search_tables", lambda *a, **k: hits)
+    monkeypatch.setattr(table_tools, "_still_published", lambda candidates: candidates)
     return table_tools.build_table_directory_tool()
 
 
@@ -186,3 +187,12 @@ def test_the_tool_says_it_carries_no_bank_facts(monkeypatch):
     ])
     out = tool.invoke({"query": "t", "intent": "i"})
     assert "banka bilgisi değil" in out
+
+
+def test_a_qdrant_hit_missing_from_the_file_pool_is_rejected(monkeypatch):
+    from api import compare_tables_pool as pool
+
+    monkeypatch.setattr(pool, "load_table", lambda table_id: None)
+    hit = {"id": "stale", "topic": "T", "category": "ürün",
+           "subcategory": "s", "docstring": "D", "ui_url": "/tr/urunler?tablo=stale"}
+    assert table_tools._still_published([hit]) == []

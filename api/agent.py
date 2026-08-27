@@ -734,6 +734,54 @@ def _retry_request(problem: str) -> str:
     )
 
 
+#: Roughly how much accepted answer text goes into one `token` frame.
+#:
+#: The answer is chunked *after* the output check has passed, so this is a
+#: rendering decision and not a latency one -- every frame below is already in
+#: memory and they leave back to back with no pacing between them. What it buys
+#: is that the browser paints the answer progressively instead of substituting a
+#: spinner for a wall of text in a single commit, which is what one frame per
+#: answer did. It buys no time: see `_agent_answer`, where the check still holds
+#: the whole answer before the first frame is written.
+#:
+#: Sized against what the renderer does with it rather than against the wire. The
+#: frontend re-renders markdown on every frame (`ChatProvider` calls `render()`
+#: per delta), so one frame per word would repaint a long comparison table
+#: hundreds of times for no visible gain.
+ANSWER_CHUNK_CHARS = 90
+
+
+def _answer_chunks(answer: str, size: int = ANSWER_CHUNK_CHARS):
+    """Split an accepted answer into append-sized pieces, never mid-word.
+
+    The client concatenates these back into exactly `answer`, so the split has to
+    be lossless -- every character, including the whitespace a naive
+    `split()`-and-rejoin would normalise away. It is therefore cut on the
+    *boundary before* a run of whitespace rather than on the whitespace itself.
+
+    Splitting mid-word would be lossless too, but it is visibly worse: markdown is
+    re-parsed on every frame, so a chunk ending inside `**kâr` renders a literal
+    asterisk for one paint. Ending on word boundaries keeps each intermediate
+    state a plausible piece of prose. A single unbroken run longer than `size`
+    (a long URL) is emitted whole rather than cut, for the same reason.
+    """
+    if not answer:
+        return
+    # Keep the separators: `re.split` with a capturing group returns the
+    # whitespace runs as their own items, so joining every piece reproduces the
+    # input byte for byte.
+    pieces = [piece for piece in re.split(r"(\s+)", answer) if piece]
+    buffer = ""
+    for piece in pieces:
+        if buffer and len(buffer) + len(piece) > size and not piece.isspace():
+            yield buffer
+            buffer = piece
+        else:
+            buffer += piece
+    if buffer:
+        yield buffer
+
+
 def _agent_answer(
     question: str,
     history: list[tuple[str, str]] | None,
@@ -814,6 +862,12 @@ def _agent_answer(
             run_context["user_id"] = str(user_id)
         def _stream_turn(turn_messages: list):
             """One supervisor pass: private tool traffic in, public events out."""
+            # The supervisor has stopped calling banks and started composing. The
+            # prose itself stays private until the output check has passed, so
+            # this frame is the only thing that distinguishes "still asking ten
+            # banks" from "writing your answer" -- measured at 31s apart on a
+            # ten-bank comparison, which is a long time to show one spinner.
+            announced_writing = False
             for message, metadata in agent.stream(
                 {"messages": turn_messages},
                 config=config,
@@ -872,6 +926,17 @@ def _agent_answer(
                     # Keep every model chunk private. The graph's newly checkpointed
                     # final AIMessage is read below; unlike concatenating chunks, it
                     # excludes prose from intermediate tool-calling turns.
+                    #
+                    # Only that the model is writing crosses the boundary, never
+                    # what it wrote. Measured across five query shapes, a
+                    # supervisor turn is either all tool calls or all prose and
+                    # never both, so the first prose chunk does mean the final
+                    # answer has begun -- but nothing here depends on that being
+                    # true. A tool-calling turn that opened with a preamble would
+                    # cost one early status frame and leak no text.
+                    if not announced_writing:
+                        announced_writing = True
+                        yield StreamEvent(type="status", stage="writing")
                     continue
         # The check has no opinion on wording and writes nothing. It passes the
         # answer, or it names the problem and the supervisor answers again -- it
@@ -938,8 +1003,18 @@ def _agent_answer(
 
         # Only the accepted answer crosses the public SSE boundary. The router
         # assembles this exact text for PostgreSQL and the browser uses it for
-        # the visible turn, so all three histories stay identical.
-        yield StreamEvent(type="token", text=final_answer)
+        # the visible turn, so all three histories stay identical -- which is why
+        # `_answer_chunks` has to be lossless rather than merely close: the
+        # router concatenates these frames and stores the result as the turn.
+        #
+        # Deliberately after the check, not during generation. Streaming the
+        # model's chunks live would put the answer on screen 8-31s sooner
+        # (measured), but it would also put an answer the check goes on to reject
+        # in front of the user -- 1 turn in 17 in live testing, and the one that
+        # failed was an internals leak. The check stays in front of the reader;
+        # this only stops the accepted answer arriving as a single repaint.
+        for piece in _answer_chunks(final_answer):
+            yield StreamEvent(type="token", text=piece)
         final_source_keys = cited_sources_from_text(final_answer)
         for source in _audited_sources(
             final_answer,

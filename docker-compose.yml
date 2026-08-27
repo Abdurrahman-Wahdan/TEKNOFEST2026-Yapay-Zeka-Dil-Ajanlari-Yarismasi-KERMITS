@@ -42,7 +42,10 @@ services:
   #
   #   docker rm -f qdrant
   qdrant:
-    image: qdrant/qdrant
+    # Pin server and Python client to the same minor release. An unpinned image
+    # restored a 1.15 snapshot while requirements installed client 1.19, which
+    # Qdrant correctly warns is outside its supported compatibility window.
+    image: qdrant/qdrant:v1.15.1
     container_name: tf26-qdrant
     restart: unless-stopped
     ports:

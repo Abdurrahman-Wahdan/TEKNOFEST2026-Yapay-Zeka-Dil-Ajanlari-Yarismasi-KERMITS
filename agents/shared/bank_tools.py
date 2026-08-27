@@ -220,6 +220,7 @@ def build_bank_tools(
             "finance_quote",
             (
                 f"Get a live financing quote from {bank.display_name}. Use only for this bank. "
+                "Every field ending `_pct` is ALREADY a percentage: 33.85 means 33,85% and 0.14 means 0,14%. Report it as it stands. Do NOT multiply by 100 -- gold and FX accounts genuinely pay a fraction of a percent, so a value below 1 is a real rate, not a decimal waiting to be converted. "
                 + (
                     "This calculator also supports an optional customer-supplied monthly profit-rate scenario."
                     if "monthly_profit_rate" in bank.finance_input_capabilities
@@ -232,7 +233,8 @@ def build_bank_tools(
     if "profit_share" in capabilities:
         tools.append(_tool(
             "profit_share_quote",
-            f"Get a live profit-share quote from {bank.display_name}. Use only for this bank.",
+            f"Get a live profit-share quote from {bank.display_name}. Use only for this bank. "
+            "Every field ending `_pct` is ALREADY a percentage: 33.85 means 33,85% and 0.14 means 0,14%. Report it as it stands. Do NOT multiply by 100 -- gold and FX accounts genuinely pay a fraction of a percent, so a value below 1 is a real rate, not a decimal waiting to be converted. ",
             ProfitShareInput,
             lambda product, amount, term_months=0, term_days=0, currency="TRY": run_live(
                 "profit_share_quote", lambda: generic._profit_share(
@@ -258,7 +260,8 @@ def build_bank_tools(
     if "card" in capabilities:
         tools.append(_tool(
             "card_installment_quote",
-            f"Get a live card instalment quote from {bank.display_name}.",
+            f"Get a live card instalment quote from {bank.display_name}. "
+            "Every field ending `_pct` is ALREADY a percentage: 33.85 means 33,85% and 0.14 means 0,14%. Report it as it stands. Do NOT multiply by 100 -- gold and FX accounts genuinely pay a fraction of a percent, so a value below 1 is a real rate, not a decimal waiting to be converted. ",
             CardInput,
             lambda card, amount, installments: run_live(
                 "card_installment_quote", lambda: generic._card(
