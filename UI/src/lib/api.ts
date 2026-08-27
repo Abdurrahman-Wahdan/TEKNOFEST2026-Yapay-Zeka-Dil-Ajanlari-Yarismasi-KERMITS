@@ -40,6 +40,7 @@ export type SavedView = Schemas["SavedViewOut"];
 export type ChatSession = Schemas["ChatSessionOut"];
 export type ChatSessionDetail = Schemas["ChatSessionDetail"];
 export type ChatMessage = Schemas["ChatMessageOut"];
+export type MessageFeedback = Schemas["MessageFeedbackOut"];
 export type StreamEvent = Schemas["StreamEvent"];
 export type TableMetadata = Schemas["TableMetadataOut"];
 export type ContextLevel = Schemas["ContextLevelOut"];
@@ -527,6 +528,14 @@ export const api = {
   chatSession: (id: string) => request<ChatSessionDetail>(`/chat/sessions/${id}`),
   deleteChatSession: (id: string) =>
     request<void>(`/chat/sessions/${id}`, { method: "DELETE" }),
+  saveMessageFeedback: (
+    sessionId: string,
+    messageId: string,
+    body: Schemas["MessageFeedbackRequest"],
+  ) => request<MessageFeedback>(
+    `/chat/sessions/${sessionId}/messages/${messageId}/feedback`,
+    { method: "PUT", body: JSON.stringify(body) },
+  ),
   // The composer's model picker. No arguments: the caller has nothing to filter
   // this by, and the list is short enough that paging it would be theatre.
   models: () => request<ChatModels>("/models"),

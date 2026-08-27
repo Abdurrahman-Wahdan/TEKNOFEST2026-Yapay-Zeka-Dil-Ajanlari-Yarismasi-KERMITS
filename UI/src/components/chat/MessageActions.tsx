@@ -17,6 +17,9 @@ import { RoundButton } from "@/components/ui/RoundButton";
 import { VuiBox } from "@/components/vision";
 import { useChat } from "@/lib/chat/ChatProvider";
 import { useSpeech } from "@/lib/chat/speech";
+import type { MessageFeedback } from "@/lib/chat/types";
+
+import { FeedbackDialog } from "./FeedbackDialog";
 
 /** How long the copy button stays a tick before going back to being a copy button. */
 const COPIED_MS = 2000;
@@ -37,6 +40,40 @@ const BUTTON_PX = 32;
 const GLYPH_PX = 17;
 const INK_INSET_PX = (BUTTON_PX - GLYPH_PX) / 2;
 
+/** The same clipboard behavior for both sides of the conversation. */
+export function MessageCopyButton({ text, label }: { text: string; label: string }) {
+  const t = useTranslations("chat");
+  const [copied, setCopied] = useState(false);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (copiedTimer.current) clearTimeout(copiedTimer.current);
+  }, []);
+
+  const copy = useCallback(() => {
+    if (!navigator.clipboard?.writeText) return;
+    void navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        setCopied(true);
+        if (copiedTimer.current) clearTimeout(copiedTimer.current);
+        copiedTimer.current = setTimeout(() => setCopied(false), COPIED_MS);
+      })
+      .catch(() => {
+        // Permission denied or an insecure origin: do not claim it was copied.
+      });
+  }, [text]);
+
+  return (
+    <RoundButton
+      size={BUTTON_PX}
+      label={copied ? t("copied") : label}
+      onClick={copy}
+    >
+      {copied ? <Check size={GLYPH_PX} /> : <Copy size={GLYPH_PX} />}
+    </RoundButton>
+  );
+}
+
 /**
  * What you can do with an answer once it has arrived.
  *
@@ -56,10 +93,12 @@ export function MessageActions({
   markdown,
   /** Whether this is the newest answer, and so the one a retry would replace. */
   isLast,
+  feedback,
 }: {
   messageId: string;
   markdown: string;
   isLast: boolean;
+  feedback?: MessageFeedback;
 }) {
   const t = useTranslations("chat");
   const locale = useLocale();
@@ -69,44 +108,8 @@ export function MessageActions({
   // every platform tested; the region makes the match exact where one exists.
   const speech = useSpeech(messageId, locale === "tr" ? "tr-TR" : locale);
 
-  const [copied, setCopied] = useState(false);
-  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => {
-    if (copiedTimer.current) clearTimeout(copiedTimer.current);
-  }, []);
-
-  /**
-   * The user's verdict on this answer.
-   *
-   * Local, and honestly so: there is no feedback endpoint yet, so this is the
-   * press being acknowledged and nothing more -- it does not survive a reload
-   * and nothing reads it. When there is somewhere to send it, this `useState`
-   * becomes the call and `vote` becomes its optimistic state; the button, its
-   * pressed styling and its labels are already right.
-   */
-  const [vote, setVote] = useState<"up" | "down" | null>(null);
-
-  const copy = useCallback(() => {
-    /*
-      The markdown, not the rendered text. It is what the model wrote, it is what
-      pastes into a document as a real table and real headings, and it is what
-      every assistant's copy button hands over. Reading it back out of the DOM
-      would produce a table flattened into a paragraph.
-    */
-    if (!navigator.clipboard?.writeText) return;
-    void navigator.clipboard
-      .writeText(markdown)
-      .then(() => {
-        setCopied(true);
-        if (copiedTimer.current) clearTimeout(copiedTimer.current);
-        copiedTimer.current = setTimeout(() => setCopied(false), COPIED_MS);
-      })
-      .catch(() => {
-        // Denied permission, or a page served over plain HTTP. Nothing was
-        // copied, so the tick must not claim otherwise -- and there is nothing
-        // to tell the user that they can act on.
-      });
-  }, [markdown]);
+  const [dialogRating, setDialogRating] = useState<"up" | "down" | null>(null);
+  const vote = feedback?.rating ?? null;
 
   const hasText = markdown.trim().length > 0;
 
@@ -123,13 +126,7 @@ export function MessageActions({
       sx={{ width: "100%" }}
     >
       {hasText && (
-        <RoundButton
-          size={BUTTON_PX}
-          label={copied ? t("copied") : t("copyResponse")}
-          onClick={copy}
-        >
-          {copied ? <Check size={GLYPH_PX} /> : <Copy size={GLYPH_PX} />}
-        </RoundButton>
+        <MessageCopyButton text={markdown} label={t("copyResponse")} />
       )}
 
       {/*
@@ -184,7 +181,7 @@ export function MessageActions({
         size={BUTTON_PX}
         label={t("goodResponse")}
         active={vote === "up"}
-        onClick={() => setVote(vote === "up" ? null : "up")}
+        onClick={() => setDialogRating("up")}
       >
         <ThumbsUp size={GLYPH_PX} fill={vote === "up" ? "currentColor" : "none"} />
       </RoundButton>
@@ -192,10 +189,19 @@ export function MessageActions({
         size={BUTTON_PX}
         label={t("badResponse")}
         active={vote === "down"}
-        onClick={() => setVote(vote === "down" ? null : "down")}
+        onClick={() => setDialogRating("down")}
       >
         <ThumbsDown size={GLYPH_PX} fill={vote === "down" ? "currentColor" : "none"} />
       </RoundButton>
+      {dialogRating && (
+        <FeedbackDialog
+          open
+          messageId={messageId}
+          rating={dialogRating}
+          existing={feedback}
+          onClose={() => setDialogRating(null)}
+        />
+      )}
     </VuiBox>
   );
 }

@@ -23,11 +23,13 @@ export function ChatMessageList({
   messages,
   status,
   stage,
+  compact = false,
 }: {
   messages: AgentMessage[];
   status: ChatStatus;
   /** What the agent is doing, for the label on the last, empty bubble. */
   stage?: ChatStage;
+  compact?: boolean;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   /** Whether to keep the newest content in view. Released by scrolling away. */
@@ -61,14 +63,14 @@ export function ChatMessageList({
         followRef.current = distance < 48;
       }}
       flexGrow={1}
-      px={2}
-      py={3}
+      px={compact ? 1.5 : 2}
+      py={compact ? 1.5 : 3}
       sx={{ minHeight: 0, overflowY: "auto", overscrollBehavior: "contain" }}
     >
       <VuiBox
         display="flex"
         flexDirection="column"
-        gap={2.5}
+        gap={compact ? 1.5 : 2.5}
         sx={{ maxWidth: 720, mx: "auto", width: "100%" }}
       >
         {messages.map((message, index) => (
@@ -78,6 +80,7 @@ export function ChatMessageList({
             streaming={streaming && index === messages.length - 1}
             isLast={index === messages.length - 1}
             stage={stage}
+            compact={compact}
           />
         ))}
       </VuiBox>

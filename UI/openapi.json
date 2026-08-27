@@ -2543,6 +2543,75 @@
         }
       }
     },
+    "/api/chat/sessions/{session_id}/messages/{message_id}/feedback": {
+      "put": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Save Message Feedback",
+        "description": "Create or replace this user's feedback on one assistant answer.",
+        "operationId": "save_message_feedback",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "message_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Message Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageFeedbackRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageFeedbackOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/chat/sessions/{session_id}/recommendation": {
       "post": {
         "tags": [
@@ -3967,6 +4036,16 @@
             "type": "string",
             "format": "date-time",
             "title": "Created At"
+          },
+          "feedback": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MessageFeedbackOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -4976,6 +5055,76 @@
           "password"
         ],
         "title": "LoginRequest"
+      },
+      "MessageFeedbackOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "message_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Message Id"
+          },
+          "rating": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down"
+            ],
+            "title": "Rating"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "message_id",
+          "rating",
+          "note",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "MessageFeedbackOut"
+      },
+      "MessageFeedbackRequest": {
+        "properties": {
+          "rating": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down"
+            ],
+            "title": "Rating"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rating",
+          "note"
+        ],
+        "title": "MessageFeedbackRequest"
       },
       "MileRateOut": {
         "properties": {

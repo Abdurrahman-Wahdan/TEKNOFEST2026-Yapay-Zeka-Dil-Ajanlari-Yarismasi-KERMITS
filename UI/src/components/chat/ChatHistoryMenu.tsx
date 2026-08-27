@@ -3,7 +3,7 @@
 import Menu from "@mui/material/Menu";
 import { History, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { VuiBox, VuiTypography } from "@/components/vision";
 import { useChat } from "@/lib/chat/ChatProvider";
@@ -34,6 +34,8 @@ export function ChatHistoryMenu() {
    * decides whether the menu is open.
    */
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
+  const [trigger, setTrigger] = useState<HTMLElement | null>(null);
+  const menuPaperRef = useRef<HTMLDivElement>(null);
   /**
    * The width of the panel this button lives in, when it lives in one.
    *
@@ -55,6 +57,17 @@ export function ChatHistoryMenu() {
    */
   const openMenu = (event: React.MouseEvent<HTMLElement>) => {
     const button = event.currentTarget;
+
+    // The menu's transparent modal layer normally intercepts a second press on
+    // this button. The popup then mistakes that layer for an outside press and
+    // closes itself. Let the real button receive the press and make it a toggle.
+    if (anchor) {
+      setAnchor(null);
+      setTrigger(null);
+      return;
+    }
+
+    setTrigger(button);
 
     // Inside the popup there is no toolbar and no page title to line up with,
     // and the panel is narrower than the menu's own minimum. Anchored to the
@@ -86,6 +99,34 @@ export function ChatHistoryMenu() {
     setAnchor(title ?? (toolbar as HTMLElement | null) ?? button);
   };
 
+  /**
+   * MUI's Menu normally owns a viewport-sized backdrop. Inside the assistant
+   * popup that backdrop hides which underlying control was pressed, so the
+   * popup cannot distinguish an internal press from a genuine outside press.
+   *
+   * The modal layer below is pointer-transparent. This listener supplies the
+   * menu's click-away behavior while leaving the real target visible to the
+   * popup: another press on the history button toggles the menu, the close and
+   * expand buttons work on the first press, and a press outside the assistant
+   * can still close the assistant itself.
+   */
+  useEffect(() => {
+    if (!anchor) return;
+
+    const closeOnOutsidePress = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (menuPaperRef.current?.contains(target)) return;
+      if (trigger?.contains(target)) return;
+      setAnchor(null);
+      setTrigger(null);
+    };
+
+    document.addEventListener("pointerdown", closeOnOutsidePress);
+    return () =>
+      document.removeEventListener("pointerdown", closeOnOutsidePress);
+  }, [anchor, trigger]);
+
   return (
     <VuiBox display="flex" alignItems="center" gap={0.5}>
       <HeaderControl label={t("newChat")} onClick={newChat}>
@@ -105,7 +146,10 @@ export function ChatHistoryMenu() {
       <Menu
         open={Boolean(anchor)}
         anchorEl={anchor}
-        onClose={() => setAnchor(null)}
+        onClose={() => {
+          setAnchor(null);
+          setTrigger(null);
+        }}
         anchorOrigin={{
           vertical: "bottom",
           horizontal: panelWidth === null ? "left" : "right",
@@ -117,8 +161,23 @@ export function ChatHistoryMenu() {
         // Keeps the paper off the viewport edge now that it opens rightward.
         marginThreshold={16}
         slotProps={{
-          paper: {
+          root: {
             sx: {
+              pointerEvents: "none",
+              "& .MuiBackdrop-root": { pointerEvents: "none" },
+            },
+          },
+          paper: {
+            ref: menuPaperRef,
+            // The paper is portalled outside the assistant dialog. Mark the
+            // whole surface (including its padding and empty state), not only
+            // conversation rows, as part of the popup's interaction boundary.
+            className:
+              panelWidth === null
+                ? undefined
+                : "tf26-agent-popup-owned-overlay",
+            sx: {
+              pointerEvents: "auto",
               // The anchor is the whole toolbar, so the default drop clears its
               // full height; this brings the paper back up under the controls.
               mt: 0.5,
@@ -190,6 +249,7 @@ export function ChatHistoryMenu() {
                   onClick={() => {
                     openConversation(conversation.id);
                     setAnchor(null);
+                    setTrigger(null);
                   }}
                   sx={{
                     flex: 1,

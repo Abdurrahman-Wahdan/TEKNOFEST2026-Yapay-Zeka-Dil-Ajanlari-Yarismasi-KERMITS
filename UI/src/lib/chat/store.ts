@@ -125,6 +125,16 @@ export function toAgentMessage(message: ChatMessage): AgentMessage {
     id: message.id,
     role: message.role,
     parts: parts.length > 0 ? parts : [{ type: "text", text: message.content }],
+    feedback: message.feedback
+      ? {
+          id: message.feedback.id,
+          messageId: message.feedback.message_id,
+          rating: message.feedback.rating,
+          note: message.feedback.note,
+          createdAt: message.feedback.created_at,
+          updatedAt: message.feedback.updated_at,
+        }
+      : undefined,
   };
 }
 
