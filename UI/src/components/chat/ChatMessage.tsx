@@ -81,7 +81,31 @@ export function ChatMessage({
     .join("\n\n");
 
   return (
-    <VuiBox display="flex" flexDirection="column" gap={compact ? 0.75 : 1}>
+    <VuiBox
+      display="flex"
+      flexDirection="column"
+      gap={compact ? 0.75 : 1}
+      sx={message.role === "user" ? {
+        "& .tf26-user-message-copy": {
+          opacity: 0,
+          pointerEvents: "none",
+          transition: "opacity 150ms ease",
+        },
+        "&:hover .tf26-user-message-copy, &:focus-within .tf26-user-message-copy": {
+          opacity: 1,
+          pointerEvents: "auto",
+        },
+        "@media (hover: none)": {
+          "& .tf26-user-message-copy": {
+            opacity: 1,
+            pointerEvents: "auto",
+          },
+        },
+        "@media (prefers-reduced-motion: reduce)": {
+          "& .tf26-user-message-copy": { transition: "none" },
+        },
+      } : undefined}
+    >
       {message.parts.map((part, index) => {
         if (part.type === "error") {
           return (
@@ -484,7 +508,12 @@ export function ChatMessage({
       })}
 
       {message.role === "user" && answerText.trim() && (
-        <VuiBox alignSelf="flex-end" mt={-0.5} mr="-7.5px">
+        <VuiBox
+          className="tf26-user-message-copy"
+          alignSelf="flex-end"
+          mt={-0.5}
+          mr="-7.5px"
+        >
           <MessageCopyButton text={answerText} label={t("copyMessage")} />
         </VuiBox>
       )}
