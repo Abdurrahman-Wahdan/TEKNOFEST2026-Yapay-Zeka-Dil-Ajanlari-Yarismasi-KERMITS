@@ -110,9 +110,9 @@ export function FeedbackDialog({
           disabled={saving}
           inputProps={{ maxLength: 4000 }}
           sx={{
-            "& .MuiInputBase-input": {
-              color: "var(--foreground)",
-              WebkitTextFillColor: "var(--foreground)",
+            "& textarea.MuiInputBase-input": {
+              color: "var(--foreground) !important",
+              WebkitTextFillColor: "var(--foreground) !important",
               caretColor: "var(--primary)",
             },
             "& textarea.MuiInputBase-input::placeholder": {
@@ -157,6 +157,17 @@ export function FeedbackDialog({
           variant="contained"
           onClick={() => void submit()}
           disabled={!note.trim() || saving || voice.active}
+          sx={{
+            backgroundColor: "var(--primary)",
+            color: "var(--primary-foreground) !important",
+            WebkitTextFillColor: "var(--primary-foreground) !important",
+            "&:hover": { backgroundColor: "var(--primary-hover)" },
+            "&.Mui-disabled": {
+              backgroundColor: "var(--muted)",
+              color: "var(--control-ink) !important",
+              WebkitTextFillColor: "var(--control-ink) !important",
+            },
+          }}
         >
           {saving ? t("feedbackSaving") : t("feedbackSubmit")}
         </Button>
