@@ -2,17 +2,21 @@
 
 import { Table as MuiTable, TableBody, TableContainer, TableRow } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { Check, Sparkles, TriangleAlert } from "lucide-react";
+import { Check, Download, Sparkles, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Link } from "@/i18n/navigation";
 import { VuiBox, VuiButton, VuiTypography } from "@/components/vision";
 import { api } from "@/lib/api";
+import { resolveTable } from "@/lib/contract";
 import {
+  fallbackTitle,
+  headingBefore,
   tableFromHast,
   type HastNode,
 } from "@/lib/chat/markdown-table";
+import { useExportTable } from "@/lib/use-export-table";
 import { conversationForTableMetadata } from "@/lib/chat/table-metadata";
 import { slugifyTitle } from "@/lib/saved-view";
 import { TABLE_GUTTER, tableRowHoverSx, tableRule } from "@/lib/table-style";
@@ -55,7 +59,10 @@ export function MdTable(props: El<"table">) {
         [`&:hover .${SAVE_CLASS}, & .${SAVE_CLASS}:focus-visible`]: { opacity: 1 },
       }}
     >
-      <SaveToDashboard node={props.node as HastNode | undefined} />
+      <VuiBox display="flex" alignItems="center" gap="8px" mb={1} flexWrap="wrap">
+        <SaveToDashboard node={props.node as HastNode | undefined} />
+        <ExportChatTable node={props.node as HastNode | undefined} />
+      </VuiBox>
       <TableContainer sx={{ overflowX: "auto" }}>
         <MuiTable {...domProps(props)} />
       </TableContainer>
@@ -124,7 +131,7 @@ function SaveToDashboard({ node }: { node: HastNode | undefined }) {
 
   if (state === "saved") {
     return (
-      <VuiBox display="flex" alignItems="center" gap="8px" mb={1} className={SAVE_CLASS} sx={{ opacity: 1 }}>
+      <VuiBox display="flex" alignItems="center" gap="8px" className={SAVE_CLASS} sx={{ opacity: 1 }}>
         <Check size={14} />
         <VuiTypography variant="caption" color="text">
           {t("saved")}
@@ -143,7 +150,7 @@ function SaveToDashboard({ node }: { node: HastNode | undefined }) {
   }
 
   return (
-    <VuiBox display="flex" alignItems="center" gap="8px" mb={1}>
+    <VuiBox display="flex" alignItems="center" gap="8px">
       <VuiButton
         size="small"
         variant="outlined"
@@ -169,6 +176,70 @@ function SaveToDashboard({ node }: { node: HastNode | undefined }) {
         </VuiTypography>
       )}
     </VuiBox>
+  );
+}
+
+/**
+ * Taking a table out of the conversation as a file.
+ *
+ * The counterpart to `SaveToDashboard` beside it: that one keeps the table
+ * inside the application, this one takes it out. Both are revealed by the same
+ * hover rule on the table wrapper and both are hidden while the message is still
+ * arriving -- mid-stream the last row is half-parsed, and a spreadsheet quietly
+ * missing its final row is the one failure worth designing out here.
+ *
+ * The table goes through `tableFromHast` and `resolveTable`, so a chat table
+ * reaches the export endpoint as the same typed shape a `/compare` table does.
+ * It is `view` and `full` both: there is nothing to filter in a chat answer, and
+ * the dialog drops its scope toggle when the two match.
+ */
+function ExportChatTable({ node }: { node: HastNode | undefined }) {
+  // `t` is already bound to the "chat" namespace by `SaveToDashboard` above, and
+  // `npm run i18n:check` resolves a key against whatever namespace the variable
+  // was last bound to *in the file*. Distinct names keep that check honest.
+  const tExport = useTranslations("export");
+  const tChat = useTranslations("chat");
+  const { streaming, source } = useMarkdownTableTools();
+
+  const props = useMemo(
+    () => (streaming ? null : tableFromHast(node)),
+    [streaming, node],
+  );
+  const table = useMemo(() => (props ? resolveTable(props) : null), [props]);
+  const view = useMemo(
+    () => ({ columns: table?.columns ?? [], rows: table?.rows ?? [] }),
+    [table],
+  );
+
+  // The name the user already read, rather than one invented for the file.
+  // `SaveToDashboard` asks a model for a title because it is naming a permanent
+  // dashboard card; a download only has to be recognisable in a folder, and a
+  // round trip to the model to name a file the user is waiting for is not one.
+  const title = props
+    ? headingBefore(source, node?.position?.start?.offset) ??
+      fallbackTitle(props, tChat("savedTableTitle"))
+    : undefined;
+
+  const exporter = useExportTable({ view, full: view, title });
+
+  // No header and no rows: a fragment, and exporting it would export nothing.
+  if (!table) return null;
+
+  return (
+    <>
+      <VuiButton
+        size="small"
+        variant="outlined"
+        color="white"
+        onClick={exporter.onExportTable}
+        className={SAVE_CLASS}
+        sx={{ opacity: 0, transition: "opacity 120ms" }}
+      >
+        <Download size={13} style={{ marginRight: 6 }} />
+        {tExport("button")}
+      </VuiButton>
+      {exporter.dialog}
+    </>
   );
 }
 

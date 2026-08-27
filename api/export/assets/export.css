@@ -1,0 +1,282 @@
+/*
+ * How an exported document looks.
+ *
+ * One stylesheet for both inlets: a `/compare` table and an automation report
+ * are the same document shape by the time they reach here, so they are the same
+ * document *look* too. WeasyPrint reads this to make the PDF; pandoc ignores it
+ * and takes the structure only, which is why the branded parts are all colour
+ * and spacing rather than anything the markup depends on.
+ *
+ * Light, not the app's dark theme. The screen is dark because it is a screen;
+ * this is a thing people print, forward and attach, and a dark page is a
+ * printer's tax paid by whoever receives it.
+ *
+ * ---------------------------------------------------------------------------
+ * The `:root` block below is COPIED from `UI/src/styles/tailwind.css`, which is
+ * the single source for this application's palette (see the same rule stated in
+ * `UI/src/lib/palette.ts`). It is duplicated rather than imported because the
+ * API must render a PDF without the frontend source tree on disk.
+ *
+ * `tests/unit/test_export_palette.py` asserts the two are identical. If that
+ * test fails, the palette moved -- copy the `:root` block across again rather
+ * than editing either value by hand.
+ * ---------------------------------------------------------------------------
+ */
+
+/* tf26:palette:start */
+:root {
+  --card: #f7f8f8;
+  --muted: #e5e5e6;
+  --accent: #e3ecf6;
+  --border: #e1eaef;
+  --primary: #1e9df1;
+  --font-sans: Open Sans, sans-serif;
+  --background: #ffffff;
+  --foreground: #0f1419;
+  --destructive: #f4212e;
+  --primary-foreground: #ffffff;
+}
+/* tf26:palette:end */
+
+/* Tones a badge cell can carry, matching `Pill`'s four. */
+:root {
+  --tone-ok: #17bf63;
+  --tone-warn: #f7b928;
+  --tone-bad: #e0245e;
+  --ink-quiet: #5b6b76;
+}
+
+@page {
+  size: A4;
+  margin: 18mm 14mm 16mm;
+
+  /* WeasyPrint resolves these counters at paint time, which is the whole reason
+     PDF is generated from CSS here rather than drawn box by box. */
+  @bottom-left {
+    content: string(doc-title);
+    font-family: var(--font-sans);
+    font-size: 7.5pt;
+    color: var(--ink-quiet);
+  }
+  @bottom-right {
+    content: counter(page) " / " counter(pages);
+    font-family: var(--font-sans);
+    font-size: 7.5pt;
+    color: var(--ink-quiet);
+  }
+}
+
+/* Landscape for wide tables. A 22-column comparison table on portrait A4 is a
+   column of unreadable slivers; the writer sets this class when the table is
+   wider than it is tall. */
+@page landscape {
+  size: A4 landscape;
+}
+
+body.wide {
+  page: landscape;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 9.5pt;
+  line-height: 1.5;
+  color: var(--foreground);
+  background: var(--background);
+  margin: 0;
+}
+
+/* ----- the title block ----- */
+
+.doc-head {
+  border-bottom: 2px solid var(--primary);
+  padding-bottom: 8pt;
+  margin-bottom: 14pt;
+}
+
+.brand {
+  font-size: 8pt;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+
+.doc-head h1 {
+  /* Named so `@bottom-left` can print it on every page. */
+  string-set: doc-title content();
+  font-size: 17pt;
+  line-height: 1.25;
+  margin: 3pt 0 0;
+  font-weight: 700;
+}
+
+.doc-head .subtitle {
+  margin: 4pt 0 0;
+  font-size: 10pt;
+  color: var(--ink-quiet);
+}
+
+.doc-head .meta {
+  margin: 6pt 0 0;
+  font-size: 8pt;
+  color: var(--ink-quiet);
+}
+
+/* ----- prose (reports only) ----- */
+
+.prose h1 { font-size: 14pt; margin: 16pt 0 5pt; }
+.prose h2 { font-size: 12pt; margin: 14pt 0 4pt; }
+.prose h3 { font-size: 10.5pt; margin: 12pt 0 3pt; }
+
+/* A heading stranded at the foot of a page is a heading for nothing. */
+.prose h1, .prose h2, .prose h3, .prose h4 {
+  break-after: avoid;
+  font-weight: 700;
+}
+
+.prose p { margin: 0 0 7pt; }
+.prose ul, .prose ol { margin: 0 0 7pt; padding-left: 16pt; }
+.prose li { margin-bottom: 2pt; }
+
+.prose a {
+  color: var(--primary);
+  text-decoration: none;
+  border-bottom: 0.5pt solid var(--primary);
+}
+
+.prose blockquote {
+  margin: 0 0 7pt;
+  padding: 4pt 10pt;
+  border-left: 2pt solid var(--border);
+  color: var(--ink-quiet);
+}
+
+.prose code {
+  font-family: Menlo, "DejaVu Sans Mono", monospace;
+  font-size: 8.5pt;
+  background: var(--muted);
+  padding: 0.5pt 2pt;
+  border-radius: 2pt;
+}
+
+.prose pre {
+  background: var(--card);
+  border: 0.5pt solid var(--border);
+  border-radius: 4pt;
+  padding: 6pt 8pt;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+.prose pre code { background: none; padding: 0; }
+
+/* ----- tables ----- */
+
+.table-block { margin: 0 0 14pt; }
+
+.table-block > h2 {
+  font-size: 11pt;
+  margin: 0 0 5pt;
+  font-weight: 700;
+  break-after: avoid;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 8.5pt;
+}
+
+/* The one line that makes a multi-page table readable: the header band is
+   repeated at the top of every page WeasyPrint breaks onto. Without it page 2
+   of a 300-row export is an unlabelled grid of numbers. */
+thead { display: table-header-group; }
+tr { break-inside: avoid; }
+
+th {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-weight: 700;
+  font-size: 7.5pt;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 5pt 6pt;
+  text-align: left;
+  vertical-align: bottom;
+}
+
+td {
+  padding: 4pt 6pt;
+  border-bottom: 0.5pt solid var(--border);
+  vertical-align: top;
+}
+
+tbody tr:nth-child(even) td { background: var(--card); }
+
+td.right, th.right { text-align: right; }
+td.center, th.center { text-align: center; }
+
+/* Figures line up only in a tabular face. Without this a column of rates is
+   ragged because `1` is narrower than `8`. */
+td.money, td.percent, td.number, td.date {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+td.blank { color: var(--ink-quiet); }
+
+td a {
+  color: var(--primary);
+  text-decoration: none;
+  /* A source URL is the one cell allowed to wrap: it is long, and truncating it
+     would produce a link nobody can retype. */
+  word-break: break-all;
+}
+
+.badge {
+  display: inline-block;
+  padding: 1pt 5pt;
+  border-radius: 8pt;
+  font-size: 7.5pt;
+  font-weight: 600;
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+/* Literal tints, not `color-mix()`. WeasyPrint resolves `color-mix()` for
+   `color` but not for `background`, which produced a badge with the right text
+   on no fill at all -- and a badge whose whole job is to show state as a colour
+   is worse for being half-drawn. These are the same mixes, precomputed:
+   the tone at 18/22/16% over white. */
+.badge.ok { background: #dcf5e8; color: #0b6b3a; }
+.badge.warn { background: #fdf0d0; color: #7a5600; }
+.badge.bad { background: #fadde6; color: #96143b; }
+
+.table-note {
+  margin: 5pt 0 0;
+  font-size: 8pt;
+  color: var(--ink-quiet);
+}
+
+/* ----- sources ----- */
+
+.sources {
+  margin-top: 16pt;
+  padding-top: 8pt;
+  border-top: 0.5pt solid var(--border);
+  break-inside: avoid;
+}
+
+.sources h2 {
+  font-size: 9pt;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-quiet);
+  margin: 0 0 5pt;
+}
+
+.sources ol { margin: 0; padding-left: 14pt; font-size: 8pt; }
+.sources li { margin-bottom: 3pt; }
+.sources a { color: var(--primary); text-decoration: none; word-break: break-all; }
+.sources .url { color: var(--ink-quiet); }

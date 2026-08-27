@@ -2238,6 +2238,48 @@
         }
       }
     },
+    "/api/export": {
+      "post": {
+        "tags": [
+          "export"
+        ],
+        "summary": "Export",
+        "description": "Turn a table or a report into a file.\n\nHeld in memory and returned whole rather than streamed. These are documents,\nnot feeds: the PDF writer has to lay out every page before it knows what page\ntwo looks like, and a `Content-Length` is what lets the browser show a real\nprogress bar instead of an indeterminate spinner.",
+        "operationId": "export",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The file.",
+            "content": {
+              "text/csv": {},
+              "application/pdf": {},
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {},
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {}
+            }
+          },
+          "422": {
+            "description": "Nothing to export, or a format this source cannot take."
+          },
+          "503": {
+            "description": "The server is missing a tool this format needs."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/search": {
       "get": {
         "tags": [
@@ -4668,6 +4710,23 @@
         ],
         "title": "ConversionOut"
       },
+      "Decimals": {
+        "properties": {
+          "min": {
+            "type": "integer",
+            "title": "Min",
+            "default": 0
+          },
+          "max": {
+            "type": "integer",
+            "title": "Max",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "Decimals",
+        "description": "A `number` column's precision, as `ResolvedColumn.decimals` resolved it."
+      },
       "DependencyOut": {
         "properties": {
           "name": {
@@ -4690,6 +4749,214 @@
           "ok"
         ],
         "title": "DependencyOut"
+      },
+      "ExportCellIn": {
+        "properties": {
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value",
+            "description": "The raw datum. XLSX writes this, so the column stays arithmetic."
+          },
+          "display": {
+            "type": "string",
+            "title": "Display",
+            "description": "What the table drew, already formatted by `cellDisplayText`. PDF and DOCX write this, so the page reads exactly like the screen.",
+            "default": ""
+          },
+          "href": {
+            "type": "string",
+            "title": "Href",
+            "description": "Link cells, and the source column.",
+            "default": ""
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "description": "The cell's hover note, if it has one.",
+            "default": ""
+          },
+          "tone": {
+            "type": "string",
+            "title": "Tone",
+            "description": "A badge cell's state: neutral | ok | warn | bad.",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "ExportCellIn",
+        "description": "One cell: the datum, and the text the screen showed for it."
+      },
+      "ExportColumnIn": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "default": ""
+          },
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "description": "The contract's column type. Unknown values are treated as text.",
+            "default": "text"
+          },
+          "align": {
+            "type": "string",
+            "enum": [
+              "left",
+              "center",
+              "right"
+            ],
+            "title": "Align",
+            "default": "left"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency",
+            "description": "ISO code, for `money` columns.",
+            "default": ""
+          },
+          "decimals": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Decimals"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Decimal places for a `number` column. Sent because Excel needs a number format, and an FX rate rounded to whole lira erases the very comparison the column exists for."
+          }
+        },
+        "type": "object",
+        "required": [
+          "key"
+        ],
+        "title": "ExportColumnIn"
+      },
+      "ExportRequest": {
+        "properties": {
+          "format": {
+            "type": "string",
+            "enum": [
+              "csv",
+              "xlsx",
+              "pdf",
+              "docx"
+            ],
+            "title": "Format"
+          },
+          "source": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/TableSource"
+              },
+              {
+                "$ref": "#/components/schemas/ReportSource"
+              }
+            ],
+            "title": "Source",
+            "discriminator": {
+              "propertyName": "kind",
+              "mapping": {
+                "report": "#/components/schemas/ReportSource",
+                "table": "#/components/schemas/TableSource"
+              }
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "format",
+          "source"
+        ],
+        "title": "ExportRequest",
+        "description": "What to export, and as what."
+      },
+      "ExportRowIn": {
+        "properties": {
+          "cells": {
+            "items": {
+              "$ref": "#/components/schemas/ExportCellIn"
+            },
+            "type": "array",
+            "title": "Cells"
+          },
+          "cite_url": {
+            "type": "string",
+            "title": "Cite Url",
+            "description": "Where this row came from. Becomes the appended source column: a rate without its source is a number nobody can check.",
+            "default": ""
+          },
+          "cite_note": {
+            "type": "string",
+            "title": "Cite Note",
+            "description": "Why that source supports the row.",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "cells"
+        ],
+        "title": "ExportRowIn",
+        "description": "One row. `cells` is parallel to `columns` -- one entry each, in order."
+      },
+      "ExportTableIn": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "default": ""
+          },
+          "subtitle": {
+            "type": "string",
+            "title": "Subtitle",
+            "default": ""
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "default": ""
+          },
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/ExportColumnIn"
+            },
+            "type": "array",
+            "title": "Columns"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/ExportRowIn"
+            },
+            "type": "array",
+            "title": "Rows"
+          }
+        },
+        "type": "object",
+        "required": [
+          "columns",
+          "rows"
+        ],
+        "title": "ExportTableIn",
+        "description": "A table as the user is looking at it."
       },
       "FamilyOut": {
         "properties": {
@@ -5961,6 +6228,26 @@
         "title": "ReportOut",
         "description": "One report. `body` is markdown, rendered by the chat answer renderer."
       },
+      "ReportSource": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "report",
+            "title": "Kind",
+            "default": "report"
+          },
+          "report_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Report Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "report_id"
+        ],
+        "title": "ReportSource"
+      },
       "ReportSummary": {
         "properties": {
           "id": {
@@ -6856,6 +7143,24 @@
         ],
         "title": "TableOverviewState",
         "description": "Whether there is an overview for this table, and if not, why not.\n\nA wrapper rather than \"200 or 404\", because \"nobody has asked for one\" and\n\"one is being written right now\" are different answers and the client acts\non each differently: the first means start one, the second means keep\nwaiting. Told apart by a 404 alone, a card either gives up on a slow model\nor spins forever on a dead one."
+      },
+      "TableSource": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "table",
+            "title": "Kind",
+            "default": "table"
+          },
+          "table": {
+            "$ref": "#/components/schemas/ExportTableIn"
+          }
+        },
+        "type": "object",
+        "required": [
+          "table"
+        ],
+        "title": "TableSource"
       },
       "TableSummaryOut": {
         "properties": {

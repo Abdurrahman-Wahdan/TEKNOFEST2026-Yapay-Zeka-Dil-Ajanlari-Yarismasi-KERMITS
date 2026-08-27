@@ -7,6 +7,7 @@
     compare         the same question at every bank
     components      a topic page's RAG content, produced by the agent
     compare_tables  the offline cross-bank comparison-table pool (dataprep.compare)
+    export          any table or report as CSV, XLSX, PDF or DOCX
     search          the corpus index
     chat            the agent, streamed over SSE
     models          the chat models the composer lets the user pick between
@@ -18,8 +19,8 @@ a live figure never arrives as a component or a comparison-table row.
 """
 
 from . import (
-    auth, automations, banks, chat, compare, compare_tables, components, models,
-    profile, search, system, voice,
+    auth, automations, banks, chat, compare, compare_tables, components, export,
+    models, profile, search, system, voice,
 )
 
 ROUTERS = (
@@ -30,6 +31,7 @@ ROUTERS = (
     compare.router,
     components.router,
     compare_tables.router,
+    export.router,
     search.router,
     chat.router,
     models.router,

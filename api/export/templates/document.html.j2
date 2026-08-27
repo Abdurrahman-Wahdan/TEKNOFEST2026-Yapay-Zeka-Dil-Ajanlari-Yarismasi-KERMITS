@@ -1,0 +1,83 @@
+{#
+  One export, as HTML.
+
+  This is the hub. WeasyPrint turns it into the PDF with `export.css`; pandoc
+  turns the same string into DOCX and ignores the stylesheet, taking only the
+  structure. That is why the markup is plain and semantic -- `<h1>`, `<table>`,
+  `<ol>` -- with every branded decision expressed in CSS classes pandoc is free
+  to drop. A layout that depended on a `<div>` grid would come out of Word as a
+  pile of empty paragraphs.
+
+  `prose` blocks are already-rendered HTML from markdown-it and are emitted with
+  `| safe`. They are safe in the strict sense: markdown-it is run with
+  `commonmark`, whose renderer escapes raw HTML rather than passing it through.
+#}<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>{{ document.title }}</title>
+<style>{{ css }}</style>
+</head>
+<body{% if wide %} class="wide"{% endif %}>
+
+<header class="doc-head">
+  <div class="brand">TF26</div>
+  <h1>{{ document.title }}</h1>
+  {% if document.subtitle %}<p class="subtitle">{{ document.subtitle }}</p>{% endif %}
+  {% if meta %}<p class="meta">{{ meta }}</p>{% endif %}
+</header>
+
+{% for block in document.blocks %}
+{% if block.__class__.__name__ == 'ProseBlock' %}
+<div class="prose">{{ block.html | safe }}</div>
+{% else %}
+<div class="table-block">
+  {# The table's own heading is dropped when it repeats the document title,
+     which is the common case for a single-table export: the title block above
+     has already said it, and saying it twice reads as two different things. #}
+  {% if block.title and block.title != document.title %}<h2>{{ block.title }}</h2>{% endif %}
+  <table>
+    <thead>
+      <tr>
+        {% for column in block.columns %}
+        <th class="{{ column.align }}">{{ column.label }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in block.rows %}
+      <tr>
+        {% for cell in row %}
+        <td class="{{ block.columns[loop.index0].align }} {{ cell.type }}{% if cell.blank %} blank{% endif %}"
+            {%- if cell.note %} title="{{ cell.note }}"{% endif %}>
+          {%- if cell.href -%}
+            <a href="{{ cell.href }}">{{ cell.display }}</a>
+          {%- elif cell.type == 'badge' and cell.tone -%}
+            <span class="badge {{ cell.tone }}">{{ cell.display }}</span>
+          {%- else -%}
+            {{ cell.display }}
+          {%- endif -%}
+        </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if block.note %}<p class="table-note">{{ block.note }}</p>{% endif %}
+</div>
+{% endif %}
+{% endfor %}
+
+{% if document.citations %}
+<section class="sources">
+  <h2>{{ sources_label }}</h2>
+  <ol>
+    {% for citation in document.citations %}
+    <li><a href="{{ citation.url }}">{{ citation.label }}</a><br><span class="url">{{ citation.url }}</span></li>
+    {% endfor %}
+  </ol>
+</section>
+{% endif %}
+
+</body>
+</html>

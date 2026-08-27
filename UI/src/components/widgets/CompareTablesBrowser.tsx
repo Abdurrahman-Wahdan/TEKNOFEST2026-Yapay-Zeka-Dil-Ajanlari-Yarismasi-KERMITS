@@ -35,6 +35,7 @@ import { useBankLabels } from "@/lib/use-bank-labels";
 import { useTableSort } from "@/lib/use-table-sort";
 
 import { useAttachTable } from "@/lib/chat/use-attach-table";
+import { useExportTable } from "@/lib/use-export-table";
 import { ProducedTable } from "./ProducedTable";
 import { TableOverview } from "./TableOverview";
 import { TableFilters } from "./TableFilters";
@@ -316,6 +317,18 @@ export function CompareTablesBrowser({
     bankLabels,
   });
 
+  // This page hides no columns, so the two views differ only in their rows --
+  // which is exactly when the dialog's scope toggle earns its place, and it
+  // drops out of the dialog on its own once the filters are cleared.
+  const exporter = useExportTable({
+    view: { columns: table?.columns ?? [], rows },
+    full: { columns: table?.columns ?? [], rows: table?.rows ?? [] },
+    title: tableTitle,
+    subtitle: detail.data?.subtitle ?? "",
+    note: detail.data?.notes ?? "",
+    bankLabels,
+  });
+
   /**
    * Open a table, or go back to the grid, and put that in the URL.
    *
@@ -426,8 +439,10 @@ export function CompareTablesBrowser({
               about={tableAbout}
               onAttachRow={attach.onAttachRow}
               onAttachTable={attach.onAttachTable}
+              onExportTable={exporter.onExportTable}
             />
           )}
+          {exporter.dialog}
         </Card>
 
         {/* Split out, not shown as a row of dashes inside the table above —

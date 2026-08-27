@@ -12,6 +12,7 @@ import {
   type FilterState,
 } from "@/lib/table-filter";
 import { useBankLabels } from "@/lib/use-bank-labels";
+import { useExportTable } from "@/lib/use-export-table";
 import { useTableSort } from "@/lib/use-table-sort";
 
 import { useAttachTable } from "@/lib/chat/use-attach-table";
@@ -50,12 +51,26 @@ export function TableWidget(props: TableProps) {
     return sortRows(matched, sort, table.columns, locale, bankLabels);
   }, [table.rows, table.columns, filters, sort, locale, bankLabels]);
 
+  const about =
+    [table.subtitle, table.notes].filter(Boolean).join(" — ") || undefined;
+
   // The filtered, sorted, visible rows -- what the user is actually looking at.
   const attach = useAttachTable({
     columns: visible,
     rows,
     title: table.title || undefined,
-    about: [table.subtitle, table.notes].filter(Boolean).join(" — ") || undefined,
+    about,
+    bankLabels,
+  });
+
+  // Both views: the export dialog offers "the 12 rows I filtered to" and "all
+  // 204" as a choice, and only this component holds the unfiltered one.
+  const exporter = useExportTable({
+    view: { columns: visible, rows },
+    full: { columns: table.columns, rows: table.rows },
+    title: table.title || undefined,
+    subtitle: table.subtitle,
+    note: table.notes,
     bankLabels,
   });
 
@@ -87,10 +102,12 @@ export function TableWidget(props: TableProps) {
         bankLabels={bankLabels}
         emptyLabel={table.rows.length === 0 ? t("tableEmpty") : t("noRowsMatch")}
         title={table.title || undefined}
-        about={[table.subtitle, table.notes].filter(Boolean).join(" — ") || undefined}
+        about={about}
         onAttachRow={attach.onAttachRow}
         onAttachTable={attach.onAttachTable}
+        onExportTable={exporter.onExportTable}
       />
+      {exporter.dialog}
 
       {table.notes && (
         <VuiBox mt={2}>

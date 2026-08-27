@@ -6,6 +6,7 @@ import type { Theme } from "@mui/material/styles";
 import { useLocale, useTranslations } from "next-intl";
 
 import { AttachButton } from "@/components/chat/AttachButton";
+import { ExportButton } from "@/components/ui/ExportButton";
 import { Pill, type PillTone } from "@/components/ui/Pill";
 import { VuiBox, VuiTypography } from "@/components/vision";
 import type { CellValue, ResolvedColumn, Row } from "@/lib/contract";
@@ -42,6 +43,7 @@ export function ProducedTable({
   about,
   onAttachRow,
   onAttachTable,
+  onExportTable,
 }: {
   columns: ResolvedColumn[];
   rows: Row[];
@@ -109,6 +111,19 @@ export function ProducedTable({
    */
   onAttachRow?: (row: Row, index: number) => void;
   onAttachTable?: () => void;
+  /**
+   * Open the export dialog for this table.
+   *
+   * Here for exactly the reason the attach handlers above are: a control added
+   * at the call sites is a control three of the four table pages forget. One
+   * prop, and `/compare`, `/urunler`, `/kampanyalar` and `/ai-overview` all get
+   * the same button in the same corner.
+   *
+   * It is a callback rather than the dialog itself because this component is
+   * handed only the *visible* rows and columns. The scope toggle needs the full
+   * table too, and only the caller has it -- see `useExportTable`.
+   */
+  onExportTable?: () => void;
 }) {
   const locale = useLocale() as "tr" | "en";
   const theme = useTheme();
@@ -122,8 +137,10 @@ export function ProducedTable({
   // The assistant's own namespace, not the table's: these two labels name an
   // assistant action, and the strings for that live together.
   const tChat = useTranslations("chat");
+  // Export is not an assistant action, so it keeps its own namespace.
+  const tExport = useTranslations("export");
 
-  const hasActions = Boolean(onAttachRow || onAttachTable);
+  const hasActions = Boolean(onAttachRow || onAttachTable || onExportTable);
 
   if (columns.length === 0 || rows.length === 0) {
     return (
@@ -262,6 +279,9 @@ export function ProducedTable({
                 data-no-outline=""
                 sx={{ whiteSpace: "nowrap", px: GUTTER, width: 1 }}
               >
+                {onExportTable && (
+                  <ExportButton label={tExport("button")} onClick={onExportTable} />
+                )}
                 {onAttachTable && (
                   <AttachButton
                     label={tChat("attachTable")}
