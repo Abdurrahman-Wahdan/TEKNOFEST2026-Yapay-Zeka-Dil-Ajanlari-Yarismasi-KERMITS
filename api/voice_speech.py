@@ -294,8 +294,11 @@ def speak(text: str):
                 cfg_value=settings.SPEECH_CFG_VALUE,
                 inference_timesteps=settings.SPEECH_TIMESTEPS,
                 max_len=settings.SPEECH_MAX_LEN,
-                # Turkish text normalisation: numbers, abbreviations, currency.
-                normalize=True,
+                # Off, and against the guide's advice -- see SPEECH_NORMALIZE.
+                # voxcpm's normaliser is wetext's *English* model: it raises on
+                # `%2,89`, reads the Turkish thousands separator as a decimal
+                # point, and says "teraliters" for TL.
+                normalize=settings.SPEECH_NORMALIZE,
                 denoise=False,
             ):
                 if first_audio is None:

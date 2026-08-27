@@ -609,14 +609,22 @@ class Settings(BaseSettings):
         "answer at the wrong pitch, so the real value travels on the response.",
     )
     SPEECH_TIMESTEPS: int = Field(
-        default=10,
+        default=4,
         ge=4,
         le=32,
-        description="Diffusion steps. Measured: 10 gives the fastest and most "
-        "stable *first* chunk (0.13s ±0.00) which is the latency a listener "
-        "feels, and higher quality than 4 (0.41s ±0.44) despite 4 being faster "
-        "overall. Floor of 4 is deliberate -- at 2 the model silently skips "
-        "parts of the text (a 55s passage came out 29s).",
+        description="Diffusion steps, and the setting that decides whether the "
+        "stream keeps up with playback. **Hardware-dependent -- re-measure when "
+        "the machine changes.** TTS_ENTEGRASYON.md recommends 10, measured on an "
+        "M5 Max where every setting generates faster than real time (10 gives "
+        "1.94x) so the choice comes down to first-chunk stability. On the M1 Max "
+        "this runs on, that is not the situation: measured 4=1.22x, 6=1.02x, "
+        "8=0.95x, 10=0.81x, 16=0.57x -- at 10 the audio is produced *slower* "
+        "than it plays, so a long reading runs dry and stutters. The guide's "
+        "objection to 4 (first audio 0.41s ±0.44, unstable) does not reproduce "
+        "here either: first audio is flat at 0.50-0.70s across every setting. So "
+        "4 on this hardware, and 10 on anything that clears real time at 10. "
+        "Floor of 4 is deliberate -- at 2 the model silently skips parts of the "
+        "text (a 55s passage came out 29s).",
     )
     SPEECH_CFG_VALUE: float = Field(
         default=2.0,
@@ -631,6 +639,20 @@ class Settings(BaseSettings):
         gt=0,
         description="Per-call generation bound. Text longer than this comes back "
         "silently short, which is why SPEECH_SEGMENT_CHARS splits first.",
+    )
+    SPEECH_NORMALIZE: bool = Field(
+        default=False,
+        description="voxcpm's built-in text normalisation. OFF, and this is the "
+        "one place we contradict TTS_ENTEGRASYON.md -- measured against the "
+        "installed package, `normalize=True` runs wetext's *English* normaliser "
+        "and it is actively wrong for Turkish banking text. It raises "
+        "AssertionError on `%2,89` (percent before the number, the Turkish "
+        "convention), reads the Turkish thousands separator as a decimal point, "
+        "and expands TL (Türk Lirası) as 'teraliters': `24.180 TL` becomes "
+        "'twenty four point one eight oh teraliters' and `27.08.2026` becomes "
+        "'the twenty seventh of august twenty twenty six'. The guide's example "
+        "text was prose with no numbers, which is why it never surfaced there. "
+        "Turkish-finetuned weights read Turkish digits without help.",
     )
     SPEECH_SEGMENT_CHARS: int = Field(
         default=1_500,

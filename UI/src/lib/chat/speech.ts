@@ -46,8 +46,32 @@ let scheduled: AudioBufferSourceNode[] = [];
 let generation = 0;
 const listeners = new Set<() => void>();
 
-function publish(id: string | null): void {
+/**
+ * Why the last reading did not happen, if it did not.
+ *
+ * Here rather than swallowed, because every way this fails ends with the button
+ * back in its idle state and nothing else — which is indistinguishable from the
+ * press not registering. The model serving one reader at a time makes "busy" a
+ * routine outcome, not an edge case, so it has to be sayable.
+ */
+/**
+ * How far ahead of the clock the first piece is booked.
+ *
+ * See the note where it is used: the margin between generation and playback is
+ * thin, and this is what keeps a hiccup from becoming a gap in a sentence.
+ */
+const PLAYBACK_LEAD_SECONDS = 0.5;
+
+export type SpeechError = "busy" | "unavailable" | "failed";
+/** The failure, and the message whose button should report it. */
+let speechError: { id: string; kind: SpeechError } | null = null;
+
+function publish(
+  id: string | null,
+  error: { id: string; kind: SpeechError } | null = null,
+): void {
   speakingId = id;
+  speechError = error;
   for (const listener of listeners) listener();
 }
 
@@ -132,7 +156,15 @@ async function play(id: string, text: string, run: number): Promise<void> {
   if (ctx.state === "suspended") await ctx.resume();
 
   const reader = body.getReader();
-  let cursor = ctx.currentTime;
+  /*
+    A head start, not a stall. Generation runs only a little faster than playback
+    (measured 1.22x on the M1 Max this targets), so scheduling the first piece at
+    `currentTime` leaves no slack at all: any hiccup -- another process, a longer
+    segment, the model shared with a second reader -- lands as an audible gap
+    mid-sentence. Half a second of lead absorbs that, and is short enough that
+    the reading still starts about when the button is pressed.
+  */
+  let cursor = ctx.currentTime + PLAYBACK_LEAD_SECONDS;
   /*
     A chunk can split a 16-bit sample across two reads. Carrying the odd byte
     forward is what keeps the stream aligned -- interpreting it as the low half
@@ -212,6 +244,11 @@ export function useSpeech(id: string, lang: string) {
     () => speakingId,
     () => null,
   );
+  const failure = useSyncExternalStore(
+    subscribe,
+    () => speechError,
+    () => null,
+  );
   const available = useSyncExternalStore(noSubscription, supported, () => false);
 
   useEffect(() => {
@@ -242,15 +279,30 @@ export function useSpeech(id: string, lang: string) {
       generation += 1;
       const run = generation;
       publish(id);
-      play(id, spoken, run).catch(() => {
-        // A refused reading, a busy model, or a stop. There is nothing here the
-        // user can act on, and the button returning to its speaker icon is the
-        // signal that it did not play.
-        if (run === generation) publish(null);
+      play(id, spoken, run).catch((error: unknown) => {
+        if (run !== generation) return;
+        /*
+          A stop is not a failure -- `stopSpeaking` aborts the fetch, and the
+          rejection that produces must not be reported as the model refusing.
+          It has already published its own state, so the guard above catches it,
+          and this only has to classify the real ones.
+        */
+        const status = (error as { status?: number } | null)?.status;
+        publish(null, {
+          id,
+          kind:
+            status === 503 ? "busy" : status === 422 ? "unavailable" : "failed",
+        });
       });
     },
     [id],
   );
 
-  return { supported: available, speaking: current === id, toggle };
+  return {
+    supported: available,
+    speaking: current === id,
+    /** Only this row's failure: another message's is not this button's to report. */
+    error: failure?.id === id ? failure.kind : null,
+    toggle,
+  };
 }

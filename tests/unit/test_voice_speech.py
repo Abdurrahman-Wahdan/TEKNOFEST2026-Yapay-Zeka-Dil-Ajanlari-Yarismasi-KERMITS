@@ -308,8 +308,12 @@ def test_the_measured_parameters_are_the_ones_actually_sent(fake_model):
 
     fake_model(_Recording())
     list(voice_speech.speak("Merhaba."))
-    assert seen["inference_timesteps"] == 10
+    # 4, not the guide's 10: on this hardware 10 generates slower than it
+    # plays. See SPEECH_TIMESTEPS for the measurements.
+    assert seen["inference_timesteps"] == 4
     assert seen["cfg_value"] == 2.0
     assert seen["max_len"] == 4096
-    assert seen["normalize"] is True
+    # Off: voxcpm's normaliser is wetext's English model and it raises on
+    # "%2,89" and says "teraliters" for TL. See SPEECH_NORMALIZE.
+    assert seen["normalize"] is False
     assert seen["denoise"] is False
