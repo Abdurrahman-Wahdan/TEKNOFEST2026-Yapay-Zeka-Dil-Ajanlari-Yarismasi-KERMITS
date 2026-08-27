@@ -91,6 +91,12 @@ weasyprint==69.0
 # Reading report markdown. Already present as a transitive dependency; declared
 # because api/export/from_report.py imports it directly.
 markdown-it-py==4.2.0
+# `\p{Emoji}`, which the standard library's `re` does not have. Already present
+# as a transitive dependency; declared because api/export/plain.py imports it
+# directly. The alternative is a hand-maintained code point table that goes stale
+# every Unicode release -- and being wrong there deletes a bank's data, because
+# the obvious range for emoji also contains the `✓` a bool cell is drawn with.
+regex==2026.7.19
 #
 # `pandoc` is a system dependency too, and DOCX export is the only thing that
 # needs it -- CSV, XLSX and PDF do not:

@@ -57,3 +57,98 @@ def test_feedback_context_bounds_the_answer_but_keeps_the_note():
     assert len(context) < 2000
     assert "The correction must remain visible." in context
     assert "…" in context
+
+def _request(notes: str, history: list):
+    """A real `ModelRequest`, so this tests the middleware and not a stand-in."""
+    from langchain.agents.middleware import ModelRequest
+    from langchain.messages import SystemMessage
+    from langgraph.runtime import Runtime
+
+    return ModelRequest(
+        model=None,
+        messages=history,
+        system_message=SystemMessage("TF26 system prompt."),
+        tool_choice=None,
+        tools=[],
+        response_format=None,
+        state={"messages": history},
+        runtime=Runtime(
+            context={"feedback_notes": notes},
+            store=None,
+            stream_writer=None,
+            previous=None,
+        ),
+        model_settings={},
+    )
+
+
+def test_the_note_reaches_the_model_as_system_context_not_as_a_chat_turn():
+    """The property the whole design rests on.
+
+    A note added to the message history would be summarised away the first time
+    the thread was compacted -- and compaction rewrites history, so the note has
+    to live somewhere history is not. It goes on the system message, which is
+    rebuilt from the database on every model call.
+    """
+    from langchain.messages import AIMessage, HumanMessage
+
+    from agents.main.feedback import inject_feedback_context
+
+    seen = {}
+
+    def handler(request):
+        seen["system"] = request.system_message.text
+        seen["messages"] = list(request.messages)
+        return AIMessage(content="ok")
+
+    history = [HumanMessage("Konut oranları?")]
+    inject_feedback_context.wrap_model_call(
+        _request("- Message abc was liked.\n  User note: kısa tut", history), handler
+    )
+
+    assert "<user_feedback_notes>" in seen["system"]
+    assert "kısa tut" in seen["system"]
+    assert "TF26 system prompt." in seen["system"]
+    # The note did not become a turn, which is what keeps it out of compaction.
+    assert seen["messages"] == history
+
+
+def test_no_note_means_the_system_message_is_left_alone():
+    """A session with no feedback must not gain an empty block."""
+    from langchain.messages import AIMessage, HumanMessage
+
+    from agents.main.feedback import inject_feedback_context
+
+    seen = {}
+
+    def handler(request):
+        seen["system"] = request.system_message.text
+        return AIMessage(content="ok")
+
+    inject_feedback_context.wrap_model_call(
+        _request("", [HumanMessage("Konut oranları?")]), handler
+    )
+
+    assert seen["system"] == "TF26 system prompt."
+
+
+def test_compaction_rewrites_history_and_never_the_system_message():
+    """An upgrade tripwire.
+
+    The guarantee above holds only because `SummarizationMiddleware` touches
+    `messages` and nothing else. If a LangChain release taught it to rewrite the
+    system message, feedback notes would start disappearing on compaction and
+    nothing else in this suite would notice.
+    """
+    from langchain.agents.middleware import SummarizationMiddleware
+
+    hooks = [
+        name
+        for name in ("before_model", "after_model", "wrap_model_call")
+        if name in SummarizationMiddleware.__dict__
+    ]
+
+    assert hooks == ["before_model"], (
+        "SummarizationMiddleware gained a hook that can see the model request; "
+        "check whether it can now rewrite the system message"
+    )

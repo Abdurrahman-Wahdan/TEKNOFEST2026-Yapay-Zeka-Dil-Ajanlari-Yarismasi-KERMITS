@@ -192,9 +192,23 @@ export function headingBefore(
   return heading && heading !== "" ? heading : undefined;
 }
 
-/** A table's own name when nothing else supplied one: its first header plus size. */
-export function fallbackTitle(props: TableProps, pattern: string): string {
+/** A table's own name when nothing else supplied one: its first header plus size.
+ *
+ * Takes a formatter rather than an already-read message, and that is the whole
+ * point of the signature. Read as `t("savedTableTitle")` -- no values -- next-intl
+ * compiles the ICU message, finds `label` missing, reports `FORMATTING_ERROR` to
+ * the console on every render and hands back *the key*, so the exported file was
+ * called `chat.savedTableTitle`. Values that travel with the key cannot be
+ * forgotten, which is the only version of this that cannot regress.
+ *
+ * `count` therefore reaches ICU as a number instead of `String(n)`, so a
+ * 1.234-row table reads as Turkish rather than as `1234`.
+ */
+export function fallbackTitle(
+  props: TableProps,
+  title: (values: { label: string; count: number }) => string,
+): string {
   const first = props.columns?.[0]?.label;
   const label = typeof first === "string" && first.trim() !== "" ? first.trim() : "";
-  return pattern.replace("{label}", label).replace("{count}", String(props.rows.length));
+  return title({ label, count: props.rows.length });
 }

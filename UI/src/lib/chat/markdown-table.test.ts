@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { describe, it } from "node:test";
 
 import {
@@ -232,13 +233,60 @@ describe("headingBefore", () => {
 });
 
 describe("fallbackTitle", () => {
+  /** Stands in for `(values) => t("savedTableTitle", values)` at the call site. */
+  const spy = () => {
+    const calls: Array<{ label: string; count: number }> = [];
+    const title = (values: { label: string; count: number }) => {
+      calls.push(values);
+      return `${values.label} (${values.count} satır)`;
+    };
+    return { calls, title };
+  };
+
   it("uses the first header and the row count", () => {
     const props = tableFromHast(table(["Banka", "Oran"], [["a", "1"], ["b", "2"]]))!;
-    assert.equal(fallbackTitle(props, "{label} ({count})"), "Banka (2)");
+    assert.equal(fallbackTitle(props, spy().title), "Banka (2 satır)");
   });
 
   it("copes with a table whose first header is blank", () => {
     const props = tableFromHast(table(["", "Oran"], [["a", "1"]]))!;
-    assert.equal(fallbackTitle(props, "{label} ({count})").trim(), "(1)");
+    assert.equal(fallbackTitle(props, spy().title).trim(), "(1 satır)");
+  });
+
+  it("hands the translator every value the message asks for", () => {
+    // The bug this pins: read as `t("savedTableTitle")` with no values,
+    // next-intl reports FORMATTING_ERROR and returns the *key*, so the exported
+    // file was called "chat.savedTableTitle". Passing the values is the only
+    // shape in which that cannot happen.
+    const props = tableFromHast(table(["Banka", "Oran"], [["a", "1"]]))!;
+    const { calls, title } = spy();
+
+    fallbackTitle(props, title);
+
+    assert.deepEqual(calls, [{ label: "Banka", count: 1 }]);
+  });
+
+  it("produces a real title through the real catalogue, with no intl error", async () => {
+    // The end-to-end version of the same thing: next-intl, the shipped Turkish
+    // messages, and no mock in the path. An error reported here is the console
+    // error a user sees.
+    const { createTranslator } = await import("next-intl");
+    const messages = JSON.parse(
+      await readFile(new URL("../../../messages/tr.json", import.meta.url), "utf-8"),
+    );
+    const errors: string[] = [];
+    const t = createTranslator({
+      locale: "tr",
+      messages,
+      namespace: "chat",
+      onError: (error: { code: string }) => errors.push(error.code),
+    });
+    const props = tableFromHast(table(["Banka", "Oran"], [["a", "1"], ["b", "2"]]))!;
+
+    // Exactly the expression the component uses.
+    const actual = fallbackTitle(props, (values) => t("savedTableTitle", values));
+
+    assert.equal(actual, "Banka (2 satır)");
+    assert.deepEqual(errors, []);
   });
 });

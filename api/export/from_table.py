@@ -28,6 +28,7 @@ from agents.shared.clock import TZ
 
 from ..schemas.export import ExportTableIn
 from .document import BLANK, Cell, Column, ExportDocument, TableBlock
+from .plain import plain
 
 #: The appended source column, following `CITE_KEY` in `api/saved_tables.py` and
 #: `KAYNAK_KEY` in `CompareTablesBrowser.tsx`. One key across the application, so
@@ -96,18 +97,20 @@ def table_document(
             cells.append(_cite_cell(row.cite_url, row.cite_note))
         rows.append(cells)
 
-    return ExportDocument(
-        # No fallback title invented here. The browser always has one -- it is
-        # drawing a heading above the table -- and a Turkish default string
-        # hard-coded in Python is a translation living outside `messages/tr.json`.
-        title=table.title,
-        subtitle=table.subtitle,
-        generated_at=generated_at or datetime.now(TZ),
-        blocks=[
-            TableBlock(
-                columns=columns, rows=rows, title=table.title, note=table.note
-            )
-        ],
+    return plain(
+        ExportDocument(
+            # No fallback title invented here. The browser always has one -- it is
+            # drawing a heading above the table -- and a Turkish default string
+            # hard-coded in Python is a translation living outside `messages/tr.json`.
+            title=table.title,
+            subtitle=table.subtitle,
+            generated_at=generated_at or datetime.now(TZ),
+            blocks=[
+                TableBlock(
+                    columns=columns, rows=rows, title=table.title, note=table.note
+                )
+            ],
+        )
     )
 
 

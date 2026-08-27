@@ -217,7 +217,7 @@ function ExportChatTable({ node }: { node: HastNode | undefined }) {
   // round trip to the model to name a file the user is waiting for is not one.
   const title = props
     ? headingBefore(source, node?.position?.start?.offset) ??
-      fallbackTitle(props, tChat("savedTableTitle"))
+      fallbackTitle(props, (values) => tChat("savedTableTitle", values))
     : undefined;
 
   const exporter = useExportTable({ view, full: view, title });

@@ -36,6 +36,7 @@ from .document import (
     TableBlock,
 )
 from .from_table import source_label
+from .plain import plain, without_emoji
 
 #: `html=False` is a security setting, not a formatting one.
 #:
@@ -203,9 +204,14 @@ def report_document(
     generated_at: datetime | None = None,
 ) -> ExportDocument:
     """One report, ready for the PDF and DOCX writers."""
-    return ExportDocument(
-        title=title,
-        blocks=_blocks(body),
-        generated_at=generated_at or datetime.now(TZ),
-        citations=_citations(citations),
+    # Stripped before the parse, not after it: markdown is where the emoji
+    # actually is, and `## 📊 Genel Özet` cleaned here yields `<h2>Genel Özet</h2>`
+    # where cleaning the rendered HTML would leave `<h2> Genel Özet</h2>`.
+    return plain(
+        ExportDocument(
+            title=title,
+            blocks=_blocks(without_emoji(body)),
+            generated_at=generated_at or datetime.now(TZ),
+            citations=_citations(citations),
+        )
     )
