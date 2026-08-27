@@ -34,6 +34,7 @@ import { useTranslations } from "next-intl";
 import { AutomationComposer } from "@/components/widgets/AutomationComposer";
 import { AutomationsBoard } from "@/components/widgets/AutomationsBoard";
 import { ProfileStats } from "@/components/widgets/ProfileStats";
+import { NotificationEmailSettings } from "@/components/widgets/NotificationEmailSettings";
 import { useAuth } from "@/lib/auth";
 
 /**
@@ -72,6 +73,13 @@ function Overview() {
       <VuiBox mt={4} mb={3} display="flex" flexDirection="column" gap="24px">
         <Section title={t("statsTitle")} subtitle={t("statsSubtitle")}>
           <ProfileStats />
+        </Section>
+
+        <Section
+          title={t("notificationEmail")}
+          subtitle={t("notificationEmailSubtitle")}
+        >
+          <NotificationEmailSettings />
         </Section>
 
         {/*

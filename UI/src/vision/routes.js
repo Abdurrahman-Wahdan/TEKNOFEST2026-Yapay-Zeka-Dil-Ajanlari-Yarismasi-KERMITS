@@ -60,7 +60,6 @@ import { IoPricetags } from "react-icons/io5";
 import { IoMegaphone } from "react-icons/io5";
 import { IoChatbubbles } from "react-icons/io5";
 import { IoSparkles } from "react-icons/io5";
-import { IoSettingsSharp } from "react-icons/io5";
 
 // Dashboard, Finansman, Bankalar, Tables and Billing are unmounted — no drawer entry and
 // no route. Their pages are kept verbatim at
@@ -175,14 +174,6 @@ const routes = [
     key: "profile",
     route: "/profile",
     icon: <BsFillPersonFill size="20px" color="inherit" />,
-    noCollapse: true,
-  },
-  {
-    type: "collapse",
-    name: "Ayarlar",
-    key: "settings",
-    route: "/settings",
-    icon: <IoSettingsSharp size="20px" color="inherit" />,
     noCollapse: true,
   },
   // Vision UI's own Sign In / Sign Up entries are gone: reaching the dashboard
