@@ -409,6 +409,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/me/automations/reports/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark All Reports Read
+         * @description Clear this user's unread report notifications in one database update.
+         */
+        post: operations["mark_all_reports_read"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/me/automations/reports/{report_id}": {
         parameters: {
             query?: never;
@@ -1257,6 +1277,26 @@ export interface paths {
          * @description Create a Turkish transcript without sending audio off the machine.
          */
         post: operations["create_voice_transcription"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/voice/format-response": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Voice Response
+         * @description Turn a completed assistant answer into natural, speakable prose.
+         */
+        post: operations["create_voice_response"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3532,6 +3572,32 @@ export interface components {
             ctx?: Record<string, never>;
         };
         /**
+         * VoiceResponseOut
+         * @description Natural prose ready for the speech endpoint.
+         */
+        VoiceResponseOut: {
+            /** Text */
+            text: string;
+        };
+        /**
+         * VoiceResponseRequest
+         * @description A completed chat answer that should be adapted for speech.
+         */
+        VoiceResponseRequest: {
+            /** Answer */
+            answer: string;
+            /**
+             * Question
+             * @default
+             */
+            question: string;
+            /**
+             * Locale
+             * @default tr
+             */
+            locale: string;
+        };
+        /**
          * VoiceSpeechRequest
          * @description Text to read aloud.
          *
@@ -4146,6 +4212,26 @@ export interface operations {
         };
     };
     unread_count: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnreadCount"];
+                };
+            };
+        };
+    };
+    mark_all_reports_read: {
         parameters: {
             query?: never;
             header?: never;
@@ -5381,6 +5467,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VoiceTranscriptionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_voice_response: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VoiceResponseRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VoiceResponseOut"];
                 };
             };
             /** @description Validation Error */

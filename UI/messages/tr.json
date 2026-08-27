@@ -262,6 +262,16 @@
     "voiceUnavailable": "Bu tarayıcıda ses kaydı kullanılamıyor.",
     "voiceFailed": "Mikrofon başlatılamadı. Cihazınızı kontrol edip yeniden deneyin.",
     "voiceTranscriptionFailed": "Kayıt metne dönüştürülemedi. Lütfen yeniden konuşun.",
+    "globalVoice": {
+      "requesting": "Mikrofona bağlanılıyor",
+      "listening": "Dinliyor. Göndermek için boşluk tuşunu bırakın",
+      "transcribing": "Konuşma metne dönüştürülüyor",
+      "waiting": "Asistan yanıtı hazırlıyor",
+      "formatting": "Yanıt konuşmaya hazırlanıyor",
+      "speaking": "Asistan yanıtı okuyor",
+      "error": "Sesli istek tamamlanamadı",
+      "progressSpeech": "İnceliyorum."
+    },
     "mentionLabel": "Ekli belgeler",
     "mentionEmpty": "Eşleşen ek bulunamadı",
     "history": "Sohbet geçmişi",

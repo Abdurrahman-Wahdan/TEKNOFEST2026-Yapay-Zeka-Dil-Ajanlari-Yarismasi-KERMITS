@@ -116,6 +116,19 @@ function audioContext(sampleRate: number): AudioContext {
   return context;
 }
 
+/**
+ * Resume the shared output graph while a real keyboard gesture is active.
+ *
+ * Global voice answers arrive seconds after Space was pressed. Priming here
+ * keeps the later TTS stream inside browser autoplay policy instead of asking a
+ * delayed network callback to unlock audio on its own.
+ */
+export async function primeSpeech(): Promise<void> {
+  if (!supported()) return;
+  const ctx = audioContext(48_000);
+  if (ctx.state === "suspended") await ctx.resume();
+}
+
 function stopSpeaking(): void {
   generation += 1;
   controller?.abort();
@@ -130,6 +143,11 @@ function stopSpeaking(): void {
   }
   scheduled = [];
   publish(null);
+}
+
+/** Stop whichever app-level reading is active, including global voice mode. */
+export function stopSpeech(): void {
+  stopSpeaking();
 }
 
 /**
@@ -220,6 +238,37 @@ async function play(id: string, text: string, run: number): Promise<void> {
   const remaining = Math.max(0, cursor - ctx.currentTime);
   await new Promise((resolve) => setTimeout(resolve, remaining * 1000));
   if (run === generation) publish(null);
+}
+
+/**
+ * Read one passage outside a message action and resolve after playback ends.
+ *
+ * Global voice mode uses the same singleton audio graph as the transcript's
+ * speaker buttons. Starting either therefore replaces the other instead of two
+ * model streams talking over one another.
+ */
+export async function speakOnce(
+  id: string,
+  text: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  const passage = text.trim();
+  if (!passage || !supported()) return;
+  signal?.throwIfAborted();
+
+  stopSpeaking();
+  generation += 1;
+  const run = generation;
+  const abort = () => stopSpeaking();
+  signal?.addEventListener("abort", abort, { once: true });
+  publish(id);
+
+  try {
+    await play(id, passage, run);
+    signal?.throwIfAborted();
+  } finally {
+    signal?.removeEventListener("abort", abort);
+  }
 }
 
 /** Nothing to subscribe to: whether the API exists cannot change mid-session. */

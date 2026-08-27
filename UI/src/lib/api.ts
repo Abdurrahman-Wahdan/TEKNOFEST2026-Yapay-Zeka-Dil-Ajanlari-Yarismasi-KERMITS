@@ -52,6 +52,7 @@ export type TokenPair = Schemas["TokenPair"];
 export type User = Schemas["UserOut"];
 export type ResetPasswordResponse = Schemas["ResetPasswordResponse"];
 export type VoiceTranscription = Schemas["VoiceTranscriptionOut"];
+export type VoiceResponse = Schemas["VoiceResponseOut"];
 export type UserStats = Schemas["StatsOut"];
 export type Automation = Schemas["AutomationOut"];
 export type AutomationReport = Schemas["ReportOut"];
@@ -610,6 +611,16 @@ export const api = {
       signal,
     });
   },
+
+  voiceResponse: (
+    body: Schemas["VoiceResponseRequest"],
+    signal?: AbortSignal,
+  ) =>
+    request<VoiceResponse>("/voice/format-response", {
+      method: "POST",
+      body: JSON.stringify(body),
+      signal,
+    }),
 
   // ----- chat attachments -----
   prepareChatAttachment: (file: File, signal?: AbortSignal) => {

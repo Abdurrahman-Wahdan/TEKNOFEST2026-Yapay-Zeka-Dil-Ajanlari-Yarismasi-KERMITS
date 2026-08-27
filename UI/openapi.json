@@ -860,6 +860,33 @@
         ]
       }
     },
+    "/api/me/automations/reports/read-all": {
+      "post": {
+        "tags": [
+          "automations"
+        ],
+        "summary": "Mark All Reports Read",
+        "description": "Clear this user's unread report notifications in one database update.",
+        "operationId": "mark_all_reports_read",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnreadCount"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/me/automations/reports/{report_id}": {
       "get": {
         "tags": [
@@ -3023,6 +3050,53 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/VoiceTranscriptionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/voice/format-response": {
+      "post": {
+        "tags": [
+          "voice"
+        ],
+        "summary": "Create Voice Response",
+        "description": "Turn a completed assistant answer into natural, speakable prose.",
+        "operationId": "create_voice_response",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoiceResponseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceResponseOut"
                 }
               }
             }
@@ -7577,6 +7651,46 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VoiceResponseOut": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "VoiceResponseOut",
+        "description": "Natural prose ready for the speech endpoint."
+      },
+      "VoiceResponseRequest": {
+        "properties": {
+          "answer": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Answer"
+          },
+          "question": {
+            "type": "string",
+            "title": "Question",
+            "default": ""
+          },
+          "locale": {
+            "type": "string",
+            "pattern": "^(tr|en)(?:[-_][A-Za-z]+)?$",
+            "title": "Locale",
+            "default": "tr"
+          }
+        },
+        "type": "object",
+        "required": [
+          "answer"
+        ],
+        "title": "VoiceResponseRequest",
+        "description": "A completed chat answer that should be adapted for speech."
       },
       "VoiceSpeechRequest": {
         "properties": {

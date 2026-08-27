@@ -28,3 +28,17 @@ class VoiceSpeechRequest(BaseModel):
             "is indistinguishable from a crash, so the caller is told."
         ),
     )
+
+
+class VoiceResponseRequest(BaseModel):
+    """A completed chat answer that should be adapted for speech."""
+
+    answer: str = Field(min_length=1)
+    question: str = ""
+    locale: str = Field(default="tr", pattern=r"^(tr|en)(?:[-_][A-Za-z]+)?$")
+
+
+class VoiceResponseOut(BaseModel):
+    """Natural prose ready for the speech endpoint."""
+
+    text: str

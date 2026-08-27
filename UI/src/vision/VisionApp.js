@@ -19,6 +19,7 @@ import Sidenav from "examples/Sidenav";
 // also in the navbar (`examples/Navbars/DashboardNavbar`), which is where every
 // other page-level control lives anyway.
 import { AgentPopup } from "@/components/chat/AgentPopup";
+import { GlobalVoiceAssistant } from "@/components/chat/GlobalVoiceAssistant";
 import { SelectionReply } from "@/components/chat/SelectionReply";
 import { ReportToasts } from "@/components/widgets/ReportToasts";
 
@@ -91,6 +92,7 @@ export default function VisionApp({ children }) {
           {/* Where the Configurator's settings button, and then the theme
               toggle, used to sit. */}
           <AgentPopup />
+          <GlobalVoiceAssistant />
           {/* One selection listener for the whole dashboard, rather than one per
               page. It renders nothing until there is a selection to act on. */}
           <SelectionReply />

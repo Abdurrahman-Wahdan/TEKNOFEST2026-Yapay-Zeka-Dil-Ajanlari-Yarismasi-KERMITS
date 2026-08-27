@@ -8,10 +8,16 @@ from fastapi import APIRouter, File, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
 
 from config.settings import settings
+from agents.voice_response import format_voice_response
 
 from .. import voice_speech
 from ..deps import CurrentUser
-from ..schemas.voice import VoiceSpeechRequest, VoiceTranscriptionOut
+from ..schemas.voice import (
+    VoiceResponseOut,
+    VoiceResponseRequest,
+    VoiceSpeechRequest,
+    VoiceTranscriptionOut,
+)
 from ..voice_speech import VoiceSpeechFailed, VoiceSpeechUnavailable
 from ..voice_transcription import (
     VoiceTranscriptionFailed,
@@ -80,6 +86,27 @@ def create_voice_transcription(
         language=settings.VOICE_LANGUAGE,
         processing_ms=processing_ms,
     )
+
+
+@router.post("/format-response", response_model=VoiceResponseOut)
+def create_voice_response(
+    body: VoiceResponseRequest, user: CurrentUser
+) -> VoiceResponseOut:
+    """Turn a completed assistant answer into natural, speakable prose."""
+    del user  # Authentication is the boundary; the formatter stores no user data.
+    try:
+        result = format_voice_response(
+            body.answer,
+            question=body.question,
+            locale=body.locale,
+        )
+    except Exception as exc:
+        logger.exception("Voice response formatting failed")
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "The voice response could not be prepared.",
+        ) from exc
+    return VoiceResponseOut(text=result.text)
 
 
 @router.post(
