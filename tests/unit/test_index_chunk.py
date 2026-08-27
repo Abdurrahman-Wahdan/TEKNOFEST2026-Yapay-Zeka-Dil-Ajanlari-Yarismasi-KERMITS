@@ -165,7 +165,10 @@ def test_a_single_huge_paragraph_is_split_not_passed_through(monkeypatch):
                         "cite_url": "https://x/p", "text_hash": "huge"}]
     out = chunks(doc)
     assert len(out) > 1
-    assert all(len(c.text) <= 3500 for c in out)
+    # Parçalar %10 overlap taşır (bkz. index/chunk.py::_with_overlap), bu yüzden
+    # tavan gövde + overlap payıdır — gövdenin kendisi sınırı aşmaz.
+    tavan = 3500 + settings.INDEX_CHUNK_OVERLAP_CHARS + 2
+    assert all(len(c.text) <= tavan for c in out)
 
 
 def test_text_with_no_boundary_at_all_is_still_cut(monkeypatch):
@@ -176,7 +179,8 @@ def test_text_with_no_boundary_at_all_is_still_cut(monkeypatch):
                         "text": "x" * 9000, "order": 0,
                         "cite_url": "https://x/p", "text_hash": "solid"}]
     out = chunks(doc)
-    assert all(len(c.text) <= 1000 for c in out)
+    tavan = 1000 + settings.INDEX_CHUNK_OVERLAP_CHARS + 2
+    assert all(len(c.text) <= tavan for c in out)
 
 
 def test_a_small_unit_is_not_split():

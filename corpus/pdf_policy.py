@@ -18,6 +18,8 @@ document — with filename rules to override, and a model to judge what is left.
            referrer="https://www.kuveytturk.com.tr/kendim-icin/kartlar")
 """
 
+import logging
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -27,6 +29,8 @@ from pydantic import BaseModel
 from pydantic import Field as PydanticField
 
 from banks.parse import fold
+
+logger = logging.getLogger(__name__)
 
 # Labels the model may return, and the ones that mean "read it". A closed set:
 # an open-ended "what is this?" gets an essay, and an essay cannot be filtered on.
@@ -269,12 +273,37 @@ def classify(pdf: Path, url: str = "", anchor_text: str = "",
         # fields it cannot find, which for a classifier means a confident label
         # for a page it could not read. See docs/ARCHITECTURE.md.
         structured = llm.with_structured_output(_Verdict, method="function_calling")
-        verdict = structured.invoke([HumanMessage(content=[
+        message = HumanMessage(content=[
             {"type": "text", "text": CLASSIFY_PROMPT + "\n" + described},
             {"type": "image_url", "image_url": {
                 "url": "data:image/png;base64," + base64.b64encode(image).decode()}},
-        ])])
-    except Exception as exc:  # noqa: BLE001 - an LLM outage is not a verdict
+        ])
+        # Repo-wide rule (dataprep/vlm.py::_post, crawl/policy.py, compare/*):
+        # a transient outage must never become a verdict. Returning "classifier
+        # unavailable" here quietly dropped PDFs whose only problem was that the
+        # tunnel blipped, so this now retries forever with capped backoff and
+        # only a permanent 4xx gives up.
+        attempt = 0
+        delay = 1.0
+        started = time.time()
+        last_warn = 0.0
+        while True:
+            attempt += 1
+            try:
+                verdict = structured.invoke([message])
+                break
+            except Exception as exc:  # noqa: BLE001 - retried below
+                if any(c in str(exc) for c in ("400", "401", "403", "404", "BadRequest")):
+                    return Decision(False, "", f"classifier permanent error: {exc}", "")
+                elapsed = time.time() - started
+                if elapsed - last_warn >= 300:
+                    logger.warning("[PDF_POLICY_UZUN_SURELI_HATA] classifier failing for "
+                                   "%.0fs (attempt %d): %s -- still retrying",
+                                   elapsed, attempt, type(exc).__name__)
+                    last_warn = elapsed
+                time.sleep(delay)
+                delay = min(delay * 2, 60)
+    except Exception as exc:  # noqa: BLE001 - model construction itself failed
         return Decision(False, "", f"classifier unavailable: {exc}", "")
 
     if verdict is None:

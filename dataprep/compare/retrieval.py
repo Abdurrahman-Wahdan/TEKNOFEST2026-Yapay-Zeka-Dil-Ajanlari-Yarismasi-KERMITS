@@ -5,23 +5,86 @@ farklı query'yle veya daha büyük k ile TEKRAR çağırabilir. Banka sabittir 
 subagent kendi bankasının dışına çıkamaz, "sadece o bankanın sorumlusu" tasarımı.
 
 Qdrant 'campaigns' koleksiyonunu, metadata.bank filtresiyle arar. Süresi geçmiş
-kampanyalar (metadata.campaign_end damgalıysa) elenir — bu tarih KIYASI, metinden
-regex'le veri çekme değil; zaten Gemma'nın çıkardığı yapılandırılmış tarihi
-karşılaştırıyoruz.
+kaynaklar (metadata.gecerlilik_bitis damgalıysa) elenir — bu tarih KIYASI CANLI
+yapılır (bugüne göre), metinden regex'le veri çekme değil; content.py'nin
+çıkardığı yapılandırılmış tarihi karşılaştırıyoruz.
 """
 from __future__ import annotations
 
+import logging
 import os
 import queue
 import threading
+import time
 
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 from qdrant_client import models
 
+from config import tunnel
 from corpus import dates
 from embeddings import get_embedding
 from vector_stores.client import get_qdrant_client
+
+log = logging.getLogger(__name__)
+
+
+# --- Qdrant payload alan adi eslemesi -------------------------------------
+# 'campaigns' koleksiyonu URL'i TEK bir 'url' alaninda tutmuyor; icerik tipine
+# gore farkli alanlarda tutuyor (page->source_url, pdf->pdf_url, image->
+# gorsel_url) ve tarihleri 'campaign_start/campaign_end' adiyla yaziyor
+# (content.py/pages.py frontmatter adlandirmasi). Retrieval bu adlari tek bir
+# kanonik sozlesmeye cevirir; LLM yine SADECE point_id gorur, URL yazmaz.
+_URL_ALANLARI = ("url", "source_url", "pdf_url", "gorsel_url", "source_page", "parent")
+
+
+def _kanonik_url(meta: dict) -> str:
+    """Icerik tipinden bagimsiz olarak dokumanin kendi URL'ini dondurur."""
+    for k in _URL_ALANLARI:
+        v = meta.get(k)
+        if v:
+            return str(v)
+    return ""
+
+
+def _kanonik_tarih(meta: dict) -> tuple[str, str, str]:
+    """(baslangic, bitis, validity_status) — iki adlandirmayi da kabul eder."""
+    bas = meta.get("gecerlilik_baslangic") or meta.get("campaign_start") or ""
+    bit = meta.get("gecerlilik_bitis") or meta.get("campaign_end") or ""
+    st = meta.get("validity_status") or meta.get("campaign_status") or ""
+    return str(bas), str(bit), str(st)
+
+
+def _kaydet_ve_isaretle(points, point_meta: dict | None) -> dict:
+    """Okunan chunk'larin point_id'lerini point_meta'ya isler ve
+    chunk_index -> point_id haritasi dondurur. Boylece read_more/
+    read_full_page ile okunan icerik de KAYNAK GOSTERILEBILIR olur —
+    aksi halde ajanin elinde gecerli bir index kalmaz, URL yazmaya
+    calisir ve kaynak sessizce dusrulurdu."""
+    harita = {}
+    for p in points:
+        meta = (p.payload or {}).get("metadata", {}) or {}
+        pid = str(p.id)
+        idx = meta.get("chunk_index", 0)
+        harita[idx] = pid
+        if point_meta is not None:
+            bas, bit, st = _kanonik_tarih(meta)
+            point_meta[pid] = {
+                "url": _kanonik_url(meta),
+                "gecerlilik_baslangic": bas,
+                "gecerlilik_bitis": bit,
+                "validity_status": st,
+            }
+    return harita
+
+
+def _url_kosulu(url: str) -> models.Filter:
+    """URL'i HANGI alanda tutuluyorsa orada esler (page/pdf/image farkli alan
+    kullaniyor) — tek bir 'metadata.url' alani yok."""
+    return models.Filter(should=[
+        models.FieldCondition(key=f"metadata.{k}", match=models.MatchValue(value=url))
+        for k in _URL_ALANLARI
+    ])
 
 COLLECTION = os.environ.get("QDRANT_COLLECTION_CAMPAIGNS", "campaigns")
 
@@ -32,13 +95,19 @@ EMBED_TIMEOUT = float(os.environ.get("COMPARE_EMBED_TIMEOUT", "30"))
 
 
 def _shared():
-    global _embed, _client
+    """Paylaşılan embedder + Qdrant istemcisi.
+
+    embedder ARTIK KALICI SAKLANMAZ: get_embedding() kendi önbelleğini
+    (model, VLLM_BASE_URL) anahtarıyla tutuyor, yani tünel adresi değişince
+    OTOMATİK olarak taze bir istemci döner. Burada saklamak, tünel
+    değiştiğinde retry'ın sonsuza dek ölü adrese gitmesi demekti (kanıtlı
+    2026-08-20: sunucu sağlıkken 09:00-10:11 arası sürekli 503)."""
+    global _client
     with _lock:
-        if _embed is None:
-            _embed = get_embedding()
         if _client is None:
             _client = get_qdrant_client()
-    return _embed, _client
+        client = _client
+    return get_embedding(), client
 
 
 def _embed_query_safe(embedder, query: str, task: str | None = None):
@@ -125,12 +194,44 @@ class _SearchArgs(BaseModel):
                         "point_id'ler — aynı çağrıda işaretlenip hemen silinir.")
 
 
-def make_bank_search_tool(bank: str, marked: set, discarded: set) -> StructuredTool:
+def tohum_point_id(bank: str, url: str) -> str | None:
+    """Bir sayfanin URL'ini o sayfanin ILK chunk'inin point_id'sine cevirir.
+
+    Amac: seed yonlendirmesinde modele URL VERMEMEK. Model yalnizca index
+    (point_id) gorur; URL cozumu tamamen kodda kalir. Bulunamazsa None doner —
+    cagiran yonlendirmeyi hic vermez (yanlis id ile model mesgul edilmez)."""
+    if not url:
+        return None
+    try:
+        _, client = _shared()
+        flt = models.Filter(must=[
+            models.FieldCondition(key="metadata.bank",
+                                   match=models.MatchValue(value=bank)),
+            _url_kosulu(url),
+        ])
+        points, _ = client.scroll(collection_name=COLLECTION, scroll_filter=flt,
+                                   limit=200, with_payload=True)
+    except Exception:
+        return None
+    if not points:
+        return None
+    ilk = min(points, key=lambda p: ((p.payload or {}).get("metadata", {}) or {})
+                                     .get("chunk_index", 0))
+    return str(ilk.id)
+
+
+def make_bank_search_tool(bank: str, marked: set, discarded: set,
+                            point_meta: dict | None = None) -> StructuredTool:
     """Bu bankaya SABİTLENMİŞ bir arama tool'u üretir (subagent bankayı seçemez).
     `marked`/`discarded`: mark_tool ile PAYLAŞILAN kümeler — bu çağrıya gömülü
     useful/not_useful kararı da aynı yere yazılır. `_offsets`: aynı query'nin
-    'next=true' ile derinleştirilmesi için sorgu başına ilerleme takibi (closure)."""
+    'next=true' ile derinleştirilmesi için sorgu başına ilerleme takibi (closure).
+    `point_meta`: OPSİYONEL, çağıranla PAYLAŞILAN dict — görülen HER point_id
+    (useful/not_useful kararından BAĞIMSIZ) için url+tarih bilgisini kalıcı
+    kaydeder; marked/discarded'a (context-trim amaçlı, geçici) HİÇ dokunmaz —
+    ayrı bir amaç için (nihai kaynak/tarih çözümleme) hiç silinmeyen bir kayıt."""
     _offsets: dict[str, int] = {}
+    point_meta = point_meta if point_meta is not None else {}
 
     def _run(query: str, intent: str = "", useful: list[str] = (),
               not_useful: list[str] = (), next: bool = False) -> str:
@@ -157,16 +258,27 @@ def make_bank_search_tool(bank: str, marked: set, discarded: set) -> StructuredT
         for h in hits:
             p = h.payload or {}
             meta = p.get("metadata", {}) or {}
-            end = meta.get("campaign_end")
+            bas, end, status = _kanonik_tarih(meta)
             if end and not dates.is_active(end):        # süresi geçmiş -> gösterme
                 continue
-            if not end and meta.get("campaign_status") == "bitti":  # tarihsiz ama bitmiş
+            if not end and status == "suresi_gecmis":    # tarihsiz ama kesin bitmiş
                 continue
-            url = meta.get("source_url") or meta.get("pdf_url") or meta.get("source_page") or ""
+            point_id = str(h.id)
+            url = _kanonik_url(meta)
+            point_meta[point_id] = {
+                "url": url,
+                "gecerlilik_baslangic": bas,
+                "gecerlilik_bitis": end,
+                "validity_status": status,
+            }
             out.append({
-                "point_id": str(h.id), "url": url, "type": meta.get("type", ""),
-                "text": (p.get("page_content") or "").strip()[:600],
-                "campaign_end": end,
+                "point_id": point_id, "url": url, "type": meta.get("type", ""),
+                # KIRPMA YOK (kullanıcı kararı 2026-08-19): chunk TAM verilir.
+                # Eskiden 600 karakterde kesiliyordu; model yarım kalan bilgiyi
+                # görüp read_more ile tamamlamak zorunda kalıyordu (fazladan
+                # tur + eksik kanıt riski). Bağlam sınırı uzak sunucunun kararı.
+                "text": (p.get("page_content") or "").strip(),
+                "gecerlilik_bitis": end,
             })
         if not out and not hits:
             body = ("Sonuç yok" + (" (bu query için artık daha fazla sonuç kalmadı, "
@@ -174,10 +286,10 @@ def make_bank_search_tool(bank: str, marked: set, discarded: set) -> StructuredT
                      " (bu banka için bu sorguyla hiçbir güncel içerik bulunamadı)")
                      + ".")
         elif not out:
-            body = "Bu gruptaki sonuçların hepsi süresi geçmiş kampanyaydı, gösterilmedi."
+            body = "Bu gruptaki sonuçların hepsi süresi geçmiş kaynaklıydı, gösterilmedi."
         else:
             body = "\n---\n".join(
-                f"[{i+1}] point_id={o['point_id']} url={o['url']} campaign_end={o['campaign_end']}\n{o['text']}"
+                f"[{i+1}] point_id={o['point_id']}\n{o['text']}"
                 for i, o in enumerate(out))
         return f"{mark_note}\n\n{body}" if mark_note else body
 
@@ -206,43 +318,99 @@ def make_bank_search_tool(bank: str, marked: set, discarded: set) -> StructuredT
 # olarak yok. Uygulama _apply_mark() üzerinden, search_bank'ın _run'ı içinde.
 
 
+class _NearbyArgs(BaseModel):
+    point_id: str = Field(description="search_bank sonucunda gördüğün point_id.")
+    direction: str = Field(default="down", description="Gezinme yönü: 'up' (1 adım önceki chunk) veya 'down' (1 adım sonraki chunk).")
+
+
+def make_read_more_tool(bank: str, point_meta: dict | None = None) -> StructuredTool:
+    """Ajan bir chunk'ı slide etmek isterse sadece 1 adım UP (önceki) veya 1 adım DOWN (sonraki) getirir."""
+
+    def _run(point_id: str, direction: str = "down") -> str:
+        _, client = _shared()
+        try:
+            pts = client.retrieve(collection_name=COLLECTION, ids=[point_id], with_payload=True)
+        except Exception as exc:
+            return f"HATA: point_id okunamadı ({exc})."
+        if not pts:
+            return "Bu point_id için chunk bulunamadı (yanlış id olabilir)."
+        meta = (pts[0].payload or {}).get("metadata", {}) or {}
+        idx = meta.get("chunk_index", 0)
+        url = _kanonik_url(meta)
+        target_idx = (idx - 1) if direction.lower() == "up" else (idx + 1)
+        flt = models.Filter(must=[
+            models.FieldCondition(key="metadata.bank", match=models.MatchValue(value=bank)),
+            _url_kosulu(url),
+            models.FieldCondition(key="metadata.chunk_index", match=models.MatchValue(value=target_idx)),
+        ])
+        points, _ = client.scroll(collection_name=COLLECTION, scroll_filter=flt,
+                                   limit=200, with_payload=True)
+        harita = _kaydet_ve_isaretle(points, point_meta)
+        rows = sorted(
+            ((p.payload or {}).get("metadata", {}).get("chunk_index", 0),
+             (p.payload or {}).get("page_content", "")) for p in points)
+        if not rows:
+            return "Komşu chunk bulunamadı."
+        return "\n\n".join(
+            f"[point_id={harita.get(i, '')} chunk_index={i}]\n{t}"
+            for i, t in rows if t.strip())
+
+    return StructuredTool.from_function(
+        func=_run, name="read_more", args_schema=_NearbyArgs,
+        description=("search_bank sonucundaki bir chunk cümle/bilgi ortadan kesiliyormuş "
+                     "gibi görünüyorsa, o sonucun point_id'sini vererek dokümanın HEMEN "
+                     "öncesini/sonrasını (before/after kadar komşu chunk, doküman "
+                     "sırasına göre) okuyabilirsin — TÜM sayfayı okumaktan "
+                     "(read_full_page) daha hedefli, PDF çok uzunsa daha ucuz bir yol. "
+                     "Yetmezse before/after'ı büyütüp tekrar çağırabilirsin."))
+
+
 class _FullPageArgs(BaseModel):
-    url: str = Field(description="search_bank sonucunda gördüğün 'url=' değeri.")
+    point_id: str = Field(description="search_bank sonucunda gördüğün point_id — "
+                                       "o chunk'ın ait olduğu sayfanın TAMAMI okunur.")
 
 
-def make_full_page_tool(bank: str) -> StructuredTool:
+def make_full_page_tool(bank: str, point_meta: dict | None = None) -> StructuredTool:
     """search_bank sadece bir chunk (parça, ~600 karakter) döndürür — sayfanın
-    KENDİSİ o parçada kesilmiş/eksik görünüyorsa, agent bu tool'la aynı URL'nin
+    KENDİSİ o parçada kesilmiş/eksik görünüyorsa, agent bu tool'la o point_id'nin
     TÜM chunk'larını (chunk_index sırasıyla) birleştirilmiş, tam metin olarak
     okuyabilir. Banka sabit (closure) — sadece kendi bankasının sayfalarını okur."""
 
-    def _run(url: str) -> str:
+    def _run(point_id: str) -> str:
         _, client = _shared()
-        url_match = models.Filter(should=[
-            models.FieldCondition(key="metadata.source_url", match=models.MatchValue(value=url)),
-            models.FieldCondition(key="metadata.pdf_url", match=models.MatchValue(value=url)),
-            models.FieldCondition(key="metadata.source_page", match=models.MatchValue(value=url)),
-            models.FieldCondition(key="metadata.gorsel_url", match=models.MatchValue(value=url)),
-        ])
+        # URL'i LLM DEGIL KOD cozer: model yalnizca index (point_id) takip eder,
+        # URL hic gormez -> hem token tasarrufu hem halusinasyon riski sifir.
+        try:
+            pts = client.retrieve(collection_name=COLLECTION, ids=[point_id],
+                                   with_payload=True)
+        except Exception as exc:
+            return f"HATA: point_id okunamadı ({exc})."
+        if not pts:
+            return "Bu point_id için chunk bulunamadı (yanlış id olabilir)."
+        url = _kanonik_url((pts[0].payload or {}).get("metadata", {}) or {})
+        if not url:
+            return "Bu chunk'ın sayfa URL'i kayıtlı değil, tam sayfa okunamıyor."
         flt = models.Filter(must=[
             models.FieldCondition(key="metadata.bank", match=models.MatchValue(value=bank)),
-            url_match,
+            _url_kosulu(url),
         ])
         points, _ = client.scroll(collection_name=COLLECTION, scroll_filter=flt,
                                    limit=200, with_payload=True)
         if not points:
-            return "Bu URL için chunk bulunamadı (yanlış url ya da başka bankaya ait olabilir)."
+            return "Bu sayfa için chunk bulunamadı (başka bankaya ait olabilir)."
+        harita = _kaydet_ve_isaretle(points, point_meta)
         rows = sorted(
             ((p.payload or {}).get("metadata", {}).get("chunk_index", 0),
              (p.payload or {}).get("page_content", "")) for p in points)
-        return "\n\n".join(t for _, t in rows if t.strip())
+        return "\n\n".join(
+            f"[point_id={harita.get(i, '')}]\n{t}" for i, t in rows if t.strip())
 
     return StructuredTool.from_function(
         func=_run, name="read_full_page", args_schema=_FullPageArgs,
         description=("search_bank bir sayfanın yalnızca KÜÇÜK BİR PARÇASINI (chunk) "
-                     "getirir; kesilmiş/yarım/yetersiz görünüyorsa bu tool'la aynı "
-                     "sonucun 'url' değerini vererek o sayfanın/PDF'in TÜM parçalarını "
-                     "birleştirilmiş, TAM metin olarak okuyabilirsin."))
+                     "getirir; kesilmiş/yarım/yetersiz görünüyorsa bu tool'la o "
+                     "sonucun point_id'sini vererek ait olduğu sayfanın/PDF'in TÜM "
+                     "parçalarını birleştirilmiş, TAM metin olarak okuyabilirsin."))
 
 
 # --- tablo havuzu araması (classify_agent'ın aracı) -------------------------
@@ -278,6 +446,78 @@ def _ensure_tables_collection() -> None:
         _tables_collection_ready = True
 
 
+def _now_iso() -> str:
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+# --- indeksleme dayanikliligi -------------------------------------------------
+_INDEKS_BACKOFF_MAX = float(os.environ.get("INDEX_BACKOFF_MAX", "30"))
+
+
+def _indeks_kalici_hata(exc: Exception) -> bool:
+    """Retry'ın anlamsız olduğu hatalar (bank_agent::_is_permanent ile AYNI
+    karar). 400/403 KALICI DEĞİL: tünel soketi bayatlayınca nginx isteği
+    reddediyor ama saniyeler sonra aynı istek 200 dönüyor."""
+    s = str(exc)
+    return any(k in s for k in ("401", "404", "413", "422", "BadRequest"))
+
+
+def _dayanikli(cagri, ne: str):
+    """Bir Qdrant/embedding çağrısını SINIRSIZ retry ile yürütür.
+
+    NEDEN: index_table tek denemede pes ediyordu; tünel değişiminin tam denk
+    geldiği anda tablo diske yazılıp arama havuzuna GİRMİYORDU. İndekssiz tablo
+    mükerrerlik kontrolünde GÖRÜNMEZ olur ve aynı konuda ikinci bir tablo
+    açılır (kasko sigortası 4 kez oluştu). Her hatada tünel URL'i tazelenir.
+
+    RETRY SINIRSIZDIR. Daha önce sınırsız retry süreci 2 saat kilitlemişti
+    (240 retry, CPU %0) ama asıl sebep retry değil, EMBEDDING İSTEMCİSİNİN
+    ÖNBELLEKTE ESKİ URL ile kalmasıydı: tünel 08:00'da değişti, tunnel.refresh
+    settings'i güncelledi, fakat önbellekteki istemci ölü adrese istek atmaya
+    devam etti — sunucu sağlıklıyken saatlerce 503 alındı. Önbellek anahtarına
+    URL eklenerek (embeddings/providers/remote_provider.py) kökten çözüldü;
+    artık refresh sonrası İLK denemede yeni adrese gidilir."""
+    delay = 1.0
+    deneme = 0
+    while True:
+        deneme += 1
+        try:
+            return cagri()
+        except Exception as exc:
+            if _indeks_kalici_hata(exc):
+                raise
+            # ÖNCE tünel kontrolü, SONRA yeniden deneme (kullanıcı kararı
+            # 2026-08-20): hatanın en olası sebebi tünel adresinin değişmesi.
+            # BAĞLANTI GÜVENLİĞİ (kullanıcı kararı 2026-08-22): hata alan
+            # bağlantıya geri dönülmez — LLM/embedding havuzu tamamen
+            # kapatılıp tazesi açılır (dataprep/vlm.py ile AYNI politika).
+            try:
+                from llm.providers.vllm_provider import reset_http_pool
+                reset_http_pool(f"indeks/{type(exc).__name__}")
+            except Exception:
+                pass
+            tunnel.refresh_if_needed()
+            log.warning("    [İNDEKS RETRY] %s: %s — %.0fs sonra tekrar (%d)",
+                        ne, type(exc).__name__, delay, deneme)
+            time.sleep(delay)
+            delay = min(delay * 2, _INDEKS_BACKOFF_MAX)
+
+
+def drop_table_index(table_id: str) -> None:
+    """Silinen bir tabloyu arama havuzundan da kaldırır.
+
+    store.delete_table yalnız dosyayı ve registry kaydını siliyor; Qdrant'ta
+    kalan kayıt mükerrerlik aramasını kirletiyordu (canlı 2026-08-20: dedup
+    58 tabloyu birleştirdi, 58 "hayalet" indekste kaldı ve ajan artık var
+    olmayan tablolarla eşleşme aradı)."""
+    _, client = _shared()
+    _dayanikli(lambda: client.delete(
+        collection_name=TABLES_COLLECTION,
+        points_selector=models.PointIdsList(points=[_table_point_id(table_id)])),
+        f"drop({table_id[:32]})")
+
+
 def index_table(table_id: str, topic: str, category: str, subcategory: str, docstring: str) -> None:
     """Yeni (ya da güncellenmiş) bir tabloyu Qdrant'a KALICI olarak yazar —
     search_tables bunu okur. create_table sonrası pipeline tarafından çağrılır.
@@ -288,15 +528,25 @@ def index_table(table_id: str, topic: str, category: str, subcategory: str, docs
     kelimeler arasında boğulup embedding benzerliğini bulanıklaştırıyordu
     (kanıtlı: "konut sigortası" araması gerçek 'konut-sigortası' tablosunu ilk
     5'e bile sokmadı). Konuyu öne çıkarmak ayırt ediciliği güçlendirir."""
-    _ensure_tables_collection()
-    embedder, client = _shared()
+    _dayanikli(_ensure_tables_collection, "koleksiyon")
     text = f"{topic}. {topic}. {category} {subcategory}: {docstring}"
-    with _lock:
-        vec = _embed_query_safe(embedder, text)
-    client.upsert(collection_name=TABLES_COLLECTION, points=[models.PointStruct(
+
+    def _embed():
+        # embedder HER DENEMEDE yeniden alınır: tünel değiştiğinde önbellek
+        # anahtarı (model, URL) değiştiği için TAZE bir istemci döner. Bir kez
+        # alıp saklamak, retry'ın hep ölü adrese gitmesi demekti.
+        emb, _ = _shared()                    # _lock DIŞINDA (iç içe kilit yok)
+        with _lock:
+            return _embed_query_safe(emb, text)
+
+    vec = _dayanikli(_embed, f"embed({table_id[:32]})")
+    _, client = _shared()
+    _dayanikli(lambda: client.upsert(collection_name=TABLES_COLLECTION, points=[models.PointStruct(
         id=_table_point_id(table_id), vector=vec,
-        payload={"id": table_id, "category": category, "subcategory": subcategory,
-                 "docstring": docstring})])
+        payload={"id": table_id, "topic": topic, "category": category,
+                 "subcategory": subcategory, "docstring": docstring,
+                 "text": text,                      # embed edilen metnin AYNISI
+                 "indexed_at": _now_iso()})]), f"upsert({table_id[:32]})")
 
 
 class _TableSearchArgs(BaseModel):

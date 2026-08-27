@@ -1,6 +1,6 @@
 """PDF -> görüntü chunk'ları (Vision LLM için).
 
-Kullanıcı kararı: metin katmanı ÇIKARILMAZ. İSTİSNASIZ her PDF'in her sayfası
+Metin katmanı ÇIKARILMAZ. İSTİSNASIZ her PDF'in her sayfası
 görüntüye render edilir ve bir açık kaynak VLM'in anlayacağı boyutta, üst üste
 binen (overlap) dikey şeritlere bölünür. Böylece taranmış/metinli fark etmez;
 hepsi aynı yoldan (görüntü) LLM'e gider.

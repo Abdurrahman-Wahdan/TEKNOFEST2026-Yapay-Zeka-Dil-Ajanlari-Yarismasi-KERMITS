@@ -17,7 +17,30 @@ import logging
 log = logging.getLogger("dataprep.crawl.render")
 
 _UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-       "(KHTML, like Gecko) Chrome/120.0 Safari/537.36")
+       "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
+
+_STEALTH_JS = """
+// Anti-bot & stealth bypass
+Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+Object.defineProperty(navigator, 'languages', { get: () => ['tr-TR', 'tr', 'en-US', 'en'] });
+Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+
+// Chrome runtime mock
+window.chrome = {
+    runtime: {},
+    app: { isInstalled: false },
+    csi: () => {},
+    loadTimes: () => {}
+};
+
+// WebGL Vendor & Renderer mock
+const getParameter = WebGLRenderingContext.prototype.getParameter;
+WebGLRenderingContext.prototype.getParameter = function(parameter) {
+    if (parameter === 37445) return 'Google Inc. (Apple)';
+    if (parameter === 37446) return 'ANGLE (Apple, Apple M1, OpenGL 4.1)';
+    return getParameter.apply(this, arguments);
+};
+"""
 
 
 class _ShimResponse:
@@ -46,9 +69,34 @@ class RenderClient:
     async def start(self):
         from playwright.async_api import async_playwright
         self._pw = await async_playwright().start()
-        self.browser = await self._pw.chromium.launch(headless=True)
-        self.ctx = await self.browser.new_context(user_agent=_UA, locale="tr-TR")
-        log.info("render: Chromium başlatıldı")
+        self.browser = await self._pw.chromium.launch(
+            headless=True,
+            args=[
+                "--disable-blink-features=AutomationControlled",
+                "--no-sandbox",
+                "--disable-infobars",
+                "--disable-dev-shm-usage",
+            ]
+        )
+        self.ctx = await self.browser.new_context(
+            user_agent=_UA,
+            locale="tr-TR",
+            timezone_id="Europe/Istanbul",
+            viewport={"width": 1440, "height": 900},
+            extra_http_headers={
+                "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
+                "Sec-Ch-Ua": '"Chromium";v="128", "Not;A=Brand";v="24", "Google Chrome";v="128"',
+                "Sec-Ch-Ua-Mobile": "?0",
+                "Sec-Ch-Ua-Platform": '"macOS"',
+                "Sec-Fetch-Dest": "document",
+                "Sec-Fetch-Mode": "navigate",
+                "Sec-Fetch-Site": "none",
+                "Sec-Fetch-User": "?1",
+                "Upgrade-Insecure-Requests": "1",
+            }
+        )
+        await self.ctx.add_init_script(_STEALTH_JS)
+        log.info("render: Chromium + Stealth başlatıldı")
 
     async def stop(self):
         try:
@@ -66,7 +114,11 @@ class RenderClient:
             page = await self.ctx.new_page()
             try:
                 await page.goto(url, wait_until="domcontentloaded", timeout=self.timeout_ms)
-                await page.wait_for_timeout(self.settle_ms)   # JS'in render'ı için bekle
+                # İnsan taklidi: mikro bekleme ve hafif sayfa kaydırma (scroll)
+                import random
+                await asyncio.sleep(random.uniform(0.3, 0.7))
+                await page.evaluate("window.scrollBy({top: 350, behavior: 'smooth'})")
+                await page.wait_for_timeout(self.settle_ms)
                 return await page.content()
             except Exception as exc:
                 log.warning("  render fail %s (%s)", url, type(exc).__name__)

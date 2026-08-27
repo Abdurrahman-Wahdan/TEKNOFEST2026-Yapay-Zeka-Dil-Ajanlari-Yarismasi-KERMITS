@@ -75,19 +75,62 @@ def _parse_decisions(text: str) -> dict[int, tuple[str, str]]:
 TEMP_LADDER = (0.0, 0.3, 0.6, 1.0)   # parse başarısızsa sıcaklığı kademeli artır
 
 
+def _is_permanent(exc: Exception) -> bool:
+    """GERÇEKTEN kalıcı 4xx mi? (retry anlamsız)
+
+    Diğer LLM yollarıyla (bank_agent, classify_agent, dedup, vlm) BİREBİR
+    AYNI karar — tests/unit/test_4xx_tutarli.py bu tutarlılığı doğrular.
+    400/403 BİLEREK listede DEĞİL: tünel soketi bayatlayınca nginx isteği
+    "400 / 0 byte" ile reddediyor ve istek vLLM'e HİÇ ulaşmıyor; aynı istek
+    saniyeler sonra 200 dönüyor. Kalıcı sayıp pes etmek veri kaybettirirdi.
+    401/404/413/422 kalıcı: kimlik/adres/gövde hatası, tekrar aynı sonucu verir.
+    """
+    s = str(exc)
+    return any(code in s for code in ("401", "404", "413", "422", "BadRequest"))
+
+
 async def _ainvoke_retry(model, msgs, retries: int = 5):
-    """LLM isteğini İSTEK HATASINDA 3 kez artan beklemeyle dener. Hepsi
-    başarısızsa None döner (üst katman parse-fail sayıp sıcaklık merdiveni/
-    güvenli varsayılana düşer)."""
-    for attempt in range(1, retries + 1):
+    """LLM isteğini SINIRSIZ dener — ama her hatada TAZE BAĞLANTI + URL
+    DOĞRULAMA ile (kullanıcı kararı 2026-08-23: "VLLM sınırsız olacak.
+    Sınırsız ama fresh bağlantı ile. URL kontrolü ile.").
+
+    Her başarısızlıkta iki şey yapılır:
+      1) reset_http_pool — openai SDK'sının PAYLAŞILAN httpx istemcisi
+         kapatılıp tazesi açılır. Aksi hâlde retry hep AYNI ölü sokete
+         yazıyordu (canlı: triage 485 sn APIConnectionError'da takıldı).
+      2) tunnel.refresh_if_needed — tünel adresi 1 dakikalık merdivenle
+         doğrulanır (gist -> .env -> mevcut, her biri sağlık yoklamasından
+         geçer). Sunucu adresi değiştiyse yeni adrese geçilir.
+
+    `retries` parametresi artık YALNIZCA log'da "kaçıncı tur" bilgisi için
+    kullanılır; döngü sınırsızdır. Backoff 30 saniyede sabitlenir."""
+    attempt = 0
+    delay = 1.5
+    while True:
+        attempt += 1
         try:
             return await model.ainvoke(msgs)
         except Exception as exc:
-            log.warning("    LLM istek hatası (deneme %d/%d): %s",
-                        attempt, retries, type(exc).__name__)
-            if attempt < retries:
-                await asyncio.sleep(min(1.5 * attempt, 8))
-    return None
+            if _is_permanent(exc):
+                log.warning("    LLM KALICI hata (4xx) — retry anlamsız: %s",
+                            type(exc).__name__)
+                return None
+            log.warning("    LLM istek hatası (deneme %d): %s — taze bağlantı "
+                        "+ URL kontrolü ile tekrar", attempt, type(exc).__name__)
+            # 1) TAZE BAĞLANTI
+            try:
+                from llm.providers.vllm_provider import reset_http_pool
+                await asyncio.to_thread(reset_http_pool, f"triage/{type(exc).__name__}")
+            except Exception:
+                pass
+            # 2) URL DOĞRULAMA (merdiven + sağlık yoklaması)
+            try:
+                from config import tunnel
+                await asyncio.to_thread(tunnel.refresh_if_needed)
+            except Exception:
+                pass
+            await asyncio.sleep(delay)
+            delay = min(delay * 2, 30.0)
 
 
 async def _one_pass(model, nodes) -> dict[int, tuple[str, str]]:

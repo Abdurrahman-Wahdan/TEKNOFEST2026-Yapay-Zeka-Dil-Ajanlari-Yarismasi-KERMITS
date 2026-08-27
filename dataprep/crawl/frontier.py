@@ -13,6 +13,8 @@ download_sites'taki banka motorundan yeniden kullanılır — kopya yok.
 """
 from __future__ import annotations
 
+import hashlib
+import math
 import re
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -34,10 +36,83 @@ class Node:
     sample_titles: list[str] = field(default_factory=list)  # dal ise alt başlık örnekleri
     page_count: int = 1             # dal ise altındaki tahmini sayfa sayısı
     verdict: str = ""               # triage sonucu: DIVE | FETCH | SKIP
+    triage_failed: bool = False     # True -> verdict LLM'den DEĞİL, "güvenli varsayılan"
+                                     # (LLM tüm denemelerine rağmen hiç yanıt vermedi) —
+                                     # bu karar _decisions.json'a yazılsa da SONRAKİ
+                                     # koşuda ÖNBELLEKTEN KULLANILMAZ, yeniden triage edilir
+
+
+def node_to_dict(node: "Node") -> dict:
+    """Ağacı JSON'a serileştirir — LLM kararı ne olursa olsun (DIVE/FETCH/SKIP/
+    boş) TÜM yapı korunur, hiçbir dal atlanmaz. Diskte kayıt altına almak için
+    (bkz. graph.py: save_tree_snapshot)."""
+    return {
+        "url": node.url, "title": node.title, "seg": node.seg, "depth": node.depth,
+        "page_count": node.page_count, "verdict": node.verdict,
+        "sample_titles": node.sample_titles,
+        "children": [node_to_dict(c) for c in node.children],
+    }
 
 
 def _segments(url: str) -> list[str]:
     return [s for s in urlparse(url).path.split("/") if s]
+
+
+# --- HAYALET (şablon artığı) URL ELEMESİ -------------------------------------
+# Bazı siteler sitemap/HTML'e, şablon motorunun ÇÖZEMEDİĞİ ham yer tutucuları
+# olduğu gibi basıyor. Bunlar GERÇEK sayfa değildir: sunucu bağlantıyı hiç
+# kurmaz ya da 404 döner, ama crawl bunları normal URL sanıp her biri için
+# 3 retry × bağlantı zaman aşımı harcar.
+#
+# ÖLÇÜM (emlakkatilim, 2026-08-22): sitemap evrenindeki 1099 URL'in 464'ü
+# (%42) bu türdendi — `.../~/Templates/Default/assets/{{link}}` gibi, üstelik
+# aynı yer tutucu üst üste tekrarlanarak ("~/Templates/.../~/Templates/...").
+# Hepsi bağlantı hatası veriyordu; saatlerce bekleyip SIFIR veri getiriyorlardı.
+#
+# BU BİR VERİ ELEMESİ DEĞİLDİR: sadece hiçbir zaman içerik döndüremeyecek
+# sentetik yollar atılır. Gerçek bir sayfayı yanlışlıkla elememek için ölçüt
+# DAR tutulmuştur — çözülmemiş şablon değişkeni ({{...}}, {%...%}, ${...}) ya
+# da şablon motorunun iç yolu ("~/Templates/"). Elenenler çağıran tarafından
+# gerekçesiyle kaydedilir (bkz. graph.py), yani hesapsız kalmazlar.
+_HAYALET_IZLERI = ("{{", "}}", "{%", "${", "~/templates/")
+
+# BOZUK LİNK ARTIĞI: sayfadaki `href="mailto:..."`, `href="https://..."` gibi
+# bağlantılar yanlış çözümlendiğinde, yolun SON parçası çıplak bir URI
+# ŞEMASINA dönüşüyor: `.../Sayfalar/https&`, `.../Sayfalar/mailto&`. Bunlar
+# gerçek sayfa değil; hepsi 404 dönüyor ama her biri istek + 3 retry harcıyor.
+#
+# ÖLÇÜM (turkiyefinans, 2026-08-22): 744 FAIL'in 736'sı tam olarak bunlardı
+# (`https&` 464, `http&` 248, `mailto&` 24). Kalan 8'i gerçek 404 sayfaydı.
+#
+# KURAL DAR: yalnız yolun SON parçası, TAMAMEN bir şema adı + ayraç ise
+# elenir. Gerçek bir sayfanın adı "https&" olamaz, o yüzden yanlış eleme
+# riski yok. `mailto-sikayet.aspx` gibi içinde şema adı GEÇEN gerçek
+# sayfalar etkilenmez (tam eşleşme aranır).
+_SEMA_ARTIKLARI = frozenset(
+    f"{sema}{ayrac}"
+    for sema in ("http", "https", "mailto", "tel", "javascript", "ftp", "file")
+    for ayrac in ("&", "", ":", "&amp;")
+)
+
+
+def hayalet_url(url: str) -> bool:
+    """Gerçek bir sayfaya ASLA karşılık gelemeyecek sahte URL mi?
+
+    İki kaynak: (1) şablon motorunun çözemediği yer tutucu, (2) bozuk link
+    çözümlemesinden doğan çıplak URI şeması (bkz. _SEMA_ARTIKLARI)."""
+    u = (url or "").lower()
+    if any(iz in u for iz in _HAYALET_IZLERI):
+        return True
+    son = urlparse(u).path.rstrip("/").rsplit("/", 1)[-1]
+    return son in _SEMA_ARTIKLARI
+
+
+def hayaletleri_ayikla(urls) -> tuple[set[str], list[str]]:
+    """(gerçek URL'ler, elenen hayalet URL'ler) — sıralı ve tekrarsız."""
+    gercek, hayalet = set(), set()
+    for u in urls:
+        (hayalet if hayalet_url(u) else gercek).add(u)
+    return gercek, sorted(hayalet)
 
 
 # --- sitemap modu: URL kümesinden path ağacı ------------------------------
@@ -77,18 +152,36 @@ def build_tree_from_urls(urls: set[str], base: str) -> Node:
     return root
 
 
+_SAMPLE_RATIO = 0.20   # dal başına LLM'e gösterilecek örnek oranı
+_SAMPLE_FLOOR = 12     # küçük dallarda bu kadarı garanti gösterilir
+
+
+def _pick_samples(weighted: list[tuple[str, int]]) -> list[str]:
+    """(başlık, ağırlık) çiftlerini AĞIRLIĞA göre büyükten küçüğe sıralar,
+    en büyük %10'unu (en az _SAMPLE_FLOOR) döner — sabit küçük bir sayıyla
+    kesmek yerine dalın büyüklüğüyle orantılı örnekleme. Tek bir LLM çağrısı
+    + 128k bağlam bütçesi olduğu için cömert davranılır; asıl güvenlik sınırı
+    _branch_line'daki 8000 karakterlik kapak."""
+    ordered = sorted(weighted, key=lambda x: -x[1])
+    k = max(_SAMPLE_FLOOR, math.ceil(len(ordered) * _SAMPLE_RATIO))
+    return [t for t, _ in ordered[:k]]
+
+
 def _summarize(node: Node) -> int:
     """Her dal için page_count ve örnek başlıkları doldurur (alttan yukarı)."""
     if not node.children:
         node.page_count = 1
         return 1
     total = 0
-    titles: list[str] = []
+    weighted: list[tuple[str, int]] = []
     for ch in node.children:
-        total += _summarize(ch)
-        titles.append(ch.title)
+        c = _summarize(ch)
+        total += c
+        weighted.append((ch.title, c))
     node.page_count = total
-    node.sample_titles = titles[:12]
+    # en BÜYÜK (en çok sayfa taşıyan) alt-dallar önce — küçük/tekil sayfalar
+    # yüzünden dalın asıl gövdesini oluşturan büyük alt-dal örneklemeden düşmesin.
+    node.sample_titles = _pick_samples(weighted)
     return total
 
 
@@ -108,6 +201,16 @@ def all_leaf_urls(root: Node) -> list[str]:
             walk(ch)
     walk(root)
     return sorted(set(out))
+
+
+def leaf_fingerprint(node: Node) -> str:
+    """Bir dalın altındaki TÜM yaprak URL'lerinin deterministik özeti (sha1).
+    Aynı URL kümesi HER ZAMAN aynı fingerprint'i üretir; tek bir sayfa
+    eklense/kaldırılsa bile değişir. Triage cache'i 'bu dal geçen koşuya göre
+    HİÇ değişmemiş, LLM'e tekrar sorma' kararını buna dayandırır — tahmine/
+    örneklemeye değil, tam eşitlik kontrolüne dayalı."""
+    leaves = all_leaf_urls(node)
+    return hashlib.sha1("\n".join(leaves).encode("utf-8")).hexdigest()
 
 
 # --- bfs modu: bir sayfadan link + anchor çıkar ---------------------------
@@ -131,7 +234,7 @@ async def links_with_anchors(client, url: str) -> list[tuple[str, str]]:
             continue
         seen.add(u)
         anchor = _TAG_RE.sub(" ", inner)
-        anchor = re.sub(r"\s+", " ", anchor).strip()[:120]
+        anchor = re.sub(r"\s+", " ", anchor).strip()[:8000]
         out.append((u, anchor))
     return out
 
@@ -147,66 +250,40 @@ def bfs_children(url: str, links: list[tuple[str, str]], depth: int) -> list[Nod
     nodes: list[Node] = []
     for seg, items in groups.items():
         rep_url, _ = items[0]
+        # tekilleştir (aynı anchor metni birden çok sayfada tekrar edebilir,
+        # slot'u işgal etmesin) — sonra dalın büyüklüğüyle orantılı örnekle.
+        anchors = list(dict.fromkeys(a for _, a in items if a))
+        k = max(_SAMPLE_FLOOR, math.ceil(len(anchors) * _SAMPLE_RATIO))
         node = Node(
             url=rep_url if len(items) == 1 else urljoin(url + "/", seg),
             title=seg.replace("-", " "),
             depth=depth + 1,
             seg=seg,
             page_count=len(items),
-            sample_titles=[a for _, a in items if a][:12],
+            sample_titles=anchors[:k],
         )
         nodes.append(node)
     return sorted(nodes, key=lambda n: -n.page_count)
 
 
 # --- birleşik keşif giriş noktası -----------------------------------------
-# en son BFS keşfinde güvenlik cap'ine ulaşıldı mı (True ise keşif EKSİK olabilir)
-LAST_BFS_CAP_HIT = False
-
-
 async def discover(client, config: dict, cap: int = 50000, max_depth: int = 0) -> tuple[str, Node]:
     """(mode, root_node) döner.
 
-    Önce sitemap denenir; boşsa BFS ile site-içi TAM transitif kapanış alınır.
+    Sitemap VE ana sayfa BFS tohumu HER ZAMAN birlikte alınır (sitemap varsa
+    bile) — biri diğerini ekarte etmez. Sitemap genelde eksik/güncel-değil
+    olabilir (yeni kampanya sayfaları eklenmeyebilir); ana sayfadan 1-hop BFS
+    tohumu bunu ucuza tamamlar. Sitemap yoksa zaten BFS tohumu tek başına
+    yeterli (site-içi tam kapanış crawl sırasındaki incremental link-harvest
+    ile birikir — bkz. graph.harvest_node).
     max_depth=0 => derinlik sınırı yok (dedup zaten döngüyü engeller); cap yalnız
     sonsuz URL-tuzağına karşı güvenlik freni.
     """
     base = config["BASE"].rstrip("/")
-    # HIZLI BAŞLANGIÇ (dosyalar hemen aksın): sitemap varsa onu tohum al; yoksa
-    # ana sayfa linklerini. Site-içi TAM BFS kapanışı ayrıca yapılmaz — bunun
-    # yerine crawl sırasında indirilen HER sayfadan linkler toplanıp yeni URL'ler
-    # kuyruğa eklenir (incremental BFS birleşimi; graph.harvest_node içinde).
     sm = await engine.discover_from_sitemaps(client) or set()
+    bfs_seeds = {engine.clean_url(u) for u, _ in await links_with_anchors(client, base)}
+    bfs_seeds.add(engine.clean_url(base))
     if sm:
-        return "sitemap+link-harvest", build_tree_from_urls(sm, base)
-    seeds = {engine.clean_url(u) for u, _ in await links_with_anchors(client, base)}
-    seeds.add(engine.clean_url(base))
-    return "bfs(link-harvest)", build_tree_from_urls(seeds, base)
-
-
-async def _bfs_harvest_urls(client, base: str, cap: int = 50000, max_depth: int = 0) -> set[str]:
-    """Sitemap'siz sitede site-içi TAM URL kapanışını özyinelemeli çıkarır.
-
-    Kuyruk boşalana kadar TÜM site-içi wanted linkler takip edilir (dedup ile
-    döngü yok). max_depth=0 => derinlik sınırı yok. cap yalnız sonsuz URL-tuzağı
-    (takvim/faceted/session) için güvenlik; ulaşılırsa LAST_BFS_CAP_HIT=True
-    (keşif eksik olabilir sinyali). Sadece keşif — içerik kaydedilmez.
-    """
-    global LAST_BFS_CAP_HIT
-    from collections import deque
-    start = engine.clean_url(base)
-    seen: set[str] = {start}
-    urls: set[str] = {start}
-    q: deque[tuple[str, int]] = deque([(start, 0)])
-    while q and len(seen) < cap:
-        url, d = q.popleft()
-        if max_depth and d >= max_depth:      # 0 => sınırsız
-            continue
-        for u, _anchor in await links_with_anchors(client, url):
-            if u not in seen:
-                seen.add(u)
-                urls.add(u)
-                if len(seen) < cap:
-                    q.append((u, d + 1))
-    LAST_BFS_CAP_HIT = len(seen) >= cap
-    return urls
+        merged = sm | bfs_seeds
+        return "sitemap+bfs-seed", build_tree_from_urls(merged, base)
+    return "bfs(link-harvest)", build_tree_from_urls(bfs_seeds, base)

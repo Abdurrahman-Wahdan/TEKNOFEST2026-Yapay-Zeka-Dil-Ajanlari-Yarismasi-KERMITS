@@ -35,7 +35,7 @@ class Ledger:
         decorative/unreachable/download_fail/related/unrelated/empty ..."""
         rec = {"ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
                "stage": stage, "url": url, "status": status,
-               "decision": decision, "reason": reason[:300] if reason else ""}
+               "decision": decision, "reason": reason[:8000] if reason else ""}
         if extra:
             rec.update(extra)
         line = json.dumps(rec, ensure_ascii=False)

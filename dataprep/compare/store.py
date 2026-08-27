@@ -13,12 +13,16 @@ Ledger'da İKİ AYRI şey var, karıştırılmaz:
 from __future__ import annotations
 
 import json
+import logging
+import os
 import re
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2] / "data" / "_tables"
+
+log = logging.getLogger(__name__)
 REGISTRY = ROOT / "_registry.json"
 LEDGER = ROOT / "_page_ledger.json"
 SUBCATS = ROOT / "_subcategories.json"
@@ -69,9 +73,43 @@ def load_table(table_id: str) -> dict | None:
     return json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
 
 
+def _damgala(table: dict) -> None:
+    """Tabloyu diske yazmadan hemen once tarih damgalar.
+
+    VARSAYILAN OLARAK KAPALI (TABLO_ANLIK_TARIH=1 ile acilir). Karar
+    (kullanici, 2026-08-19): URL ve tarih baglamasi EN SONDA, TOPLUCA ve
+    agentic yapilacak — cunku bir hucreye o bankanin rastgele bir kaynagini
+    baglamak ALAKASIZ bir URL/tarih damgalayabiliyor. Bu asamada yalnizca
+    KAYNAK HAVUZU biriktirilir (cell_sources + sources). Her veri sutununun yanina '<sutun> (Gecerlilik)' sutunu
+    girer; kaynagi olmayan hucre de '-' alir, yani ALAN HER ZAMAN VAR.
+
+    Import DONGUYU kirmak icin fonksiyon icinde yapilir (tablo_tarih ->
+    store bagimliligi var). Damgalama basarisiz olursa tablo yine de
+    KAYDEDILIR — tarih eksikligi veri kaybindan iyidir, sonradan
+    `python3 -m dataprep.compare.tablo_tarih` ile tamamlanabilir."""
+    if os.environ.get("TABLO_ANLIK_TARIH") != "1":
+        return                                     # varsayilan: KAPALI (bkz. docstring)
+    try:
+        from . import tablo_tarih
+        tablo_tarih.tabloyu_damgala(table)
+    except Exception as exc:                       # pragma: no cover
+        log.warning("  [TARIH DAMGA HATASI] %s: %s: %s",
+                    table.get("id", "?"), type(exc).__name__, exc)
+
+
 def create_table(topic: str, docstring: str, columns: list[str], rows: dict,
-                  sources: dict, category: str = "", subcategory: str = "") -> str:
-    """Yeni tablo dosyası + registry kaydı. Dönen: table_id."""
+                  sources: dict, category: str = "", subcategory: str = "",
+                  created_from: dict | None = None, cell_sources: dict | None = None) -> str:
+    """Yeni tablo dosyası + registry kaydı. Dönen: table_id.
+
+    created_from: bu tabloyu İLK tetikleyen (banka, url) — {"bank": ..., "url": ...}.
+    Sadece burada, tablo İLK kurulurken yazılır; sonraki eksik-banka ekleme ya
+    da merge'lerde DEĞİŞMEZ (overwrite_table bu alanı kabul etmez), böylece
+    hep tablonun kökenini gösterir.
+
+    cell_sources: {banka: {sütun: [source_dict, ...]}} — `sources` (banka
+    bazlı) ile PARALEL, HÜCRE bazlı iz sürme; sütun bazında hangi point_id/url/
+    tarihten geldiğini taşır. expire_check.py bunu kullanır."""
     with _lock:
         table_id = _slugify(topic)
         base = table_id
@@ -81,7 +119,10 @@ def create_table(topic: str, docstring: str, columns: list[str], rows: dict,
         table = {"id": table_id, "topic": topic, "docstring": docstring,
                   "category": category, "subcategory": subcategory,
                   "columns": columns, "rows": rows, "sources": sources,
+                  "cell_sources": cell_sources or {},
+                  "created_from": created_from or {},
                   "created_at": _now(), "updated_at": _now()}
+        _damgala(table)
         ROOT.mkdir(parents=True, exist_ok=True)
         (ROOT / f"{table_id}.json").write_text(
             json.dumps(table, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -93,27 +134,14 @@ def create_table(topic: str, docstring: str, columns: list[str], rows: dict,
     return table_id
 
 
-def add_row(table_id: str, bank: str, values: dict, sources: list[dict]) -> None:
-    """Mevcut tabloya (ya da eksik sütunlarına) bir bankanın satırını ekler/günceller."""
-    with _lock:
-        table = load_table(table_id)
-        if table is None:
-            return
-        table["rows"][bank] = values
-        table["sources"][bank] = sources
-        for col in values:
-            if col not in table["columns"]:
-                table["columns"].append(col)
-        table["updated_at"] = _now()
-        (ROOT / f"{table_id}.json").write_text(
-            json.dumps(table, ensure_ascii=False, indent=1), encoding="utf-8")
-
-
 def overwrite_table(table_id: str, docstring: str, columns: list[str], rows: dict,
-                      sources: dict, category: str = "", subcategory: str = "") -> None:
+                      sources: dict, category: str = "", subcategory: str = "",
+                      cell_sources: dict | None = None) -> None:
     """Mevcut bir tablonun İÇERİĞİNİ TAMAMEN değiştirir (id/created_at korunur) —
     dedup.py'nin birleştirme adımı tarafından kullanılır (iki tablo tek tabloda
-    toplanınca, kalan tarafın içeriği bu yeni birleşik içerikle değişir)."""
+    toplanınca, kalan tarafın içeriği bu yeni birleşik içerikle değişir).
+    cell_sources: verilmezse (None) mevcut değer KORUNUR — çağıranların hepsi
+    bu alanı bilmek zorunda değil."""
     with _lock:
         table = load_table(table_id)
         if table is None:
@@ -122,9 +150,12 @@ def overwrite_table(table_id: str, docstring: str, columns: list[str], rows: dic
         table["columns"] = columns
         table["rows"] = rows
         table["sources"] = sources
+        if cell_sources is not None:
+            table["cell_sources"] = cell_sources
         table["category"] = category
         table["subcategory"] = subcategory
         table["updated_at"] = _now()
+        _damgala(table)
         (ROOT / f"{table_id}.json").write_text(
             json.dumps(table, ensure_ascii=False, indent=1), encoding="utf-8")
         reg = load_registry()
@@ -161,6 +192,121 @@ def remap_ledger_table(old_id: str, new_id: str) -> None:
                 if isinstance(lst, list) and old_id in lst:
                     rec[key] = [new_id if x == old_id else x for x in lst]
         _save_ledger(led)
+
+
+# --- banka bazlı BENZERSİZ URL havuzu -----------------------------------------
+# NEDEN: URL/tarih baglamasi EN SONDA, toplu ve agentic yapilacak (kullanici
+# karari 2026-08-19) — cunku bir hucreye o bankanin rastgele bir kaynagini
+# baglamak ALAKASIZ URL/tarih damgalayabiliyor. Bu asamada tablolar uretilirken
+# gorulen HER kaynak, BANKA BAZINDA ve BENZERSIZ olarak burada biriktirilir;
+# sondaki eslestirme adiminin girdisi budur.
+#
+# Ayni URL bircok hucrede/tabloda tekrar gecer (bir bilgilendirme formu o
+# bankanin 8 sutununun da kaynagi olabilir) — havuz bunu TEK kayda indirger,
+# hangi tablolarda/point_id'lerde gorundugunu koruyarak.
+URL_HAVUZ = ROOT / "_url_havuzu.json"
+
+
+def load_url_pool() -> dict:
+    """{banka: {url: {point_ids, tables, gecerlilik_baslangic, ...}}}"""
+    if not URL_HAVUZ.exists():
+        return {}
+    try:
+        return json.loads(URL_HAVUZ.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def _save_url_pool(d: dict) -> None:
+    ROOT.mkdir(parents=True, exist_ok=True)
+    tmp = URL_HAVUZ.with_suffix(".json.tmp")       # atomik yazma: yarim dosya kalmasin
+    tmp.write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
+    os.replace(tmp, URL_HAVUZ)
+
+
+def record_url_pool(sources: dict, table_id: str = "") -> None:
+    """`{banka: [source_dict, ...]}` kayitlarini havuza BENZERSIZ ekler.
+
+    Ayni (banka, url) tekrar gelirse yeni point_id/tablo bilgisi mevcut kayda
+    EKLENIR, kayit COGALMAZ. Tarih alanlari yalnizca BOSSA doldurulur — daha
+    once dolu bir tarih asla ezilmez."""
+    if not sources:
+        return
+    with _lock:
+        havuz = load_url_pool()
+        degisti = False
+        for banka, kayitlar in (sources or {}).items():
+            if not banka or not isinstance(kayitlar, list):
+                continue
+            banka_havuz = havuz.setdefault(banka, {})
+            for src in kayitlar:
+                if not isinstance(src, dict):
+                    continue
+                url = (src.get("url") or "").strip()
+                if not url:
+                    continue                       # URL'siz kaynak havuza girmez
+                kayit = banka_havuz.setdefault(url, {
+                    "point_ids": [], "tables": [],
+                    "gecerlilik_baslangic": "", "gecerlilik_bitis": "",
+                    "validity_status": "", "ilk_gorulme": _now(),
+                })
+                pid = (src.get("point_id") or "").strip()
+                if pid and pid not in kayit["point_ids"]:
+                    kayit["point_ids"].append(pid); degisti = True
+                if table_id and table_id not in kayit["tables"]:
+                    kayit["tables"].append(table_id); degisti = True
+                for alan in ("gecerlilik_baslangic", "gecerlilik_bitis",
+                              "validity_status"):
+                    if not kayit.get(alan) and src.get(alan):
+                        kayit[alan] = src[alan]; degisti = True
+        if degisti:
+            _save_url_pool(havuz)
+
+
+# --- indekslenmemiş tablo kuyruğu ---------------------------------------------
+# NEDEN: index_table geçici bir ağ/tünel hatasıyla patlarsa tablo diske yazılır
+# ama arama havuzuna GİRMEZ. İndekssiz tablo mükerrerlik kontrolünde GÖRÜNMEZ
+# olur ve aynı konuda ikinci bir tablo açılır (kanıtlı: 'kasko sigortası' 4 kez).
+# Eskiden bu durum yalnızca loglanıp UNUTULUYORDU; dışarıdan bir nöbetçi script
+# gerekiyordu. Artık başarısızlık burada KAYDEDİLİR ve pipeline bir sonraki
+# tabloyu yazarken kuyruğu kendisi boşaltır — dış müdahale gerekmez.
+INDEKS_KUYRUK = ROOT / "_indeks_kuyrugu.json"
+
+
+def load_index_queue() -> list[str]:
+    if not INDEKS_KUYRUK.exists():
+        return []
+    try:
+        return json.loads(INDEKS_KUYRUK.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+
+
+def _save_index_queue(ids: list[str]) -> None:
+    ROOT.mkdir(parents=True, exist_ok=True)
+    tmp = INDEKS_KUYRUK.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(ids, ensure_ascii=False, indent=1), encoding="utf-8")
+    os.replace(tmp, INDEKS_KUYRUK)
+
+
+def queue_for_index(table_id: str) -> None:
+    """İndekslenemeyen tabloyu kuyruğa al (aynı id iki kez girmez)."""
+    if not table_id:
+        return
+    with _lock:
+        q = load_index_queue()
+        if table_id not in q:
+            q.append(table_id)
+            _save_index_queue(q)
+
+
+def dequeue_index(table_id: str) -> None:
+    """Başarıyla indekslenen tabloyu kuyruktan düşür."""
+    with _lock:
+        q = load_index_queue()
+        if table_id in q:
+            q.remove(table_id)
+            _save_index_queue(q)
 
 
 # --- sayfa ledger'ı -----------------------------------------------------------
