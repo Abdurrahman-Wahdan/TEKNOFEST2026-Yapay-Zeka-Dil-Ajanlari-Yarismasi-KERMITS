@@ -966,6 +966,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Export
+         * @description Turn a table or a report into a file.
+         *
+         *     Held in memory and returned whole rather than streamed. These are documents,
+         *     not feeds: the PDF writer has to lay out every page before it knows what page
+         *     two looks like, and a `Content-Length` is what lets the browser show a real
+         *     progress bar instead of an indeterminate spinner.
+         */
+        post: operations["export"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/search": {
         parameters: {
             query?: never;
@@ -2077,6 +2102,22 @@ export interface components {
              */
             derived: boolean;
         };
+        /**
+         * Decimals
+         * @description A `number` column's precision, as `ResolvedColumn.decimals` resolved it.
+         */
+        Decimals: {
+            /**
+             * Min
+             * @default 0
+             */
+            min: number;
+            /**
+             * Max
+             * @default 0
+             */
+            max: number;
+        };
         /** DependencyOut */
         DependencyOut: {
             /** Name */
@@ -2088,6 +2129,129 @@ export interface components {
              * @default
              */
             detail: string;
+        };
+        /**
+         * ExportCellIn
+         * @description One cell: the datum, and the text the screen showed for it.
+         */
+        ExportCellIn: {
+            /**
+             * Value
+             * @description The raw datum. XLSX writes this, so the column stays arithmetic.
+             */
+            value?: string | number | boolean | null;
+            /**
+             * Display
+             * @description What the table drew, already formatted by `cellDisplayText`. PDF and DOCX write this, so the page reads exactly like the screen.
+             * @default
+             */
+            display: string;
+            /**
+             * Href
+             * @description Link cells, and the source column.
+             * @default
+             */
+            href: string;
+            /**
+             * Note
+             * @description The cell's hover note, if it has one.
+             * @default
+             */
+            note: string;
+            /**
+             * Tone
+             * @description A badge cell's state: neutral | ok | warn | bad.
+             * @default
+             */
+            tone: string;
+        };
+        /** ExportColumnIn */
+        ExportColumnIn: {
+            /** Key */
+            key: string;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+            /**
+             * Type
+             * @description The contract's column type. Unknown values are treated as text.
+             * @default text
+             */
+            type: string;
+            /**
+             * Align
+             * @default left
+             * @enum {string}
+             */
+            align: "left" | "center" | "right";
+            /**
+             * Currency
+             * @description ISO code, for `money` columns.
+             * @default
+             */
+            currency: string;
+            /** @description Decimal places for a `number` column. Sent because Excel needs a number format, and an FX rate rounded to whole lira erases the very comparison the column exists for. */
+            decimals?: components["schemas"]["Decimals"] | null;
+        };
+        /**
+         * ExportRequest
+         * @description What to export, and as what.
+         */
+        ExportRequest: {
+            /**
+             * Format
+             * @enum {string}
+             */
+            format: "csv" | "xlsx" | "pdf" | "docx";
+            /** Source */
+            source: components["schemas"]["TableSource"] | components["schemas"]["ReportSource"];
+        };
+        /**
+         * ExportRowIn
+         * @description One row. `cells` is parallel to `columns` -- one entry each, in order.
+         */
+        ExportRowIn: {
+            /** Cells */
+            cells: components["schemas"]["ExportCellIn"][];
+            /**
+             * Cite Url
+             * @description Where this row came from. Becomes the appended source column: a rate without its source is a number nobody can check.
+             * @default
+             */
+            cite_url: string;
+            /**
+             * Cite Note
+             * @description Why that source supports the row.
+             * @default
+             */
+            cite_note: string;
+        };
+        /**
+         * ExportTableIn
+         * @description A table as the user is looking at it.
+         */
+        ExportTableIn: {
+            /**
+             * Title
+             * @default
+             */
+            title: string;
+            /**
+             * Subtitle
+             * @default
+             */
+            subtitle: string;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+            /** Columns */
+            columns: components["schemas"]["ExportColumnIn"][];
+            /** Rows */
+            rows: components["schemas"]["ExportRowIn"][];
         };
         /**
          * FamilyOut
@@ -2703,6 +2867,19 @@ export interface components {
              */
             created_at: string;
         };
+        /** ReportSource */
+        ReportSource: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "report";
+            /**
+             * Report Id
+             * Format: uuid
+             */
+            report_id: string;
+        };
         /**
          * ReportSummary
          * @description A report without its body, for the list and the notification menu.
@@ -3135,6 +3312,15 @@ export interface components {
              */
             status: "ready" | "generating" | "missing";
             overview?: components["schemas"]["TableOverviewOut"] | null;
+        };
+        /** TableSource */
+        TableSource: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "table";
+            table: components["schemas"]["ExportTableIn"];
         };
         /**
          * TableSummaryOut
@@ -4633,6 +4819,47 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    export: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExportRequest"];
+            };
+        };
+        responses: {
+            /** @description The file. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": unknown;
+                    "application/pdf": unknown;
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": unknown;
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": unknown;
+                };
+            };
+            /** @description Nothing to export, or a format this source cannot take. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The server is missing a tool this format needs. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

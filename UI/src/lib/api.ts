@@ -523,6 +523,31 @@ export const api = {
       method: "POST",
     }),
 
+  // ----- export -----
+
+  /**
+   * A table or a report as a file.
+   *
+   * The only call in this module that does not go through `request`: that helper
+   * ends in `response.json()`, and this response is a spreadsheet. The filename
+   * comes back in `Content-Disposition` rather than being built here, so the
+   * name in the Downloads folder is the one the server put inside the file's own
+   * metadata — see `api/export/filename.py`.
+   */
+  exportFile: async (
+    body: Schemas["ExportRequest"],
+  ): Promise<{ blob: Blob; disposition: string | null }> => {
+    const response = await fetchWithAuthentication("/export", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) throw await toError(response);
+    return {
+      blob: await response.blob(),
+      disposition: response.headers.get("Content-Disposition"),
+    };
+  },
+
   // ----- chat -----
   chatSessions: () => request<ChatSession[]>("/chat/sessions"),
   chatSession: (id: string) => request<ChatSessionDetail>(`/chat/sessions/${id}`),

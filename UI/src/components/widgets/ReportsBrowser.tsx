@@ -10,18 +10,22 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { AttachButton } from "@/components/chat/AttachButton";
+import { ExportButton } from "@/components/ui/ExportButton";
+import { ExportDialog } from "@/components/ui/ExportDialog";
 import { CenteredState } from "@/components/ui/CenteredState";
 import { Pill } from "@/components/ui/Pill";
 import { VuiBox, VuiButton, VuiTypography } from "@/components/vision";
 import { usePathname } from "@/i18n/navigation";
 import { api, type AutomationReportSummary } from "@/lib/api";
 import { REPORT_PARAM, reportSearch } from "@/lib/automations";
+import { REPORT_FORMATS, type ExportFormat, type ExportRequest } from "@/lib/export";
 import { useChat } from "@/lib/chat/ChatProvider";
 import { elideLabel } from "@/lib/chat/context-format";
 import { formatDateTime } from "@/lib/format";
+import { slugifyTitle } from "@/lib/saved-view";
 
 import { UNREAD_KEY } from "./ReportNotifications";
 import { STATS_KEY } from "./ProfileStats";
@@ -227,9 +231,12 @@ function OneReport({
   // The assistant's own namespace: the button names an assistant action, and
   // those strings live together -- the same rule `ProducedTable` follows.
   const tChat = useTranslations("chat");
+  const tExport = useTranslations("export");
   const queryClient = useQueryClient();
   const pathname = usePathname();
   const { attachments, setPopupOpen } = useChat();
+
+  const [exporting, setExporting] = useState(false);
 
   const report = useQuery({
     queryKey: [...REPORTS_KEY, id],
@@ -294,6 +301,26 @@ function OneReport({
     if (pathname !== "/chat") setPopupOpen(true);
   };
 
+  /**
+   * The report as a file.
+   *
+   * Only PDF and Word: a report is prose with tables in it, and a CSV of prose
+   * is a file nobody can open usefully -- the API refuses the other two with a
+   * reason (`api/schemas/export.py`), and `REPORT_FORMATS` is why the dialog
+   * never offers them.
+   *
+   * Sent as an id rather than as a body. The server already holds this report,
+   * so uploading its markdown back would only create a way for the file to
+   * disagree with what is stored.
+   */
+  const exportRequest = useCallback(
+    (format: ExportFormat): ExportRequest => ({
+      format,
+      source: { kind: "report", report_id: id },
+    }),
+    [id],
+  );
+
   return (
     <VuiBox display="flex" flexDirection="column" gap="16px">
       <VuiBox>
@@ -355,14 +382,31 @@ function OneReport({
             </VuiBox>
             {/* Only when there is something to hand over: an empty or failed run
                 has no body, and a button that stages nothing is a broken one. */}
+            {/* Both controls appear only when there is something to act on: an
+                empty or failed run has no body, and a button that produces
+                nothing is a broken one. */}
             {loaded.body && (
-              <AttachButton
-                label={tChat("attachReport")}
-                onClick={attachReport}
-                alwaysVisible
-              />
+              <>
+                <ExportButton
+                  label={tExport("reportButton")}
+                  onClick={() => setExporting(true)}
+                />
+                <AttachButton
+                  label={tChat("attachReport")}
+                  onClick={attachReport}
+                  alwaysVisible
+                />
+              </>
             )}
           </VuiBox>
+
+          <ExportDialog
+            open={exporting}
+            onClose={() => setExporting(false)}
+            formats={REPORT_FORMATS}
+            request={exportRequest}
+            fallbackName={slugifyTitle(loaded.title, "rapor")}
+          />
 
           {/* A failed run still has a report, and it says why. Silence would be
               indistinguishable from an automation the user forgot they made. */}

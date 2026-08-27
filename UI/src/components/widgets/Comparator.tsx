@@ -37,6 +37,7 @@ import { useBankLabels } from "@/lib/use-bank-labels";
 import { useTableSort } from "@/lib/use-table-sort";
 
 import { useAttachTable } from "@/lib/chat/use-attach-table";
+import { useExportTable } from "@/lib/use-export-table";
 import { LiveOverview } from "./LiveOverview";
 import { ProducedTable } from "./ProducedTable";
 import { BoardFilters } from "./BoardFilters";
@@ -578,6 +579,17 @@ export function Comparator() {
     groups: shownGroups,
   });
 
+  // The board's "full table" is every column including the banks and sides the
+  // user unticked, and every row before the filters ran -- which on `/compare`
+  // is a genuinely different document from what is on screen.
+  const exporter = useExportTable({
+    view: { columns: shownColumns, rows },
+    full: { columns: table?.columns ?? [], rows: table?.rows ?? [] },
+    title: tableTitle,
+    subtitle: tableAbout,
+    bankLabels: bankNames,
+  });
+
   const run = () => {
     resetSort();
     setFilters(EMPTY_FILTERS);
@@ -964,7 +976,9 @@ export function Comparator() {
                 about={tableAbout}
                 onAttachRow={attach.onAttachRow}
                 onAttachTable={attach.onAttachTable}
+                onExportTable={exporter.onExportTable}
               />
+              {exporter.dialog}
               </>
             )
           )}

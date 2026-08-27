@@ -73,6 +73,32 @@ mlx-whisper==0.4.3; platform_system == "Darwin" and platform_machine == "arm64"
 # browser.
 voxcpm==2.0.3
 
+# Export (a table or a report as a file: api/export/)
+#
+# `xlsxwriter` and not `openpyxl`: this only ever writes, and write-only is what
+# xlsxwriter is for -- number formats, live hyperlinks, autofilter and a frozen
+# header row without a workbook model in memory behind them.
+XlsxWriter==3.2.9
+# HTML+CSS -> PDF. Chosen over drawing the page with reportlab because @page CSS
+# gives page numbers, a running footer and a table header repeated across every
+# page break for free, and because one stylesheet then serves both a table export
+# and a report export.
+#
+# System dependencies, not pip-installable:
+#   brew install pango       # macOS; also pulls cairo, harfbuzz, gdk-pixbuf
+#   apt install libpango-1.0-0 libpangoft2-1.0-0   # Debian/Ubuntu
+weasyprint==69.0
+# Reading report markdown. Already present as a transitive dependency; declared
+# because api/export/from_report.py imports it directly.
+markdown-it-py==4.2.0
+#
+# `pandoc` is a system dependency too, and DOCX export is the only thing that
+# needs it -- CSV, XLSX and PDF do not:
+#   brew install pandoc      # macOS
+#   apt install pandoc       # Debian/Ubuntu
+# api/export/writers/docx_writer.py refuses with that message rather than
+# failing inside a subprocess, the same rule the PDF note above states.
+
 # Dataprep (agentic crawl + VLM extraction + embed)
 pypdf==6.16.0
 pymupdf==1.28.2

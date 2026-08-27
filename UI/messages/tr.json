@@ -527,5 +527,25 @@
     "emptyBody": "Bu çalışmada yazılacak bir şey çıkmadı.",
     "sources": "Kaynaklar",
     "deletedAutomation": "Bu otomasyon silinmiş"
+  },
+  "export": {
+    "button": "Dışa aktar",
+    "title": "Dışa aktar",
+    "formatLabel": "Biçim",
+    "format": {
+      "csv": "CSV",
+      "xlsx": "Excel",
+      "pdf": "PDF",
+      "docx": "Word"
+    },
+    "scopeLabel": "Kapsam",
+    "scopeView": "Görünür tablo",
+    "scopeFull": "Tüm tablo",
+    "rows": "{count} satır",
+    "cancel": "İptal",
+    "submit": "İndir",
+    "working": "Hazırlanıyor…",
+    "failed": "Dosya oluşturulamadı.",
+    "reportButton": "Raporu dışa aktar"
   }
 }
