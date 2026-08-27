@@ -35,6 +35,7 @@ export function ChatMessage({
   streaming,
   isLast,
   stage,
+  compact = false,
 }: {
   message: AgentMessage;
   /** True when this is the last message and the stream is still open. */
@@ -53,6 +54,8 @@ export function ChatMessage({
    * status.
    */
   stage?: ChatStage;
+  /** Uses the denser type and source-card scale of the floating assistant. */
+  compact?: boolean;
 }) {
   const t = useTranslations("chat");
   // The drawer's own words for the sections our pages live in, so a source card
@@ -78,7 +81,7 @@ export function ChatMessage({
     .join("\n\n");
 
   return (
-    <VuiBox display="flex" flexDirection="column" gap={1}>
+    <VuiBox display="flex" flexDirection="column" gap={compact ? 0.75 : 1}>
       {message.parts.map((part, index) => {
         if (part.type === "error") {
           return (
@@ -142,28 +145,49 @@ export function ChatMessage({
               key={index}
               component="section"
               aria-label={t("sources")}
-              mt={0.75}
+              mt={compact ? 0.25 : 0.75}
               sx={{ maxWidth: "100%", minWidth: 0 }}
             >
               <VuiTypography
                 variant="caption"
                 fontWeight="medium"
                 color="text"
-                sx={{ display: "block", mb: 0.75, opacity: 0.78 }}
+                sx={{
+                  display: "block",
+                  mb: compact ? 0.4 : 0.75,
+                  opacity: 0.78,
+                  ...(compact ? { fontSize: "0.6875rem", lineHeight: 1.25 } : {}),
+                }}
               >
                 {t("sources")}
               </VuiTypography>
               {groups.map((group) => (
-                <VuiBox key={group.key} mb={1}>
+                <VuiBox key={group.key} mb={compact ? 0.625 : 1}>
                   <VuiTypography
                     variant="caption"
                     fontWeight="medium"
                     color="text"
-                    sx={{ display: "block", mb: 0.5, opacity: 0.68 }}
+                    sx={{
+                      display: "block",
+                      mb: compact ? 0.3 : 0.5,
+                      opacity: 0.68,
+                      ...(compact
+                        ? { fontSize: "0.6875rem", lineHeight: 1.2 }
+                        : {}),
+                    }}
                   >
                     {group.label}
                   </VuiTypography>
-                  <VuiBox display="flex" flexWrap="wrap" gap={0.75}>
+                  <VuiBox
+                    display={compact ? "grid" : "flex"}
+                    flexWrap={compact ? undefined : "wrap"}
+                    gap={compact ? 0.4 : 0.75}
+                    sx={
+                      compact
+                        ? { gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }
+                        : undefined
+                    }
+                  >
                     {group.sources.map(({ source }, sourceIndex) => (
                       <VuiBox
                         key={source.url}
@@ -178,15 +202,18 @@ export function ChatMessage({
                         title={source.url}
                         display="flex"
                         alignItems="center"
-                        gap={0.75}
-                        px={1.25}
-                        py={0.75}
+                        gap={compact ? 0.5 : 0.75}
+                        px={compact ? 0.75 : 1.25}
+                        py={compact ? 0.4 : 0.75}
                         sx={{
                           minWidth: 0,
                           maxWidth: "100%",
+                          ...(compact ? { width: "100%" } : {}),
                           color: "var(--control-ink)",
                           border: "1px solid var(--border)",
-                          borderRadius: "var(--radius-md)",
+                          borderRadius: compact
+                            ? "var(--radius-sm)"
+                            : "var(--radius-md)",
                           textDecoration: "none",
                           backgroundColor: "transparent",
                           transition: "border-color 120ms ease, background-color 120ms ease",
@@ -204,7 +231,13 @@ export function ChatMessage({
                           variant="caption"
                           fontWeight="bold"
                           color="inherit"
-                          sx={{ color: "var(--primary-strong)", flex: "0 0 auto" }}
+                          sx={{
+                            color: "var(--primary-strong)",
+                            flex: "0 0 auto",
+                            ...(compact
+                              ? { fontSize: "0.75rem", lineHeight: 1.2 }
+                              : {}),
+                          }}
                         >
                           {sourceIndex + 1}
                         </VuiTypography>
@@ -219,6 +252,9 @@ export function ChatMessage({
                               textOverflow: "ellipsis",
                               whiteSpace: "nowrap",
                               maxWidth: "24rem",
+                              ...(compact
+                                ? { fontSize: "0.75rem", lineHeight: 1.2 }
+                                : {}),
                             }}
                           >
                             {source.title || source.bank || source.url}
@@ -227,7 +263,19 @@ export function ChatMessage({
                             variant="caption"
                             fontWeight="regular"
                             color="text"
-                            sx={{ display: "block", opacity: 0.65 }}
+                            sx={{
+                              display: "block",
+                              opacity: 0.65,
+                              ...(compact
+                                ? {
+                                    fontSize: "0.6875rem",
+                                    lineHeight: 1.2,
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
+                                  }
+                                : {}),
+                            }}
                           >
                             {group.key === "site"
                               ? navLabel(tNav, siteSection(source.url), siteSection(source.url))
@@ -237,9 +285,15 @@ export function ChatMessage({
                         {/* An arrow for a page in this app, the external-link
                             glyph only for links that really do leave it. */}
                         {group.key === "site" ? (
-                          <ArrowRight size={13} aria-hidden="true" />
+                          <ArrowRight
+                            size={compact ? 12 : 13}
+                            aria-hidden="true"
+                          />
                         ) : (
-                          <ExternalLink size={13} aria-hidden="true" />
+                          <ExternalLink
+                            size={compact ? 12 : 13}
+                            aria-hidden="true"
+                          />
                         )}
                       </VuiBox>
                     ))}
@@ -381,7 +435,10 @@ export function ChatMessage({
                 variant="button"
                 fontWeight="regular"
                 color="white"
-                sx={{ lineHeight: 1.6 }}
+                sx={{
+                  lineHeight: compact ? 1.45 : 1.6,
+                  ...(compact ? { fontSize: "0.8125rem" } : {}),
+                }}
               >
                 {part.text}
               </VuiTypography>
@@ -419,7 +476,9 @@ export function ChatMessage({
             // blocks, and a bubble around a table is a box inside a box.
             sx={{ maxWidth: "100%", minWidth: 0, width: "100%" }}
           >
-            <AgentMarkdown streaming={streaming}>{part.text}</AgentMarkdown>
+            <AgentMarkdown compact={compact} streaming={streaming}>
+              {part.text}
+            </AgentMarkdown>
           </VuiBox>
         );
       })}

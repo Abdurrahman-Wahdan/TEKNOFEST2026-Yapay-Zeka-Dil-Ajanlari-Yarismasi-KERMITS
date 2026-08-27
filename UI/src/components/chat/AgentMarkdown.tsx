@@ -72,6 +72,7 @@ const components = {
       color="inherit"
       sx={{ color: "var(--foreground)", display: "block", lineHeight: 1.7, my: 1 }}
       {...domProps(props)}
+      data-chat-markdown="paragraph"
     />
   ),
 
@@ -89,6 +90,7 @@ const components = {
       // shared CSS token switches atomically with the page theme.
       sx={{ color: "var(--foreground)", mt: 2.5, mb: 1 }}
       {...domProps(props)}
+      data-chat-markdown="h1"
     />
   ),
   h2: (props: El<"h2">) => (
@@ -104,6 +106,7 @@ const components = {
         fontSize: "1rem",
       }}
       {...domProps(props)}
+      data-chat-markdown="h2"
     />
   ),
   h3: (props: El<"h3">) => (
@@ -118,6 +121,7 @@ const components = {
         mb: 0.5,
       }}
       {...domProps(props)}
+      data-chat-markdown="h3"
     />
   ),
 
@@ -378,10 +382,13 @@ const MarkdownScope = styled("div")({
 export function AgentMarkdown({
   children,
   streaming,
+  compact = false,
 }: {
   children: string;
   /** True while this message is still arriving. Drives Streamdown's caret. */
   streaming?: boolean;
+  /** Tightens answer typography without changing the full chat page. */
+  compact?: boolean;
 }) {
   const t = useTranslations("chat");
 
@@ -401,7 +408,35 @@ export function AgentMarkdown({
 
   return (
     <MarkdownTableProvider value={tableTools}>
-    <MarkdownScope>
+    <MarkdownScope
+      sx={
+        compact
+          ? {
+              "& .MuiTypography-button, & li": {
+                fontSize: "0.8125rem",
+                lineHeight: 1.5,
+              },
+              '& [data-chat-markdown="paragraph"]': { my: 0.625 },
+              '& [data-chat-markdown="h1"]': {
+                fontSize: "1rem",
+                mt: 1.5,
+                mb: 0.625,
+              },
+              '& [data-chat-markdown="h2"]': {
+                fontSize: "0.875rem",
+                mt: 1.5,
+                mb: 0.625,
+              },
+              '& [data-chat-markdown="h3"]': {
+                fontSize: "0.8125rem",
+                mt: 1.25,
+                mb: 0.4,
+              },
+              "& ul, & ol": { my: 0.625 },
+            }
+          : undefined
+      }
+    >
       <Streamdown
         mode={streaming ? "streaming" : "static"}
         // The reason this component exists. Explicit rather than relying on the

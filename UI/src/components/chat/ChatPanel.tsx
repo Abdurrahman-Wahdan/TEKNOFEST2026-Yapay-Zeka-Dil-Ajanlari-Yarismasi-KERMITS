@@ -26,12 +26,15 @@ export function ChatPanel({
   emptyState = "bottom",
   autoFocus,
   placeholder,
+  compact = false,
 }: {
   /** Passed straight to the composer: a fixed prompt instead of the examples. */
   placeholder?: string;
   /** `center` floats the composer mid-screen until the first message. */
   emptyState?: "center" | "bottom";
   autoFocus?: boolean;
+  /** Condenses transcript typography and spacing for the floating assistant. */
+  compact?: boolean;
 }) {
   const t = useTranslations("chat");
   const { messages, status, stage } = useChat();
@@ -70,7 +73,12 @@ export function ChatPanel({
         </VuiBox>
       ) : (
         <>
-          <ChatMessageList messages={messages} status={status} stage={stage} />
+          <ChatMessageList
+            messages={messages}
+            status={status}
+            stage={stage}
+            compact={compact}
+          />
           <VuiBox px={2} pb={2} sx={{ flexShrink: 0 }}>
             <ChatComposer autoFocus={autoFocus} placeholder={placeholder} />
           </VuiBox>

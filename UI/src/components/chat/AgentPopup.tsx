@@ -296,7 +296,7 @@ export function AgentPopup() {
             {/* The compact composer, and no centred empty state: in a 420px panel
                 a vertically-centred composer with a heading above it leaves almost
                 no room for the answer. */}
-            <ChatPanel autoFocus placeholder={t("placeholder")} />
+            <ChatPanel compact autoFocus placeholder={t("placeholder")} />
           </VuiBox>
         </VuiBox>
       )}
