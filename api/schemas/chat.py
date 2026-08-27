@@ -36,6 +36,30 @@ class ChatSessionOut(BaseModel):
     updated_at: datetime
 
 
+class MessageFeedbackOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    message_id: uuid.UUID
+    rating: Literal["up", "down"]
+    note: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class MessageFeedbackRequest(BaseModel):
+    rating: Literal["up", "down"]
+    note: str = Field(min_length=1, max_length=4000)
+
+    @field_validator("note")
+    @classmethod
+    def clean_note(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Feedback cannot be empty.")
+        return cleaned
+
+
 class ChatMessageOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -58,6 +82,7 @@ class ChatMessageOut(BaseModel):
         ),
     )
     created_at: datetime
+    feedback: MessageFeedbackOut | None = None
 
 
 class ChatSessionDetail(ChatSessionOut):

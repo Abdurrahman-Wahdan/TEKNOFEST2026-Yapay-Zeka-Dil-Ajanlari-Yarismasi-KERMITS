@@ -103,6 +103,8 @@ def build_main_agent(model: str | None = None, thinking: bool = False):
     tools = supervisor_tools()
     compaction, _ = main_compaction(model)
     prompt = system_prompt()
+    from .feedback import inject_feedback_context
+
     return create_agent(
         # stream_usage: this agent streams, and a streamed response carries no
         # usage at all without it -- measured, every chunk came back with
@@ -114,7 +116,7 @@ def build_main_agent(model: str | None = None, thinking: bool = False):
         system_prompt=prompt,
         context_schema=AgentContext,
         checkpointer=get_checkpointer(),
-        middleware=[compaction],
+        middleware=[compaction, inject_feedback_context],
     )
 
 

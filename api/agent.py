@@ -851,6 +851,7 @@ def _agent_answer(
     model: str | None = None,
     web_search: bool = False,
     user_id: uuid.UUID | None = None,
+    feedback_notes: str = "",
     attachments: list[ResolvedAttachment] | None = None,
 ) -> Iterator[StreamEvent]:
     """Stream the supervisor while keeping its checkpoint state private."""
@@ -918,6 +919,8 @@ def _agent_answer(
         }
         if user_id is not None:
             run_context["user_id"] = str(user_id)
+        if feedback_notes:
+            run_context["feedback_notes"] = feedback_notes
         def _stream_turn(turn_messages: list):
             """One supervisor pass: private tool traffic in, public events out."""
             # The supervisor has stopped calling banks and started composing. The
@@ -1131,6 +1134,7 @@ def answer(
     user_id: uuid.UUID | None = None,
     session_id: uuid.UUID | None = None,
     web_search: bool = False,
+    feedback_notes: str = "",
     attachments: list[ResolvedAttachment] | None = None,
 ) -> Iterator[StreamEvent]:
     """Answer through the supervisor when a persisted chat session is available.
@@ -1152,5 +1156,6 @@ def answer(
         think=think, model=model,
         web_search=web_search,
         user_id=user_id,
+        feedback_notes=feedback_notes,
         attachments=attachments,
     )

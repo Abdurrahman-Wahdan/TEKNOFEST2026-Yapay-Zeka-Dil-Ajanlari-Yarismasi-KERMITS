@@ -491,6 +491,7 @@ export function ChatMessage({
           messageId={message.id}
           markdown={answerText}
           isLast={Boolean(isLast)}
+          feedback={message.feedback}
         />
       )}
     </VuiBox>

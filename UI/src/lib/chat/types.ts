@@ -82,6 +82,16 @@ export type AgentMessage = {
   id: string;
   role: "user" | "assistant";
   parts: MessagePart[];
+  feedback?: MessageFeedback;
+};
+
+export type MessageFeedback = {
+  id: string;
+  messageId: string;
+  rating: "up" | "down";
+  note: string;
+  createdAt: string;
+  updatedAt: string;
 };
 
 import type { ContextLocation } from "./page-locator";
@@ -293,6 +303,7 @@ export type ChatRequest = {
  */
 export type ChatChunk =
   | { type: "text-delta"; delta: string }
+  | { type: "done"; messageId: string; sessionId: string }
   /**
    * Which part of the turn the agent has reached.
    *

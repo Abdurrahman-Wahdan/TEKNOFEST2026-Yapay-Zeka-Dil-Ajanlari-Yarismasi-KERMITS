@@ -25,7 +25,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
-    Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text,
+    Boolean, CheckConstraint, DateTime, Float, ForeignKey, Index, Integer, String, Text,
     UniqueConstraint, text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -193,6 +193,30 @@ class ChatMessage(UUIDMixin, TimestampMixin, Base):
     parts: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
 
     session: Mapped[ChatSession] = relationship(back_populates="messages")
+    feedback: Mapped["ChatFeedback | None"] = relationship(
+        back_populates="message",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
+
+
+class ChatFeedback(UUIDMixin, TimestampMixin, Base):
+    """The user's current verdict and note for one assistant answer."""
+
+    __tablename__ = "chat_feedback"
+    __table_args__ = (
+        CheckConstraint("rating IN ('up', 'down')", name="ck_chat_feedback_rating"),
+    )
+
+    message_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("chat_messages.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    rating: Mapped[str] = mapped_column(String(8), nullable=False)
+    note: Mapped[str] = mapped_column(Text, nullable=False)
+
+    message: Mapped[ChatMessage] = relationship(back_populates="feedback")
 
 
 class TableOverview(UUIDMixin, TimestampMixin, Base):

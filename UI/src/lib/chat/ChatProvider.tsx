@@ -46,6 +46,7 @@ import type {
   ChatStatus,
   ClientToolName,
   MessagePart,
+  MessageFeedback,
   PageViewMode,
   ToolResult,
   WebCitation,
@@ -139,6 +140,11 @@ type ChatContextValue = {
   openConversation: (id: string) => void;
   /** Delete one, on the server. If it is the open one, this starts a fresh chat. */
   deleteConversation: (id: string) => void;
+  saveFeedback: (
+    messageId: string,
+    rating: MessageFeedback["rating"],
+    note: string,
+  ) => Promise<void>;
 };
 
 /**
@@ -538,6 +544,21 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                   citedSources.push(chunk.citation);
                 }
                 render(answerParts());
+                continue;
+              }
+
+              if (chunk.type === "done") {
+                setMessages((prev) => prev.map((message) =>
+                  message.id === assistantId
+                    ? { ...message, id: chunk.messageId }
+                    : message
+                ));
+                if (lastTurnRef.current?.assistantId === assistantId) {
+                  lastTurnRef.current = {
+                    ...lastTurnRef.current,
+                    assistantId: chunk.messageId,
+                  };
+                }
                 continue;
               }
 
@@ -945,6 +966,37 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     [activeId, attachments, queryClient, serverSessionId],
   );
 
+  const saveFeedback = useCallback(
+    async (messageId: string, rating: MessageFeedback["rating"], note: string) => {
+      if (!serverSessionId) {
+        throw new Error("This answer has not been saved yet.");
+      }
+      const saved = await api.saveMessageFeedback(serverSessionId, messageId, {
+        rating,
+        note,
+      });
+      setMessages((prev) => prev.map((message) =>
+        message.id === messageId
+          ? {
+              ...message,
+              feedback: {
+                id: saved.id,
+                messageId: saved.message_id,
+                rating: saved.rating,
+                note: saved.note,
+                createdAt: saved.created_at,
+                updatedAt: saved.updated_at,
+              },
+            }
+          : message
+      ));
+      await queryClient.invalidateQueries({
+        queryKey: ["chat", "session", serverSessionId],
+      });
+    },
+    [queryClient, serverSessionId],
+  );
+
   const value = useMemo(
     () => ({
       messages,
@@ -971,6 +1023,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       activeId,
       openConversation,
       deleteConversation,
+      saveFeedback,
     }),
     [
       messages,
@@ -993,6 +1046,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       activeId,
       openConversation,
       deleteConversation,
+      saveFeedback,
     ],
   );
 

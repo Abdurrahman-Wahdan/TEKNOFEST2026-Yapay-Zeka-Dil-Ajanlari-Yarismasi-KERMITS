@@ -140,8 +140,13 @@ export async function* fetchChat(
         // refetch of the list.
         action: event.automation_action === "created" ? "created" : "updated",
       };
-    } else if (event.type === "done" && event.session_id) {
+    } else if (event.type === "done" && event.session_id && event.message_id) {
       request.onSessionId?.(event.session_id);
+      yield {
+        type: "done",
+        sessionId: event.session_id,
+        messageId: event.message_id,
+      };
     }
   }
 }

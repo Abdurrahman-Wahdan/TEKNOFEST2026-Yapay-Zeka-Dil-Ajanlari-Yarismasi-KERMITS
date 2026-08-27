@@ -16,6 +16,9 @@ import { RoundButton } from "@/components/ui/RoundButton";
 import { VuiBox } from "@/components/vision";
 import { useChat } from "@/lib/chat/ChatProvider";
 import { useSpeech } from "@/lib/chat/speech";
+import type { MessageFeedback } from "@/lib/chat/types";
+
+import { FeedbackDialog } from "./FeedbackDialog";
 
 /** How long the copy button stays a tick before going back to being a copy button. */
 const COPIED_MS = 2000;
@@ -55,10 +58,12 @@ export function MessageActions({
   markdown,
   /** Whether this is the newest answer, and so the one a retry would replace. */
   isLast,
+  feedback,
 }: {
   messageId: string;
   markdown: string;
   isLast: boolean;
+  feedback?: MessageFeedback;
 }) {
   const t = useTranslations("chat");
   const locale = useLocale();
@@ -74,16 +79,8 @@ export function MessageActions({
     if (copiedTimer.current) clearTimeout(copiedTimer.current);
   }, []);
 
-  /**
-   * The user's verdict on this answer.
-   *
-   * Local, and honestly so: there is no feedback endpoint yet, so this is the
-   * press being acknowledged and nothing more -- it does not survive a reload
-   * and nothing reads it. When there is somewhere to send it, this `useState`
-   * becomes the call and `vote` becomes its optimistic state; the button, its
-   * pressed styling and its labels are already right.
-   */
-  const [vote, setVote] = useState<"up" | "down" | null>(null);
+  const [dialogRating, setDialogRating] = useState<"up" | "down" | null>(null);
+  const vote = feedback?.rating ?? null;
 
   const copy = useCallback(() => {
     /*
@@ -166,7 +163,7 @@ export function MessageActions({
         size={BUTTON_PX}
         label={t("goodResponse")}
         active={vote === "up"}
-        onClick={() => setVote(vote === "up" ? null : "up")}
+        onClick={() => setDialogRating("up")}
       >
         <ThumbsUp size={GLYPH_PX} fill={vote === "up" ? "currentColor" : "none"} />
       </RoundButton>
@@ -174,10 +171,19 @@ export function MessageActions({
         size={BUTTON_PX}
         label={t("badResponse")}
         active={vote === "down"}
-        onClick={() => setVote(vote === "down" ? null : "down")}
+        onClick={() => setDialogRating("down")}
       >
         <ThumbsDown size={GLYPH_PX} fill={vote === "down" ? "currentColor" : "none"} />
       </RoundButton>
+      {dialogRating && (
+        <FeedbackDialog
+          open
+          messageId={messageId}
+          rating={dialogRating}
+          existing={feedback}
+          onClose={() => setDialogRating(null)}
+        />
+      )}
     </VuiBox>
   );
 }

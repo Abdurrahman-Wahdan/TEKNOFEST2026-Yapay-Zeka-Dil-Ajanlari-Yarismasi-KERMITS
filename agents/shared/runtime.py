@@ -15,3 +15,6 @@ class AgentContext(TypedDict):
     #: (`create_automation`, `list_automations`). A tool reading it must handle
     #: its absence by refusing in prose, not by raising.
     user_id: NotRequired[str]
+    #: Loaded fresh from Postgres for every turn and injected transiently into
+    #: model calls, rather than checkpointed as a fake transcript message.
+    feedback_notes: NotRequired[str]
