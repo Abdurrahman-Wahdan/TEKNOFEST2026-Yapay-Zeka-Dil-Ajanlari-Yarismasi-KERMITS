@@ -4,9 +4,23 @@ Katılım bankalarının web sitelerinden **müşteriye yönelik kampanya ve ür
 bilgisini** toplayıp, dashboard ve chatbot için temiz bir veri seti üretir.
 İki aşamalıdır ve her kararı bir LLM verir (kural/regex yoktur).
 
+AŞAMA YAPISI (kullanıcı kararı 2026-08-22):
+
+| Aşama | Ne yapar | Komut |
+|---|---|---|
+| **1** | URL budama (LLM triage) + sayfa/PDF'i HIZLA indirme. Metin temizleme YOK. | `python -m dataprep.crawl.graph --bank <b>` |
+| **2** | görselleri işleme | `python -m dataprep.content <b> --stage images` |
+| **3** | PDF metni işleme | `python -m dataprep.content <b> --stage pdf-text` |
+| **4** | sayfaları temizleme + TÜM etiketler (tarih, gerekli/gereksiz) | `python -m dataprep.pages <b>` |
+
+Sayfa başına LLM **bir kez** çalışır (aşama 4). Eskiden crawl sırasında da
+`clean_page` çağrılıyordu — iki kat GPU ve ~1 sayfa/90sn'lik seri hasat
+demekti. Aşama 1 artık ağ hızında, `HARVEST_CONCURRENCY=50` ile paralel.
+Ham metin `_raw/` altına yazılır; aşama 4 oradan besleniyor.
+
 ```
 dataprep/
-  crawl/            AŞAMA 1 — agentic site indirme
+  crawl/            AŞAMA 1 — agentic site indirme (LLM: sadece triage)
     graph.py          LangGraph orkestrasyon (CLI giriş noktası)
     frontier.py       keşif: sitemap veya özyinelemeli BFS → URL ağacı
     policy.py         triage: her dal için LLM kararı (DIVE/FETCH/SKIP)

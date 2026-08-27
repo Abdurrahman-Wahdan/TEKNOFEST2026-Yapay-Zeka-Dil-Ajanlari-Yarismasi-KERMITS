@@ -1,6 +1,6 @@
 """TOM Katılım'a özel düzeltmeler.
 
-Tespit (2026-08-12):
+Tespit:
   * İçerik uzantısız yolda yaşıyor (/urunlerimiz, /vadeli-hesap ...).
   * Aynı içeriğin '.html' biçimi (/urunlerimiz.html) SUNUCUDA YOK ama
     HTTP 200 + gövdede "Server Error 404" (soft-404) döndürüyor.

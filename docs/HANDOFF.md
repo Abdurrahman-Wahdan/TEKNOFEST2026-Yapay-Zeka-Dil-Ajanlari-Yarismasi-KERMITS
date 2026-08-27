@@ -1,214 +1,557 @@
-# Handoff — TF26
+# Handoff — TF26 Karşılaştırma Tablosu Boru Hattı
 
-State as of 2026-08-08. Read `FINDINGS.md` alongside this; it holds the measured
-behaviour of the models and the first bank endpoint contract in full.
+**Durum: 20 Ağustos 2026.** Tablo üretimi tamamlandı.
+Tüm sayılar bu tarihte canlı depodan ölçüldü.
 
----
-
-## 1. Where the project is
-
-The repo was rebuilt from scratch this session. Everything before it was
-exploratory and has been deleted on purpose.
-
-**Committed and working** (`d8721a7`):
-
-```
-config/settings.py      one flat pydantic-settings class, roles validated at startup
-llm/                    factory + providers/{base,vllm_provider}   3 local models
-embeddings/             factory + providers/{base,local_provider}  sentence-transformers
-vector_stores/          factory + client + providers/{base,qdrant_provider}
-tests/unit/ (24)        no network
-tests/integration/ (8)  real vLLM + real Qdrant
-docs/FINDINGS.md        measured model behaviour, vLLM flags, MCP traps, endpoints
-docs/ARCHITECTURE.md    layout and how to add a provider
-```
-
-`32 passed, 4 skipped` — the skips are embedding tests that refuse to trigger a
-2 GB model download. Warm the cache with
-`python -c "from embeddings import get_embedding; get_embedding()"`.
-
-Run everything with `~/.pyenv/versions/tf26/bin/python`. Qdrant must be up for
-integration tests:
-`docker run -d --name qdrant -p 6333:6333 -v "$HOME/qdrant_storage:/qdrant/storage" qdrant/qdrant`
-
-**Not built yet:** the agent layer, the bank registry, the health checker. The
-skills system was deliberately abandoned — see §5.
+Kök dizin: `/Users/ifa/Desktop/TEKNOFEST/TF26`
 
 ---
 
-## 2. What the user actually wants (the target architecture)
+## 0. Sistem tek paragrafta
 
-Three phases, agreed explicitly:
+10 Türk katılım bankasının sitesi taranır; sayfalar ve PDF'ler LLM ile temiz
+Markdown'a çevrilir; görseller VLM ile okunur. Tüm metin 8196 karakterlik %10
+örtüşmeli parçalara bölünüp Qdrant'a gömülür. Sonra bir ajan hattı bu havuzu
+gezip "bu sayfa karşılaştırılabilir mi?" diye sorar; karşılaştırılabilir
+konular için 10 bankaya paralel araştırma ajanı gönderip tablo kurar. En sonda
+mükerrer tablolar birleştirilir, her referans denetlenir ve satırlara
+geçerlilik tarihi damgalanır.
 
-1. **Discovery, once per bank.** An agent drives each bank's calculator in a
-   browser, watches the network, and records the backend endpoint contract.
-   Dispatched by hand.
-2. **Live use.** The chatbot calls those endpoints directly at question time
-   with the user's own amount and term. No browser. ~0.3 s instead of ~130 s.
-3. **Daily health check, no AI.** Plain software calls every recorded endpoint
-   each morning. All green → the agent never runs. Bank X fails → re-run
-   discovery for that bank only.
+**Terminoloji (her prompt'ta tekrarlanır):** Bunlar *katılım bankası* (faizsiz)
+verileridir. "kredi"/"faiz" değil **"finansman" / "kâr payı" / "kâr oranı"**
+kullanılır. Tek istisna yerleşik ürün adı olan "kredi kartı".
 
-Rules the user set, in their words:
+### Ölçülen durum
 
-- **The agent must adapt, not memorise.** A new bank with an unfamiliar layout
-  has to be findable by reasoning. It must also be able to conclude "this bank
-  has no calculator" and record that as a legitimate answer.
-- **Never compute a number ourselves.** The endpoint's value is the truth. No
-  reverse-engineered formulas. (One was derived for Kuveyt Türk — it is in
-  FINDINGS as a curiosity, explicitly *not* a fallback.)
-- **All products**, whatever each bank calculates live.
-- **Everything in English** — code, comments, docs.
-- **Write only what we use.** No stub providers, no unused settings fields, no
-  API-key placeholders until an API provider actually exists.
-- Short and plain. Over-engineering is unacceptable.
-- Endpoint records live in the repo for now.
-
----
-
-## 3. Bank discovery — where it got to
-
-Ten banks (`example.bank.list.txt`). **9 of 10 have live calculators.**
-
-| bank | platform | endpoint(s) confirmed |
-|---|---|---|
-| Kuveyt Türk | Magiclick | `POST /ck0d84?3013…` finansman · `POST /ck0d84?1E32…` kâr payı |
-| Albaraka | Unigate | `GET /plugins/getFinanceCalculate?Slug=…` · `GET /plugins/getProfitShareCalculate` |
-| Vakıf | Unigate | `POST /plugins/FinancingComputationExecute` · `InstallmentPayBack` · `FinancingInstallment` · `GrossAmountCalculationJson` |
-| Emlak | Unigate | `GET /Plugins/CalculateProfitShareRate` · `GET /Plugins/CalculateLoansProduct` |
-| Ziraat | Drupal | `POST /ajax/finansmanhesapla?_wrapper_format=drupal_ajax` · `POST /ajax/get-vade` |
-| Türkiye Finans | SharePoint | `GET /_vti_bin/TurkiyeFinansServices/FrontEndService.svc/GetFinanceCalculatorCreditTypeItems` |
-| T.O.M. | REST | `POST webintegration.tombank.com.tr/webintegration/api/LoanCalculation/GetLoanPayBackPlan` |
-| Dünya | ASP.NET Core | `POST /LoanCheckRate?lang=tr` · `POST /DividendEstimatedProfit?lang=tr` |
-| Hayat Finans | Next.js | `POST /api/integration/calculateloansproduct` |
-| **Adil** | — | **none.** 17 links total, 10 internal, zero form fields anywhere |
-
-Raw captures with request/response bodies: `docs/discovery/captured/*.json`.
-Only the first Kuveyt Türk contract (alışveriş finansmanı) is fully verified
-end to end — see FINDINGS §9 for its exact body, headers and a cost comparison.
-
-### The generalisation that makes the agent adaptable
-
-Fingerprint the CMS, then look for **that platform's XHR convention**:
-
-| platform | convention |
+| | |
 |---|---|
-| Unigate | `/[Pp]lugins/<Name>` |
-| Magiclick | `/ck0d84?<hash>` — opaque, **a different hash per calculator** |
-| Drupal | `/ajax/<name>?_wrapper_format=drupal_ajax` |
-| SharePoint | `/_vti_bin/<Service>.svc/<Method>` |
-| ASP.NET Core | `/<Action>?lang=tr` + CSRF token |
-| Next.js / REST | `/api/...` JSON |
-
-I predicted the Unigate shape after Albaraka and it held for Vakıf and Emlak —
-three for three on plugin names never seen before. That is the rule to encode,
-not a list of paths.
-
-### What is still missing
-
-- Roughly **11 of an estimated 35–40 endpoints** captured. Each bank has several
-  calculators (finansman variants, kâr payı, kart taksit, leasing, döviz).
-- Only Kuveyt Türk's alışveriş endpoint has been called successfully **without a
-  browser** and matched against the site. **Every other endpoint is unverified.**
-- Product-code dimensions are not enumerated. Kuveyt Türk's single endpoint
-  serves many products via `p4`/`p5`; Albaraka splits by `Slug`. Without the
-  code list the chatbot can only answer for one product per bank.
-- Auth requirements not mapped per endpoint. At least Vakıf, Dünya and Albaraka
-  need a CSRF token or session cookie — a stateless check will 403.
-
-### The user's last instruction (do this next)
-
-> "get all the endpoints from one bank at a time and then see what endpoints we
-> need — the necessary ones for interactions and live use — get these endpoints,
-> test them, make sure it is working, then move to the next bank"
-
-and
-
-> "don't use the vocabulary, it will cause us to lose banks — get all the
-> endpoints then see what we need"
-
-So: **per bank, capture everything, then select, then verify over plain HTTP
-before moving on.** Do not filter by Turkish banking words during capture.
+| Banka | 10 |
+| Site sayfası (md) | 8.522 |
+| PDF | 839 |
+| Temizlenmiş içerik (md) | 5.083 site + 836 PDF |
+| Qdrant chunk (`campaigns`) | 7.030 |
+| Tablo | 403 |
+| Tablo satırı | 4.030 |
+| Referans (benzersiz point_id) | 2.456 |
+| Sağlam referans | %93,2 |
+| Doğrulanmış geçerlilik tarihi | 193 satır |
 
 ---
 
-## 4. Traps — every one of these cost real time
+## 1. Altyapı
 
-**Discovery**
+| Bileşen | Değer | Nerede tanımlı |
+|---|---|---|
+| Sohbet modeli | `google/gemma-4-31B-it` | `llm/providers/vllm_provider.py` |
+| Model rotası | `/gemma/v1` | `llm/providers/vllm_provider.py` |
+| Gömme modeli | `Qwen/Qwen3-Embedding-0.6B` | `config/settings.py` |
+| Gömme rotası / boyut | `/embed/v1` · 1024 | `config/settings.py` |
+| Vektör deposu | `http://localhost:6333` | `config/settings.py` |
+| Kaynak koleksiyonu | `campaigns` | `dataprep/embed.py` |
+| Tablo koleksiyonu | `compare_tables` | `dataprep/compare/retrieval.py` |
 
-- **A failed trigger looks exactly like "no calculator."** I wrongly reported
-  four banks as having none. Each time my click had simply missed. A negative
-  result is only valid once the trigger provably fired — check whether the
-  on-page result changed before concluding anything.
-- **The accessibility tree lies by omission.** Vakıf's inputs have ids but no
-  labels, so `browser_snapshot` reported zero textboxes on a working
-  calculator. TOM and Türkiye Finans buttons are not `button` nodes either.
-  **Query the DOM; treat the a11y tree as a hint only.**
-- **Three of nine calculators are on the homepage with no dedicated URL**
-  (Ziraat, Dünya, Hayat Finans). URL-based discovery is structurally blind to
-  them.
-- **Vocabulary filtering loses banks.** These are participation banks: kâr payı
-  not faiz, finansman not kredi, katılma hesabı not mevduat. Worse, my exclusion
-  regex `/ara|search/` silently matched **`anapara`** and skipped every
-  principal-amount field.
-- **Clicking anchors navigates away** and destroys page state. Skip `<a>` with a
-  real `href`.
-- **Setting `.value` is not enough** — use the native setter plus
-  `input`/`change`/`keyup`/`blur`, or framework listeners never fire.
-- **Pages fire a call on load with their own defaults.** Albaraka's first
-  request used 150000/23, not my input. Naive diffing captures the wrong one.
-- **Don't judge a request by its URL.** `ck0d84?<hash>` looks like a bot beacon;
-  it is the calculator. Only the response body tells you.
-- **4 of 10 URLs in the bank list are wrong or stale.** Resolve domains first.
-- **`httpx` fails where Chrome succeeds** — Dünya times out under httpx, loads
-  fine in the browser. An HTTP-only health check would call it dead.
-- **Cross-subdomain APIs exist.** TOM's endpoint is on
-  `webintegration.tombank.com.tr`. A same-origin filter drops it — my
-  `capture.py` still has this bug at line ~150 (`if origin not in ...`). Fix
-  before reusing.
+> `settings.QDRANT_COLLECTION_CHUNKS` = `bank_chunks` görünür ama **tablo hattı
+> onu kullanmaz.** Hat `campaigns` ve `compare_tables` koleksiyonlarını
+> `os.environ` üzerinden ayrı okur.
 
-**Infrastructure** (details in FINDINGS §5–7)
+### Tünel: adres kendiliğinden değişir
 
-- MCP: use `async with client.session(...)` + `load_mcp_tools(session)`.
-  `get_tools()` opens a new session per call, so Playwright gets a fresh browser
-  each time and the page is always `about:blank`.
-- MCP tool results are **lists**; `str()` produces a Python repr with literal
-  `\n`. Convert properly or regexes silently fail.
-- vLLM: "System message must be at the beginning", and `AIMessage.tool_calls`
-  must keep their matching `ToolMessage`s or you get a 400.
-- Token estimate for Turkish + YAML is `chars/3`, not `/4`.
+vLLM sunucusu `lhr.life` tüneli arkasında ve **adres periyodik olarak
+değişir.** Canlı adres bir GitHub gist'inde tutulur; `config/tunnel.py` onu
+çekip `.env`'e yazar.
 
----
+```python
+# config/tunnel.py
+_GIST_URL = ("https://gist.githubusercontent.com/dijitalkariyermerkezi/"
+             "e91ef0ddbc60b3e241c6b3e602cad5c8/raw/tunnel_url.txt")
 
-## 5. Decisions already made — don't relitigate
+url = f"{_GIST_URL}?t={int(time.time())}"   # CDN önbelleğini kırar
+tunnel.refresh_if_needed()                   # her hatadan sonra çağrılır
+```
 
-- **Skills are dropped.** A full three-agent skill system was built and then
-  abandoned; the endpoint approach replaced it (15× faster, 50× fewer tokens).
-  Only the *lesson* survives in FINDINGS §8.
-- **`function_calling` for structured extraction**, never `json_schema` — the
-  latter fabricates values for absent fields (qwen invented "Ziraat Bankası").
-- **Thinking is disabled** on qwen at the provider level; measured 433 → 36
-  output tokens with no quality loss.
-- **Local only.** Three vLLM models, local embeddings, local Qdrant. Provider
-  structure exists so Gemini/OpenAI is one file plus one list entry — but no
-  stubs until actually needed.
-- **Health check must be software, not AI**, and must validate the *contract*
-  (fields present, types, sane ranges) rather than exact values, because rates
-  legitimately change and that change is not an error.
+**Kritik davranış:** bir istek hata verdiğinde **önce tünel adresi kontrol
+edilir, sonra yeniden denenir.** Sıralama böyle çünkü hataların en yaygın
+sebebi adres değişimidir. Bu desen hattaki tüm ağ çağrılarında aynıdır.
+
+Gist'e `?t=` zaman damgası eklenmezse GitHub CDN eski adresi döndürür — bu
+daha önce saatlerce süren takılmaya sebep oldu.
+
+### Eşzamanlılık
+
+Tüm ağ çağrıları `dataprep/net_limit.py` içindeki paylaşılan semaforu kullanır.
+Sınır **60** eşzamanlı istek. Worker sayısını bunun üstüne çıkarmak zararsızdır
+— fazlası sırada bekler, hata üretmez.
+
+```python
+with NET_SEM:
+    res = llm.invoke([...])
+NET_SEM.report(ok=True, duration=...)   # başarı + süre
+NET_SEM.report(ok=False)                # kopma/timeout
+```
 
 ---
 
-## 6. Suggested next steps
+## 2. Aşamalar
 
-1. Fix the same-origin bug in `docs/discovery/capture.py`, then run it per bank.
-2. For Kuveyt Türk: capture all six calculators, pick the ones needed for live
-   use, and **call each with plain `httpx`** — no browser — confirming the
-   numbers match the site. Only then move to Albaraka.
-3. Once two or three banks are verified, design the registry schema from real
-   data rather than guesses: bank, product, method (`endpoint` / `browser`),
-   URL, request template, response field mapping, auth requirement, product codes.
-4. Then the health checker, then the discovery agent.
+Numaralandırma gerçek bir sıradır: her aşama bir öncekinin çıktısını okur.
+Aşama 1 ayrı bir komut; 2, 3.1 ve 3.2 aynı modülün alt aşamalarıdır.
 
-`docs/discovery/` holds the working probes: `capture.py` (no vocabulary
-filtering), `crawl.py` (find calculators across a site), `deep.py` (single page,
-verbose), plus `recon.py` / `sitemaps.py` for cheap HTTP-only reconnaissance.
+### Aşama 1 — Crawling (site taraması)
+
+Her bankanın sitesi gezilir, sayfalar ham indirilir, PDF bağlantıları toplanır.
+SPA olan bankalarda (`adilkatilim`, `tombank`, `turkiyefinans`) `--render` ile
+tarayıcı motoru devreye girer.
+
+```bash
+bash dataprep/crawl/run_all.sh              # 10 banka sırayla
+python -m dataprep.crawl.graph --bank kuveytturk --max-retries 4 [--render]
+```
+
+**Yazar:** `data/<banka>_site/_raw/`, `pdfs/`, `_tree.json`, `_universe.json`,
+`_catalog.json`
+
+### Aşama 1b — Metin temizleme (site sayfaları)
+
+Ham sayfalar LLM ile temiz, frontmatter'lı Markdown'a çevrilir.
+**Site metinleri bu aşamada temizlenir**, tablo aşamasında değil.
+
+```bash
+python -m dataprep.content            # --stage all içinde
+```
+
+**Yazar:** `data/<banka>_site/content/**.md` · **Defter:** `_content_ledger.json`
+
+### Aşama 2 — PDF metinleri
+
+```bash
+python -m dataprep.content --stage pdf-text
+```
+
+**Yazar:** `data/<banka>_site/_pdf_clean/**.md` ·
+**Defter:** `_pdf_clean_ledger.json`
+
+> **Dikkat:** bu aşama `_content_ledger.json` değil **`_pdf_clean_ledger.json`**
+> kullanır. Yeniden işlemek için yanlış defteri temizlemek sessiz atlamaya yol
+> açar.
+
+### Aşama 3.1 — Sayfa görselleri (page image)
+
+Site sayfalarındaki görseller VLM ile okunup metne çevrilir — kampanya
+afişlerinin çoğu sadece görselde yazılıdır.
+
+```bash
+python -m dataprep.content --stage images-page
+```
+
+**Yazar:** ilgili `content/*.md` içine gömülür ·
+**Önbellek:** `_image_cache.json`, `_olu_gorsel_url.json`
+
+### Aşama 3.2 — PDF görselleri (pdf image)
+
+PDF içindeki görseller ve taranmış tam sayfalar VLM'e gönderilir.
+
+```bash
+python -m dataprep.content --stage images-pdf
+python -m dataprep.content --stage images        # 3.1 + 3.2
+```
+
+**Yazar:** ilgili `_pdf_clean/*.md` içine gömülür
+
+### Aşama 4 — Gömme (Qdrant indeksleme)
+
+```bash
+python -m dataprep.embed                  # artımlı
+python -m dataprep.embed --recreate       # koleksiyonu sıfırla
+```
+
+**Yazar:** Qdrant `campaigns` — şu an 7.030 nokta
+
+### Aşama 5 — Tablo üretimi (ajan hattı)
+
+Havuzdaki her sayfa gezilir. `classify_agent` "bu karşılaştırılabilir mi?"
+der; evetse konu için 10 bankaya paralel `bank_agent` gönderilir, her banka
+kendi satırını doldurur, `finalize_table` sütunları sıkılaştırıp isim/kategori
+verir.
+
+```bash
+python -m dataprep.compare.pipeline [--banks ...] [--limit N]
+```
+
+**Yazar:** `data/_tables/<konu>.json` · **Defterler:** `_registry.json`,
+`_page_ledger.json`, `_subcategories.json`, `_url_havuzu.json`,
+`_indeks_kuyrugu.json`
+
+### Aşama 6 — Mükerrerlik birleştirme (dedup)
+
+Sorgu + niyet araması ile mükerrer tablolar bulunur ve birleştirilir. Aşırı
+genelleme yasak — kategori ve alt kategori temiz kalmalı. Referanslar kod
+tarafında birleştirilir.
+
+```bash
+python -m dataprep.compare.dedup
+```
+
+**Sonuç:** 461 → 403 tablo (58 birleşme, 373 tekil, 0 hata)
+
+### Aşama 7 — Denetim ajanı
+
+Her tablonun her benzersiz referans URL'i için **ayrı bir ajan** açılır. Ajan o
+URL'in chunk'larına tek tek bakar (chunk'lar birbirinden habersiz) ve "bu
+kaynaktaki bilgi tabloda gerekli yere yazılmış mı?" diye sorar. Sonra **tek bir
+birleştirme ajanı** tüm geri bildirimleri işleyip tabloyu son haline getirir;
+sütun birleştirme ve seyreklik kararı bu ajanındır, kodda eşik yoktur. En sonda
+kod satır bazlı tarih damgasını yazar.
+
+```bash
+python -m dataprep.compare.tablo_denetim            # tüm tablolar
+python -m dataprep.compare.tablo_denetim --tablo <id>
+python -m dataprep.compare.tablo_denetim --kuru     # yazmadan raporla
+```
+
+**Sonuç:** 403/403 tablo, 0 hata, 3.210 eksik işlendi (ort. 7,96/tablo)
+
+---
+
+## 3. Veri nereye yazılıyor
+
+### Banka dizini — `data/<banka>_site/`
+
+| Yol | İçerik | Yazan aşama |
+|---|---|---|
+| `_raw/` | Ham indirilen HTML | 1 |
+| `pdfs/` | İndirilen PDF dosyaları | 1 |
+| `content/**.md` | Temizlenmiş sayfa metni + görsel metinleri | 1b, 3.1 |
+| `_pdf_clean/**.md` | Temizlenmiş PDF metni + görsel metinleri | 2, 3.2 |
+| `_content_ledger.json` | URL → çıktı yolu, hash, durum | 1b |
+| `_pdf_clean_ledger.json` | PDF defteri (ayrı!) | 2 |
+| `_image_cache.json` | Görsel URL → okunan metin | 3.1, 3.2 |
+| `_catalog.json` / `_tree.json` | Site haritası ve keşif çıktısı | 1 |
+| `_universe.json` | Bilinen URL evreni + diff | 1 |
+
+### Tablo dizini — `data/_tables/`
+
+| Dosya | İçerik |
+|---|---|
+| `<konu>.json` | Bir karşılaştırma tablosu (403 adet) |
+| `_registry.json` | Tablo kimliği → konu/kategori kaydı |
+| `_page_ledger.json` | İşlenen sayfa URL'leri — **tablo aşamasının kendi defteri** |
+| `_subcategories.json` | Alt kategori tutarlılığı için havuz |
+| `_url_havuzu.json` | Banka bazlı benzersiz URL havuzu |
+| `_indeks_kuyrugu.json` | Qdrant'a yazılmayı bekleyen tablolar |
+
+### Banka bazlı hacim
+
+| Banka | Sayfa | PDF | Temiz md | Qdrant chunk |
+|---|---:|---:|---:|---:|
+| kuveytturk | 2.786 | 262 | 1.655 | 1.932 |
+| ziraatkatilim | 1.554 | 63 | 829 | 1.186 |
+| albaraka | 1.398 | 36 | 734 | 928 |
+| vakifkatilim | 1.038 | 134 | 653 | 1.360 |
+| turkiyefinans | 838 | 113 | 530 | 726 |
+| emlakkatilim | 460 | 195 | 425 | 551 |
+| hayatfinans | 258 | 1 | 129 | 179 |
+| dunyakatilim | 144 | 3 | 73 | 82 |
+| tombank | 38 | 22 | 41 | 72 |
+| adilkatilim | 8 | 10 | 14 | 14 |
+
+Son üç banka dijital banka olduğu için site yüzeyi doğal olarak küçük — eksik
+tarama değil.
+
+---
+
+## 4. Veri şemaları
+
+### Qdrant `campaigns` noktası
+
+```json
+{
+  "page_content": "...",
+  "metadata": {
+    "bank": "vakifkatilim",
+    "url": "http://...",
+    "validity_status": "bilinmiyor",
+    "type": "metin",
+    "chunk_index": "0"
+  }
+}
+```
+
+URL birden çok alanda olabilir. Kod her zaman `retrieval.py` içindeki kanonik
+çözücüyü kullanır — doğrudan `metadata.url` okumak **hatalıdır**:
+
+```python
+# dataprep/compare/retrieval.py
+_URL_ALANLARI = ("url", "source_url", "pdf_url",
+                 "gorsel_url", "source_page", "parent")
+
+_kanonik_url(meta)     # ilk dolu alanı döndürür
+_kanonik_tarih(meta)   # gecerlilik_* / campaign_* ikisini de dener
+_url_kosulu(url)       # tüm alanlarda OR arayan Qdrant filtresi
+```
+
+### Tablo dosyası
+
+```json
+{
+  "id": "akaryakıt-indirimi-kampanyası",
+  "topic": "akaryakıt indirimi kampanyası",
+  "docstring": "...",
+  "category": "kampanya",
+  "subcategory": "alışveriş indirimleri",
+  "columns": ["Kampanya Durumu", "İndirim Oranı / Kazanım", "...", "Geçerlilik"],
+  "rows": {
+    "vakifkatilim": {
+      "Kampanya Durumu": "Sunuluyor",
+      "İndirim Oranı / Kazanım": "%5",
+      "Geçerlilik": "01/08/2026 - 31/08/2026"
+    }
+  },
+  "sources": {
+    "vakifkatilim": [
+      {"point_id": "90867ef9-...", "url": "https://...", "note": "..."}
+    ]
+  },
+  "cell_sources": {},
+  "created_from": null, "created_at": null, "updated_at": null
+}
+```
+
+`rows` her zaman 10 bankayı içerir. `sources` satır (banka) bazlı referans
+listesidir; `cell_sources` hücre bazlıdır.
+
+**Kaynak izlenebilirliği:** her referans bir `point_id` taşır — uydurma URL
+yazılamaz. Ajanlar yalnızca `point_id` döndürür, URL'i kod çözer. Şu an 4.030
+satırın 3.797'sinde (%94,2) referans var; boş kalan 233 satır o ürünü gerçekten
+sunmayan bankalara ait.
+
+### Geçerlilik biçimi
+
+`dataprep/compare/tablo_tarih.py` tek metin alanı üretir. Tek tarih yalnız
+yazılmaz — hangi taraf olduğu belirsiz kalmasın diye eksik taraf `?` ile
+işaretlenir.
+
+| Değer | Anlamı |
+|---|---|
+| `01/08/2026 - 30/09/2026` | Başlangıç ve bitiş biliniyor |
+| `01/08/2026 - ?` | Sadece başlangıç biliniyor |
+| `? - 30/09/2026` | Sadece bitiş biliniyor |
+| `-` | Tarih yok (süresiz ürün ya da belgede yazmıyor) |
+
+Damga **satır (banka) bazlıdır.** Bir bankanın birden çok kaynağı farklı tarih
+taşıyorsa **en dar ortak aralık** (kesişim) alınır — `_kesistir()`.
+
+---
+
+## 5. Değiştirilmemesi gereken kurallar
+
+Bunlar tasarım kararlarıdır, tercih değil. Her biri bir hatadan sonra kondu.
+
+1. **Tek organik sınır 8196 karakterlik chunk'tır.** `max_tokens` yok, çıktı
+   sınırı yok, bağlam kırpma yok, karakter/görsel/boyut sınırı yok. 1
+   karakterlik dosya bile işlenir.
+2. **Örtüşme %10 (~820 karakter)** ve yalnızca 8196'yı aşan metni bölerken
+   uygulanır.
+3. **Karşılaştırma tabloları asla chunk'lanmaz ve asla kırpılmaz** — gömme
+   sürecinde docstring dahil tam gider. 8k kuralı tabloların dışındaki her şey
+   için geçerlidir.
+4. **Tarihler belgeler arasında asla paylaşılmaz.** Ne bulunuyorsa o kalır; bir
+   sayfanın tarihi başka sayfaya kopyalanmaz.
+5. **Retry sınırsızdır** ve her denemede **önce tünel kontrolü, sonra bekleme**
+   yapılır. Üstel backoff, 30 saniye tavan.
+6. **Kaynak atama yalnız `point_id` ile olur.** Model URL uydurursa atılır;
+   tahmin ederek kaynak bağlama yoktur.
+7. **Kararlar ajanındır, kodun değil.** Sütun birleştirme, seyreklik,
+   mükerrerlik — hiçbirinde kod tarafında eşik veya benzerlik kuralı yoktur.
+   Agentic sistemde kural tabanlı düzeltme ajanın bilinçli kararlarını bozar.
+8. **Yeni parametre icat edilmez** — bağlantı, JSON ve chunk davranışı mevcut
+   modüllerden miras alınır.
+
+### JSON hata merdiveni
+
+Bozuk JSON geldiğinde **somut hata prompt'un sonuna eklenip** yeniden denenir.
+Sıra: her sıcaklıkta önce geri bildirimsiz, sonra geri bildirimli.
+
+```
+0.0 normal → 0.0 feedback → 0.3 normal → 0.3 feedback
+           → 0.6 normal → 0.6 feedback → 1.0 normal → 1.0 feedback
+```
+
+**Statik / dinamik ayrımı:** beklenen anahtar kontrolü **yalnız statik
+çıktılarda** yapılır. Tablo şeması (`columns`/`rows`) dinamiktir — model sütun
+ekleyip silebilir, orada beklenti dayatmak hattı kilitler. Banka isimleri sabit
+10 tane olduğu için `rows` anahtarları doğrulanabilir.
+
+| Modül | Beklenen anahtarlar |
+|---|---|
+| `bank_agent` | `offers`, `sources` |
+| `classify_page` | `comparable`, `topic` |
+| `finalize` | `topic`, `category`, `subcategory` |
+| `dedup` | `duplicates` |
+| `tablo_denetim` | `bilgi_var`, `eksikler` |
+
+---
+
+## 6. Bilinen tuzaklar
+
+Hepsi gerçekten yaşandı. Devralan kişi aynı çukurlara düşmesin.
+
+### Denetimi iki kez çalıştırmak referansları bozar
+
+Denetim biterken `store.overwrite_table()` tabloyu baştan yazar ve `sources`
+içine o an okuduğu `point_id`'leri koyar. Aynı iş ikinci kez çalıştırılırsa
+aradaki koleksiyon değişiklikleriyle uyuşmayan id'ler tabloda kalır — **ölü
+referans**.
+
+20 Ağustos'ta bu oldu: zincir script'i denetimi 14:15'te başlatıp 15:48'de
+hatasız bitirmişti; izleyici süreç sustuğu için iş durmuş sanıldı ve 17:14'te
+ikinci kez çalıştırıldı. Sonuç: 2.973 referansın 1.159'u (%39) öldü. URL
+üzerinden kurtarıldı (%93,2'ye çıktı), ama **kalıcı düzeltme yapılmadı** —
+`overwrite_table`'ın referans yazma davranışı hâlâ bu riski taşıyor.
+
+**Çalıştırmadan önce logu kontrol edin:** `logs/zincir_*.log` ve
+`logs/tablo_denetim_*.log` son satırına bakın.
+
+### Gömme istemcisi bayat tünel adresiyle önbelleğe alınıyordu
+
+`embeddings/providers/remote_provider.py` istemciyi yalnız model adıyla
+önbelleğe alıyordu; tünel adresi değişince eski istemci kullanılmaya devam
+ediyor ve hat sunucu sağlıklıyken saatlerce takılıyordu.
+
+```python
+key = (model, settings.VLLM_BASE_URL)   # önce sadece (model,) idi
+```
+
+### Taranmış PDF'lerde sessiz veri kaybı
+
+1,3 MB'lık bir PDF yalnızca 335 karakter veriyordu: 24 karakterlik bir başlık
+`has_text=True` yapıp görsel yolunu kapatıyordu. Eşik eklendi — metin bu eşiğin
+altındaysa sayfa tam sayfa görsel olarak VLM'e gider.
+
+```python
+# dataprep/content.py
+_TAM_SAYFA_ESIK = int(os.environ.get("PDF_TAM_SAYFA_ESIK", "400"))
+if not has_text or len((_txt or "").strip()) < _TAM_SAYFA_ESIK:
+    pix = page.get_pixmap(matrix=pymupdf.Matrix(2.0, 2.0), alpha=False)
+```
+
+Düzeltmeden sonra aynı PDF 4.374 karakter ve tam tablolar verdi.
+
+### Tablo silinince Qdrant kaydı kalıyordu
+
+`delete_table()` dosyayı ve kaydı siliyor ama Qdrant indeksine dokunmuyordu.
+Dedup 58 tabloyu birleştirdikten sonra indekste 461, diskte 403 kayıt vardı —
+mükerrerlik ajanı **var olmayan tablolarla eşleşme arıyordu**.
+`drop_table_index()` eklendi ve `dedup.merge_pair()`'den çağrılıyor.
+
+### Tarihlerin çoğu belgede gerçekten yok
+
+4.030 satırın yalnızca 193'ünde doğrulanmış tarih var. Bu bir kayıp değil:
+referans chunk'ların yaklaşık yarısında ne metinde ne metadata'da tarih
+geçiyor. Akreditif, vesaik mukabili ödeme, kâr paylaşım oranları gibi kalıcı
+ürünler doğaları gereği tarihsizdir.
+
+Metinde geçen tarihlerin çoğu da kampanya tarihi **değil**: mevzuat, kuruluş,
+sözleşme, oran güncelleme tarihleri. Bu ayrımı regex yapamaz — 20 Ağustos'ta
+bir ajan koşusu 404 hatalı damgayı eleyip 193 doğrulanmış tarih bıraktı.
+
+### Aşama defterlerini karıştırmak
+
+Üç ayrı defter var ve yanlışını temizlemek sessiz atlamaya yol açar:
+`_content_ledger.json` (site metni), `_pdf_clean_ledger.json` (PDF metni),
+`data/_tables/_page_ledger.json` (tablo aşaması). Bir sayfayı baştan işletmek
+istiyorsanız **üçünü de** gözden geçirin.
+
+---
+
+## 7. Sıfırdan tam koşu
+
+```bash
+# 0 — sunucu ve depo ayakta mı
+curl -s localhost:6333/collections | head
+python -c "from config import tunnel; tunnel.refresh_if_needed()"
+
+# 1 — crawling (uzun; banka başına ayrı süreç)
+bash dataprep/crawl/run_all.sh
+
+# 2 — metin temizleme + PDF + görseller
+python -m dataprep.content --stage all
+
+# 3 — Qdrant'a göm
+python -m dataprep.embed
+
+# 4 — tabloları üret
+python -m dataprep.compare.pipeline
+
+# 5 — mükerrerleri birleştir
+python -m dataprep.compare.dedup
+
+# 6 — denetle + tarih damgala  (BİR KEZ! bkz. Bölüm 6)
+python -m dataprep.compare.tablo_denetim
+```
+
+### Doğrulama
+
+```bash
+# tablo ve satır sayısı
+python -c "
+import json,glob
+t=[json.load(open(f)) for f in glob.glob('data/_tables/*.json')]
+t=[x for x in t if isinstance(x,dict) and 'rows' in x]
+print('tablo',len(t),'satır',sum(len(x['rows']) for x in t))"
+
+# referans sağlamlığı — %90 altına düşerse ölü point_id var
+python -c "
+import json,glob,sys; sys.path.insert(0,'.')
+from dataprep.compare.retrieval import _shared, COLLECTION
+_,c=_shared(); p=set()
+for f in glob.glob('data/_tables/*.json'):
+    t=json.load(open(f))
+    if not isinstance(t,dict) or 'rows' not in t: continue
+    for b,l in (t.get('sources') or {}).items():
+        for s in l or []:
+            if s.get('point_id'): p.add(s['point_id'])
+pl=sorted(p); v=set()
+for i in range(0,len(pl),256):
+    for x in c.retrieve(COLLECTION,ids=pl[i:i+256]): v.add(str(x.id))
+print(f'{len(v)}/{len(pl)} sağlam')"
+```
+
+### Testler
+
+```bash
+pytest tests/ -q
+```
+
+Hat davranışını koruyan testler: `test_json_merdiveni.py`,
+`test_tablo_denetim.py`, `test_dedup_referans.py`, `test_indeks_kuyrugu.py`,
+`test_indeks_retry.py`, `test_url_havuzu.py`, `test_kisit_yok.py`,
+`test_chunk_overlap.py`, `test_banka_paralellik.py`, `test_konu_yarisi.py`,
+`test_tek_sentez.py`, `test_point_id_kurtarma.py`.
+
+**Bilinen test sorunu:** `test_dedup_referans.py` dosya bütün olarak koşarken
+takılıyor; testler tek tek geçiyor. Muhtemel sebep Qdrant çekişmesi.
+Doğrulanmadı.
+
+---
+
+## 8. Açık işler
+
+- **`overwrite_table` referans yazma davranışı.** Denetimin ikinci kez
+  çalıştırılması hâlâ ölü referans üretebilir. Kalıcı düzeltme yapılmadı;
+  kurtarma manuel bir script ile yapıldı.
+- **Tarih çıkarımı crawl aşamasına taşınabilir.** Şu an tarih yalnız chunk
+  metadata'sından geliyor ve metinde geçen kampanya tarihlerinin bir kısmı
+  metadata'ya hiç yazılmamış. URL bazına taşımak ölçüldü — kazanç yalnızca 3
+  chunk, yani sorun bağlama yeri değil, çıkarımın kendisi.
+- **Kurtarılamayan 166 referans.** İşaret ettikleri 127 URL Qdrant'ta gerçekten
+  yok; çoğu `.png`/`.jpg` görsel dosyası ve indekslenmemiş sayfa. Silinmediler.
+- **Sütun birleştirme sıfır kaldı.** Denetimin birleştirme ajanı 403 tablonun
+  hepsinde çalıştı ama hiçbirinde sütun birleştirmedi; ön testte bir tablo
+  17→10 sütuna inmişti. Ajanın kararı olduğu için koda müdahale edilmedi, ama
+  gözden geçirilmeli.
+
+### Yedekler
+
+`data/_tables_yedek_20260819_171015/` ve `data_backups/` altında eski anlık
+görüntüler var. 20 Ağustos oturumunda alınan iki yedek (tarih yamasından önce
+ve point_id kurtarmasından önce) oturum scratchpad'indedir, repoda değil.

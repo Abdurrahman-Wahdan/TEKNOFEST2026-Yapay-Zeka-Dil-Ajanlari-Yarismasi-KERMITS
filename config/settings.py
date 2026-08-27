@@ -30,24 +30,27 @@ class Settings(BaseSettings):
     )
 
     # ===== LLM (local vLLM) =====
-    VLLM_BASE_URL: str = "http://127.0.0.1:9000"
+    VLLM_BASE_URL: str = "https://unbundle-semisoft-mouth.ngrok-free.dev"
+    TUNNEL_GIST_URL: str = (
+        "https://gist.githubusercontent.com/dijitalkariyermerkezi/"
+        "e91ef0ddbc60b3e241c6b3e602cad5c8/raw/tunnel_url.txt"
+    )
     VLLM_API_KEY: str = Field(
         default="EMPTY",
         description="vLLM needs no auth, but the OpenAI client rejects an empty key.",
     )
-    # The full retry window for a live model call.  During this period the
-    # tunnel-aware client retries transport/tunnel failures with exponential
-    # backoff after refreshing the published tunnel URL.
-    LLM_TIMEOUT: float = Field(default=3000.0, gt=0)
+    # dataprep/vlm.py::_READ_TIMEOUT ile AYNI değer ve AYNI gerekçe: streaming
+    # açıkken istek süresi rahatça 200s'yi aşabiliyor (canlı ölçüm: 135-188s
+    # süren istekler SORUNSUZ tamamlandı). Erken kesmek KENDİ ÜRETTİĞİMİZ bir
+    # arıza oluyordu — timeout, uyarlanabilir sınırlayıcıya "tıkanıklık" diye
+    # raporlanıp limiti düşürüyor, kuyruk uzuyor, daha çok timeout doğuyordu
+    # (kısır döngü, canlı yaşandı). Asıl koruma sonsuz retry olduğu için taban
+    # cömert tutulur; gerçekten asılı kalan bir bağlantı yine de buradan kopar.
+    LLM_TIMEOUT: float = Field(default=900.0, gt=0)
+    LLM_MAX_RETRIES: int = Field(default=1, ge=0)
+    # Üstel backoff'un tavanı — llm/providers/vllm_provider.py ve
+    # embeddings/providers/remote_provider.py bu alanı okur.
     LLM_RETRY_MAX_DELAY_SECONDS: float = Field(default=60.0, gt=0)
-    LLM_MAX_RETRIES: int = Field(
-        default=20,
-        ge=0,
-        description="Transport retries inside the SDK client. The chat "
-        "clients set 0 and retry in TunnelAwareChatOpenAI instead, which "
-        "re-resolves the tunnel first; embeddings have no such wrapper, so "
-        "the SDK's own retries are all they get.",
-    )
     LLM_TEMPERATURE: float = Field(
         default=0.0,
         description="Extraction favours repeatability over variety.",
@@ -232,10 +235,18 @@ class Settings(BaseSettings):
 
     # ===== Index (embedding the corpus into Qdrant) =====
     INDEX_MAX_CHUNK_CHARS: int = Field(
-        default=3500,
+        default=8196,
         gt=0,
-        description="A unit larger than this is split on paragraph boundaries. "
-        "Rare: Qwen3's context is 32k, so this only touches a few long sections.",
+        description="Chunk size in characters (user decision 2026-08-19): every "
+        "chunk outside the text-cleaning stage is 8196. A unit larger than this "
+        "is split on paragraph boundaries, then sentence ends, then a hard cut.",
+    )
+    INDEX_CHUNK_OVERLAP_CHARS: int = Field(
+        default=820,
+        ge=0,
+        description="%10 overlap carried from the previous chunk (user decision "
+        "2026-08-19). A fact split across a boundary stays whole in at least one "
+        "chunk, so retrieval cannot miss it.",
     )
     INDEX_EMBED_BATCH: int = Field(
         default=128,

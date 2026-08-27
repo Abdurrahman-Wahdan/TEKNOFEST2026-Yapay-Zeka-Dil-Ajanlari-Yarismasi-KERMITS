@@ -60,14 +60,54 @@ async def coverage(slug: str, client) -> dict | None:
     Evren kaynağı: crawl'da yazılan _universe.json (sitemap VE bfs için tekdüze,
     yeniden ağ gerektirmez). Yoksa sitemap'e düşer; o da yoksa None."""
     site = os.path.abspath(os.path.join(DL, f"{slug}_site"))
+    # EVREN = KAYITLI ∪ CANLI SİTEMAP (kullanıcı kararı 2026-08-23:
+    # "sitemap + bfs union, KAÇAK OLMAYACAK").
+    #
+    # NEDEN UNION: eskiden yalnız kaydedilmiş _universe.json'a bakılıyordu.
+    # O dosya, crawl keşif anında site erişilemezse BOZUK kaydediliyor —
+    # kuveytturk'te içinde TEK URL vardı (ana sayfa) ve denetim o tek URL'i
+    # kontrol edip "0 açıklanamayan" diyordu. Oysa sitemap'te 2391 Türkçe
+    # URL vardı ve 51'i katalogda yoktu. Yani denetimin KENDİSİ kördü.
+    #
+    # Artık iki kaynak BİRLEŞTİRİLİR: kayıtlı evren + o anki CANLI sitemap.
+    # Sitemap okunamazsa (site kapalı) kayıtlı evrenle devam edilir; kayıtlı
+    # evren yoksa/bozuksa canlı sitemap tek başına yeter. İkisi de boşsa
+    # denetim None döner ve "ölçülemedi" olarak raporlanır — sessizce "0"
+    # DENMEZ.
+    universe: set[str] = set()
+    kaynaklar = []
     up = os.path.join(site, "_universe.json")
     if os.path.exists(up):
-        u = json.load(open(up))
-        universe = set(u.get("urls", []))
-        uni_mode = u.get("mode", "?")
-    else:
-        universe = await engine.discover_from_sitemaps(client)
-        uni_mode = "sitemap"
+        try:
+            u = json.load(open(up))
+            kayitli = set(u.get("urls", []))
+            if kayitli:
+                universe |= kayitli
+                kaynaklar.append(f"kayıtlı({len(kayitli)})")
+        except Exception:
+            pass
+    # CANLI SİTEMAP — okunamazsa BUNU SÖYLE. Sessizce atlanırsa "0
+    # açıklanamayan" yanıltıcı olur: gerçekte "sitemap kontrol EDİLEMEDİ"
+    # demektir. Motorda sitemap TANIMLI DEĞİLSE (adilkatilim, tombank gibi
+    # sitemap'i olmayan siteler) bu bir eksiklik değildir, öyle işaretlenir.
+    sitemap_tanimli = bool(engine.CONFIG.get("SITEMAPS"))
+    canli, sitemap_hata = set(), None
+    if sitemap_tanimli:
+        try:
+            canli = await engine.discover_from_sitemaps(client) or set()
+            if not canli:
+                sitemap_hata = "boş döndü"
+        except Exception as exc:
+            sitemap_hata = f"{type(exc).__name__}"
+    if canli:
+        yeni = canli - universe
+        universe |= canli
+        kaynaklar.append(f"canlı-sitemap({len(canli)}, +{len(yeni)} yeni)")
+    elif sitemap_hata:
+        kaynaklar.append(f"canlı-sitemap OKUNAMADI({sitemap_hata})")
+    elif not sitemap_tanimli:
+        kaynaklar.append("sitemap-yok(bfs)")
+    uni_mode = " ∪ ".join(kaynaklar) or "?"
     if not universe:
         return None
     cat = {}
@@ -106,7 +146,8 @@ async def coverage(slug: str, client) -> dict | None:
             n_dive += 1; continue
         unacc.append(u)
     return {"universe": len(universe), "saved": n_saved, "skip": n_skip,
-            "fail": n_fail, "dive": n_dive, "unaccounted": unacc}
+            "fail": n_fail, "dive": n_dive, "unaccounted": unacc,
+            "kaynak": uni_mode}
 
 
 def _log_counts(slug: str) -> dict:
@@ -206,9 +247,15 @@ async def main(slugs: list[str]) -> None:
                 print(f"{s:16}   (evren yok)")
                 continue
             n = len(cov["unaccounted"])
+            # KAYNAK sütunu: evrenin NEREDEN geldiği. "OKUNAMADI" görünüyorsa
+            # o bankanın "0 açıklanamayan"ı GÜVENİLİR DEĞİLDİR — sitemap o an
+            # çekilemediği için union'ın yarısı denetim dışı kalmıştır.
+            kaynak = cov.get("kaynak", "?")
+            supheli = "OKUNAMADI" in kaynak
             print(f"{s:16}{cov['universe']:>7}{cov['saved']:>6}{cov['skip']:>7}"
                   f"{cov.get('dive',0):>7}{cov['fail']:>6}{n:>14}"
-                  + ("" if n == 0 else "  ❌"))
+                  + ("  ❌" if n else ("  ⚠️ SİTEMAP OKUNAMADI" if supheli else ""))
+                  + f"   [{kaynak}]")
             for u in cov["unaccounted"][:5]:
                 print(f"    ↳ açıklanamayan: {u}")
     print("\nHesap verebilirlik: her sitemap URL'i İNDİ + ELENDİ(SKIP) + HATA toplamına "

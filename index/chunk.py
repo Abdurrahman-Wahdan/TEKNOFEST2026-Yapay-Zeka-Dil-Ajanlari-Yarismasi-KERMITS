@@ -81,7 +81,34 @@ def _split(text: str, max_chars: int) -> list[str]:
         else:
             final.extend(piece[i:i + max_chars]
                          for i in range(0, len(piece), max_chars))
-    return final or [text]
+    return _with_overlap(final) or [text]
+
+
+def _with_overlap(pieces: list[str]) -> list[str]:
+    """Her parçanın başına bir öncekinin SONUNDAN overlap ekler (%10, ~820 kar).
+
+    YALNIZ 8196 sınırını aşıp BÖLÜNMÜŞ metinler için çalışır — _split zaten
+    kısa metinlerde erken döner, yani bölünmeyen hiçbir birime overlap
+    eklenmez (kullanıcı kararı 2026-08-19: "her zaman overlap gerek yok,
+    sadece 8196'yı aşan metinleri parçalarken").
+
+    NEDEN (kullanıcı kararı 2026-08-19): overlap olmadan, sınıra denk gelen bir
+    bilgi ikiye bölünür (başlık bir chunk'ta, tablosu diğerinde) ve arama yalnız
+    yarısını bulabilir. Overlap'li kesimde bilgi EN AZ BİR chunk'ta bütün kalır.
+
+    Overlap KELİME sınırından alınır — kelimeyi ortadan bölmek embedding
+    kalitesini düşürür. İlk parça olduğu gibi kalır (öncesi yok)."""
+    n = settings.INDEX_CHUNK_OVERLAP_CHARS
+    if n <= 0 or len(pieces) < 2:
+        return pieces
+    out = [pieces[0]]
+    for onceki, parca in zip(pieces, pieces[1:]):
+        kuyruk = onceki[-n:]
+        bosluk = kuyruk.find(" ")                  # yarım kelimeyle başlama
+        if 0 <= bosluk < len(kuyruk) - 1:
+            kuyruk = kuyruk[bosluk + 1:]
+        out.append(f"{kuyruk}\n\n{parca}" if kuyruk.strip() else parca)
+    return out
 
 
 def _make_chunks(document: dict, unit_kind: str, unit_index: int, *, body: str,

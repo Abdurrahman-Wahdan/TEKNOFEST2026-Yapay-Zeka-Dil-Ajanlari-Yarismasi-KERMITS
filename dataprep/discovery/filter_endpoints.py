@@ -52,9 +52,10 @@ def classify(e: dict) -> dict:
     prompt = _Q.format(
         method=e.get("method", ""), url=e.get("url", ""),
         ct=e.get("content_type", ""),
-        post=(e.get("example_post") or "(yok)")[:600],
-        resp=(e.get("example_resp") or "(yok)")[:600])
-    d = vlm.call_json(vlm.txt_msg(prompt), max_tokens=512)
+        # KIRPMA YOK (kullanıcı kararı 2026-08-19): örnekler TAM gider.
+        post=(e.get("example_post") or "(yok)"),
+        resp=(e.get("example_resp") or "(yok)"))
+    d = vlm.call_json(vlm.txt_msg(prompt))   # max_tokens: sunucu karar versin
     if not d:                                  # LLM ulaşılamadı -> muhafazakâr: elde tut, işaretle
         return {"keep": bool(e.get("relevant")), "tool": "", "reason": "LLM ulaşılamadı"}
     return {"keep": bool(d.get("keep")), "tool": (d.get("tool") or "").strip(),

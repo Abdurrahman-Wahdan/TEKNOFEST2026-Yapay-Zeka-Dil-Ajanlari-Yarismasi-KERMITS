@@ -22,17 +22,19 @@ from __future__ import annotations
 import base64
 import json
 import logging
+import os
 from pathlib import Path
 
 import pymupdf
 
+from config import tunnel
+from config.settings import settings
 from dataprep import vlm
 from dataprep.ledger import Ledger
 from dataprep.vlm import ImageCache
 
 log = logging.getLogger("dataprep.pdf.extract")
 
-BASE_URL = "http://127.0.0.1:9000"
 VLM_PATH = "/gemma/v1/chat/completions"
 VLM_MODEL = "google/gemma-4-31B-it"
 
@@ -56,24 +58,26 @@ def _post(payload, retries=None) -> str:
     return vlm._post(payload)
 
 
-def _call_json(messages, max_tokens=4096) -> dict:
-    """STRUCTURED JSON çağrısı. Parse olmazsa sıcaklığı 0->0.3->0.6->1.0 artırır."""
-    for t in TEMP_LADDER:
-        raw = _post({"model": VLM_MODEL, "messages": messages, "temperature": t,
-                     "max_tokens": max_tokens, "response_format": {"type": "json_object"}})
-        if not raw:                       # bağlantı çöktü -> sıcaklık merdivenini deneme, çık
-            break
-        try:
-            return json.loads(raw)
-        except json.JSONDecodeError:
-            import re
-            mm = re.search(r"\{.*\}", raw, re.S)
-            if mm:
-                try:
-                    return json.loads(mm.group(0))
-                except json.JSONDecodeError:
-                    pass
-        log.info("    (JSON parse edilemedi, sıcaklık %.1f ile tekrar)", t)
+def _call_json(messages, max_tokens=None, _cycles: int = 2) -> dict:
+    """STRUCTURED JSON çağrısı. Parse olmazsa sıcaklığı 0->0.3->0.6->1.0 artırır.
+    Merdiven TAMAMEN tükenip hâlâ geçersiz JSON gelirse VAZGEÇMEZ (vlm.call_json
+    ile AYNI güvence): modele uyarı eklenir, sıcaklık 0.0'a resetlenir, TÜM
+    merdiven bu uyarıyla bir kez daha denenir (_cycles tur)."""
+    msgs = list(messages)
+    for cycle in range(_cycles):
+        for t in TEMP_LADDER:
+            raw = _post({"model": VLM_MODEL, "messages": msgs, "temperature": t,
+                         "response_format": {"type": "json_object"},
+                         **({"max_tokens": max_tokens} if max_tokens is not None else {})})
+            if not raw:                   # bağlantı çöktü -> merdiveni deneme, hemen çık
+                return {}
+            d = vlm._try_parse_json(raw)
+            if d is not None:
+                return d
+            log.info("    (JSON parse edilemedi, sıcaklık %.1f ile tekrar)", t)
+        if cycle + 1 < _cycles:
+            log.info("    (sıcaklık merdiveni tükendi — 0.0'a resetlenip uyarıyla tekrar)")
+            msgs = msgs + [vlm._JSON_NUDGE]
     return {}
 
 
@@ -130,11 +134,16 @@ _EXTRACT_CONT = ('Bu görüntü önceki bölümle OVERLAP\'lidir. Önceki metnin
                  'Tabloları markdown yap. SADECE JSON: {{"content": "<devam metni>"}}')
 
 
-MIN_IMG_PX = 100         # bu boyutun altındaki gömülü görsel ikon/dekoratif -> atla
+# GÖRSEL BOYUT KISITI YOK (kullanıcı kararı 2026-08-19): "asla karakter kısıtı
+# ve görsel kısıtı kullanma, en küçüğü bile gidecek". Eskiden 100px altındaki
+# gömülü görseller ikon sanılıp ATILIYORDU — küçük ama veri taşıyan bir tablo
+# parçası da böyle sessizce kaybolabiliyordu. Dekoratif olup olmadığına artık
+# YALNIZ VLM karar verir (vlm.py::describe_image -> "decorative").
+MIN_IMG_PX = int(os.environ.get("PDF_MIN_IMG_PX", "0"))
 
 
 def _norm_png(data: bytes | None) -> bytes | None:
-    """Gömülü görsel ham baytını PNG'ye normalize et (dedup hash tutarlı); küçükse None."""
+    """Gömülü görsel ham baytını PNG'ye normalize et (dedup hash tutarlı)."""
     if not data:
         return None
     import io
@@ -143,7 +152,7 @@ def _norm_png(data: bytes | None) -> bytes | None:
         im = Image.open(io.BytesIO(data)).convert("RGB")
     except Exception:
         return None
-    if im.width < MIN_IMG_PX or im.height < MIN_IMG_PX:
+    if MIN_IMG_PX and (im.width < MIN_IMG_PX or im.height < MIN_IMG_PX):
         return None
     buf = io.BytesIO()
     im.save(buf, format="PNG")
@@ -154,10 +163,10 @@ def _bands_vlm(page, full: str, segments: list, pno: int) -> str:
     """Metin katmanı OLMAYAN (taranmış) sayfa: yazılım-zoom bant -> JSON extract -> stitch."""
     for band in _render_bands(page, _page_zoom(page)):
         if not full:
-            d = _call_json(_img_msg(_EXTRACT_FIRST, band), max_tokens=8192)
+            d = _call_json(_img_msg(_EXTRACT_FIRST, band))
         else:
             tail = full if len(full) <= ANCHOR_CHARS else full[-ANCHOR_CHARS:]
-            d = _call_json(_img_msg(_EXTRACT_CONT.format(tail=tail), band), max_tokens=8192)
+            d = _call_json(_img_msg(_EXTRACT_CONT.format(tail=tail), band))
         txt = (d.get("content") or "").strip()
         if txt:
             full += ("\n" + txt) if full else txt
@@ -261,7 +270,8 @@ def relevance(pdf_name: str, parent: str, doc) -> dict:
         page = doc[p]
         txt = (page.get_text("text") or "").strip()
         if len(txt) >= _REL_TEXT_MIN:                      # metin varsa metin
-            parts.append(vlm.txt_block(f"\n[Sayfa {p + 1} — metin]\n{txt[:4000]}"))
+            # KIRPMA YOK (kullanıcı kararı 2026-08-19): sayfa metni TAM gider.
+            parts.append(vlm.txt_block(f"\n[Sayfa {p + 1} — metin]\n{txt}"))
         elif budget > 0:                                   # yoksa görüntü (bütçe dahilinde)
             try:
                 png = _rel_screenshot(page)
@@ -274,11 +284,11 @@ def relevance(pdf_name: str, parent: str, doc) -> dict:
             parts.append(blk)
             budget -= size
     parts.append(vlm.txt_block("\n\n" + _REL_ASK))
-    d = vlm.call_json([{"role": "user", "content": parts}], max_tokens=256)
+    d = vlm.call_json([{"role": "user", "content": parts}])   # max_tokens: sunucu karar versin
     if not d:
         return {"relevant": True, "reason": "LLM yanıt yok (güvenli varsayılan: tut)"}
     return {"relevant": bool(d.get("related", d.get("relevant", True))),
-            "reason": str(d.get("reason", ""))[:200]}
+            "reason": str(d.get("reason", ""))[:8000]}
 
 
 # --- tek PDF işleme + çıktı ------------------------------------------------
@@ -341,7 +351,11 @@ def _md_is_empty(md_path: Path) -> bool:
     if not md_path.exists():
         return True
     try:
-        body = md_path.read_text(encoding="utf-8").split("---", 2)[-1].strip()
+        # SATIR BAZLI sınır (bkz. pages._split_front) — dosya adında/URL'de
+        # "---" geçtiğinde eski split() gövdeyi yanlış yerden kesiyor ve
+        # dolu bir çıktı "boş" sanılıp gereksiz yere yeniden üretiliyordu.
+        from dataprep.pages import _split_front
+        body = _split_front(md_path.read_text(encoding="utf-8"))[1].strip()
     except Exception:
         return True
     return len(body) < 5
