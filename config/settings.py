@@ -540,6 +540,56 @@ class Settings(BaseSettings):
     )
 
     # ===== Voice transcription =====
+    VOICE_PROVIDER: str = Field(
+        default="remote",
+        pattern="^(remote|local)$",
+        description="STT backend. Remote uses the OpenAI-compatible Whisper "
+        "route; local keeps the existing MLX checkpoint available as a fallback.",
+    )
+    VOICE_REMOTE_BASE_URL: str = Field(
+        default="",
+        description="Shared remote voice origin. Empty reuses VLLM_BASE_URL, so "
+        "Whisper, TTS, chat, and embeddings can share one rotating tunnel.",
+    )
+    VOICE_REMOTE_API_KEY: str = Field(
+        default="none",
+        description="Bearer key for both OpenAI-compatible voice routes. The "
+        "current server does not authenticate, but clients require a value.",
+    )
+    VOICE_REMOTE_STT_ROUTE: str = Field(
+        default="/whisper/v1",
+        description="Path from the shared model origin to Whisper's v1 API.",
+    )
+    VOICE_REMOTE_STT_MODEL: str = Field(
+        default="whisper-1",
+        description="OpenAI-compatible model name sent to audio/transcriptions.",
+    )
+    VOICE_REMOTE_TIMEOUT_SECONDS: float = Field(
+        default=10.0,
+        gt=0,
+        description="Read budget for one transcription attempt. Healthy requests "
+        "return in about one second; the remote worker sometimes accepts a call "
+        "and never answers. Ten seconds detects that stuck worker early enough "
+        "to close the connection and retry without piling up recordings.",
+    )
+    VOICE_REMOTE_WARM_SECONDS: float = Field(
+        default=180.0,
+        gt=0,
+        description="Budget for the startup warm-up request. Generous on purpose: "
+        "this is the call that pays the 60-70 s cold load of large-v3 so that no "
+        "user ever does, and nobody is waiting on it.",
+    )
+    VOICE_REMOTE_RETRY_SECONDS: float = Field(
+        default=40.0,
+        gt=0,
+        description="How long a voice request may keep retrying across tunnel "
+        "rotations and cold model loads. Deliberately not LLM_TIMEOUT: a voice "
+        "route is a person holding a button, and the browser abandons the fetch "
+        "long before a 15-minute retry window closes -- so the only thing the "
+        "extra 14 minutes bought was a FastAPI threadpool thread pinned to a dead "
+        "tunnel. Wide enough to outlast one idle-unload of the remote model, "
+        "which is the failure a warm-up at startup cannot prevent forever.",
+    )
     VOICE_MODEL_PATH: str = Field(
         default=str(
             PROJECT_ROOT
@@ -579,12 +629,58 @@ class Settings(BaseSettings):
         description="Hard cap on one compressed browser recording.",
     )
     VOICE_WARM_ON_STARTUP: bool = Field(
-        default=False,
-        description="Load and compile Whisper during API startup so the first "
-        "voice request has warm-request latency.",
+        default=True,
+        description="Load Whisper during API startup so the first voice request "
+        "has warm-request latency. Now on by default because the remote server "
+        "unloads large-v3 when idle and reloading it takes 60-70 s -- longer than "
+        "any request timeout worth having, so without this the very first "
+        "transcription after a restart always failed and the retry after it "
+        "always worked, which is what made STT look intermittent rather than "
+        "cold. Off, this costs a user a minute; on, it costs startup a minute and "
+        "nobody is waiting.",
     )
 
     # ===== Speech synthesis (reading answers aloud) =====
+    SPEECH_PROVIDER: str = Field(
+        default="remote",
+        pattern="^(remote|local)$",
+        description="TTS backend. Remote uses the OpenAI-compatible Trendyol "
+        "route; local keeps the in-process checkpoint as a fallback.",
+    )
+    VOICE_REMOTE_TTS_ROUTE: str = Field(
+        default="/tts/v1",
+        description="Path from the shared model origin to Trendyol-TTS's v1 API.",
+    )
+    VOICE_REMOTE_TTS_MODEL: str = Field(
+        default="tts-1",
+        description="OpenAI-compatible model name sent to audio/speech.",
+    )
+    SPEECH_REMOTE_TIMESTEPS: int = Field(
+        default=16,
+        ge=1,
+        le=64,
+        description="Inference steps sent to the remote Trendyol-TTS server. "
+        "Separate from SPEECH_TIMESTEPS, which is tuned for local M1 inference.",
+    )
+    SPEECH_REMOTE_CFG_VALUE: float = Field(
+        default=2.0,
+        gt=0,
+        le=4.0,
+        description="Classifier-free guidance sent to the remote TTS server.",
+    )
+    SPEECH_REMOTE_TIMEOUT_SECONDS: float = Field(
+        default=300.0,
+        gt=0,
+        description="Complete remote synthesis request budget for long answers.",
+    )
+    SPEECH_REMOTE_SEGMENT_CHARS: int = Field(
+        default=240,
+        ge=80,
+        le=1_000,
+        description="Maximum text sent through one remote TTS connection. Each "
+        "segment gets a fresh connection so streamed WAV responses stay below "
+        "the tunnel transfer limit.",
+    )
     SPEECH_MODEL_PATH: str = Field(
         default=str(PROJECT_ROOT / "TF26_data" / "models" / "Trendyol-TTS"),
         description="Local checkpoint for Turkish speech output, downloaded by "
@@ -677,9 +773,10 @@ class Settings(BaseSettings):
         "reading that stops halfway is indistinguishable from a crash.",
     )
     SPEECH_WARM_ON_STARTUP: bool = Field(
-        default=False,
+        default=True,
         description="Load Trendyol-TTS during API startup. Without it the first "
-        "reader pays the ~5.6s load.",
+        "reader pays the load: ~5.6 s for the local checkpoint, and a remote "
+        "server that has idled out costs the same cold reload as Whisper.",
     )
     SPEECH_MPS_HIGH_WATERMARK_RATIO: float = Field(
         default=1.0,

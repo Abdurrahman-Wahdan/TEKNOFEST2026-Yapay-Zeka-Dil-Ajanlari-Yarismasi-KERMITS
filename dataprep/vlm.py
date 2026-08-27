@@ -46,7 +46,7 @@ TEMP_LADDER = (0.0, 0.3, 0.6, 1.0)
 # hattıydı: semaforu atlayan bir kod yolu olsa httpx 80 bağlantıya kadar
 # açabilirdi. Havuzun kendisi de 25'e çekilerek İKİNCİ hat kuruldu —
 # eşzamanlılık iki bağımsız yerden sınırlanır.
-VLM_POOL = int(os.environ.get("VLM_POOL", "50"))
+VLM_POOL = int(os.environ.get("VLM_POOL", "25"))
 # PARALELLİK TAMAMEN KALDIRILDI (content.py WORKERS=1, bankalar da tek process
 # içinde sırayla) — sunucuya HER ZAMAN sadece 1 istek gittiği için artık
 # "kuyrukta bekletiliyor olabilir, sonsuza kadar bekleyelim" gerekçesi

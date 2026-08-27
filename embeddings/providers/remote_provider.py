@@ -38,16 +38,11 @@ _SESSION.headers.update({
 })
 
 
-_LIVE_BASE_CACHE = settings.VLLM_BASE_URL
-
 def _get_live_base(force: bool = False) -> str:
-    global _LIVE_BASE_CACHE
-    if force or _LIVE_BASE_CACHE is None:
-        from config import tunnel
-        live = tunnel._fetch_live_url()
-        if live:
-            _LIVE_BASE_CACHE = live
-    return _LIVE_BASE_CACHE or settings.VLLM_BASE_URL
+    if force:
+        # Refresh the shared origin; do not maintain an embedding-only cache.
+        tunnel.refresh_if_needed()
+    return tunnel.current_base_url()
 
 
 class DynamicRemoteEmbeddings(Embeddings):
@@ -128,7 +123,7 @@ class TunnelAwareEmbeddings(Embeddings):
     def __init__(self, model: str, **client_kwargs) -> None:
         self._model = model
         self._client_kwargs = client_kwargs
-        self._base_url = settings.VLLM_BASE_URL.rstrip("/")
+        self._base_url = tunnel.current_base_url()
         self._client = self._build()
 
     def _build(self):
@@ -168,7 +163,7 @@ class TunnelAwareEmbeddings(Embeddings):
             # the existing base URL and let the bounded retry schedule recover
             # once either service is back, instead of failing at once.
             logger.warning("Could not refresh the tunnel URL; retrying current URL", exc_info=True)
-        self._base_url = settings.VLLM_BASE_URL.rstrip("/")
+        self._base_url = tunnel.current_base_url()
         self._client = self._build()
         logger.info("Embedding client rebuilt with fresh connection base=%s", self._base_url)
 
@@ -207,8 +202,13 @@ class RemoteProvider(BaseEmbeddingProvider):
         return False
 
     def create(self, model: str, **kwargs) -> Embeddings:
-        return DynamicRemoteEmbeddings(model=model, **kwargs)
+        key = (model, tuple(sorted(kwargs.items())))
+        cached = _CACHE.get(key)
+        if cached is None:
+            cached = TunnelAwareEmbeddings(model=model, **kwargs)
+            _CACHE[key] = cached
+        return cached
 
 
 def clear_remote_cache() -> None:
-    pass
+    _CACHE.clear()

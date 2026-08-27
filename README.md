@@ -77,7 +77,7 @@ The product is designed around one principle: **live values come from live endpo
 - Upload images, Markdown, and plain-text files directly.
 - Convert PDF and DOCX pages to images privately before model inference.
 - Mention attached files with `@`.
-- Record Turkish speech and transcribe it locally with Whisper large-v3 on Apple Silicon.
+- Record Turkish speech and transcribe it through the shared OpenAI-compatible Whisper service.
 - Receive context-aware next-message recommendations that can be inserted into the composer.
 
 ### Personal workflow
@@ -256,7 +256,7 @@ flowchart TB
         Auth[JWT authentication]
         Routes[REST · SSE · WebSocket]
         Loop[Automation scheduler]
-        Voice[Whisper transcription]
+        Voice[Whisper STT + Trendyol TTS]
     end
     subgraph AgentLayer[Agent layer]
         SUP[Supervisor]
@@ -273,7 +273,7 @@ flowchart TB
     subgraph Models["Model gateway — OpenAI-compatible, vLLM"]
         CHAT["Gemma 4 31B IT · Qwen 3.6 27B · GPT-OSS 20B"]
         EMB["Qwen3 Embedding 0.6B"]
-        WSP["Whisper large-v3, local MLX"]
+        WSP["Whisper large-v3 + Trendyol TTS"]
     end
 
     Chat --> Routes
@@ -524,25 +524,24 @@ python scripts/verify_specialist_citations.py
 
 ## Turkish voice input
 
-Voice transcription is optional and currently optimized for Apple Silicon. The browser records audio; FastAPI transcribes it locally with a verified 4-bit MLX checkpoint and forces Turkish to avoid short-utterance language-detection latency.
+The browser records audio and FastAPI forwards it to the shared
+OpenAI-compatible model gateway. STT uses `/whisper/v1/audio/transcriptions`;
+TTS uses `/tts/v1/audio/speech`. TTS audio is consumed incrementally and
+converted from WAV to PCM frames for the browser; STT uses the standard
+request/response transcription contract, with pooled HTTP connections. Partial
+STT results require a separate realtime/WebSocket endpoint, which is not part
+of the supplied Whisper contract. The shared origin is `VLLM_BASE_URL` by
+default and can be overridden with `VOICE_REMOTE_BASE_URL`.
 
-Expected path:
-
-```text
-TF26_data/models/whisper-large-v3-mlx-4bit/
-├── config.json
-└── weights.npz
-```
-
-The checkpoint is deliberately not downloaded during a request. Place the converted `openai/whisper-large-v3` MLX checkpoint at that path, or set `VOICE_MODEL_PATH` to an equivalent local directory. The API validates the expected size and SHA-256 before loading weights.
-
-To run text-only or on Linux/Windows:
+The existing Apple-Silicon Whisper MLX implementation remains available as an
+explicit fallback:
 
 ```dotenv
+VOICE_PROVIDER=local
+SPEECH_PROVIDER=local
 VOICE_WARM_ON_STARTUP=false
+SPEECH_WARM_ON_STARTUP=false
 ```
-
-Text chat, comparisons, and retrieval continue to work when the optional voice runtime is unavailable.
 
 ## Configuration
 
@@ -555,7 +554,7 @@ Copy `.env.example` to `.env`. Important groups:
 | Retrieval | `QDRANT_URL`, `QDRANT_COLLECTION_CHUNKS` | One collection with bank/source metadata |
 | Web research | `WEB_SEARCH_URL`, `WEB_READ_SOURCE_ENABLED` | Specialist-only, bounded, and optional |
 | PostgreSQL | `API_DATABASE_URL`, `API_JWT_SECRET` | Never commit the populated `.env` |
-| Voice | `VOICE_MODEL_PATH`, `VOICE_LANGUAGE` | Optional Apple-Silicon path |
+| Voice | `VOICE_PROVIDER`, `SPEECH_PROVIDER`, `VOICE_REMOTE_*`, `SPEECH_REMOTE_*` | Shared remote STT/TTS by default; local MLX is an explicit fallback |
 | Corpus/index | `CORPUS_*`, `INDEX_*`, `EMBEDDING_*` | Includes concurrency and safety gates |
 
 The frontend proxies `/api/*` to `API_ORIGIN`, defaulting to `http://127.0.0.1:8000`. If the API runs elsewhere:

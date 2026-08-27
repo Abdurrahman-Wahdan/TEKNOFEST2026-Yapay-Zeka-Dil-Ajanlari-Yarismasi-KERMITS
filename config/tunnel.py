@@ -42,6 +42,16 @@ _lock = threading.Lock()
 _last_check = 0.0
 
 
+def current_base_url() -> str:
+    """Return the process-wide model origin shared by every remote provider.
+
+    ``settings.VLLM_BASE_URL`` is the single source of truth.  Tunnel refresh
+    updates it in place, so chat, embeddings, STT, and TTS all follow the same
+    rotation without maintaining independent stale caches.
+    """
+    return (settings.VLLM_BASE_URL or "").rstrip("/")
+
+
 def _fetch_live_url() -> str | None:
     try:
         # CACHE KIRICI (kanıtlı 2026-08-19): GitHub'ın CDN'i gist /raw/ yolunu
@@ -70,24 +80,49 @@ def _persist_to_env(new_url: str) -> None:
             return
         text = ENV_FILE.read_text(encoding="utf-8")
         new_text, n = re.subn(r"(?m)^VLLM_BASE_URL=.*$", f"VLLM_BASE_URL={new_url}", text)
-        if n:
-            ENV_FILE.write_text(new_text, encoding="utf-8")
+        if not n:
+            # SATIR YOKSA EKLE (ölçüldü 2026-08-28): .env'de VLLM_BASE_URL
+            # satırı bulunmadığında subn 0 döndürüyordu ve bu fonksiyon SESSİZCE
+            # hiçbir şey yazmıyordu. Tazeleme bellekte çalışıyor ama diske
+            # geçmiyordu; her YENİ süreç settings.py'deki ÖLÜ varsayılan ngrok
+            # adresiyle açılıyor, ilk isteği kaybedip merdivene giriyordu.
+            # Ses (TTS/STT) bunu en çok hisseden taraf: kullanıcı butona basıyor
+            # ve ilk okuma ölü adrese gidiyordu.
+            new_text = text + ("" if text.endswith("\n") or not text else "\n")
+            new_text += f"VLLM_BASE_URL={new_url}\n"
+        ENV_FILE.write_text(new_text, encoding="utf-8")
     except Exception as exc:
         log.warning("  (.env güncellenemedi: %s)", exc)
 
 
-def _saglikli(url: str, sn: float = 8.0) -> bool:
-    """Bu adres GERÇEKTEN yanıt veriyor mu? (gemma /models yoklaması)
+# YOKLANACAK YOLLAR — SIRAYLA, İLK 200 YETER. Tek yola (eskiden yalnız
+# /gemma/v1/models) bakmak YANLIŞTI: ölçüldü (2026-08-28, canlı tünel)
+# /gemma/v1/models 10 denemenin 3-4'ünde 10 sn'de yanıt vermezken /tts/health ve
+# /whisper/health aynı anda 0,7 sn'de 200 dönüyordu. Yani ÇALIŞAN bir tünel,
+# yalnızca LLM yolu o an ağırken "ölü" sayılıp REDDEDİLİYORDU — sesin "bir
+# çalışıp bir çalışmama" sebebi buydu. Ucuz sağlık yolları önce denenir.
+_SAGLIK_YOLLARI = ("/tts/health", "/whisper/health", "/gemma/v1/models")
+
+
+def _saglikli(url: str, sn: float = 4.0) -> bool:
+    """Bu adres GERÇEKTEN yanıt veriyor mu? (herhangi bir model yolu yeter)
 
     Adresin "değişip değişmediğine" bakmak yetmez — asıl soru ÇALIŞIP
-    çalışmadığıdır. Aday adresler bununla elenir."""
-    try:
-        req = urllib.request.Request(url.rstrip("/") + "/gemma/v1/models",
-                                     headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=sn) as r:
-            return r.status == 200
-    except Exception:
-        return False
+    çalışmadığıdır. Aday adresler bununla elenir.
+
+    HERHANGİ bir yol 200 dönerse tünel ayaktadır: sorulan soru "bu tünel yaşıyor
+    mu", "her model boşta mı" değil. Ölü ngrok kenarı bunu geçemez — o, her yola
+    404 döner, hiçbiri 200 olmaz."""
+    for yol in _SAGLIK_YOLLARI:
+        try:
+            req = urllib.request.Request(url.rstrip("/") + yol,
+                                         headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=sn) as r:
+                if r.status == 200:
+                    return True
+        except Exception:
+            continue
+    return False
 
 
 def _env_url() -> str | None:
@@ -238,4 +273,6 @@ def refresh_after_failure(failed_base_url: str | None = None) -> bool:
             log.info("  [TÜNEL] başka bir istek zaten tazelemiş: %s -> %s",
                      failed, configured)
             return True
-    return refresh_if_needed()
+    changed = refresh_if_needed()
+    log.info("[TUNNEL] refresh_after_failure changed=%s failed=%s current=%s", changed, failed, current_base_url())
+    return changed

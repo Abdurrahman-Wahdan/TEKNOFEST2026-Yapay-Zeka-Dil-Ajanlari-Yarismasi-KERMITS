@@ -32,6 +32,7 @@ from collections import OrderedDict
 from pathlib import Path
 
 from config.settings import PROJECT_ROOT, settings
+from voice_models.errors import VoiceSpeechFailed, VoiceSpeechUnavailable
 
 logger = logging.getLogger(__name__)
 
@@ -60,14 +61,6 @@ _AUDIO_CACHE: OrderedDict[str, tuple[bytes, ...]] = OrderedDict()
 _AUDIO_CACHE_BYTES = 0
 _AUDIO_CACHE_MAX_ENTRIES = 2
 _AUDIO_CACHE_MAX_BYTES = 8 * 1024 * 1024
-
-
-class VoiceSpeechUnavailable(RuntimeError):
-    """The optional runtime or checkpoint is not ready."""
-
-
-class VoiceSpeechFailed(RuntimeError):
-    """The text could not be spoken."""
 
 
 def _runtime():

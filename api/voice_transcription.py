@@ -14,19 +14,12 @@ import time
 from pathlib import Path
 
 from config.settings import PROJECT_ROOT, settings
+from voice_models.errors import VoiceTranscriptionFailed, VoiceTranscriptionUnavailable
 
 logger = logging.getLogger(__name__)
 
 _INFERENCE_LOCK = threading.Lock()
 _VERIFIED_MODEL: tuple[Path, int, int, str] | None = None
-
-
-class VoiceTranscriptionUnavailable(RuntimeError):
-    """The configured local runtime or checkpoint is not ready."""
-
-
-class VoiceTranscriptionFailed(RuntimeError):
-    """The supplied bytes could not be decoded or transcribed."""
 
 
 def _model_path() -> Path:

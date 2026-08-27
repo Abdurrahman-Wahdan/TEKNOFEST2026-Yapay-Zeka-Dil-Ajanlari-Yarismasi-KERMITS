@@ -114,6 +114,7 @@ const COMFORTABLE_FIELD_PX = 320;
 const OPTICAL_GAP_PX = 22;
 const ICON_INK_INSET_PX = 8;
 const CHIP_INK_INSET_PX = 10;
+const SUGGESTION_INK_INSET_PX = 4.5;
 const FILLED_INK_INSET_PX = 0;
 
 const gapBetween = (leftInset: number, rightInset: number) =>
@@ -394,7 +395,12 @@ export function ChatComposer({
    * measured at: the text wraps once and stays wrapped until it genuinely fits the
    * narrow width again. Only after that is the height set from the real layout.
    */
-  useEffect(() => {
+  // This must run before paint. A normal effect briefly paints the textarea at
+  // its new wrapped height while `multiline` is still false, leaving the
+  // absolutely-positioned controls over the text (most noticeable under the
+  // translated “Gelişmiş” chip). Measuring in a layout effect makes the padding
+  // and control position change atomically with the field resize.
+  useLayoutEffect(() => {
     const el = fieldRef.current;
     if (!el) return;
 
@@ -1038,6 +1044,10 @@ function RecommendationPlaceholder({
           width: 24,
           height: 24,
           ml: 0.75,
+          // This button sits in the field overlay rather than in the control
+          // row, so its right-side gap must be reserved explicitly. Match the
+          // optical distance used between the icon and the Advanced chip.
+          mr: `${gapBetween(SUGGESTION_INK_INSET_PX, CHIP_INK_INSET_PX)}px`,
           p: 0,
           display: "inline-grid",
           placeItems: "center",

@@ -18,6 +18,24 @@ def test_defaults_are_usable():
     assert settings.LLM_TEMPERATURE == 0.0
 
 
+def test_voice_defaults_use_the_shared_remote_api():
+    defaults = Settings(_env_file=None)
+    assert defaults.VOICE_PROVIDER == "remote"
+    assert defaults.SPEECH_PROVIDER == "remote"
+    assert defaults.VOICE_REMOTE_BASE_URL == ""
+    assert defaults.VOICE_REMOTE_STT_ROUTE == "/whisper/v1"
+    assert defaults.VOICE_REMOTE_TTS_ROUTE == "/tts/v1"
+    assert defaults.SPEECH_REMOTE_TIMESTEPS == 16
+    assert defaults.SPEECH_TIMESTEPS == 4
+
+
+def test_voice_provider_typos_are_rejected_at_startup():
+    with pytest.raises(ValidationError, match="VOICE_PROVIDER"):
+        Settings(VOICE_PROVIDER="remtoe")
+    with pytest.raises(ValidationError, match="SPEECH_PROVIDER"):
+        Settings(SPEECH_PROVIDER="remtoe")
+
+
 def test_every_role_points_at_a_real_model():
     for role in ("DEFAULT_MODEL", "CHAT_MODEL", "EXTRACTOR_MODEL", "REASONER_MODEL"):
         assert getattr(settings, role) in MODEL_KEYS

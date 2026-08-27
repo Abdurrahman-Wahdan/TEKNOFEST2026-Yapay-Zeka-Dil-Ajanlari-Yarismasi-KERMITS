@@ -45,7 +45,7 @@ function recorderOptions(): MediaRecorderOptions | undefined {
     "audio/ogg;codecs=opus",
     "audio/mp4",
   ].find((candidate) => MediaRecorder.isTypeSupported(candidate));
-  return mimeType ? { mimeType } : undefined;
+  return mimeType ? { mimeType, audioBitsPerSecond: 24_000 } : undefined;
 }
 
 function errorKind(error: unknown): VoiceSessionError {
@@ -167,7 +167,9 @@ export function useVoiceSession(callbacks: VoiceSessionCallbacks = NO_CALLBACKS)
         const audio = new Blob(chunks, {
           type: recordedMimeType || chunks[0]?.type || "audio/webm",
         });
+        console.info("[voice][capture] stopped", { generation, chunks: chunks.length, bytes: audio.size, type: audio.type });
         if (!audio.size) {
+          console.warn("[voice][capture] empty recording", { generation });
           setError("transcription");
           setPhase("error");
           return;
@@ -176,6 +178,7 @@ export function useVoiceSession(callbacks: VoiceSessionCallbacks = NO_CALLBACKS)
         const controller = new AbortController();
         transcriptionAbortRef.current = controller;
         setPhase("transcribing");
+        console.info("[voice][capture] transcription start", { generation });
         void Promise.resolve(callbacksRef.current.onEnd?.(audio, controller.signal))
           .then(() => {
             if (
@@ -188,6 +191,7 @@ export function useVoiceSession(callbacks: VoiceSessionCallbacks = NO_CALLBACKS)
             }
           })
           .catch(() => {
+            console.error("[voice][capture] transcription pipeline failed", { generation });
             if (
               mountedRef.current &&
               generation === generationRef.current &&

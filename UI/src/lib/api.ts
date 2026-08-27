@@ -598,6 +598,7 @@ export const api = {
 
   // ----- local speech-to-text -----
   voiceTranscription: (audio: Blob, signal?: AbortSignal) => {
+    const requestId = crypto.randomUUID().slice(0, 12);
     const body = new FormData();
     const extension = audio.type.includes("mp4")
       ? "m4a"
@@ -605,10 +606,18 @@ export const api = {
         ? "ogg"
         : "webm";
     body.append("file", audio, `voice.${extension}`);
+    console.info("[voice][stt] start", JSON.stringify({ requestId, bytes: audio.size, type: audio.type, extension }));
     return request<VoiceTranscription>("/voice/transcriptions", {
       method: "POST",
+      headers: { "X-Voice-Request-ID": requestId },
       body,
       signal,
+    }).then((result) => {
+      console.info("[voice][stt] success", JSON.stringify({ requestId, textChars: result.text.length, processingMs: result.processing_ms }));
+      return result;
+    }).catch((error) => {
+      console.error("[voice][stt] failure", JSON.stringify({ requestId, status: error instanceof ApiError ? error.status : undefined, message: error instanceof Error ? error.message : String(error) }));
+      throw error;
     });
   },
 
@@ -658,19 +667,28 @@ export async function speakText(
   text: string,
   signal?: AbortSignal,
 ): Promise<{ body: ReadableStream<Uint8Array>; sampleRate: number }> {
-  const response = await fetchWithAuthentication("/voice/speech", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text }),
-    signal,
-  });
-  if (!response.ok) throw await toError(response);
-  if (!response.body) throw new ApiError(500, "The reading carried no audio.");
-  const declared = Number(response.headers.get("X-Sample-Rate"));
-  return {
-    body: response.body,
-    sampleRate: Number.isFinite(declared) && declared > 0 ? declared : 48_000,
-  };
+  const requestId = crypto.randomUUID().slice(0, 12);
+  const started = performance.now();
+  console.info("[voice][tts] start", JSON.stringify({ requestId, textChars: text.length }));
+  try {
+    const response = await fetchWithAuthentication("/voice/speech", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Voice-Request-ID": requestId },
+      body: JSON.stringify({ text }),
+      signal,
+    });
+    console.info("[voice][tts] headers", JSON.stringify({ requestId, status: response.status, contentType: response.headers.get("Content-Type"), sampleRate: response.headers.get("X-Sample-Rate"), elapsedMs: Math.round(performance.now() - started) }));
+    if (!response.ok) throw await toError(response);
+    if (!response.body) throw new ApiError(500, "The reading carried no audio.");
+    const declared = Number(response.headers.get("X-Sample-Rate"));
+    return {
+      body: response.body,
+      sampleRate: Number.isFinite(declared) && declared > 0 ? declared : 48_000,
+    };
+  } catch (error) {
+    console.error("[voice][tts] failure", JSON.stringify({ requestId, status: error instanceof ApiError ? error.status : undefined, message: error instanceof Error ? error.message : String(error), elapsedMs: Math.round(performance.now() - started) }));
+    throw error;
+  }
 }
 
 export async function* askStream(

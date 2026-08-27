@@ -95,23 +95,17 @@ function supported(): boolean {
   );
 }
 
-function audioContext(sampleRate: number): AudioContext {
-  /*
-    One context for the whole app, and it must be built at the model's rate.
-    A context at the wrong rate does not fail -- it resamples, and the answer
-    comes out at the wrong pitch -- so a rate change (a reconfigured model)
-    replaces the context rather than reusing it.
-  */
-  if (context && context.sampleRate !== sampleRate) {
-    void context.close().catch(() => undefined);
-    context = null;
-  }
+function audioContext(): AudioContext {
+  // The context's hardware rate does not need to match the model's rate:
+  // AudioBuffer stores its own sample rate and Web Audio resamples it correctly.
+  // Replacing an already-unlocked context because a device runs at 44.1 kHz
+  // would lose the click's autoplay activation and produce silent playback.
   if (!context) {
     const Ctor =
       window.AudioContext ??
       (window as unknown as { webkitAudioContext: typeof AudioContext })
         .webkitAudioContext;
-    context = new Ctor({ sampleRate });
+    context = new Ctor();
   }
   return context;
 }
@@ -125,7 +119,7 @@ function audioContext(sampleRate: number): AudioContext {
  */
 export async function primeSpeech(): Promise<void> {
   if (!supported()) return;
-  const ctx = audioContext(48_000);
+  const ctx = audioContext();
   if (ctx.state === "suspended") await ctx.resume();
 }
 
@@ -160,17 +154,32 @@ export function stopSpeech(): void {
  * to the present whenever it falls behind -- which is what turns a sequence of
  * arriving buffers into continuous speech.
  */
-async function play(id: string, text: string, run: number): Promise<void> {
+async function play(
+  id: string,
+  text: string,
+  run: number,
+  preparedContext?: AudioContext,
+): Promise<void> {
+  console.info("[voice][play] start", JSON.stringify({ id, textChars: text.length, run }));
   const abort = new AbortController();
   controller = abort;
 
+  // Unlock the graph before the network request. The response can take several
+  // seconds while the tunnel refreshes, so resuming only after the fetch is
+  // outside the click's user activation and can be rejected as autoplay.
+  const ctx = preparedContext ?? audioContext();
+  if (ctx.state === "suspended") await ctx.resume();
+  if (ctx.state !== "running") {
+    throw new Error("The browser audio output is not running.");
+  }
+
   const { body, sampleRate } = await speakText(text, abort.signal);
+  console.info("[voice][play] stream ready", JSON.stringify({ id, sampleRate, run }));
   if (run !== generation) return;
 
-  const ctx = audioContext(sampleRate);
-  // Autoplay policy: a context created outside a gesture starts suspended. This
-  // call is inside the click that asked for the reading, so it resumes.
-  if (ctx.state === "suspended") await ctx.resume();
+  // AudioBuffer accepts the model's sample rate and resamples into the output
+  // device. Reusing the same running context is essential for autoplay.
+  const output = ctx;
 
   const reader = body.getReader();
   /*
@@ -181,7 +190,7 @@ async function play(id: string, text: string, run: number): Promise<void> {
     mid-sentence. Half a second of lead absorbs that, and is short enough that
     the reading still starts about when the button is pressed.
   */
-  let cursor = ctx.currentTime + PLAYBACK_LEAD_SECONDS;
+  let cursor = output.currentTime + PLAYBACK_LEAD_SECONDS;
   /*
     A chunk can split a 16-bit sample across two reads. Carrying the odd byte
     forward is what keeps the stream aligned -- interpreting it as the low half
@@ -191,11 +200,13 @@ async function play(id: string, text: string, run: number): Promise<void> {
   let carry = new Uint8Array(0);
 
   try {
+    let chunks = 0;
     for (;;) {
       const { done, value } = await reader.read();
       if (run !== generation) return;
       if (done) break;
       if (!value?.length) continue;
+      chunks += 1;
 
       const merged = new Uint8Array(carry.length + value.length);
       merged.set(carry);
@@ -205,17 +216,17 @@ async function play(id: string, text: string, run: number): Promise<void> {
       if (usable === 0) continue;
 
       const samples = new Int16Array(merged.buffer, merged.byteOffset, usable / 2);
-      const buffer = ctx.createBuffer(1, samples.length, sampleRate);
+      const buffer = output.createBuffer(1, samples.length, sampleRate);
       const channel = buffer.getChannelData(0);
       // 32768, not 32767: the encoder clipped to [-1, 1] before scaling by
       // 32767, so dividing by 32768 cannot overflow and the asymmetry is far
       // below audibility.
       for (let i = 0; i < samples.length; i += 1) channel[i] = samples[i] / 32768;
 
-      const source = ctx.createBufferSource();
+      const source = output.createBufferSource();
       source.buffer = buffer;
-      source.connect(ctx.destination);
-      cursor = Math.max(cursor, ctx.currentTime);
+      source.connect(output.destination);
+      cursor = Math.max(cursor, output.currentTime);
       source.start(cursor);
       cursor += buffer.duration;
 
@@ -224,6 +235,7 @@ async function play(id: string, text: string, run: number): Promise<void> {
         scheduled = scheduled.filter((node) => node !== source);
       };
     }
+    console.info("[voice][play] stream complete", JSON.stringify({ id, chunks, run }));
   } finally {
     reader.cancel().catch(() => undefined);
   }
@@ -235,7 +247,7 @@ async function play(id: string, text: string, run: number): Promise<void> {
     stop state until the sound actually stops -- hence waiting out the remaining
     scheduled time rather than publishing null here.
   */
-  const remaining = Math.max(0, cursor - ctx.currentTime);
+  const remaining = Math.max(0, cursor - output.currentTime);
   await new Promise((resolve) => setTimeout(resolve, remaining * 1000));
   if (run === generation) publish(null);
 }
@@ -320,10 +332,14 @@ export function useSpeech(id: string, lang: string) {
       if (!text.trim()) return;
 
       stopSpeaking();
+      const preparedContext = audioContext();
       generation += 1;
       const run = generation;
       publish(id);
-      play(id, text, run).catch((error: unknown) => {
+      void preparedContext
+        .resume()
+        .then(() => play(id, text, run, preparedContext))
+        .catch((error: unknown) => {
         if (run !== generation) return;
         /*
           A stop is not a failure -- `stopSpeaking` aborts the fetch, and the
@@ -337,7 +353,7 @@ export function useSpeech(id: string, lang: string) {
           kind:
             status === 503 ? "busy" : status === 422 ? "unavailable" : "failed",
         });
-      });
+        });
     },
     [id],
   );

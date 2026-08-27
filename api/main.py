@@ -7,17 +7,23 @@ Docs at /docs, and the OpenAPI schema at /openapi.json -- which is what
 """
 
 import logging
+import threading
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from agents.shared.checkpoints import close_checkpointer, get_checkpointer
 from config.settings import settings
+from voice_models import (
+    VoiceSpeechUnavailable,
+    VoiceTranscriptionUnavailable,
+    close_voice_providers,
+    get_synthesizer,
+    get_transcriber,
+)
 
 from .automations import loop as automation_loop
 from .routers import ROUTERS
-from .voice_speech import VoiceSpeechUnavailable, warm_speech_model
-from .voice_transcription import VoiceTranscriptionUnavailable, warm_voice_model
-from agents.shared.checkpoints import close_checkpointer, get_checkpointer
 
 logging.basicConfig(
     level=settings.LOG_LEVEL,
@@ -59,39 +65,56 @@ def start_agent_checkpointer() -> None:
 
 @app.on_event("startup")
 def start_voice_transcription() -> None:
-    """Warm Metal inference before the first user waits for a transcript."""
+    """Warm STT in the background so tunnel/model latency cannot block startup."""
     if not settings.VOICE_WARM_ON_STARTUP:
         return
-    try:
-        warm_voice_model()
-    except VoiceTranscriptionUnavailable as exc:
-        # Banking and text chat remain useful while a workstation is downloading
-        # the optional local checkpoint; the voice endpoint reports the same 503.
-        logger.warning("Voice model was not warmed: %s", exc)
-    except Exception:
-        # A corrupt/incompatible optional checkpoint must be loud in the logs,
-        # but it must not take banking, comparison and text chat down with it.
-        logger.exception("Voice model warm-up failed")
+    transcriber = get_transcriber()
+    # The remote Whisper worker currently becomes unavailable after repeated
+    # inference calls while its health endpoint remains green. A synthetic warm
+    # request therefore consumes a useful inference slot and makes the first
+    # real recording more likely to hit the stuck worker. Local checkpoints
+    # still benefit from startup loading; remote inference starts on demand.
+    if transcriber.provider_name == "remote":
+        return
+
+    def warm() -> None:
+        try:
+            transcriber.warm()
+        except VoiceTranscriptionUnavailable as exc:
+            logger.warning("Voice model was not warmed: %s", exc)
+        except Exception:
+            logger.exception("Voice model warm-up failed")
+
+    threading.Thread(target=warm, name="remote-stt-warm", daemon=True).start()
 
 
 @app.on_event("startup")
 def start_speech_synthesis() -> None:
-    """Load Trendyol-TTS before the first user asks for an answer to be read.
+    """Warm local TTS only; remote TTS must not race a user reading request.
 
-    Worth doing here and not lazily: a cold Hugging Face cache downloads ~5 GB,
-    and a warm one still costs ~5.6s. Both belong in startup rather than in the
-    request of whoever happens to press the speaker first.
+    The remote Trendyol service is a single-reader process. A background warm
+    request can hold that reader while the first real history playback is
+    waiting, which makes the API queue return 503 even though the endpoint is
+    healthy. Remote requests already have their own streamed timeout/retry path,
+    so they are started on demand instead.
     """
     if not settings.SPEECH_WARM_ON_STARTUP:
         return
-    try:
-        warm_speech_model()
-    except VoiceSpeechUnavailable as exc:
-        # The speech extra is optional. Everything else stays useful without it,
-        # and POST /voice/speech reports the same 503.
-        logger.warning("Speech model was not warmed: %s", exc)
-    except Exception:
-        logger.exception("Speech model warm-up failed")
+    synthesizer = get_synthesizer()
+    if synthesizer.provider_name == "remote":
+        return
+
+    def warm() -> None:
+        try:
+            synthesizer.warm()
+        except VoiceSpeechUnavailable as exc:
+            # The speech extra is optional. Everything else stays useful without
+            # it, and POST /voice/speech reports the same 503.
+            logger.warning("Speech model was not warmed: %s", exc)
+        except Exception:
+            logger.exception("Speech model warm-up failed")
+
+    threading.Thread(target=warm, name="remote-tts-warm", daemon=True).start()
 
 
 @app.on_event("startup")
@@ -112,6 +135,11 @@ def stop_automation_loop() -> None:
 @app.on_event("shutdown")
 def stop_agent_checkpointer() -> None:
     close_checkpointer()
+
+
+@app.on_event("shutdown")
+def stop_voice_providers() -> None:
+    close_voice_providers()
 
 logger.info(
     "TF26 API ready — environment=%s, CORS origins=%s",

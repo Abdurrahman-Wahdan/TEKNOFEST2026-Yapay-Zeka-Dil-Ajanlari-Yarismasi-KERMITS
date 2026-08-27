@@ -22,6 +22,7 @@ def clear_caches():
     from embeddings import clear_embedding_cache
     from llm.context import clear_cache as clear_context_cache
     from vector_stores import clear_client_cache
+    from voice_models import close_voice_providers
 
     def clear():
         clear_embedding_cache()
@@ -36,6 +37,7 @@ def clear_caches():
         # Probed context windows, keyed on the tunnel URL a test may have moved.
         clear_context_cache()
         clear_web_research_cache()
+        close_voice_providers()
 
     clear()
     yield
