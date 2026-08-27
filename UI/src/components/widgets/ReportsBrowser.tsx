@@ -12,11 +12,15 @@ import {
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
+import { AttachButton } from "@/components/chat/AttachButton";
 import { CenteredState } from "@/components/ui/CenteredState";
 import { Pill } from "@/components/ui/Pill";
 import { VuiBox, VuiButton, VuiTypography } from "@/components/vision";
+import { usePathname } from "@/i18n/navigation";
 import { api, type AutomationReportSummary } from "@/lib/api";
 import { REPORT_PARAM, reportSearch } from "@/lib/automations";
+import { useChat } from "@/lib/chat/ChatProvider";
+import { elideLabel } from "@/lib/chat/context-format";
 import { formatDateTime } from "@/lib/format";
 
 import { UNREAD_KEY } from "./ReportNotifications";
@@ -220,7 +224,12 @@ function OneReport({
 }) {
   const t = useTranslations("reports");
   const tc = useTranslations("common");
+  // The assistant's own namespace: the button names an assistant action, and
+  // those strings live together -- the same rule `ProducedTable` follows.
+  const tChat = useTranslations("chat");
   const queryClient = useQueryClient();
+  const pathname = usePathname();
+  const { attachments, setPopupOpen } = useChat();
 
   const report = useQuery({
     queryKey: [...REPORTS_KEY, id],
@@ -252,6 +261,38 @@ function OneReport({
     // the cache.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded?.id, alreadyRead, pending]);
+
+  /**
+   * Hand the whole report to the assistant.
+   *
+   * The report's markdown verbatim -- it *is* an assistant answer, so it needs no
+   * reserialising, and nothing is cut: the tables inside it are the part a reader
+   * has follow-up questions about. Attaching the body rather than reading the
+   * rendered DOM back out is the same choice `useAttachTable` documents: the call
+   * site has the exact source in hand.
+   */
+  const attachReport = () => {
+    if (!loaded?.body) return;
+    attachments.addContext({
+      kind: "report",
+      label: elideLabel(loaded.title),
+      body: loaded.body,
+      format: "markdown",
+      location: {
+        path: pathname,
+        // The page, not the report's own title -- the chip's label is already the
+        // title, and a subline repeating it says nothing twice. The date rides
+        // along as `about` so the agent knows how current the figures are without
+        // asking.
+        page: t("title"),
+        about: tChat("reportAbout", {
+          date: formatDateTime(loaded.created_at, locale),
+        }),
+      },
+    });
+    // Open the panel unless the user is already looking at the conversation.
+    if (pathname !== "/chat") setPopupOpen(true);
+  };
 
   return (
     <VuiBox display="flex" flexDirection="column" gap="16px">
@@ -299,17 +340,28 @@ function OneReport({
             padding: "20px",
           }}
         >
-          <VuiBox display="flex" flexDirection="column" gap="4px">
-            <VuiTypography
-              variant="h5"
-              fontWeight="bold"
-              sx={{ color: "var(--foreground)" }}
-            >
-              {loaded.title}
-            </VuiTypography>
-            <VuiTypography variant="caption" sx={{ color: "var(--control-ink)" }}>
-              {formatDateTime(loaded.created_at, locale)}
-            </VuiTypography>
+          <VuiBox display="flex" alignItems="flex-start" gap="12px">
+            <VuiBox flex={1} display="flex" flexDirection="column" gap="4px">
+              <VuiTypography
+                variant="h5"
+                fontWeight="bold"
+                sx={{ color: "var(--foreground)" }}
+              >
+                {loaded.title}
+              </VuiTypography>
+              <VuiTypography variant="caption" sx={{ color: "var(--control-ink)" }}>
+                {formatDateTime(loaded.created_at, locale)}
+              </VuiTypography>
+            </VuiBox>
+            {/* Only when there is something to hand over: an empty or failed run
+                has no body, and a button that stages nothing is a broken one. */}
+            {loaded.body && (
+              <AttachButton
+                label={tChat("attachReport")}
+                onClick={attachReport}
+                alwaysVisible
+              />
+            )}
           </VuiBox>
 
           {/* A failed run still has a report, and it says why. Silence would be

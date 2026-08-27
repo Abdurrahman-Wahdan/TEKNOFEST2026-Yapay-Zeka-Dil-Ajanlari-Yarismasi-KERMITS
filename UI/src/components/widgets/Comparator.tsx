@@ -37,6 +37,7 @@ import { useBankLabels } from "@/lib/use-bank-labels";
 import { useTableSort } from "@/lib/use-table-sort";
 
 import { useAttachTable } from "@/lib/chat/use-attach-table";
+import { LiveOverview } from "./LiveOverview";
 import { ProducedTable } from "./ProducedTable";
 import { BoardFilters } from "./BoardFilters";
 import { TableFilters } from "./TableFilters";
@@ -50,6 +51,22 @@ import { TableFilters } from "./TableFilters";
  * noticed before the next poll lands.
  */
 const RATES_POLL_MS = 3_000;
+
+/**
+ * How often the FX board's overview is rewritten.
+ *
+ * A hundred times the board's own poll, and that gap is the point. The prices
+ * move every three seconds; what the model has to *say* about them does not,
+ * and asking it every tick would be a 70-120 second vision call started twenty
+ * times before the first one finished. Five minutes is slow enough to be
+ * affordable and quick enough that a reader who has been watching the board
+ * for a while is not reading a verdict on prices that have since moved.
+ *
+ * A tick over a board that has not actually changed is free: the server keys
+ * the overview on the page outline, so an unmoved board -- a closed market, a
+ * weekend -- serves the cache and never reaches the model.
+ */
+const OVERVIEW_REFRESH_MS = 5 * 60_000;
 
 /** A submitted run. The tag picks the endpoint; `params` keeps its own types. */
 type RunQuery =
@@ -608,6 +625,55 @@ export function Comparator() {
   const ineligible = (banks ?? []).filter((b) => !b.publishes.includes(spec.capability));
   const resultsRef = useRef<HTMLDivElement>(null);
 
+  // The five-minute tick the FX overview rewrites itself on. A counter rather
+  // than a reading of the clock, so the first overview is written when the
+  // board arrives and the next one five minutes after *that*, instead of at
+  // whatever phase of the hour the tab happened to open at.
+  const [boardTick, setBoardTick] = useState(0);
+  useEffect(() => {
+    // Only the rates board moves on its own; every other category changes
+    // because the user did something, and an interval running under them would
+    // rewrite a finished comparison nobody had touched.
+    if (category !== "rates") return;
+    const id = setInterval(() => setBoardTick((n) => n + 1), OVERVIEW_REFRESH_MS);
+    return () => clearInterval(id);
+  }, [category]);
+
+  /**
+   * When what is on screen has become a different thing, and so wants reading
+   * again. `LiveOverview` regenerates on every change of this and on nothing
+   * else, so the three cadences the page actually has are stated here.
+   *
+   *  - **The FX board rewrites itself on a timer.** It is the one thing here
+   *    that moves without anybody asking, so the tick is the revision. A tick
+   *    over a board that has not moved is free — the server keys the overview
+   *    on the page outline, so a closed market serves the cache.
+   *  - **Miles is read once.** It is one bank's published reward table, not a
+   *    comparison and not live; the bank is the only thing that can make it a
+   *    different table.
+   *  - **Everything else waits for Compare, and for the answer.** Keyed on the
+   *    submitted parameters *and* on when the result landed, which is what
+   *    makes the card spin from the press and generate from the arrival:
+   *    pressing Compare changes the parameters, so the previous verdict is
+   *    dropped immediately, and `ready` below holds the generation back until
+   *    the rows are actually on screen. Re-running the identical comparison
+   *    changes neither, which is correct — the same question over the same
+   *    answer has the same overview.
+   */
+  const overviewRevision =
+    category === "rates"
+      ? `rates:${boardTick}`
+      : category === "miles"
+        ? `miles:${effectiveSingleBank}`
+        : `${category}:${JSON.stringify(query)}:${result.dataUpdatedAt}`;
+
+  // Read the page only once there is a table drawn in it, with rows. The
+  // overview is written from the page outline, so reading during a load hands
+  // the model a spinner and asks it what the comparison shows -- and reading a
+  // board that came back empty asks it to rank nothing.
+  const overviewReady =
+    (table?.rows.length ?? 0) > 0 && !resultsPending && !resultsError;
+
   // The Results card mounts on the first Compare, so on a tall form it can
   // appear below the fold and a successful click reads as doing nothing.
   useEffect(() => {
@@ -829,6 +895,15 @@ export function Comparator() {
           for the user to press Compare. Without this, an empty "Results" card
           sat under the form on every category before a single request had
           been made. */}
+      {/* Above the results, and inside the same gate: before the first Compare
+          there is no comparison to read, so on the submit-driven categories
+          this is not on screen at all rather than sitting empty. The rates
+          board and the mile table open the gate themselves, which is why those
+          two get an overview without anybody pressing anything. */}
+      {resultsVisible && (
+        <LiveOverview ready={overviewReady} revision={overviewRevision} />
+      )}
+
       {resultsVisible && (
         <Card ref={resultsRef}>
           <VuiBox mb="22px" display="flex" alignItems="center" gap="12px" flexWrap="wrap">

@@ -767,6 +767,56 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/compare/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Live Overview
+         * @description Poll for an overview that is being written.
+         *
+         *     Deliberately never generates, for the reason the pool's GET does not either:
+         *     a GET that costs a model call is not safe to retry, and this one is called
+         *     on a timer.
+         *
+         *     `missing` is the failure signal. A digest that is neither cached nor running
+         *     was either never asked for or was asked for and did not survive its
+         *     generation -- and the client, which posted before it started polling, is the
+         *     one that can tell those apart.
+         */
+        get: operations["get_live_overview"];
+        put?: never;
+        /**
+         * Create Live Overview
+         * @description Read whatever `/compare` is showing and say what it shows.
+         *
+         *     **One call does both jobs.** The pool's equivalent is a GET to check and a
+         *     POST to start, because there the client already knows the key -- the table
+         *     id is in the URL it navigated to. Here the key is a hash of the page, and
+         *     having the browser compute it would mean a SHA-256 over the same bytes in
+         *     two languages agreeing forever; when that drifts it fails silently and looks
+         *     like an overview that never arrives. So the client posts the page, the
+         *     server hashes it, and the answer is either the finished overview or the
+         *     digest to poll with.
+         *
+         *     That makes this POST safe to repeat: the digest is the content, so asking
+         *     twice for the same board serves the cache the second time, and a
+         *     five-minute refresh over a board that has not moved costs nothing at all.
+         *
+         *     No authentication, like the rest of this router. The cost is bounded by the
+         *     digest cache, by the single-flight lock, and by the process-wide generation
+         *     cap this shares with the pool.
+         */
+        post: operations["create_live_overview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/components": {
         parameters: {
             query?: never;
@@ -2118,6 +2168,48 @@ export interface components {
             limited_by?: {
                 [key: string]: string[];
             };
+        };
+        /**
+         * LiveOverviewRequest
+         * @description Ask for an overview of whatever `/compare` is showing right now.
+         *
+         *     No table id, because there is no table to name: the live comparator builds
+         *     its board from bank endpoints and the user's own inputs, and the page the
+         *     browser is looking at is the whole of the evidence. `page.text` is therefore
+         *     required here in a way it is only checked for there.
+         */
+        LiveOverviewRequest: {
+            /**
+             * Locale
+             * @description 'tr' or 'en'. Anything else is Turkish.
+             * @default tr
+             */
+            locale: string;
+            page?: components["schemas"]["PageContext"];
+        };
+        /**
+         * LiveOverviewState
+         * @description Whether there is an overview for this exact page, and if not, why not.
+         *
+         *     The same three answers as `TableOverviewState`, plus the key. `digest` is
+         *     computed server-side from the outline and handed back so the client can poll
+         *     without reposting the page or reimplementing the hash -- getting a SHA-256
+         *     over the same bytes in the browser to agree with Python is a thing that only
+         *     ever fails silently, and the failure looks like an overview that never
+         *     arrives.
+         */
+        LiveOverviewState: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "generating" | "missing";
+            /**
+             * Digest
+             * @description Poll GET /api/compare/overview with this.
+             */
+            digest: string;
+            overview?: components["schemas"]["TableOverviewOut"] | null;
         };
         /** LoginRequest */
         LoginRequest: {
@@ -4157,6 +4249,73 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConstraintsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_live_overview: {
+        parameters: {
+            query: {
+                /** @description The digest returned by POST /api/compare/overview. */
+                digest: string;
+                /** @description 'tr' or 'en'. */
+                locale?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveOverviewState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_live_overview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LiveOverviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveOverviewState"];
                 };
             };
             /** @description Validation Error */

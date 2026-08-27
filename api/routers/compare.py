@@ -12,14 +12,24 @@ missing from a ranking instead of quietly showing nine rows.
 
 import logging
 
+from datetime import datetime
+
 from fastapi import APIRouter, HTTPException, Query, status
 
 from banks import compare as compare_mod
 from banks import limits
 from banks.providers import UnsupportedProduct
 
+from .. import live_overviews as live
+from .. import table_overviews as overviews
 from ..converters import comparison_out
 from ..schemas.banks import ComparisonOut, ConstraintsOut
+from ..schemas.compare_tables import (
+    LiveOverviewRequest,
+    LiveOverviewState,
+    RankedBankOut,
+    TableOverviewOut,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -147,3 +157,114 @@ def compare_constraints(
     except (UnsupportedProduct, ValueError) as exc:
         raise _bad_family(exc) from exc
     return ConstraintsOut(**result)
+
+
+def _overview_out(
+    digest: str, locale: str, result, generated_at: datetime
+) -> TableOverviewOut:
+    """A live overview on the wire, in the shape the pool's already uses.
+
+    Same schema on purpose: the card that draws this is the card that draws a
+    pool table's overview, and giving the live one its own near-identical shape
+    would be a second renderer to keep in step. `table_id` carries the digest --
+    there is no table to name here, and the digest is what identifies what was
+    read.
+    """
+    return TableOverviewOut(
+        table_id=digest,
+        locale=locale,
+        summary=result.summary,
+        recommended=[RankedBankOut(bank=r.bank, why=r.why) for r in result.recommended],
+        not_recommended=[
+            RankedBankOut(bank=r.bank, why=r.why) for r in result.not_recommended
+        ],
+        caveat=result.caveat,
+        generated_at=generated_at,
+        model=overviews.model_name(),
+    )
+
+
+@router.post("/overview", response_model=LiveOverviewState)
+def create_live_overview(body: LiveOverviewRequest) -> LiveOverviewState:
+    """Read whatever `/compare` is showing and say what it shows.
+
+    **One call does both jobs.** The pool's equivalent is a GET to check and a
+    POST to start, because there the client already knows the key -- the table
+    id is in the URL it navigated to. Here the key is a hash of the page, and
+    having the browser compute it would mean a SHA-256 over the same bytes in
+    two languages agreeing forever; when that drifts it fails silently and looks
+    like an overview that never arrives. So the client posts the page, the
+    server hashes it, and the answer is either the finished overview or the
+    digest to poll with.
+
+    That makes this POST safe to repeat: the digest is the content, so asking
+    twice for the same board serves the cache the second time, and a
+    five-minute refresh over a board that has not moved costs nothing at all.
+
+    No authentication, like the rest of this router. The cost is bounded by the
+    digest cache, by the single-flight lock, and by the process-wide generation
+    cap this shares with the pool.
+    """
+    text = (body.page.text or "").strip()
+    if not text:
+        # Without the outline there is nothing to summarise. Refused rather
+        # than answered emptily: a card that quietly shows nothing reads as a
+        # model with no opinion, which is a different and wrong answer.
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "An overview needs the page outline (`page.text`).",
+        )
+
+    locale = overviews.normalise_locale(body.locale)
+    page_digest = live.digest(text)
+
+    hit = live.cached(page_digest, locale)
+    if hit is not None:
+        result, generated_at = hit
+        return LiveOverviewState(
+            status="ready",
+            digest=page_digest,
+            overview=_overview_out(page_digest, locale, result, generated_at),
+        )
+
+    # How much the model is about to read. An outline suddenly much shorter than
+    # usual means the page changed shape and the reader is now summarising less
+    # than the user can see.
+    logger.info(
+        "Live overview requested digest=%s locale=%s outline=%d chars",
+        page_digest[:12],
+        locale,
+        len(text),
+    )
+    live.start(page_text=text, page_digest=page_digest, locale=locale)
+    return LiveOverviewState(status="generating", digest=page_digest)
+
+
+@router.get("/overview", response_model=LiveOverviewState)
+def get_live_overview(
+    digest: str = Query(description="The digest returned by POST /api/compare/overview."),
+    locale: str = Query(default="tr", description="'tr' or 'en'."),
+) -> LiveOverviewState:
+    """Poll for an overview that is being written.
+
+    Deliberately never generates, for the reason the pool's GET does not either:
+    a GET that costs a model call is not safe to retry, and this one is called
+    on a timer.
+
+    `missing` is the failure signal. A digest that is neither cached nor running
+    was either never asked for or was asked for and did not survive its
+    generation -- and the client, which posted before it started polling, is the
+    one that can tell those apart.
+    """
+    locale = overviews.normalise_locale(locale)
+    hit = live.cached(digest, locale)
+    if hit is not None:
+        result, generated_at = hit
+        return LiveOverviewState(
+            status="ready",
+            digest=digest,
+            overview=_overview_out(digest, locale, result, generated_at),
+        )
+    if live.running(digest, locale):
+        return LiveOverviewState(status="generating", digest=digest)
+    return LiveOverviewState(status="missing", digest=digest)
