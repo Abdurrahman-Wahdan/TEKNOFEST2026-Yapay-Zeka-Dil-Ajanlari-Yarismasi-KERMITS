@@ -518,6 +518,40 @@ export function ChatMessage({
         </VuiBox>
       )}
 
+      {/*
+        The standing warning under every finished answer.
+
+        Rendered, never written into the turn. It is not a `MessagePart`, so it
+        never reaches `ChatMessage.content`, never goes back to the model as
+        history, and is not part of the text the copy and read-aloud buttons act
+        on -- the agent is not told it says this, it simply always does.
+
+        Under each answer rather than once at the foot of the panel, because a
+        reader scrolling back through a long transcript reads one answer at a
+        time and has to find the warning on the answer they are reading. It waits
+        for the stream to finish for the same reason the action row does: a
+        caveat under half a sentence is a caveat about nothing. An errored turn
+        has no prose to qualify, so `answerText` keeps it out.
+      */}
+      {message.role === "assistant" && !streaming && answerText.trim() && (
+        <VuiTypography
+          component="p"
+          variant="caption"
+          fontWeight="regular"
+          color="text"
+          sx={{
+            display: "block",
+            mt: compact ? 0.25 : 0.5,
+            opacity: 0.6,
+            ...(compact
+              ? { fontSize: "0.6875rem", lineHeight: 1.3 }
+              : { lineHeight: 1.4 }),
+          }}
+        >
+          {t("disclaimer")}
+        </VuiTypography>
+      )}
+
       {/* Under the whole message, not inside the parts loop: an answer with a
           citations block is still one answer, and a row of buttons between the
           prose and its sources would read as belonging to the prose alone. */}
