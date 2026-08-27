@@ -11,11 +11,10 @@
       Elde sadece bir URL varken (ör. bir atıfta görülen) o belgenin tamamı.
 
 Neden üçü birden: `dataprep/embed.py` metni 9000 karakterlik parçalara ÜST ÜSTE
-BİNME OLMADAN (OVERLAP=0) böler. Ölçüldü: 5613 belgenin 287'si (%5) çok parçalı
-ve koleksiyonun %18'i (1184 parça) o belgelerde. Yani bir arama sonucu cümlenin
-ya da tablonun ortasında bitebiliyor ve devamı KOMŞU parçada. En büyük belge 55
-parça / 454.981 karakter — tamamını döndürmek modelin 131k'lik penceresinden
-büyük, o yüzden "kesilmiş" sorusunun doğru cevabı read_full_page değil,
+BİNME OLMADAN (OVERLAP=0) böler. Aktif aktarımda 8583 belgenin 1792'si çok
+parçalı ve 4969 parça bu belgelerde. Yani bir arama sonucu cümlenin ya da
+tablonun ortasında bitebiliyor ve devamı KOMŞU parçada. En büyük belge 19
+parça; bu yüzden "kesilmiş" sorusunun doğru cevabı read_full_page değil,
 expand_chunk ile adım adım genişletmek.
 
 Qdrant 'campaigns' koleksiyonunu metadata.bank filtresiyle arar. Süresi geçmiş
@@ -137,10 +136,10 @@ def embed_query(query: str, task: str | None = None):
 
 
 # --- payload metadata: İKİ ayrı isimlendirme kuşağı -------------------------
-# Koleksiyondaki 6510 point'in TAMAMI şu anahtarları taşıyor: bank, url, type
+# Aktarılan koleksiyondaki 16114 point'in TAMAMI şu anahtarları taşıyor: bank, url, type
 # (metin/gorsel), chunk_index, validity_status + tarih varsa gecerlilik_baslangic/
 # gecerlilik_bitis. Bir önceki kuşağın isimleri (source_url, pdf_url, source_page,
-# campaign_end, campaign_status) ise 6510'un SIFIRINDA var — yani sadece o
+# campaign_end, campaign_status) ise bu aktarımın SIFIRINDA var — yani sadece o
 # isimlere bakan kod, canlı koleksiyona karşı her sonuçta boş url döndürür ve
 # süresi geçmiş kampanya filtresi hiç çalışmaz.
 #
