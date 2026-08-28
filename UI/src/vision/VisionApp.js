@@ -20,6 +20,7 @@ import Sidenav from "examples/Sidenav";
 // other page-level control lives anyway.
 import { AgentPopup } from "@/components/chat/AgentPopup";
 import { SelectionReply } from "@/components/chat/SelectionReply";
+import { VoiceMode } from "@/components/voice/VoiceMode";
 import { ReportToasts } from "@/components/widgets/ReportToasts";
 
 // Vision UI Dashboard React themes
@@ -91,6 +92,11 @@ export default function VisionApp({ children }) {
           {/* Where the Configurator's settings button, and then the theme
               toggle, used to sit. */}
           <AgentPopup />
+          {/* One key listener for the whole dashboard. Holding space asks out
+              loud from wherever the user already is, so it cannot belong to any
+              one page -- and the page it happens to be on travels with the
+              question. Renders nothing until the key goes down. */}
+          <VoiceMode />
           {/* One selection listener for the whole dashboard, rather than one per
               page. It renders nothing until there is a selection to act on. */}
           <SelectionReply />

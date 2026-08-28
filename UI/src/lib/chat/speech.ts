@@ -4,6 +4,10 @@ import { useCallback, useEffect, useSyncExternalStore } from "react";
 
 import { speakText } from "@/lib/api";
 
+import { speechErrorKind, type SpeechError } from "./speech-error.ts";
+
+export type { SpeechError };
+
 
 /**
  * Reading an answer out loud, in the app's own Turkish voice.
@@ -61,7 +65,6 @@ const listeners = new Set<() => void>();
  */
 const PLAYBACK_LEAD_SECONDS = 0.5;
 
-export type SpeechError = "busy" | "unavailable" | "failed";
 /** The failure, and the message whose button should report it. */
 let speechError: { id: string; kind: SpeechError } | null = null;
 
@@ -95,25 +98,54 @@ function supported(): boolean {
   );
 }
 
-function audioContext(sampleRate: number): AudioContext {
+/**
+ * The one output graph, shared with anything else that makes a sound.
+ *
+ * Exported for `lib/voice/hold-music.ts`, which plays under the wait. A second
+ * `AudioContext` would be a second thing to unlock, and `primeSpeech` runs
+ * inside the key press precisely so that whatever plays later plays at all --
+ * so the hold music has to be on this one or it would be refused by autoplay
+ * policy the moment it started more than a gesture away from the keydown.
+ */
+export function audioContext(): AudioContext {
   /*
-    One context for the whole app, and it must be built at the model's rate.
-    A context at the wrong rate does not fail -- it resamples, and the answer
-    comes out at the wrong pitch -- so a rate change (a reconfigured model)
-    replaces the context rather than reusing it.
+    One context for the whole app, built once at the device's own rate and never
+    replaced.
+
+    It used to be built at the *model's* rate and thrown away whenever that rate
+    changed, to avoid playing the answer at the wrong pitch. That cannot happen:
+    `play` books every piece with `createBuffer(1, n, sampleRate)`, and an
+    `AudioBuffer` carries its own rate and is resampled into the output device
+    correctly. So the rebuild guarded against nothing -- and it cost something
+    real, because a replaced context is a *suspended* context, and the one being
+    discarded is exactly the one the user's gesture had already unlocked.
+
+    That matters now a reading can start long after the gesture that asked for
+    it. In voice mode the answer lands thirty to sixty seconds after the key was
+    pressed, far outside any user activation, and a context first resumed there
+    is refused by autoplay policy and plays silence.
   */
-  if (context && context.sampleRate !== sampleRate) {
-    void context.close().catch(() => undefined);
-    context = null;
-  }
   if (!context) {
     const Ctor =
       window.AudioContext ??
       (window as unknown as { webkitAudioContext: typeof AudioContext })
         .webkitAudioContext;
-    context = new Ctor({ sampleRate });
+    context = new Ctor();
   }
   return context;
+}
+
+/**
+ * Unlock the shared output while a real gesture is still in progress.
+ *
+ * For callers whose audio arrives much later than the key or click that asked
+ * for it. Resuming here means the reading that eventually starts plays through
+ * a context the browser already trusts.
+ */
+export async function primeSpeech(): Promise<void> {
+  if (!supported()) return;
+  const ctx = audioContext();
+  if (ctx.state === "suspended") await ctx.resume();
 }
 
 function stopSpeaking(): void {
@@ -146,13 +178,16 @@ async function play(id: string, text: string, run: number): Promise<void> {
   const abort = new AbortController();
   controller = abort;
 
+  /*
+    Unlocked before the request goes out, not after it comes back. The response
+    can take seconds -- longer while the model tunnel rotates -- and a resume
+    issued after that has left behind the gesture that would have authorised it.
+  */
+  const ctx = audioContext();
+  if (ctx.state === "suspended") await ctx.resume();
+
   const { body, sampleRate } = await speakText(text, abort.signal);
   if (run !== generation) return;
-
-  const ctx = audioContext(sampleRate);
-  // Autoplay policy: a context created outside a gesture starts suspended. This
-  // call is inside the click that asked for the reading, so it resumes.
-  if (ctx.state === "suspended") await ctx.resume();
 
   const reader = body.getReader();
   /*
@@ -222,6 +257,61 @@ async function play(id: string, text: string, run: number): Promise<void> {
   if (run === generation) publish(null);
 }
 
+/** Stop whatever is being read, from anywhere. */
+export function stopAloud(id?: string): void {
+  if (id !== undefined && speakingId !== id) return;
+  stopSpeaking();
+}
+
+/**
+ * Read one passage, and resolve when the sound has actually finished.
+ *
+ * The imperative half of `useSpeech`, for voice mode, which has no rows and no
+ * buttons and needs to know when the answer has been said so it can close.
+ *
+ * Deliberately the *same* singleton graph: starting either one stops the other,
+ * so pressing Space while a message is being read aloud interrupts that reading
+ * rather than talking over it.
+ */
+export async function speakAloud(
+  id: string,
+  text: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  const passage = text.trim();
+  if (!passage || !supported()) return;
+  signal?.throwIfAborted();
+
+  stopSpeaking();
+  generation += 1;
+  const run = generation;
+  publish(id);
+
+  const onAbort = () => {
+    if (run === generation) stopSpeaking();
+  };
+  signal?.addEventListener("abort", onAbort, { once: true });
+
+  try {
+    await play(id, passage, run);
+    signal?.throwIfAborted();
+  } catch (error) {
+    /*
+      A superseded run is not a failure. `stopSpeaking` aborts the fetch, and the
+      rejection that produces would otherwise be reported as the model refusing
+      to read something the user had already cancelled.
+    */
+    if (run !== generation) return;
+    publish(null, {
+      id,
+      kind: speechErrorKind((error as { status?: number } | null)?.status),
+    });
+    throw error;
+  } finally {
+    signal?.removeEventListener("abort", onAbort);
+  }
+}
+
 /** Nothing to subscribe to: whether the API exists cannot change mid-session. */
 const noSubscription = () => () => {};
 
@@ -268,27 +358,10 @@ export function useSpeech(id: string, lang: string) {
         stopSpeaking();
         return;
       }
-      if (!text.trim()) return;
-
-      stopSpeaking();
-      generation += 1;
-      const run = generation;
-      publish(id);
-      play(id, text, run).catch((error: unknown) => {
-        if (run !== generation) return;
-        /*
-          A stop is not a failure -- `stopSpeaking` aborts the fetch, and the
-          rejection that produces must not be reported as the model refusing.
-          It has already published its own state, so the guard above catches it,
-          and this only has to classify the real ones.
-        */
-        const status = (error as { status?: number } | null)?.status;
-        publish(null, {
-          id,
-          kind:
-            status === 503 ? "busy" : status === 422 ? "unavailable" : "failed",
-        });
-      });
+      // Already inside the click, so the context resumes inside the gesture.
+      // `speakAloud` publishes the failure itself; the rejection it re-throws is
+      // for callers that have to react to one, and this one does not.
+      void speakAloud(id, text).catch(() => undefined);
     },
     [id],
   );

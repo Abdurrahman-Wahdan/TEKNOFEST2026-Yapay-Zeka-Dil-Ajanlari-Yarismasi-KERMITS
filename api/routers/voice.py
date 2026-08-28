@@ -1,17 +1,25 @@
-"""Authenticated, local Turkish speech — to text, and back again."""
+"""Authenticated local STT and remote streaming TTS."""
 
+import asyncio
 import logging
 import tempfile
 from pathlib import Path
 
-from fastapi import APIRouter, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, File, HTTPException, Request, UploadFile, status
 from fastapi.responses import StreamingResponse
+from starlette.concurrency import run_in_threadpool
 
+from agents.voice_response import shape_for_speech
 from config.settings import settings
 
 from .. import voice_speech
 from ..deps import CurrentUser
-from ..schemas.voice import VoiceSpeechRequest, VoiceTranscriptionOut
+from ..schemas.voice import (
+    VoiceResponseOut,
+    VoiceResponseRequest,
+    VoiceSpeechRequest,
+    VoiceTranscriptionOut,
+)
 from ..voice_speech import VoiceSpeechFailed, VoiceSpeechUnavailable
 from ..voice_transcription import (
     VoiceTranscriptionFailed,
@@ -82,12 +90,58 @@ def create_voice_transcription(
     )
 
 
+@router.post("/response", response_model=VoiceResponseOut)
+def create_voice_response(
+    body: VoiceResponseRequest, user: CurrentUser
+) -> VoiceResponseOut:
+    """Rewrite one finished answer as prose, for a caller that will speak it.
+
+    Text in, text out -- deliberately not wired to `/speech` below. Voice mode
+    posts the result there itself, which keeps the queue, the cache and the
+    503-when-busy contract on one route instead of two, and leaves this one
+    usable on its own.
+
+    Every failure is a 503, including a model that answers with nothing usable.
+    The browser reads that as "shape it yourself" and falls back to the
+    deterministic converter, so the answer is still spoken -- less smoothly, and
+    without any chance of a rewritten figure. That is the same posture the
+    output guard takes when it cannot run: the turn continues.
+    """
+    del user  # Authentication is the boundary; nothing here is persisted.
+
+    text = body.text.strip()
+    if not text:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, "There is no answer to say."
+        )
+    if len(text) > settings.VOICE_RESPONSE_MAX_INPUT_CHARS:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            f"Answers are rewritten up to {settings.VOICE_RESPONSE_MAX_INPUT_CHARS}"
+            " characters.",
+        )
+
+    try:
+        shaped = shape_for_speech(text, question=body.question)
+    except Exception as exc:
+        logger.exception("Voice response shaping failed")
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "The answer could not be prepared for speech.",
+        ) from exc
+    return VoiceResponseOut(speech=shaped.speech)
+
+
 @router.post(
     "/speech",
     responses={200: {"content": {"audio/L16": {}}}},
     response_class=StreamingResponse,
 )
-def create_speech(body: VoiceSpeechRequest, user: CurrentUser) -> StreamingResponse:
+def create_speech(
+    body: VoiceSpeechRequest,
+    user: CurrentUser,
+    request: Request,
+) -> StreamingResponse:
     """Read a passage aloud. Returns raw 16-bit PCM as it is generated.
 
     **Streamed over plain HTTP, not a WebSocket.** `TTS_ENTEGRASYON.md` shows a
@@ -160,13 +214,31 @@ def create_speech(body: VoiceSpeechRequest, user: CurrentUser) -> StreamingRespo
         voice_speech.release()
         raise
 
-    def frames():
+    async def frames():
         chunks: list[bytes] = []
         cached_bytes = 0
         cache_limit = voice_speech.audio_cache_max_bytes()
         cacheable = True
+        speech = iter(voice_speech.speak(text))
+
+        def next_chunk():
+            try:
+                return False, next(speech)
+            except StopIteration:
+                return True, b""
+
         try:
-            for chunk in voice_speech.speak(text):
+            while True:
+                # Starlette cancels this async generator on disconnect. The
+                # explicit checks also catch a client that closes between
+                # chunks, allowing the upstream httpx stream to close promptly.
+                if await request.is_disconnected():
+                    break
+                done, chunk = await run_in_threadpool(next_chunk)
+                if done:
+                    break
+                if await request.is_disconnected():
+                    break
                 if cacheable:
                     if cached_bytes + len(chunk) <= cache_limit:
                         chunks.append(chunk)
@@ -179,6 +251,9 @@ def create_speech(body: VoiceSpeechRequest, user: CurrentUser) -> StreamingRespo
                 yield chunk
             if cacheable:
                 voice_speech.remember_audio(text, chunks)
+        except asyncio.CancelledError:
+            logger.info("Speech client disconnected; closing remote stream")
+            raise
         except VoiceSpeechFailed as exc:
             # Too late for a status code -- the model loaded and then failed
             # part-way. Closing the stream is the only signal left, and the
@@ -187,6 +262,7 @@ def create_speech(body: VoiceSpeechRequest, user: CurrentUser) -> StreamingRespo
         except Exception:
             logger.exception("Speech stream failed")
         finally:
+            speech.close()
             voice_speech.release()
 
     return StreamingResponse(

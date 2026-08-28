@@ -860,6 +860,33 @@
         ]
       }
     },
+    "/api/me/automations/reports/read-all": {
+      "post": {
+        "tags": [
+          "automations"
+        ],
+        "summary": "Mark All Reports Read",
+        "description": "Clear this user's unread report notifications in one database update.",
+        "operationId": "mark_all_reports_read",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnreadCount"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/me/automations/reports/{report_id}": {
       "get": {
         "tags": [
@@ -3023,6 +3050,53 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/VoiceTranscriptionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/voice/response": {
+      "post": {
+        "tags": [
+          "voice"
+        ],
+        "summary": "Create Voice Response",
+        "description": "Rewrite one finished answer as prose, for a caller that will speak it.\n\nText in, text out -- deliberately not wired to `/speech` below. Voice mode\nposts the result there itself, which keeps the queue, the cache and the\n503-when-busy contract on one route instead of two, and leaves this one\nusable on its own.\n\nEvery failure is a 503, including a model that answers with nothing usable.\nThe browser reads that as \"shape it yourself\" and falls back to the\ndeterministic converter, so the answer is still spoken -- less smoothly, and\nwithout any chance of a rewritten figure. That is the same posture the\noutput guard takes when it cannot run: the turn continues.",
+        "operationId": "create_voice_response",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoiceResponseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceResponseOut"
                 }
               }
             }
@@ -7577,6 +7651,42 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VoiceResponseOut": {
+        "properties": {
+          "speech": {
+            "type": "string",
+            "title": "Speech"
+          }
+        },
+        "type": "object",
+        "required": [
+          "speech"
+        ],
+        "title": "VoiceResponseOut",
+        "description": "The same answer as prose, ready to hand straight to `/voice/speech`."
+      },
+      "VoiceResponseRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Text",
+            "description": "The answer as written, markdown and all. Bounded by VOICE_RESPONSE_MAX_INPUT_CHARS and refused rather than truncated: half an answer spoken confidently is worse than none."
+          },
+          "question": {
+            "type": "string",
+            "title": "Question",
+            "description": "What was asked. Context for the rewrite, never an instruction.",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "VoiceResponseRequest",
+        "description": "A finished assistant answer, in markdown, to be rewritten for speech.\n\nThe mirror image of `VoiceSpeechRequest`, and the reason that one can keep\ninsisting on prose. The browser strips marks well enough for a speaker\nbutton, but voice mode is *only* listened to -- there is no answer on screen\nto fall back on -- so the whole passage goes through a model first, and what\ncomes back is what gets posted to `/voice/speech`."
       },
       "VoiceSpeechRequest": {
         "properties": {

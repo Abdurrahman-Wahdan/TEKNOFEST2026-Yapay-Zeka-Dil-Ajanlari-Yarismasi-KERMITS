@@ -83,7 +83,18 @@ type ChatContextValue = {
   stage?: ChatStage;
   /** A private agent's context-aware next user message. */
   recommendation?: string;
-  send: (text: string) => void;
+  /**
+   * Ask a question.
+   *
+   * `extra.contexts` is for a caller with no composer to attach things with.
+   * Voice mode uses it to send the page the user was looking at, because
+   * "bunlardan hangisi daha iyi?" only means something beside the table it was
+   * asked in front of, and the alternative -- letting the agent call
+   * `look_at_page` itself -- is a whole extra round trip in the one mode where
+   * the wait is already the problem. They travel exactly as the composer's own
+   * attachments do, chip included.
+   */
+  send: (text: string, extra?: { contexts?: AttachedContext[] }) => void;
   /**
    * Ask the last question again, in place of the answer it got.
    *
@@ -621,7 +632,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   );
 
   const send = useCallback(
-    (text: string) => {
+    (text: string, extra?: { contexts?: AttachedContext[] }) => {
       const trimmed = text.trim();
       setRecommendation(undefined);
 
@@ -629,7 +640,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       // message at all and they travel in two directions: into the user's own
       // turn, and onto the request. Split by kind -- files are metadata (there is
       // still no upload endpoint) while context *is* its content.
-      const stagedContexts = attachments.contexts;
+      // Split from the caller's, because only what the *user* attached decides
+      // whether there is a message at all: a page carried along by voice mode
+      // is not a question on its own.
+      const ownContexts = attachments.contexts;
+      const stagedContexts = extra?.contexts?.length
+        ? [...ownContexts, ...extra.contexts]
+        : ownContexts;
       const stagedCaptures = attachments.captures;
       const reusableFiles = mergeReusableAttachments(
         stagedReusableAttachments,
@@ -682,7 +699,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       // people actually use it, and requiring a word first made that impossible.
       if (
         !trimmed &&
-        stagedContexts.length === 0 &&
+        ownContexts.length === 0 &&
         stagedCaptures.length === 0 &&
         stagedFiles.length === 0
       ) return;

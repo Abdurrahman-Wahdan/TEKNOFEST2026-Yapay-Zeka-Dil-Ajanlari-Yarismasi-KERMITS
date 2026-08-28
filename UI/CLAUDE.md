@@ -173,12 +173,19 @@ would put the bearer token in a query string where proxies log it; and aborting 
 
 **Raw 16-bit PCM, no container.** Audio is generated in ~160 ms pieces and
 scheduled into one `AudioContext`, which wants samples, not a decoded file. The
-rate travels on `X-Sample-Rate` and is never assumed: an `AudioContext` built at
-the wrong rate does not fail, it plays the answer at the wrong pitch. Two things
-the client must keep doing — carry the odd byte between reads, since a chunk can
-split a sample and misreading it shifts everything after into noise; and book
-each buffer where the previous one ends rather than "now", or generation lag
-becomes gaps and generation lead becomes overlap.
+rate travels on `X-Sample-Rate` and is never assumed — but it belongs on the
+*buffer*, not on the context: `createBuffer(1, n, sampleRate)` carries it, and
+Web Audio resamples into whatever the output device runs at. The context is
+built once at the device's own rate and never replaced. It used to be rebuilt
+whenever the model's rate changed, to avoid playing the answer at the wrong
+pitch; that could not happen, and the rebuild cost something real, because a
+replaced context is a *suspended* one and the context being discarded is the one
+the user's gesture had already unlocked. Three things the client must keep doing
+— carry the odd byte between reads, since a chunk can split a sample and
+misreading it shifts everything after into noise; book each buffer where the
+previous one ends rather than "now", or generation lag becomes gaps and
+generation lead becomes overlap; and resume the context *before* the request
+goes out, inside the gesture that asked for the reading.
 
 **The model is not thread-safe and weighs ~5 GB.** One instance, one lock,
 readings queue — and the lock is claimed in the endpoint rather than in the
@@ -208,6 +215,155 @@ modelscope, torchaudio, datasets, and pins `fsspec` down to 2025.3.0 — checked
 and compatible with what `huggingface_hub` and `torch` ask for). The import is
 lazy and the API starts without it, exactly as `mlx-whisper` does; the endpoint
 answers 503.
+
+# Voice mode (hold space)
+
+Holding the space bar anywhere on the dashboard asks the assistant out loud. One
+`VoiceMode` in `VisionApp`, beside `AgentPopup` and `SelectionReply` and for the
+same reason: the whole point is that it works on the page the user is already
+on, so it cannot belong to any of them.
+
+**It is a dock, not a dialog.** It rises from the bottom edge, takes a strip of
+the screen and gives the rest back: no backdrop, no blur, no scroll lock, no
+focus trap, and `pointerEvents: none` on the strip either side of the pill so
+every click and every scroll reaches the page underneath. This is not a styling
+preference. The full-screen blurred overlay it replaces covered the one thing
+most of these questions are *about* — "bunlardan hangisi daha iyi?" only means
+something beside the table it was asked in front of, and the user could not see
+that table while asking about it. The dock's only chrome is a close button, and
+even that is revealed on hover rather than drawn.
+
+`ORB_SIZE` is the one dimension that matters: there is no transcript and no
+status line, so the orb's colour and level animation are the entire report on
+what the turn is doing, and everything else in the dock sizes off it.
+
+**The decisions are in `src/lib/voice/machine.ts`, not in the component.** `npm
+test` runs `node --experimental-strip-types` with no DOM, so only pure modules
+are testable — and a voice turn has three async chains in flight at once (the
+recorder's stop event, the transcription fetch, the agent turn) that no amount
+of care in a component will get right by inspection. The reducer returns the
+next phase *and* the effects it implies; `useVoiceMode` performs them and owns
+nothing else but timers and refs. Same split as `speech-text.ts` next to
+`speech.ts`.
+
+**`runId`, not `AbortController`, is what cancel means here.** None of those
+three chains can be killed synchronously, so every continuation reopens with
+`if (run !== stateRef.current.runId) return;` and every event that ends a turn
+takes a new id. A transcript that arrives after Escape is a no-op, not a
+question nobody asked.
+
+**Release during `arming` calls `session.cancel()`, never `session.end()`.**
+`useVoiceSession.end()` does not bump its own `generationRef`; `cancel()` does.
+Let the key come up while `getUserMedia` is still pending and `end()` finds no
+recorder, releases nothing and reports idle — then the promise resolves, the
+guard inside `start()` passes because the generation never moved, and a
+`MediaRecorder` is built on a live stream nobody is watching. The composer never
+hits this because its bar shows a spinner instead of an end button while
+requesting. Push-to-talk hits it on the very first press.
+
+**One microphone.** The orb ships with its own `getUserMedia` and its own
+analyser; feeding it `level` from the reading `useVoiceSession` already
+publishes disables that branch outright. Two captures of the same voice with
+opposite echo-cancellation settings, and two recording indicators in the browser
+chrome, is not a thing to ask a user to interpret. `level` goes through a ref
+inside the orb and is *not* in its render effect's dependency list — it changes
+thirty times a second and would rebuild the WebGL context that often.
+
+**The space bar is a loaded key**, so `shouldOpenVoiceMode` has to rule out
+everything else it already does: a character in a field, a click on a focused
+button or link, a scroll, a dialog or menu that owns the screen, the assistant
+popup, `/chat` (whose composer autofocuses), a turn already being answered, and
+auto-repeat. There is no global "a modal is open" state in this app, so it is a
+DOM probe filtered by `checkVisibility` — and `data-voice-block` is the
+documented opt-out for anything the probe would otherwise miss, the same lever
+`data-no-quote` is for `SelectionReply`.
+
+The dock excludes *itself* from that probe (`VOICE_DOCK_SELECTOR`), and that one
+line is what makes barging in work at all. `isVoiceBusy` is already false while
+the answer is being read, so the machine has always been willing to be
+interrupted — but the dock used to carry `role="dialog"` and `data-voice-block`,
+so the Space pressed to cut the assistant off was refused as "a surface owns the
+screen" by the very surface asking the question. Anything mounted inside the
+dock is skipped for the same reason.
+
+**A turn ends in `lingering`, not in `closed`.** When the reading stops the dock
+stays up for `LINGER_MS` with nothing running behind it, because the thing said
+after an answer is usually a follow-up to it, and making the user reopen a
+closed overlay to say it costs them the thread. Space during the wait opens the
+next turn, Escape and the close button end it early, and the timer is keyed on
+`runId` as well as the phase — a wait armed by the finished turn must not fire
+into the middle of the new recording.
+
+**The page travels with the question.** Voice mode has no composer, so there is
+no `@` menu — and it is the mode where attaching matters most, because
+"bunlardan hangisi daha iyi?" only means something beside the table it was asked
+in front of. `readPageText()` is snapshotted at keydown and passed to
+`send(text, { contexts })` as an ordinary `AttachedContext`, chip included, so
+the agent has it on the first pass instead of spending a `look_at_page` round
+trip in the one mode where the wait is already the problem.
+
+**The wait is filled, because there is nothing to look at.** A ten-bank
+comparison fans out for ~30s and the output guard then holds the finished answer
+for another 8–31s. **Two lines cover it, not a rotation.** `fillerOpening` goes
+out the instant the transcript lands — it acknowledges the question rather than
+reporting on progress — and `fillerHolding` repeats every 10s until the answer
+does. The seven-phrase shuffled bag this replaces bought variety at the price of
+ten seconds of silence up front and twenty-second holes after it, and silence is
+the thing being fixed; hearing the same sentence again is what a person on a
+phone call does. They are two literal `t()` keys rather than one resolved from a
+variable, so `i18n:check` sees them — the bag lived behind `t.raw("fillers")`
+and never was checked.
+
+Each timer is still armed when the *previous phrase finishes playing*, never on
+a wall clock, or a slow reading stacks the next one on top of it — and the
+`phase !== "thinking"` re-check at fire time is now load-bearing rather than
+belt-and-braces, because the opening line's delay is zero and a question
+answered inside that tick must not be talked over. Four things stop a filler
+talking over the answer; the structural one is `speech.ts`'s single `generation`
+counter, which aborts a filler still streaming the moment the answer's reading
+starts.
+
+Worth knowing when tuning: `api/voice_speech.py`'s audio cache is keyed on the
+exact text and holds `_AUDIO_CACHE_MAX_ENTRIES = 2`. Two fixed phrases fit it far
+better than seven rotating ones ever did, but each turn also caches its own
+answer, so only one filler stays warm between turns. Three entries would keep
+both.
+
+**And there is music under all of it.** `hold-music.ts` plays a loop for the
+whole wait — from `thinking` through `shaping`, stopping as the answer starts
+being read — because a sentence every ten seconds still leaves eight seconds of
+silence, and continuous sound is what proves the line is open. It is what a
+phone system does and it is borrowed wholesale, ducking included: the level
+drops to about a third whenever a line is spoken and comes back after.
+
+**The music is synthesised, not a file.** Mozart's *compositions* are public
+domain; Mozart *recordings* are not, and no package ships a licensed one. So
+`hold-music-score.ts` is note data — `I–vi–IV–V–I–iii–IV–V` arpeggiated at 72bpm,
+an eight-bar loop of about 27 seconds — played through oscillators on the
+`AudioContext` `speech.ts` already owns. **Not a second context:** `primeSpeech`
+unlocks that one inside the keydown, and anything on a context first resumed
+half a minute later is refused by autoplay policy and plays silence. Hence
+`audioContext()` being exported.
+
+Split pure/impure like everything else here: the score is testable arithmetic,
+the player is oscillators and a look-ahead. Two things in the player are not
+obvious and both are load-bearing. `fill()` snaps `nextLoopAt` to the present if
+a throttled tab left it in the past — otherwise one late tick books three loops
+at once, all in the past, and every note in them fires on the same instant.
+And every export swallows its own errors: a device that cannot play the music is
+not a reason to fail a turn that would otherwise have answered.
+
+`HOLD_GAIN` / `DUCKED_GAIN` are the two numbers to reach for. They are measured
+against a voice that plays at unity, and the comment above them says what the
+resulting ratio is; move them together.
+
+**`agents/voice_response` rewrites the answer, and `speakableText` is the
+fallback, not the loser.** The supervisor is told to answer comparisons as
+tables with a link after every claim, which is right on screen and unbearable
+aloud. The route is text-in, text-out and deliberately not wired to `/speech`;
+every failure is a 503, which the browser reads as "shape it yourself". The
+deterministic converter cannot phrase a table as well and cannot invent a rate,
+which is exactly why it is what a failure falls back to.
 
 # Bringing the page into the conversation
 

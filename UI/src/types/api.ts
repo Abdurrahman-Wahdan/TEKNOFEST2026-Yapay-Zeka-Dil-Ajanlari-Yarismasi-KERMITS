@@ -409,6 +409,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/me/automations/reports/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark All Reports Read
+         * @description Clear this user's unread report notifications in one database update.
+         */
+        post: operations["mark_all_reports_read"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/me/automations/reports/{report_id}": {
         parameters: {
             query?: never;
@@ -1257,6 +1277,37 @@ export interface paths {
          * @description Create a Turkish transcript without sending audio off the machine.
          */
         post: operations["create_voice_transcription"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/voice/response": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Voice Response
+         * @description Rewrite one finished answer as prose, for a caller that will speak it.
+         *
+         *     Text in, text out -- deliberately not wired to `/speech` below. Voice mode
+         *     posts the result there itself, which keeps the queue, the cache and the
+         *     503-when-busy contract on one route instead of two, and leaves this one
+         *     usable on its own.
+         *
+         *     Every failure is a 503, including a model that answers with nothing usable.
+         *     The browser reads that as "shape it yourself" and falls back to the
+         *     deterministic converter, so the answer is still spoken -- less smoothly, and
+         *     without any chance of a rewritten figure. That is the same posture the
+         *     output guard takes when it cannot run: the turn continues.
+         */
+        post: operations["create_voice_response"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3532,6 +3583,37 @@ export interface components {
             ctx?: Record<string, never>;
         };
         /**
+         * VoiceResponseOut
+         * @description The same answer as prose, ready to hand straight to `/voice/speech`.
+         */
+        VoiceResponseOut: {
+            /** Speech */
+            speech: string;
+        };
+        /**
+         * VoiceResponseRequest
+         * @description A finished assistant answer, in markdown, to be rewritten for speech.
+         *
+         *     The mirror image of `VoiceSpeechRequest`, and the reason that one can keep
+         *     insisting on prose. The browser strips marks well enough for a speaker
+         *     button, but voice mode is *only* listened to -- there is no answer on screen
+         *     to fall back on -- so the whole passage goes through a model first, and what
+         *     comes back is what gets posted to `/voice/speech`.
+         */
+        VoiceResponseRequest: {
+            /**
+             * Text
+             * @description The answer as written, markdown and all. Bounded by VOICE_RESPONSE_MAX_INPUT_CHARS and refused rather than truncated: half an answer spoken confidently is worse than none.
+             */
+            text: string;
+            /**
+             * Question
+             * @description What was asked. Context for the rewrite, never an instruction.
+             * @default
+             */
+            question: string;
+        };
+        /**
          * VoiceSpeechRequest
          * @description Text to read aloud.
          *
@@ -4146,6 +4228,26 @@ export interface operations {
         };
     };
     unread_count: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnreadCount"];
+                };
+            };
+        };
+    };
+    mark_all_reports_read: {
         parameters: {
             query?: never;
             header?: never;
@@ -5381,6 +5483,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VoiceTranscriptionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_voice_response: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VoiceResponseRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VoiceResponseOut"];
                 };
             };
             /** @description Validation Error */
