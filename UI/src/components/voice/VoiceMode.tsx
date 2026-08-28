@@ -7,7 +7,6 @@ import { useTranslations } from "next-intl";
 import { VuiBox, VuiTypography } from "@/components/vision";
 import { VoicePoweredOrb } from "@/components/ui/voice-powered-orb";
 import {
-  VOICE_ACTIVATES_SELECTOR,
   VOICE_BLOCKING_SELECTOR,
   VOICE_DOCK_SELECTOR,
   VOICE_TEXT_ENTRY_SELECTOR,
@@ -16,7 +15,7 @@ import {
 import { useVoiceMode } from "@/lib/voice/useVoiceMode.ts";
 
 /**
- * Hold Space anywhere on the dashboard and ask out loud.
+ * Hold V anywhere on the dashboard and ask out loud.
  *
  * One listener for the whole app rather than one per page, for the same reason
  * `SelectionReply` and `ReportToasts` are mounted beside it: the point of this
@@ -94,7 +93,7 @@ function isVisible(element: Element): boolean {
  *
  * The dock has to be excluded by hand, and this is the line that makes barging
  * in work at all. The probe runs over the whole document, so while the dock is
- * up it is itself a match, and a Space pressed to cut the assistant off would
+ * up it is itself a match, and V pressed to cut the assistant off would
  * be refused as "a surface owns the screen" -- by the very surface asking the
  * question. It used to carry `role="dialog"` and `data-voice-block` and did
  * exactly that.
@@ -127,7 +126,6 @@ export function VoiceMode() {
       const accepted = shouldOpenVoiceMode(event, {
         pathname,
         inTextEntry: Boolean(element?.closest(VOICE_TEXT_ENTRY_SELECTOR)),
-        activatesOnSpace: Boolean(element?.closest(VOICE_ACTIVATES_SELECTOR)),
         blockingSurface: hasBlockingSurface(),
         popupOpen,
         status,
@@ -136,15 +134,14 @@ export function VoiceMode() {
       });
       if (!accepted) return;
 
-      // Not optional: without it the page scrolls, and a space landing on a
-      // focused control would fire its click on the way back up.
+      // Prevent V from reaching the focused element while voice mode is arming.
       event.preventDefault();
       heldRef.current = true;
       open();
     };
 
     const onKeyUp = (event: KeyboardEvent) => {
-      if (event.code !== "Space" || !heldRef.current) return;
+      if (event.code !== "KeyV" || !heldRef.current) return;
       event.preventDefault();
       heldRef.current = false;
       release();

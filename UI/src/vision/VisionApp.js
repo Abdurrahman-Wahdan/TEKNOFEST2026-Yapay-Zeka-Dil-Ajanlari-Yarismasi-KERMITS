@@ -92,7 +92,7 @@ export default function VisionApp({ children }) {
           {/* Where the Configurator's settings button, and then the theme
               toggle, used to sit. */}
           <AgentPopup />
-          {/* One key listener for the whole dashboard. Holding space asks out
+          {/* One key listener for the whole dashboard. Holding V asks out
               loud from wherever the user already is, so it cannot belong to any
               one page -- and the page it happens to be on travels with the
               question. Renders nothing until the key goes down. */}

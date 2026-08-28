@@ -144,22 +144,14 @@ def create_speech(
 ) -> StreamingResponse:
     """Read a passage aloud. Returns raw 16-bit PCM as it is generated.
 
-    **Streamed over plain HTTP, not a WebSocket.** `TTS_ENTEGRASYON.md` shows a
-    WebSocket, and it works, but nothing here needs one: the client sends text
-    once and receives audio, which is the one-directional case, and it is the
-    same argument `chat.py` already makes for SSE over WebSockets. Two concrete
-    gains for this endpoint in particular -- the browser's WebSocket API cannot
-    set an `Authorization` header, so a socket would push this account's bearer
-    token into a query string where proxies log it; and aborting a `fetch` is
-    already how the client stops a stream, so pressing stop closes the response
-    and the generator below is closed with it.
+    **Streamed over plain HTTP, not a WebSocket.** The client sends text once
+    and receives audio, so a regular HTTP stream is sufficient. The browser can
+    also abort a fetch when the user presses stop, which closes the response and
+    releases the remote reading cleanly.
 
-    **Raw PCM, no container.** The audio is generated in ~160 ms pieces and the
-    browser schedules them into an `AudioContext`, which wants samples rather
-    than a decoded file. Wrapping each piece as WAV would put a 44-byte header
-    in the middle of the stream every 160 ms; wrapping the whole reading as one
-    file would mean holding it to the end, which is what streaming exists to
-    avoid. `audio/L16` is the registered type for exactly this.
+    **Raw PCM, no container.** The browser schedules the generated pieces into
+    an `AudioContext`, which wants samples rather than a decoded file. `audio/L16`
+    is the registered type for this raw 16-bit audio.
     """
     del user  # Authentication is the dependency; nothing about the user is read.
 
@@ -190,15 +182,19 @@ def create_speech(
             },
         )
 
-    # The model is not thread-safe, so readings queue. Claimed here rather than
-    # inside the generator because this is the last moment a status code can
-    # still be sent -- once the first bytes of a stream are out, a busy model has
-    # no way left to say so.
+    # A new voice turn replaces an interrupted one. Closing the previous HTTP
+    # client releases the remote connection instead of leaving the new V press
+    # waiting behind a stale stream.
+    voice_speech.cancel_active()
     if not voice_speech.acquire():
-        raise HTTPException(
-            status.HTTP_503_SERVICE_UNAVAILABLE,
-            "The assistant is reading something else. Try again in a moment.",
-        )
+        voice_speech.cancel_active()
+        if voice_speech.acquire(timeout=5):
+            pass
+        else:
+            raise HTTPException(
+                status.HTTP_503_SERVICE_UNAVAILABLE,
+                "The assistant is reading something else. Try again in a moment.",
+            )
 
     # Loaded before the response starts, so "the speech extra is not installed"
     # and "the checkpoint will not load" arrive as a 503 the browser can report.
@@ -229,9 +225,6 @@ def create_speech(
 
         try:
             while True:
-                # Starlette cancels this async generator on disconnect. The
-                # explicit checks also catch a client that closes between
-                # chunks, allowing the upstream httpx stream to close promptly.
                 if await request.is_disconnected():
                     break
                 done, chunk = await run_in_threadpool(next_chunk)
@@ -244,8 +237,6 @@ def create_speech(
                         chunks.append(chunk)
                         cached_bytes += len(chunk)
                     else:
-                        # Keep streaming the response, but do not retain a
-                        # long reading just to populate the optional cache.
                         chunks.clear()
                         cacheable = False
                 yield chunk
@@ -255,9 +246,6 @@ def create_speech(
             logger.info("Speech client disconnected; closing remote stream")
             raise
         except VoiceSpeechFailed as exc:
-            # Too late for a status code -- the model loaded and then failed
-            # part-way. Closing the stream is the only signal left, and the
-            # client renders it as the reading having stopped.
             logger.info("Speech failed: %s", exc)
         except Exception:
             logger.exception("Speech stream failed")
@@ -275,9 +263,6 @@ def create_speech(
             "X-Sample-Rate": str(rate),
             "X-Channels": "1",
             "Cache-Control": "no-store",
-            # Tells nginx not to buffer. Without it a proxy holds every chunk
-            # until the response finishes, which is the silence-then-everything
-            # that streaming exists to avoid.
             "X-Accel-Buffering": "no",
         },
     )

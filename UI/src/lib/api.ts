@@ -651,9 +651,9 @@ export const api = {
  * Read a passage aloud. Resolves once the audio has started arriving.
  *
  * The response body is raw 16-bit PCM at the rate named in `X-Sample-Rate`,
- * still being generated — the caller reads it with a stream reader and schedules
- * the samples as they land, which is what makes the answer start playing in
- * ~0.13s instead of after the whole reading has been produced.
+ * still being generated. The caller reads it with a stream reader and schedules
+ * the samples as they land, which lets the answer start playing before the
+ * whole reading has been produced.
  *
  * The rate is read off the response rather than assumed. An `AudioContext` built
  * at the wrong rate does not fail; it plays the answer at the wrong pitch, which

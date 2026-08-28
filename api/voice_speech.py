@@ -19,11 +19,14 @@ from config.settings import settings
 logger = logging.getLogger(__name__)
 
 _INFERENCE_LOCK = threading.Lock()
+_ACTIVE_CLIENT_LOCK = threading.Lock()
+_ACTIVE_CLIENT: httpx.Client | None = None
 _AUDIO_CACHE_LOCK = threading.Lock()
 _AUDIO_CACHE: OrderedDict[str, tuple[bytes, ...]] = OrderedDict()
 _AUDIO_CACHE_MAX_ENTRIES = 2
 _AUDIO_CACHE_MAX_BYTES = 8 * 1024 * 1024
 _CHUNK_BYTES = 8192
+_BUSY_RETRIES = 3
 
 
 class VoiceSpeechUnavailable(RuntimeError):
@@ -100,13 +103,32 @@ def speak(text: str):
         # A fresh client prevents a stopped request from reusing a stale
         # keep-alive connection against the remote single-worker server.
         with httpx.Client(timeout=timeout, headers={"Connection": "close"}) as client:
-            with client.stream("POST", url, json={"text": text}) as response:
-                if response.status_code >= 400:
-                    detail = response.read()[:200].decode("utf-8", "replace")
-                    raise VoiceSpeechFailed(
-                        f"Remote TTS returned HTTP {response.status_code}: {detail}"
-                    )
-                yield from response.iter_bytes(_CHUNK_BYTES)
+            with _ACTIVE_CLIENT_LOCK:
+                global _ACTIVE_CLIENT
+                _ACTIVE_CLIENT = client
+            try:
+                for attempt in range(_BUSY_RETRIES + 1):
+                    with client.stream("POST", url, json={"text": text}) as response:
+                        if response.status_code == 503 and attempt < _BUSY_RETRIES:
+                            detail = response.read()[:200].decode("utf-8", "replace")
+                            logger.info(
+                                "Remote TTS is busy; retrying immediately (%d/%d): %s",
+                                attempt + 1,
+                                _BUSY_RETRIES,
+                                detail,
+                            )
+                            continue
+                        if response.status_code >= 400:
+                            detail = response.read()[:200].decode("utf-8", "replace")
+                            raise VoiceSpeechFailed(
+                                f"Remote TTS returned HTTP {response.status_code}: {detail}"
+                            )
+                        yield from response.iter_bytes(_CHUNK_BYTES)
+                        return
+            finally:
+                with _ACTIVE_CLIENT_LOCK:
+                    if _ACTIVE_CLIENT is client:
+                        _ACTIVE_CLIENT = None
     except VoiceSpeechFailed:
         raise
     except httpx.HTTPError as exc:
@@ -148,6 +170,15 @@ def clear_audio_cache() -> None:
 
 def audio_cache_max_bytes() -> int:
     return _AUDIO_CACHE_MAX_BYTES
+
+
+def cancel_active() -> None:
+    """Close the previous remote reading so a new voice turn can take over."""
+    with _ACTIVE_CLIENT_LOCK:
+        client = _ACTIVE_CLIENT
+    if client is not None:
+        logger.info("Cancelling previous remote speech connection")
+        client.close()
 
 
 def acquire(timeout: float | None = None) -> bool:

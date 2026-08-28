@@ -90,6 +90,16 @@ class FakeStreamClient:
         return self.response
 
 
+class RetryStreamClient(FakeStreamClient):
+    def __init__(self, responses):
+        self.responses = iter(responses)
+        self.requests = 0
+
+    def stream(self, method, url, **kwargs):
+        self.requests += 1
+        return next(self.responses)
+
+
 def test_speak_posts_text_and_yields_remote_stream(monkeypatch):
     response = FakeResponse()
     client = FakeStreamClient(response)
@@ -135,3 +145,20 @@ def test_non_success_remote_response_is_reported(monkeypatch):
         assert "503" in str(exc)
     else:
         raise AssertionError("expected remote TTS failure")
+
+
+def test_busy_remote_response_is_retried_three_times(monkeypatch):
+    class BusyResponse(FakeResponse):
+        status_code = 503
+
+        def read(self):
+            return b"busy"
+
+    busy = BusyResponse()
+    success = FakeResponse()
+    client = RetryStreamClient([busy, busy, busy, success])
+    monkeypatch.setattr(httpx, "Client", lambda **kwargs: client)
+    monkeypatch.setattr(voice_speech.settings, "SPEECH_REMOTE_URL", "http://tts/speech")
+
+    assert list(voice_speech.speak("Merhaba")) == [b"first", b"second"]
+    assert client.requests == 4

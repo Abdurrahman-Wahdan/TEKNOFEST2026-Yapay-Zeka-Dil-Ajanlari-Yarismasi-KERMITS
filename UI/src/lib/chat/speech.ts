@@ -270,7 +270,7 @@ export function stopAloud(id?: string): void {
  * buttons and needs to know when the answer has been said so it can close.
  *
  * Deliberately the *same* singleton graph: starting either one stops the other,
- * so pressing Space while a message is being read aloud interrupts that reading
+ * so pressing V while a message is being read aloud interrupts that reading
  * rather than talking over it.
  */
 export async function speakAloud(

@@ -50,7 +50,7 @@ export type VoiceFailure =
  *
  * The recorder emits a chunk every 250ms (`useVoiceSession` calls
  * `recorder.start(250)`), so anything shorter is very likely a single empty
- * chunk, and a tap on the space bar is far more likely to be a mis-press than
+ * chunk, and a quick tap on V is far more likely to be a mis-press than
  * a question.
  */
 export const MIN_HOLD_MS = 400;
@@ -70,7 +70,7 @@ export const MAX_HOLD_MS = 60_000;
  * Long enough to ask the follow-up the answer just prompted -- which is the
  * whole reason the dock outlives the reading -- and short enough that a dock
  * nobody came back to is not still sitting over the page a minute later.
- * Anything the user does ends the wait: Space starts the next turn, and the
+ * Anything the user does ends the wait: V starts the next turn, and the
  * close button and Escape shut it early.
  */
 export const LINGER_MS = 12_000;
@@ -150,7 +150,7 @@ export function isVoiceTurnActive(phase: VoicePhase): boolean {
 }
 
 /**
- * Whether a fresh Space press must be refused while this phase is showing.
+ * Whether a fresh V press must be refused while this phase is showing.
  *
  * False for `speaking` and `lingering`, and those two are the point. Cutting
  * the assistant off mid-sentence to ask the next thing is how people actually

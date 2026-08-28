@@ -7,16 +7,14 @@
  * deciding what those readings mean is this file's, and that is the half that
  * gets a decision wrong.
  *
- * The space bar is a loaded key. It scrolls the page, it types a character, and
- * it activates a focused button or link -- so every one of those has to be
- * ruled out before it can mean "listen to me", and each `false` below is a
- * place the feature would otherwise break something that already worked.
+ * V is deliberately used instead of Space: it does not scroll the page or
+ * activate a focused control, while text-entry fields are still excluded below.
  */
 
 import type { ChatStatus } from "../chat/types";
 
 /**
- * Where a space bar is a character, not a command.
+ * Where V is a character, not a command.
  *
  * `data-no-quote` is already on the composer shell for `SelectionReply`, and it
  * means the same thing here, so it is reused rather than duplicated.
@@ -31,16 +29,6 @@ export const VOICE_TEXT_ENTRY_SELECTOR = [
   "[role='textbox']",
   "[data-no-quote]",
   "[data-voice-block]",
-].join(",");
-
-/** Elements the space bar already activates, where it must keep doing that. */
-export const VOICE_ACTIVATES_SELECTOR = [
-  "button",
-  "a[href]",
-  "summary",
-  "[role='button']",
-  "[role='option']",
-  "[role='tab']",
 ].join(",");
 
 /**
@@ -64,7 +52,7 @@ export const VOICE_BLOCKING_SELECTOR = [
 /**
  * Voice mode's own dock, which the probe above must never count.
  *
- * The dock is on screen for the whole back half of a turn, and pressing Space
+ * The dock is on screen for the whole back half of a turn, and pressing V
  * while the answer is being read is how the next question gets asked. Matching
  * it as a blocking surface would mean the feature quietly refused to be
  * interrupted by anyone -- so anything inside this subtree is skipped, and the
@@ -85,10 +73,8 @@ export type VoiceHotkeyEvent = {
 export type VoiceHotkeyContext = {
   /** Path with the locale prefix already stripped, as `usePathname` reports it. */
   pathname: string;
-  /** Focus is somewhere a space bar types a character. */
+  /** Focus is somewhere V types a character. */
   inTextEntry: boolean;
-  /** Focus is on something a space bar already activates. */
-  activatesOnSpace: boolean;
   /** A dialog, menu or listbox is open somewhere on the page. */
   blockingSurface: boolean;
   /** The assistant panel is open. */
@@ -100,7 +86,7 @@ export type VoiceHotkeyContext = {
    * Voice mode is open in a phase a new press must not interrupt.
    *
    * False while it is reading an answer out and false while the dock lingers
-   * afterwards: pressing space to cut the assistant off and ask the next thing
+   * afterwards: pressing V to cut the assistant off and ask the next thing
    * is how people actually talk, and the dock stays up so that next thing has
    * somewhere to land.
    */
@@ -116,10 +102,10 @@ export function shouldOpenVoiceMode(
   event: VoiceHotkeyEvent,
   context: VoiceHotkeyContext,
 ): boolean {
-  if (event.code !== "Space") return false;
+  if (event.code !== "KeyV") return false;
   // A held key repeats about sixty times a second. Only the first press opens.
   if (event.repeat) return false;
-  // Every modified space belongs to the browser or the OS, not to us.
+  // Modified V belongs to the browser or the OS, not to us.
   if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return false;
 
   if (!context.signedIn) return false;
@@ -127,8 +113,7 @@ export function shouldOpenVoiceMode(
   if (context.popupOpen) return false;
   if (context.blockingSurface) return false;
   if (context.inTextEntry) return false;
-  if (context.activatesOnSpace) return false;
-  // The composer autofocuses on /chat, so a space there is nearly always a
+  // The composer autofocuses on /chat, so V there is nearly always a
   // character. Asking by voice on the page built for typing is also the one
   // place the user has an obvious alternative.
   if (context.pathname === "/chat") return false;
