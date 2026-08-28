@@ -99,6 +99,9 @@ TF26_veri_hazirlama/
 !UI/public/vision/images/kermits-logo.png
 # Curated contributor portraits used by the public README.
 !assets/*.jpeg
+# UI screenshots the README's interface walkthrough embeds. Same exception as
+# the portraits above: these are curated and referenced, not stray captures.
+!assets/*.png
 
 # ===== Notebooks =====
 .ipynb_checkpoints/
