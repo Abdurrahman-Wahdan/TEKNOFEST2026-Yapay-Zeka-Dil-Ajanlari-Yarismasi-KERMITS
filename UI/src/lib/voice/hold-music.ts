@@ -32,7 +32,7 @@ import {
  * These are the two numbers to reach for, so here is what they are measured
  * against. `speech.ts` plays the voice at unity -- it divides its PCM by 32768,
  * so a reading peaks near 1.0. The per-voice weights below take another half
- * off, which puts the music at roughly -19dB under the voice at `HOLD_GAIN` and
+ * off, which puts the music at roughly -17.5dB under the voice at `HOLD_GAIN` and
  * about -29dB at `DUCKED_GAIN`: present enough to be company, quiet enough that
  * the answer wins.
  *
@@ -40,7 +40,7 @@ import {
  * as hold music and starts reading as a fault; over ~0.35 it competes with the
  * answer, which is the one thing it must never do.
  */
-const HOLD_GAIN = 0.22;
+const HOLD_GAIN = 0.26;
 const DUCKED_GAIN = 0.07;
 
 /** How quickly the level moves. Slow enough to be a fade, not a click. */

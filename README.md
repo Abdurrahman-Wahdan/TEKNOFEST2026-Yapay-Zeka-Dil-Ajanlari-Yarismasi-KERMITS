@@ -27,11 +27,11 @@
 
 ## Ne yapıyor
 
-Kermits, Türkiye'deki 10 katılım bankasının ürünlerini, kampanyalarını ve güncel oranlarını tek bir yerde karşılaştırılabilir hale getiriyor. Kullanıcı doğal dille soruyor, sistem cevabı **kaynağıyla birlikte** veriyor: her sayının yanında onu hangi resmi sayfadan ya da hangi belgeden aldığı, tıklanabilir bir bağlantı olarak duruyor.
+Kermits, Türkiye'deki 10 katılım bankasının ürünlerini, kampanyalarını ve güncel oranlarını tek bir yerde karşılaştırmaya yardımcı oluyor. Kullanıcı sorusunu doğal dille yazıyor; sistem de cevabı **kaynağıyla birlikte** veriyor. Gösterilen sayının yanında, o bilginin alındığı resmi sayfaya veya belgeye tıklanabilir bir bağlantı bulunuyor.
 
 > **Katılım bankacılığı**, faiz yerine kâr–zarar ortaklığına dayanan bankacılık modelidir. Klasik bankanın kredi dediğine *finansman*, faize *kâr payı*, vadeli mevduata *katılma hesabı* denir. Bu sadece bir kelime meselesi değildir. Katılma hesabında getiri önceden taahhüt edilemez; dolayısıyla "şu kadar kazanırsınız" diyen bir asistan yardımcı olmuş değil, yanlış cevap vermiş olur. Sistem bu terminolojiyi baştan sona koruyor.
 
-Arayüz şimdilik yalnızca Türkçe yayınlanıyor; çok dilli altyapı yerinde duruyor ve ikinci dil için hazır. Altı çalışma alanı var: sohbet, canlı karşılaştırma, ürün kataloğu, kampanyalar, otomasyonlar ve sesli konuşma.
+Arayüz şu anda yalnızca Türkçe yayınlanıyor. Ana menüde Karşılaştır, Ürünler, Kampanyalar, AI Görünümü, Asistan ve Profil bölümleri bulunuyor. Otomasyonlar Profil içinde yönetiliyor; sesli kullanım ise uygulamanın farklı sayfalarından erişilebilen bir özellik.
 
 <div align="center">
   <img src="docs/screenshots/chat-research.png" alt="Sohbet asistanı" width="800" />
@@ -53,7 +53,7 @@ flowchart LR
     E -.->|her gece: yalnızca değişenler| A
 ```
 
-İlk üç adım kullanıcıdan bağımsız, **önceden** çalışır ve korpusu kurar. Son iki adım kullanıcı bir soru sorduğunda **anlık** çalışır. Her gece ise ilk üç adımın tamamı baştan işletilmez; yalnızca değişenler ele alınır: yeni ve güncellenmiş sayfalar, kalkan sayfalar ve tarihi geçmiş kampanyalar. Bölümler bu sırayla ilerliyor.
+İlk üç adım kullanıcıdan bağımsız olarak **önceden** çalışır ve arama korpusunu oluşturur. Son iki adım, kullanıcı soru sorduğunda **anlık** olarak çalışır. Düzenli güncellemede ise her şey baştan işlenmez; yeni veya değişmiş sayfalar, kaldırılmış içerikler ve süresi dolmuş kampanyalar ele alınır. README'nin geri kalanı bu sırayı izler.
 
 ---
 
@@ -61,21 +61,21 @@ flowchart LR
 
 Aşağıdaki bütün kararlar bu üçünün sonucudur.
 
-**Canlı sayı ile kalıcı bilgi ayrı yerlerden gelir.** Bugünün kâr payı oranı, taksit tutarı ve döviz kuru, sorulduğu anda bankanın kendi hesaplama servisinden çekilir ve arama indeksine hiçbir zaman yazılmaz; çünkü indekslenen bir sayı yarın yanlıştır. Ürün şartları, katılım ilkeleri ve ücret tarifeleri ise kalıcı bir **korpustan** gelir: bankaların kendi sitelerinden toplanıp temizlenmiş belge arşivi.
+**Canlı sayılar ile kalıcı bilgiler farklı kaynaklardan gelir.** Kâr payı oranı, taksit tutarı ve döviz kuru gibi değişken değerler, istek sırasında bankanın kendi hesaplama servisinden alınır; bu değerler arama indeksine kalıcı veri olarak yazılmaz. Ürün şartları, katılım ilkeleri ve ücret tarifeleri ise bankaların sitelerinden toplanıp temizlenen kalıcı bir **korpustan** gelir.
 
-**Her banka kendi ajanının içine kapatılmıştır.** On banka uzmanı birbirinin verisini göremez. Bir uzmana hangi bankayla çalışacağı hiç sorulmaz; bankası doğduğu anda sabitlenir. Bu, çok bankalı bir cevaptaki en yaygın hatayı, yani bir bankanın oranını başka bankaya atfetmeyi, talimatla değil mimariyle imkânsız kılar.
+**Her banka kendi uzmanına bağlıdır.** On banka uzmanı birbirinin verisini görmez. Bir uzmana çalışma sırasında banka seçtirilmez; hangi bankaya ait olduğu oluşturulurken sabitlenir. Bu mimari, bir bankanın oranının başka bir bankaya aktarılması riskini azaltır.
 
-**"Sunmuyor" ile "ulaşamadım" farklı cevaplardır.** Banka o ürünü satmıyorsa bunu söylemek doğru ve işe yarar bir cevaptır. Bankanın servisi bu sabah bozulduysa aynı şey doğru değildir. Sistem bu iki durumu ayrı ayrı kaydeder ve ayrı ayrı bildirir.
+**"Sunmuyor" ile "ulaşılamadı" farklı durumlardır.** Banka ürünü sunmuyorsa bu bilgi kullanıcıya açıkça gösterilir. Bankanın servisine o anda ulaşılamıyorsa, bu durum ayrı bir hata veya kullanılamama durumu olarak raporlanır. Sistem bu iki sonucu birbirine karıştırmamaya çalışır.
 
 ---
 
 # 1 · Toplama
 
-> Banka siteleri taranırken URL ağacı budanır: indirilecek sayfa sayısı, hiçbir şey indirilmeden önce düşürülür.
+> Banka siteleri taranırken URL ağacı önce daraltılır. Böylece indirilecek sayfa sayısı, içerik indirilmeden önce azaltılır.
 
 ## URL ağacı budanarak sayfa sayısı düşürülür
 
-Bir bankanın sitesindeki URL'ler iki kaynaktan birlikte çıkarılır. **Sitemap** bankanın kendi ilan ettiği listedir: hızlıdır ve derin sayfaları doğrudan verir, ama çoğu banka onu güncel tutmaz. **BFS** ise ana sayfadan başlayıp linkleri katman katman izler: yavaştır ama sitemap'te hiç yazmayan sayfaları bulur. İkisinin birleşimi, tek başına hiçbirinin bulamadığı bütünü verir.
+Bir bankanın URL'leri iki yöntemle keşfedilir. **Sitemap**, bankanın yayımladığı URL listesidir; hızlıdır ve derin sayfaları doğrudan gösterebilir, ancak her zaman güncel olmayabilir. **BFS** ise ana sayfadan başlayıp bağlantıları katman katman izler; daha yavaştır ama sitemap'te bulunmayan sayfaları da keşfedebilir. İki yöntem birlikte kullanıldığında daha kapsamlı bir liste elde edilir.
 
 Tarama boyunca tek bir sınır hiç esnetilmez: **istekler bankanın kendi domaininin dışına çıkmaz.** Sayfalardaki dış linkler, sosyal medya adresleri ve üçüncü taraf servisler daha izlenmeden elenir. Bu sınır olmasa bir bankanın sitesinden çıkıp internetin geri kalanına dağılmak an meselesidir; korpusun hangi bankaya ait olduğu da belirsizleşir.
 
@@ -150,17 +150,17 @@ Toplanan her şey aynı yoldan geçmez, ama hepsi aynı kapıya varır: **kullan
 
 Bir sayfada bilgi iki yerde durur. Bir kısmı yazıdır, bir kısmı ise görüntünün içindedir; bir ücret tarifesi ya da kâr payı tablosu çoğu zaman metin değil resimdir. Yalnızca yazıyı almak, o sayfanın en değerli kısmını atmak olur.
 
-Bu yüzden sayfanın yazısı ile içindeki görseller ayrı ayrı ele alınır. Aynısı PDF'ler için de geçerli: PDF'in metin katmanı varsa yazı olduğu gibi alınır, içindeki görseller ayrıca incelenir; metin katmanı hiç yoksa, yani belge taranmış bir kâğıtsa, sayfanın tamamı görüntü olarak okunur. Böylece taranmış bir sözleşme ile dijital bir ürün sayfası aynı hatta buluşur.
+Bu yüzden sayfanın metni ile görselleri ayrı ayrı ele alınır. PDF'in metin katmanı varsa metin alınır ve içindeki görseller ayrıca incelenir. PDF taranmış bir belgeyse sayfa görüntü olarak işlenir. Böylece dijital belgelerle taranmış belgeler aynı bilgi hazırlama hattında birleştirilebilir.
 
 Görsellerde bir eleme daha var: her görsel önce "bu dekoratif bir öğe mi, yoksa ürün ya da kampanya bilgisi mi taşıyor" diye değerlendirilir. Logo ve arka plan atılır, tablo ve koşul metni çıkarılır.
 
-## Görseller OCR ile değil, gören bir modelle okunur
+## Görseller, düzeni anlayan bir modelle okunur
 
-Görüntüden yazı çıkarmanın hazır yolu OCR'dir ve burada bilinçli olarak kullanılmıyor. Sebebi şu: **bir bankacılık görselinde bilginin çoğu harflerde değil, düzendedir.**
+Görüntüden yazı çıkarmanın yaygın yolu OCR'dir. Ancak bu projede tablo ve kampanya görselleri için amaç yalnızca karakterleri okumak değil, görselin düzenini de anlamaktır. **Bankacılık görsellerinde anlam çoğu zaman yerleşimden gelir.**
 
-OCR bir kâr payı tablosuna baktığında gördüğü şey alt alta dizilmiş sayılardır; hangi sayının hangi vade ve hangi ürün satırına ait olduğunu bilmez, çünkü tablonun yapısını değil yalnızca karakterleri okur. Aynı şekilde bir kampanya afişinde büyük puntoyla yazılmış oranın ana vaat, altındaki küçük yazının ise koşul olduğunu ayırt edemez. Çıkan metin doğru karakterlerden oluşur ama yanlış anlama gelir; üstelik bunu sessizce yapar.
+OCR bir kâr payı tablosundaki karakterleri okuyabilir, ancak her sayının hangi vade veya ürün satırına ait olduğunu güvenilir biçimde anlayamayabilir. Bir kampanya afişinde de büyük yazının ana teklif, küçük yazının ise koşul olduğunu ayırt edemeyebilir. Bu nedenle doğru karakterler okunmuş olsa bile tablo veya kampanya yanlış yorumlanabilir.
 
-Gören bir model ise görüntüye bir okuyucu gibi bakar: tablonun satır ve sütun ilişkisini kurar, başlığı gövdesinden ayırır, dipnotun hangi rakama ait olduğunu görür. Aynı model dekoratif olanı ayıklama işini de yapar; ayrı bir sınıflandırma adımına gerek kalmaz.
+Görsel anlayabilen model, görüntüyü yalnızca karakter dizisi olarak değil, bir bütün olarak değerlendirir: tablonun satır ve sütun ilişkisini kurar, başlığı gövdeden ayırır ve dipnotun hangi değere ait olduğunu yorumlar. Aynı model, dekoratif görselleri ayıklamaya da yardımcı olur; bu nedenle her görsel için ayrı bir sınıflandırma adımı gerekmez.
 
 Bir maliyeti var: gören bir modeli çalıştırmak OCR'den pahalıdır. Bu yüzden hangi görselin buna değdiği önceden elenir ve aynı görsel ikinci kez sorulmaz.
 
@@ -168,7 +168,7 @@ Bir maliyeti var: gören bir modeli çalıştırmak OCR'den pahalıdır. Bu yüz
 
 Elde edilen her metin işlenmez. Önce **işimize yarayıp yaramadığına** karar verilir: bu içerik müşteriye gösterilebilecek bir ürün, kampanya ya da hizmet bilgisi mi, yoksa kurumsal duyuru, mevzuat metni, iş ilanı mı?
 
-Sıra bilinçli olarak böyle: eleme önce, temizleme sonra. Temizleme pahalı bir iştir ve gereksiz bir belgeyi güzelce yeniden yazmak, o maliyeti hiçbir işe yaramayacak bir metne harcamaktır.
+Sıra bilinçlidir: önce içeriğin gerekli olup olmadığına bakılır, sonra temizlik yapılır. Temizleme model çağrısı gerektirebildiği için gereksiz bir belgeyi ayrıntılı biçimde işlemekten kaçınılır.
 
 Karar belgenin tamamına bakılarak bir kez verilmez; **her parça tek tek sorgulanır** ve yalnızca gerekli bulunanlar kaydedilir. Uzun bir belgede işe yarayan kısımlar genellikle dağınıktır: bir sözleşmenin başı ve sonu kalıp metindir ama ortasında bir ücret tablosu durabilir. Belgeyi bütün olarak elemek o tabloyu da atardı; bütün olarak almak ise kalıp metni indekse doldururdu.
 
@@ -240,7 +240,7 @@ flowchart TD
 
 ## Her sayfaya tek bir soru sorulur
 
-İlk ajan, temizlenmiş ve işimize yaradığına karar verilmiş sayfaları tek tek geziyor. Her biri için verdiği karar tek: **bu sayfa somut bir ürün ya da kampanya bilgisi taşıyor mu, ve bu bilgi diğer bankalarla kıyaslanabilir mi?**
+İlk ajan, temizlenmiş ve ilgili olduğu belirlenmiş sayfaları tek tek inceler. Her sayfa için şu soruya cevap verir: **Sayfa somut bir ürün veya kampanya bilgisi içeriyor mu ve bu bilgi diğer bankalarla karşılaştırılabilir mi?**
 
 ## Aynı tablo iki kez kurulmaz
 
@@ -280,7 +280,7 @@ Tablo bittiğinde tek seferlik bir gözden geçirme yapılıyor:
 
 > Kullanıcı sorduğunda, soru bankalara dağıtılır ve kanıt toplanır.
 
-Sistemin tamamı tek bir cümleyle: **bir yönetici ajan var, on tane de banka uzmanı.** Yönetici hiçbir bankayı kendi bilmiyor; soruyu ilgili uzmanlara aynı anda dağıtıyor, onların getirdiği kanıtı birleştirip cevabı yazıyor.
+Sistemi özetlemenin en kolay yolu şu: **bir yönetici ajan ve on banka uzmanı var.** Yönetici ajan soruyu ilgili uzmanlara dağıtıyor; uzmanların getirdiği kanıtları birleştirerek cevabı oluşturuyor.
 
 ```mermaid
 %%{init: {'theme':'base','themeVariables':{'primaryColor':'#0f172a','primaryTextColor':'#f8fafc','primaryBorderColor':'#334155','lineColor':'#0284c7','secondaryColor':'#1e293b','tertiaryColor':'#0f172a','clusterBkg':'#090d16','clusterBorder':'#1e293b'}}}%%
@@ -317,13 +317,13 @@ flowchart TB
 
 Okuma sırası soldan sağa değil, yukarıdan aşağı: **soru yukarıdan girer, kanıt aşağıda toplanır, cevap denetimden geçtikten sonra çıkar.** Denetimden dönen ok gerçek bir yoldur: kural ihlali bulunduğunda cevap kullanıcıya gitmez, gerekçesiyle birlikte süpervizöre geri döner.
 
-Süpervizörün kendi iki aracı bilgi taşımaz, iş yapar: sitenin bu konuda zaten yayımladığı bir tablo varsa adresini bulur, ve kullanıcının kurduğu tekrarlayan görevleri kaydeder. **Bankaya dair her olgu uzmandan gelir.**
+Süpervizörün iki aracı bankacılık bilgisi üretmez; işlevsel görevleri yerine getirir. Mevcut bir karşılaştırma tablosunu bulabilir ve kullanıcının oluşturduğu tekrarlayan görevleri kaydedebilir. **Bankaya dair olguların kaynağı banka uzmanlarıdır.**
 
 > **Ajan**, hangi aracı ne zaman kullanacağına kendi karar veren bir dil modelidir. Sıradan bir sohbet modelinden farkı, tek hamlede cevap vermek yerine çok adımlı bir araştırma yürütebilmesidir. **Süpervizör** işi dağıtan ve toparlayan ajandır; **uzman** ise tek bir bankadan sorumlu alt ajandır.
 
 ## Araç olarak ajan
 
-Süpervizör bankalara doğrudan sormaz. Her bankayı bir **araç** olarak çağırır ve on uzman aynı anda çalışabilir. Uzmanın kendi akıl yürütme adımları süpervizöre hiç ulaşmaz; yalnızca nihai bulgusu ve kaynak bağlantıları ulaşır. Böylece süpervizörün context window'u on ayrı araştırma turunun gürültüsüyle dolmaz.
+Süpervizör bankalara doğrudan sormaz. Her bankanın uzmanını bir **araç** gibi çağırır ve uzmanlar gerektiğinde aynı anda çalışabilir. Süpervizöre uzmanların tüm ara adımları değil, nihai bulguları ve kaynak bağlantıları aktarılır. Böylece süpervizörün context window'u on ayrı araştırmanın ayrıntılarıyla gereksiz yere dolmaz.
 
 > Bir ajanın **context window**'u, aynı anda aklında tutabildiği her şeydir: o ana kadarki konuşma ve içeri çektiği bütün belgeler. Sınırlıdır ve dolduğunda en eski malzemenin ya özetlenmesi ya da atılması gerekir. Aşağıdaki kararların çoğu, bu alanı gürültüye değil kanıta harcamak için vardır.
 
@@ -364,11 +364,11 @@ flowchart LR
     A --> WEB
 ```
 
-Üç grup üç ayrı soruya cevap veriyor ve **birbirinin yerine geçmiyorlar:**
+Bu üç araç grubu farklı ihtiyaçlara cevap verir ve **birbirinin yerine geçmez:**
 
-**Canlı**, *şu anda* geçerli olan sayıdır. Bir oran ya da taksit sorusu indeksten değil, bankanın müşteriye gösterdiği hesaplayıcıdan cevaplanır. Bir bankanın yayımlamadığı hesaplayıcı, o uzmanın araç listesinde hiç görünmez; böylece model olmayan bir servisi çağırmayı deneyemez.
+**Canlı**, *o anda* bankanın hesaplayıcısından alınan sonuçtur. Oran veya taksit sorusu, mümkün olduğunda arama indeksinden değil bankanın müşterilerine sunduğu hesaplayıcıdan cevaplanır. Bankanın desteklemediği bir hesaplayıcı, o uzmanın kullanılabilir araçları arasında yer almaz.
 
-**Belge**, bankanın *yayımladığı* şeydir: ürün şartları, ücret tabloları, kampanya koşulları. Kanıttır ama teklif değildir, ve uzmana bu ayrım açıkça söylenir: bir sayfadan okunan rakam asla canlı oran diye sunulmaz.
+**Belge**, bankanın *yayımladığı* ürün şartı, ücret tablosu veya kampanya koşuludur. Bu içerik kanıt olarak kullanılabilir, ancak tek başına canlı bir teklif anlamına gelmez. Bir sayfadan okunan değer, canlı oran olarak sunulmamalıdır.
 
 **Web** varsayılan olarak kapalıdır ve açıldığında bile kendi bankasının alan adı dışındaki her sonucu atar.
 
@@ -401,7 +401,7 @@ Uzun belgeler indekslenmeden önce pasajlara bölündüğü için tek bir arama 
 
 Oran, taksit ve kur soruları indeksten değil, bankanın kendi hesaplama servisinden cevaplanır. Dört karar bu katmanı belirliyor:
 
-**Sınır önce bilinir.** Kullanıcıya 360 ay istetip sonra her bankanın reddettiği ekranı göstermek ona hiçbir şey öğretmez. Asıl önemli sayı karşılaştırmadaki bankaların **kesişimidir**: biri 84 ayda bitiyorsa, o bankayı içeren karşılaştırma en fazla 84 ay sorabilir. Bu, sonradan bildirilecek bir hata değil, önceden ve o sınırı koyan bankanın adıyla gösterilecek bir tavandır.
+**Sınır önceden bilinir.** Kullanıcıdan bankaların desteklemediği bir vade istemek yerine, seçili bankaların ortak desteklediği sınırlar hesaplanır. Örneğin bankalardan biri en fazla 84 ay destekliyorsa, o bankanın dahil olduğu karşılaştırma 84 ayı aşamaz. Bu sınır kullanıcıya işlemden sonra hata olarak değil, işlemden önce açıklanır.
 
 **Bankalar aynı anda sorulur.** Altı bankaya sırayla sormak **11,99 saniye**, aynı anda sormak **0,59 saniye** sürüyor.
 
@@ -714,7 +714,7 @@ Dört ayrı yüzey tablo üretiyor ve dört format bunları almak istiyor. On al
 
 ## Modeller
 
-Sistemde beş ayrı model var ve **hepsi kendi işini yapıyor**: üçü dil modeli, biri gömme, biri konuşma tanıma, biri seslendirme. Dil modellerinin üçü de yerel bir vLLM sunucusunda çalışır ve rol dağılımı tercihe değil **ölçüme** dayanır.
+Sistemde altı ayrı model rolü bulunuyor ve **her biri farklı bir iş yapıyor**: üç dil modeli, bir gömme modeli, bir konuşma tanıma modeli ve bir seslendirme modeli. Üç dil modeli de OpenAI uyumlu yerel bir vLLM sunucusu üzerinden çalışıyor; hangi modelin hangi rolde kullanılacağı yapılandırmadan değiştirilebiliyor.
 
 ### Dil modelleri
 
@@ -730,7 +730,7 @@ Model seçimi kodda değil yapılandırmada durur, dolayısıyla roller `.env` �
 
 | İş | Model | Nerede çalışır | Neden bu |
 |---|---|---|---|
-| **Gömme** | `Qwen/Qwen3-Embedding-0.6B` · 1024 boyut | vLLM sunucusu (`/embed/v1`) | Çok dilli ve Türkçede güçlü; 32K bağlam sayesinde uzun bir ücret tablosu sayfası bölünmeden gömülüyor. Sorgular komut önekiyle, pasajlar öneksiz gömülür. |
+| **Gömme** | `Qwen/Qwen3-Embedding-0.6B` · 1024 boyut | vLLM sunucusu (`/embed/v1`) | Çok dilli ve Türkçe içeriklerde kullanılmak üzere seçilmiştir. Sorgular komut önekiyle, pasajlar ise öneksiz gömülür. |
 | **Konuşma tanıma** | `whisper-large-v3` · MLX 4-bit | **Cihazın kendi üzerinde** | Ses üçüncü taraf bir servise hiç gitmiyor. Yerel bir dosya yolu bilinçli: bir isteğin karşılanması asla gigabaytlık bir indirme tetikleyemez. Kaynak dil Türkçeye sabitlenmiştir. |
 | **Seslendirme** | `Trendyol/Trendyol-TTS` · voxcpm | Ayrı bir servis, akışlı | Türkçe bankacılık metnini okuyan Türkçe bir LoRA, işletim sisteminin rastgele sesine karşı. Ham 16-bit PCM olarak, daha üretilirken akıyor. |
 
@@ -750,7 +750,7 @@ Sürümler `requirements.txt` ve `UI/package.json` içinde sabitlenmiştir; aşa
 | **Korpus** | `trafilatura` · `lxml` · `pymupdf` · `pypdf` · `pillow` · `playwright` · `curl_cffi` | HTML'den markdown'a, PDF çözme, görsel işleme, arayüzünü dinamik kuran sayfalar için gerçek tarayıcı |
 | **Ses** | `mlx-whisper` (yalnız Apple Silicon) · `voxcpm` | Cihaz üstünde tanıma, akışlı seslendirme |
 | **Dışa aktarma** | `weasyprint` · `XlsxWriter` · `markdown-it-py` · Pandoc | PDF, Excel, Word ve CSV; hepsi tek bir ara temsilden |
-| **Arayüz** | `next` 16 · `react` 19 · `tailwindcss` v4 · `@mui/material` · `@tanstack/react-query` · `next-intl` · `streamdown` | App Router, sunucu durumu, iki dil, akan cevabın markdown olarak çizilmesi |
+| **Arayüz** | `next` 16 · `react` 19 · `tailwindcss` v4 · `@mui/material` · `@tanstack/react-query` · `next-intl` · `streamdown` | App Router, sunucu durumu, locale yönlendirmesi ve akan cevabın markdown olarak çizilmesi |
 | **Arayüz (görsel)** | `recharts` · `apexcharts` · `lucide-react` · `ogl` · `@zumer/snapdom` | Grafikler, tek ikon seti, sesli modun WebGL küresi, ekran görüntüsü alma |
 | **Test** | `pytest` · `pytest-asyncio` · `node --test` | Python tarafı pytest, arayüz tarafı Node'un kendi koşucusu |
 
@@ -832,11 +832,11 @@ Son üçü her gece çalışmak üzere tasarlandı. `python -m corpus.schedule`,
 
 ## What it does
 
-Kermits makes the products, campaigns and current rates of Türkiye's 10 participation banks comparable in one place. The user asks in plain language, and the system answers **with its sources attached**: every figure carries the official page or document it came from, as a clickable reference.
+Kermits helps users compare the products, campaigns and current rates of Türkiye's 10 participation banks in one place. Users ask questions in plain language, and the system answers **with its sources attached**. Each displayed figure includes a clickable reference to the official page or document it came from.
 
 > **Participation banking** is a banking model based on profit-and-loss sharing instead of interest. What a conventional bank calls a loan is *financing*, interest is a *profit share*, and a term deposit is a *participation account*. This is not just vocabulary. A participation account cannot promise a return in advance, so an assistant that says "you will earn X" has given a wrong answer, not a helpful one. The system holds this terminology end to end.
 
-The interface ships in Turkish for now; the multilingual groundwork is in place and ready for a second language. It has six workspaces: chat, live comparison, product catalogue, campaigns, automations, and voice conversation.
+The interface currently ships in Turkish only. The main navigation includes Compare, Products, Campaigns, AI Overview, Assistant and Profile. Automations are managed from Profile, while voice is available across the relevant application screens.
 
 <div align="center">
   <img src="docs/screenshots/chat-research.png" alt="Chat assistant" width="800" />
@@ -866,9 +866,9 @@ The first three steps run **ahead of time**, independently of any user, and buil
 
 Every decision below follows from these three.
 
-**Live numbers and durable facts come from different places.** Today's profit-share rate, instalment amount and exchange rate are fetched from the bank's own calculation service at the moment they are asked for, and are never stored in the search index, because an indexed number is wrong tomorrow. Product terms, participation principles and fee schedules come instead from a durable **corpus**: an archive of documents collected from the banks' own sites and cleaned.
+**Live numbers and durable facts come from different places.** Variable values such as profit-share rates, instalments and exchange rates are requested from the bank's own calculation service when needed. Product terms, participation principles and fee schedules come from a durable **corpus**: an archive of documents collected from the banks' own sites and cleaned for retrieval.
 
-**Each bank is sealed inside its own agent.** The ten bank specialists cannot see each other's data. A specialist is never offered a choice of bank; its bank is fixed the moment it is created. This makes the most common failure in a multi-bank answer, attributing one bank's rate to another, impossible by construction rather than by instruction.
+**Each bank has its own specialist.** The ten specialists do not see one another's data. A specialist's bank is fixed when it is created rather than selected during a run. This architectural boundary reduces the risk of attributing one bank's rate to another.
 
 **"They don't offer it" and "I couldn't reach them" are different answers.** If a bank does not sell that product, saying so is a correct and useful answer. If the bank's service broke this morning, it is not. The system records these two states separately and reports them separately.
 
@@ -959,13 +959,13 @@ So a page's text and its images are handled separately. The same holds for PDFs:
 
 Images get one extra filter: each is first judged as decorative or as carrying real product or campaign information. Logos and backgrounds are dropped; tables and condition text are extracted.
 
-## Images are read by a model that sees, not by OCR
+## Images are read by a model that understands layout
 
-The off-the-shelf way to get text out of a picture is OCR, and it is deliberately not used here. The reason: **in a banking image, most of the information is not in the letters but in the layout.**
+OCR is the usual way to extract characters from an image. For banking tables and campaign graphics, however, the system also needs to understand the visual layout. **The meaning often depends on where information appears, not only on the characters themselves.**
 
-Looking at a profit-share table, OCR sees numbers stacked in a column. It cannot say which number belongs to which term or which product row, because it reads characters rather than structure. In the same way, on a campaign banner it cannot tell that the rate set in large type is the headline offer while the small print beneath it is the condition. The text it produces is made of correct characters and means the wrong thing, and it does so silently.
+OCR can read the characters in a profit-share table, but may not reliably determine which number belongs to which term or product row. On a campaign banner, it may also miss the relationship between the large headline offer and the smaller conditions below it. The characters can therefore be correct while the meaning is wrong.
 
-A model that sees looks at the image the way a reader does: it holds the row and column relationship of a table together, separates a heading from its body, and sees which figure a footnote belongs to. The same model also decides what is merely decorative, so no separate classification step is needed.
+A vision-capable model evaluates the image as a whole: it keeps a table's row and column relationships together, separates a heading from its body, and interprets which figure a footnote belongs to. The same model helps identify decorative material, so the pipeline does not need a separate classification call for every image.
 
 There is a cost: running a model that sees is more expensive than OCR. That is why which images are worth it is filtered beforehand, and the same image is never asked about twice.
 
@@ -973,7 +973,7 @@ There is a cost: running a model that sees is more expensive than OCR. That is w
 
 Not every piece of text that comes out is processed. First it is decided whether it is **any use to us**: is this product, campaign or service information a customer could be shown, or is it a corporate announcement, a regulatory text, a job posting?
 
-The order is deliberate: filter first, clean second. Cleaning is expensive, and rewriting an irrelevant document nicely spends that cost on text that will never be used.
+The order is deliberate: filter first, clean second. Cleaning may require a model call, so the pipeline avoids spending that work on documents that will not be used.
 
 The call is not made once for a whole document; **every piece is judged individually**, and only those found relevant are kept. In a long document the useful parts are usually scattered: a contract's opening and closing are boilerplate, but a fee table may sit in the middle. Discarding the document whole would throw that table away; taking it whole would fill the index with boilerplate.
 
@@ -1045,7 +1045,7 @@ flowchart TD
 
 ## One question is asked of every page
 
-The first agent walks the pages that were cleaned and judged useful, one at a time. For each it makes a single call: **does this page carry concrete product or campaign information, and can that information be compared against other banks?**
+The first agent reviews the cleaned pages judged relevant, one at a time. For each page it answers one question: **does this page carry concrete product or campaign information, and can that information be compared against other banks?**
 
 ## The same table is never built twice
 
@@ -1169,7 +1169,7 @@ flowchart LR
     A --> WEB
 ```
 
-The three groups answer three different questions and **do not substitute for one another:**
+The three groups serve different purposes and **do not substitute for one another:**
 
 **Live** is the number that holds *right now*. A rate or instalment question is answered from the calculator the bank shows its own customers, not from the index. A calculator a bank does not publish never appears in that specialist's tool list at all, so the model cannot even try to call a service that does not exist.
 
@@ -1519,7 +1519,7 @@ Four different surfaces produce tables, and four formats want to receive them. W
 
 ## Models
 
-There are five models in the system and **each does its own job**: three language models, one embedding model, one for speech recognition, one for synthesis. All three language models run on a local vLLM server, and the role assignments come from **measurement**, not preference.
+The system uses six model roles and **each has a separate job**: three language models, one embedding model, one speech-recognition model and one speech-synthesis model. The three language models run through an OpenAI-compatible local vLLM server, and their roles can be changed through configuration.
 
 ### Language models
 
@@ -1555,7 +1555,7 @@ Versions are pinned in `requirements.txt` and `UI/package.json`; what follows is
 | **Corpus** | `trafilatura` · `lxml` · `pymupdf` · `pypdf` · `pillow` · `playwright` · `curl_cffi` | HTML to markdown, PDF decoding, image handling, and a real browser for pages that build their interface dynamically |
 | **Voice** | `mlx-whisper` (Apple Silicon only) · `voxcpm` | On-device recognition, streamed synthesis |
 | **Export** | `weasyprint` · `XlsxWriter` · `markdown-it-py` · Pandoc | PDF, Excel, Word and CSV, all from one intermediate representation |
-| **Interface** | `next` 16 · `react` 19 · `tailwindcss` v4 · `@mui/material` · `@tanstack/react-query` · `next-intl` · `streamdown` | App Router, server state, two languages, and drawing a streaming answer as markdown |
+| **Interface** | `next` 16 · `react` 19 · `tailwindcss` v4 · `@mui/material` · `@tanstack/react-query` · `next-intl` · `streamdown` | App Router, server state, locale routing, and rendering a streaming answer as markdown |
 | **Interface (visual)** | `recharts` · `apexcharts` · `lucide-react` · `ogl` · `@zumer/snapdom` | Charts, one icon set, voice mode's WebGL orb, and screenshotting |
 | **Tests** | `pytest` · `pytest-asyncio` · `node --test` | pytest on the Python side, Node's own runner on the interface side |
 
