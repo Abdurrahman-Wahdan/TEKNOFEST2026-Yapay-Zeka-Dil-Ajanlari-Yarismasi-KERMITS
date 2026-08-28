@@ -31,7 +31,7 @@ Kermits, Türkiye'deki 10 katılım bankasının ürünlerini, kampanyalarını 
 
 > **Katılım bankacılığı**, faiz yerine kâr–zarar ortaklığına dayanan bankacılık modelidir. Klasik bankanın kredi dediğine *finansman*, faize *kâr payı*, vadeli mevduata *katılma hesabı* denir. Bu sadece bir kelime meselesi değildir. Katılma hesabında getiri önceden taahhüt edilemez; dolayısıyla "şu kadar kazanırsınız" diyen bir asistan yardımcı olmuş değil, yanlış cevap vermiş olur. Sistem bu terminolojiyi baştan sona koruyor.
 
-Arayüz şimdilik yalnızca Türkçe yayınlanıyor; çok dilli altyapı yerinde duruyor, ikinci dil [ileriki çalışmalar](#ileriki-calismalar) arasında. Altı çalışma alanı var: sohbet, canlı karşılaştırma, ürün kataloğu, kampanyalar, otomasyonlar ve sesli konuşma.
+Arayüz şimdilik yalnızca Türkçe yayınlanıyor; çok dilli altyapı yerinde duruyor ve ikinci dil için hazır. Altı çalışma alanı var: sohbet, canlı karşılaştırma, ürün kataloğu, kampanyalar, otomasyonlar ve sesli konuşma.
 
 <div align="center">
   <img src="docs/screenshots/chat-research.png" alt="Sohbet asistanı" width="800" />
@@ -290,15 +290,15 @@ flowchart TB
 
     U --> SUP
 
-    subgraph SPEC["<b>10 uzman</b> — her biri yalnızca kendi bankasını bilir, hepsi aynı anda çalışır"]
+    subgraph SPEC["<b>10 uzman</b>: her biri yalnızca kendi bankasını bilir, hepsi aynı anda çalışır"]
         direction LR
         S1["Kuveyt Türk"] ~~~ S2["Albaraka"] ~~~ S3["Vakıf"] ~~~ S4["Emlak"] ~~~ S5["Dünya"]
         S6["Ziraat"] ~~~ S7["Türkiye Finans"] ~~~ S8["Hayat"] ~~~ S9["T.O.M."] ~~~ S10["Adil"]
     end
 
-    subgraph TOOLS["<b>Her uzmanın kendi araç takımı</b> — yalnızca kendi bankasına açık"]
+    subgraph TOOLS["<b>Her uzmanın kendi araç takımı</b>: yalnızca kendi bankasına açık"]
         direction LR
-        T1["Bankanın canlı hesaplayıcısı<br/><i>oran, taksit, kur — şu anki gerçek sayı</i>"]
+        T1["Bankanın canlı hesaplayıcısı<br/><i>oran, taksit, kur: şu anki gerçek sayı</i>"]
         T2[("Bankanın kendi belgeleri<br/><i>sayfalar ve PDF'ler</i>")]
         T3["Bankanın sitesinde arama<br/><i>yalnızca gerektiğinde</i>"]
     end
@@ -309,13 +309,13 @@ flowchart TB
     SPEC -->|"bulgu + kaynak bağlantısı"| SUP
 
     SUP --> G{"Çıktı denetimi<br/>kurallara uyuyor mu?"}
-    G -->|"hayır — gerekçesiyle geri"| SUP
+    G -->|"hayır, gerekçesiyle geri"| SUP
     G -->|"evet"| OUT(["Cevap, kaynaklarıyla birlikte"])
 
     SUP -.->|"kendi iki aracı"| SUPT["Katalogda tablo bul<br/>Otomasyon kur ve listele"]
 ```
 
-Okuma sırası soldan sağa değil, yukarıdan aşağı: **soru yukarıdan girer, kanıt aşağıda toplanır, cevap denetimden geçtikten sonra çıkar.** Denetimden dönen ok gerçek bir yoldur — kural ihlali bulunduğunda cevap kullanıcıya gitmez, gerekçesiyle birlikte süpervizöre geri döner.
+Okuma sırası soldan sağa değil, yukarıdan aşağı: **soru yukarıdan girer, kanıt aşağıda toplanır, cevap denetimden geçtikten sonra çıkar.** Denetimden dönen ok gerçek bir yoldur: kural ihlali bulunduğunda cevap kullanıcıya gitmez, gerekçesiyle birlikte süpervizöre geri döner.
 
 Süpervizörün kendi iki aracı bilgi taşımaz, iş yapar: sitenin bu konuda zaten yayımladığı bir tablo varsa adresini bulur, ve kullanıcının kurduğu tekrarlayan görevleri kaydeder. **Bankaya dair her olgu uzmandan gelir.**
 
@@ -336,7 +336,7 @@ Yukarıdaki kutulardan biri açıldığında görünen şey bu. Örnek Kuveyt T�
 flowchart LR
     A["<b>Kuveyt Türk uzmanı</b><br/><i>başka hiçbir bankayı<br/>ne görür ne sorabilir</i>"]
 
-    subgraph CANLI["<b>Canlı</b> — bankanın kendi hesaplama servisi"]
+    subgraph CANLI["<b>Canlı</b>: bankanın kendi hesaplama servisi"]
         direction TB
         L1["list_products<br/><i>bu kategoride ne satıyor</i>"]
         L2["finance_quote<br/><i>finansman teklifi: oran ve taksit</i>"]
@@ -346,14 +346,14 @@ flowchart LR
         L6["check_live_endpoint_health<br/><i>servis şu an ayakta mı</i>"]
     end
 
-    subgraph BELGE["<b>Belge</b> — bankanın yayımladığı sayfalar ve PDF'ler"]
+    subgraph BELGE["<b>Belge</b>: bankanın yayımladığı sayfalar ve PDF'ler"]
         direction TB
         D1["search_bank<br/><i>korpusta Türkçe ara</i>"]
         D2["expand_chunk<br/><i>kesilen pasajın devamını getir</i>"]
         D3["read_full_page<br/><i>belgenin tamamını oku</i>"]
     end
 
-    subgraph WEB["<b>Web</b> — yalnızca istendiğinde açılır"]
+    subgraph WEB["<b>Web</b>: yalnızca istendiğinde açılır"]
         direction TB
         W1["search_bank_web<br/><i>bankanın sitesinde ara</i>"]
         W2["read_bank_source<br/><i>bulunan sayfayı aç</i>"]
@@ -366,9 +366,9 @@ flowchart LR
 
 Üç grup üç ayrı soruya cevap veriyor ve **birbirinin yerine geçmiyorlar:**
 
-**Canlı**, *şu anda* geçerli olan sayıdır. Bir oran ya da taksit sorusu indeksten değil, bankanın müşteriye gösterdiği hesaplayıcıdan cevaplanır. Bir bankanın yayımlamadığı hesaplayıcı, o uzmanın araç listesinde hiç görünmez — böylece model olmayan bir servisi çağırmayı deneyemez.
+**Canlı**, *şu anda* geçerli olan sayıdır. Bir oran ya da taksit sorusu indeksten değil, bankanın müşteriye gösterdiği hesaplayıcıdan cevaplanır. Bir bankanın yayımlamadığı hesaplayıcı, o uzmanın araç listesinde hiç görünmez; böylece model olmayan bir servisi çağırmayı deneyemez.
 
-**Belge**, bankanın *yayımladığı* şeydir: ürün şartları, ücret tabloları, kampanya koşulları. Kanıttır ama teklif değildir, ve uzmana bu ayrım açıkça söylenir — bir sayfadan okunan rakam asla canlı oran diye sunulmaz.
+**Belge**, bankanın *yayımladığı* şeydir: ürün şartları, ücret tabloları, kampanya koşulları. Kanıttır ama teklif değildir, ve uzmana bu ayrım açıkça söylenir: bir sayfadan okunan rakam asla canlı oran diye sunulmaz.
 
 **Web** varsayılan olarak kapalıdır ve açıldığında bile kendi bankasının alan adı dışındaki her sonucu atar.
 
@@ -432,7 +432,7 @@ sequenceDiagram
     participant S as Seslendirme
 
     rect rgb(15, 23, 42)
-    Note over K,D: Yazarak — kısa yol
+    Note over K,D: Yazarak (kısa yol)
     K->>UI: Soruyu yazar
     UI->>API: POST /chat/ask
     API->>AJ: Soruyu dağıt, kanıtı topla
@@ -444,7 +444,7 @@ sequenceDiagram
     end
 
     rect rgb(9, 13, 22)
-    Note over K,S: Konuşarak — boşluk tuşu basılı tutulur
+    Note over K,S: Konuşarak (boşluk tuşu basılı tutulur)
     K->>UI: Boşluğu basılı tutup konuşur
     UI->>API: POST /voice/transcriptions
     API->>W: Sesi cihazın kendi üstünde çöz
@@ -453,7 +453,7 @@ sequenceDiagram
     UI->>API: POST /chat/ask
     API-->>UI: Denetimden geçmiş cevap
     UI->>API: POST /voice/response
-    API->>Y: Tabloyu kulağa göre yeniden yaz
+    API->>Y: Cevabı sesli yanıt için optimize et
     Y-->>UI: Konuşulacak metin
     UI->>API: POST /voice/speech
     API->>S: Uzak servise akıt
@@ -462,9 +462,9 @@ sequenceDiagram
     end
 ```
 
-**Ses ayrı bir hat değil.** Sesli sorunun ortası, yazılı sorunun tamamıdır: aynı süpervizör, aynı on uzman, aynı çıktı denetimi. Fark yalnızca uçlardadır — önde konuşmayı metne çeviren bir adım, arkada cevabı önce kulağa göre yeniden yazan sonra seslendiren iki adım. Bu, sesin ikinci sınıf bir giriş yöntemi olmamasını sağlar: ses kanalına özel bir cevap üretici yoktur, dolayısıyla sesle sorulan soru yazıyla sorulandan daha az kanıt görmez.
+**Ses ayrı bir hat değil.** Sesli sorunun ortası, yazılı sorunun tamamıdır: aynı süpervizör, aynı on uzman, aynı çıktı denetimi. Fark yalnızca uçlardadır: önde konuşmayı metne çeviren bir adım, arkada cevabı önce sesli yanıt için optimize eden, sonra okuyan iki adım. Bu, sesin ikinci sınıf bir giriş yöntemi olmamasını sağlar: ses kanalına özel bir cevap üretici yoktur, dolayısıyla sesle sorulan soru yazıyla sorulandan daha az kanıt görmez.
 
-**Cevap kulağa göre yeniden yazılır.** Süpervizöre karşılaştırmaları tablo olarak ve her iddiadan sonra bağlantı koyarak yazması söylenir; bu ekranda doğru, kulakta çekilmezdir. Araya giren yazar adımı bitmiş cevabı konuşulacak hale getirir. Bu adım başarısız olursa ses susmaz: tarayıcının kendi dönüştürücüsü devreye girer — tabloyu o kadar iyi ifade edemez ama **var olmayan bir oran uyduramaz**, ki geri düşülecek doğru yer tam olarak budur.
+**Cevap, sesli yanıt için optimize edilir.** Süpervizöre karşılaştırmaları tablo olarak ve her iddiadan sonra bağlantı koyarak yazması söylenir; bu ekranda doğrudur, sesli yanıtta kullanışsızdır. Araya giren optimizasyon adımı, bitmiş cevabı sesli sunuma uygun hâle getirir. Bu adım başarısız olursa ses susmaz: tarayıcının kendi dönüştürücüsü devreye girer; tabloyu o kadar iyi ifade edemez ama **var olmayan bir oran uyduramaz**, ki geri düşülecek doğru yer tam olarak budur.
 
 **Bekleme doldurulur.** On bankalı bir karşılaştırma otuz saniye sürebilir ve sesli modda bakılacak bir ekran yoktur; bir dakikalık sessizlik çökmeden ayırt edilemez. Bu yüzden transkript iner inmez bir onay cümlesi söylenir, sonra her on saniyede bir bekletme cümlesi, altta çalan bir müzikle birlikte. Cevap okunmaya başladığında müzik kapanır.
 
@@ -536,8 +536,8 @@ flowchart LR
 # Arayüz
 
 <div align="center">
-  <img src="assets/Kar%C5%9Fla%C5%9Ft%C4%B1r-page.png" alt="Karşılaştır — altı sayfalık panelin giriş noktası" width="880" />
-  <br/><sub><b>Karşılaştır — altı sayfalık panelin giriş noktası</b></sub>
+  <img src="assets/Kar%C5%9Fla%C5%9Ft%C4%B1r-page.png" alt="Karşılaştır: altı sayfalık panelin giriş noktası" width="880" />
+  <br/><sub><b>Karşılaştır: altı sayfalık panelin giriş noktası</b></sub>
 </div>
 
 | Sayfa | Ne yapar |
@@ -549,30 +549,32 @@ flowchart LR
 | **AI Overview** | Uzun ürün şartlarını, kalabalık tabloları ve piyasa hareketlerini birkaç maddeye indiren hızlı özetler. |
 | **Otomasyonlar** | Doğal dille kurulan tekrarlayan görevler: *"Taşıt finansman oranı %3,5'in altına inerse haber ver."* Koşul sağlandığında e-posta ve uygulama içi bildirim gönderilir. |
 
-## Karşılaştırma — soru bir form, cevap canlı bankadan
+## Karşılaştırma: soru bir form, cevap canlı bankadan
 
 <div align="center">
-  <img src="assets/live-comparison%20tables.png" alt="Aynı anda sorulan altı banka, taksite göre sıralanmış — üstünde tabloyu okuyan yapay zekâ özeti" width="880" />
-  <br/><sub><b>Aynı anda sorulan altı banka, taksite göre sıralanmış — üstünde tabloyu okuyan yapay zekâ özeti</b></sub>
+  <img src="assets/live-comparison%20tables.png" alt="Aynı anda sorulan altı banka, taksite göre sıralanmış; üstünde tabloyu okuyan yapay zekâ özeti" width="880" />
+  <br/><sub><b>Aynı anda sorulan altı banka, taksite göre sıralanmış; üstünde tabloyu okuyan yapay zekâ özeti</b></sub>
 </div>
 
-Kullanıcı ne karşılaştıracağını seçer, tutarı ve vadeyi girer; bankalar **paralel** sorgulanır. Sunmayan banka “sunmuyor” diye, ulaşılamayan banka “ulaşılamadı” diye ayrı ayrı raporlanır — ikisi asla aynı görünmez.
+Kullanıcı ne karşılaştıracağını seçer, tutarı ve vadeyi girer; bankalar **paralel** sorgulanır. Sunmayan banka “sunmuyor” diye, ulaşılamayan banka “ulaşılamadı” diye ayrı ayrı raporlanır; ikisi asla aynı görünmez.
 
-## Ürünler — 283 hazır tablo
+## Ürünler ve Kampanyalar: hazır karşılaştırma tabloları
+
+Katalog iki sayfaya ayrılır: **Ürünler** banka ürünlerini, **Kampanyalar** süreli teklifleri karşılaştırır. İkisi de aynı düzeni kullanır; aşağıdaki görüntüler Ürünler sayfasından alınmış birer örnektir.
 
 <div align="center">
-  <img src="assets/comparison-tables-of-pr%C4%B1ducts.png" alt="Katalog: konu başına bir tablo, alt kategoriye göre süzülebilir" width="880" />
-  <br/><sub><b>Katalog: konu başına bir tablo, alt kategoriye göre süzülebilir</b></sub>
+  <img src="assets/comparison-tables-of-pr%C4%B1ducts.png" alt="Katalog: konu başına bir tablo, alt kategoriye göre süzülebilir (örnek: Ürünler)" width="880" />
+  <br/><sub><b>Katalog: konu başına bir tablo, alt kategoriye göre süzülebilir (örnek: Ürünler)</b></sub>
 </div>
 
 <div align="center">
-  <img src="assets/an-example-comparison-table.png" alt="Açılmış bir tablo ve üstünde o tablodan yazılmış özet" width="880" />
-  <br/><sub><b>Açılmış bir tablo ve üstünde o tablodan yazılmış özet</b></sub>
+  <img src="assets/an-example-comparison-table.png" alt="Açılmış bir tablo ve üstünde o tablodan yazılmış özet (örnek)" width="880" />
+  <br/><sub><b>Açılmış bir tablo ve üstünde o tablodan yazılmış özet (örnek)</b></sub>
 </div>
 
 Özet her zaman **tablodan** yazılır; altındaki satırlar esas kaynaktır.
 
-## Asistan — her sayının yanında kaynağı
+## Asistan: her sayının yanında kaynağı
 
 <div align="center">
   <img src="assets/chatbot.png" alt="Kampanya sorusu: her iddianın ardından bankanın kendi sayfasına giden bağlantı" width="880" />
@@ -580,8 +582,8 @@ Kullanıcı ne karşılaştıracağını seçer, tutarı ve vadeyi girer; bankal
 </div>
 
 <div align="center">
-  <img src="assets/prompt-guard.png" alt="Çıktı denetimi iş başında: soru “faiz” diyor, cevap terminolojiyi düzeltip kâr payı üzerinden veriyor — her satırda banka, oran, kaynak ve saat" width="880" />
-  <br/><sub><b>Çıktı denetimi iş başında: soru “faiz” diyor, cevap terminolojiyi düzeltip kâr payı üzerinden veriyor — her satırda banka, oran, kaynak ve saat</b></sub>
+  <img src="assets/prompt-guard.png" alt="Çıktı denetimi iş başında: soru “faiz” diyor, cevap terminolojiyi düzeltip kâr payı üzerinden veriyor; her satırda banka, oran, kaynak ve saat" width="880" />
+  <br/><sub><b>Çıktı denetimi iş başında: soru “faiz” diyor, cevap terminolojiyi düzeltip kâr payı üzerinden veriyor; her satırda banka, oran, kaynak ve saat</b></sub>
 </div>
 
 İkinci görüntü aynı zamanda açık temayı gösteriyor: arayüzün tamamı iki temada da çalışır.
@@ -589,8 +591,8 @@ Kullanıcı ne karşılaştıracağını seçer, tutarı ve vadeyi girer; bankal
 ## Modeli ve düşünme derinliğini kullanıcı seçer
 
 <div align="center">
-  <img src="assets/different-model-providers.png" alt="Üç model, bir de Düşün anahtarı — konuşmanın ortasında değiştirilebilir" width="880" />
-  <br/><sub><b>Üç model, bir de Düşün anahtarı — konuşmanın ortasında değiştirilebilir</b></sub>
+  <img src="assets/different-model-providers.png" alt="Üç model, bir de Düşün anahtarı; konuşmanın ortasında değiştirilebilir" width="880" />
+  <br/><sub><b>Üç model, bir de Düşün anahtarı; konuşmanın ortasında değiştirilebilir</b></sub>
 </div>
 
 Geçmiş modelin değil checkpoint'in olduğu için, model değiştirmek biriken konuşmayı kaybettirmez.
@@ -612,11 +614,11 @@ Geçmiş modelin değil checkpoint'in olduğu için, model değiştirmek biriken
 ## Asistan sayfayı terk etmez
 
 <div align="center">
-  <img src="assets/chatbot-popup.png" alt="Profil sayfasının üstünde açılmış asistan — konuşma sayfa değiştirince kaybolmaz" width="880" />
-  <br/><sub><b>Profil sayfasının üstünde açılmış asistan — konuşma sayfa değiştirince kaybolmaz</b></sub>
+  <img src="assets/chatbot-popup.png" alt="Profil sayfasının üstünde açılmış asistan; konuşma sayfa değiştirince kaybolmaz" width="880" />
+  <br/><sub><b>Profil sayfasının üstünde açılmış asistan; konuşma sayfa değiştirince kaybolmaz</b></sub>
 </div>
 
-## AI Görünümü — kaydedilen tablolar ve dışa aktarma
+## AI Görünümü: kaydedilen tablolar ve dışa aktarma
 
 <div align="center">
   <img src="assets/specialized-tables.png" alt="Konuşmadan kaydedilmiş tablolar, ne için kurulduklarını anlatan notlarıyla" width="880" />
@@ -628,7 +630,7 @@ Geçmiş modelin değil checkpoint'in olduğu için, model değiştirmek biriken
   <br/><sub><b>Dört format; her hücre hem sayısını hem ekrandaki biçimini taşıyor</b></sub>
 </div>
 
-## Otomasyonlar — cümleyle kurulur
+## Otomasyonlar: cümleyle kurulur
 
 <div align="center">
   <img src="assets/automation-system.png" alt="Kurulmuş otomasyonlar: sonraki çalışma, son çalışma, duraklatma ve elle tetikleme" width="880" />
@@ -643,14 +645,14 @@ Saat ve gün elle seçilebilir ama gerekmez: boş bırakılırsa sıklığı **c
 |---|---|
 | **Sesle sorma** | Konuşma tanıma **cihazın kendi üzerinde** çalışır (Whisper large-v3, MLX 4-bit); ses hiçbir zaman üçüncü taraf bir servise gitmez. Kaynak dil Türkçe olarak sabitlenmiştir, böylece iki kelimelik bir soru yanlış dile atanmaz. |
 | **Boşluk tuşuyla konuşma** | Panonun herhangi bir yerinde boşluğu basılı tutup sormak yeterli; ayrı bir sayfaya gitmek gerekmez. Bakılan sayfa soruyla birlikte gider, çünkü "bunlardan hangisi daha iyi?" ancak önünde durduğu tablonun yanında bir anlam taşır. Asistan konuşurken tekrar basmak sözünü keser. |
-| **Sesli cevap** | Cevap önce kulağa göre yeniden yazılır, sonra akış halinde seslendirilir; ilk ses yaklaşık **0,13 saniyede** duyulur, kullanıcı tamamının üretilmesini beklemez. |
+| **Sesli cevap** | Cevap önce sesli yanıt için optimize edilir, sonra akış halinde okunur; ilk ses yaklaşık **0,13 saniyede** duyulur, kullanıcı tamamının üretilmesini beklemez. |
 | **Yazılı sohbet** | Cevap üretildikçe akar. Model seçimi, uzun düşünme ve web araması ayrı ayrı açılıp kapatılabilir. Tablo dosyası, PDF, görsel ve belge eki kabul eder. |
 | **Ekranı görme** | Asistan o an açık olan tabloyu veya hesaplamayı görebilir; sayfadaki bir metni seçip doğrudan onun hakkında soru sorulabilir. |
 | **Karşılaştırma tabloları** | Konuşmanın içinde tablo üretir ve bunlar katalog'a kaydedilebilir; kaydedilen tablo tek tıkla yeni bir konuşmaya geri iliştirilebilir. |
 | **Canlı bağlantı** | Oran, taksit ve kur, indeksten değil bankanın **kendi hesaplama servisinden** anlık gelir. Bankalar aynı anda sorulur: sırayla 11,99 sn, paralel 0,59 sn. |
 | **Kaynaklı cevap** | Her sayının yanında geldiği resmi sayfa tıklanabilir bir bağlantı olarak durur. Arkasında kaynak olmayan iddia çıktı denetiminden geçemez. |
 | **Araç kullanan ajanlar** | LangChain / LangGraph üzerine kurulu; süpervizör on banka uzmanını **araç olarak** çağırır, her uzman da kendi bankasının araçlarını. |
-| **Otomasyonlar** | Doğal dille kurulur — *"Taşıt finansman oranı %3,5'in altına inerse haber ver."* Kullanıcı zamanlama ya da eşik sözdizimi yazmaz; ne istediğini tarif eder. Koşul sağlandığında e-posta ve uygulama içi bildirim gider. |
+| **Otomasyonlar** | Doğal dille kurulur: *"Taşıt finansman oranı %3,5'in altına inerse haber ver."* Kullanıcı zamanlama ya da eşik sözdizimi yazmaz; ne istediğini tarif eder. Koşul sağlandığında e-posta ve uygulama içi bildirim gider. |
 | **Profil** | Kayıtlı tablolar, konuşma geçmişi, bildirim ve rapor tercihleri tek yerde. |
 | **Dışa aktarma** | Excel, PDF, Word ve CSV. Her hücre hem sayısal değerini hem ekrandaki biçimini taşır. |
 
@@ -719,9 +721,9 @@ Sürümler `requirements.txt` ve `UI/package.json` içinde sabitlenmiştir; aşa
 | **Kimlik** | `argon2-cffi` · `pyjwt` · `email-validator` | Parola özeti, oturum jetonu |
 | **Korpus** | `trafilatura` · `lxml` · `pymupdf` · `pypdf` · `pillow` · `playwright` · `curl_cffi` | HTML'den markdown'a, PDF çözme, görsel işleme, arayüzünü dinamik kuran sayfalar için gerçek tarayıcı |
 | **Ses** | `mlx-whisper` (yalnız Apple Silicon) · `voxcpm` | Cihaz üstünde tanıma, akışlı seslendirme |
-| **Dışa aktarma** | `weasyprint` · `XlsxWriter` · `markdown-it-py` · Pandoc | PDF, Excel, Word ve CSV — hepsi tek bir ara temsilden |
+| **Dışa aktarma** | `weasyprint` · `XlsxWriter` · `markdown-it-py` · Pandoc | PDF, Excel, Word ve CSV; hepsi tek bir ara temsilden |
 | **Arayüz** | `next` 16 · `react` 19 · `tailwindcss` v4 · `@mui/material` · `@tanstack/react-query` · `next-intl` · `streamdown` | App Router, sunucu durumu, iki dil, akan cevabın markdown olarak çizilmesi |
-| **Arayüz — görsel** | `recharts` · `apexcharts` · `lucide-react` · `ogl` · `@zumer/snapdom` | Grafikler, tek ikon seti, sesli modun WebGL küresi, ekran görüntüsü alma |
+| **Arayüz (görsel)** | `recharts` · `apexcharts` · `lucide-react` · `ogl` · `@zumer/snapdom` | Grafikler, tek ikon seti, sesli modun WebGL küresi, ekran görüntüsü alma |
 | **Test** | `pytest` · `pytest-asyncio` · `node --test` | Python tarafı pytest, arayüz tarafı Node'un kendi koşucusu |
 
 ---
@@ -760,32 +762,6 @@ python -m index                 # değişen belgeleri indekse eşitle
 ```
 
 Son üçü her gece çalışmak üzere tasarlandı. `python -m corpus.schedule`, `python -m index.schedule` ve `python -m banks.schedule` komutlarının her biri, çakışmayacak şekilde kaydırılmış hazır bir zamanlayıcı kaydı yazdırır.
-
----
-
-<a id="ileriki-calismalar"></a>
-
-# İleriki çalışmalar
-
-**Çok dilli arayüz.** Arayüz şu anda yalnızca Türkçe yayınlanıyor, ancak bunun için gereken altyapı bilinçli olarak yerinde bırakıldı: yönlendirme her adreste dil önekini korur, metinler koddan ayrı çeviri dosyalarında durur ve eski `/en` adresleri kalıcı değil geçici yönlendirmeyle karşılanır; çünkü ikinci dil geldiği gün o adresler yeniden gerçek olacak. Geriye kalan iş bir çeviri kataloğu ve gezinme çubuğuna bir dil düğmesi eklemek.
-
-**Katılım bankacılığına özel değerlendirme kümesi.** Cevap doğruluğu şu anda kaynak denetimi ve canlı servis kontrolleriyle korunuyor. Bunun üstüne, uzman onaylı soru–cevap çiftlerinden oluşan sabit bir değerlendirme kümesi, bir istem değişikliğinin doğruluğu düşürüp düşürmediğini kullanıcı fark etmeden ölçebilir hale getirir.
-
-**Daha fazla kurum ve daha geniş ürün yüzeyi.** Sağlayıcı arayüzü yeni bir banka eklemeyi tek bir modül yazmaya indirger. Aynı yapı katılım sigortacılığı ve bireysel emeklilik ürünlerine de taşınabilir.
-
-**Kişiselleştirilmiş karar desteği.** Kullanıcının kendi kayıtlı senaryolarına ve geçmiş karşılaştırmalarına dayanan öneriler, mevcut otomasyon altyapısının doğal devamı.
-
----
-
-# Testler
-
-101 birim testi ve bankaların canlı servislerine giden 11 entegrasyon testi var. Birim testleri kayıtlı banka cevaplarıyla çalışır ve ağa ihtiyaç duymaz.
-
-```bash
-pytest tests/unit                                     # çevrimdışı, hızlı
-pytest tests/integration                              # canlı servisler
-cd UI && npm run test
-```
 
 ---
 
@@ -832,7 +808,7 @@ Kermits makes the products, campaigns and current rates of Türkiye's 10 partici
 
 > **Participation banking** is a banking model based on profit-and-loss sharing instead of interest. What a conventional bank calls a loan is *financing*, interest is a *profit share*, and a term deposit is a *participation account*. This is not just vocabulary. A participation account cannot promise a return in advance, so an assistant that says "you will earn X" has given a wrong answer, not a helpful one. The system holds this terminology end to end.
 
-The interface ships in Turkish for now; the multilingual groundwork is in place and a second language is on the [roadmap](#future-work). It has six workspaces: chat, live comparison, product catalogue, campaigns, automations, and voice conversation.
+The interface ships in Turkish for now; the multilingual groundwork is in place and ready for a second language. It has six workspaces: chat, live comparison, product catalogue, campaigns, automations, and voice conversation.
 
 <div align="center">
   <img src="docs/screenshots/chat-research.png" alt="Chat assistant" width="800" />
@@ -1091,15 +1067,15 @@ flowchart TB
 
     U --> SUP
 
-    subgraph SPEC["<b>10 specialists</b> — each knows only its own bank, all of them work at once"]
+    subgraph SPEC["<b>10 specialists</b>: each knows only its own bank, all of them work at once"]
         direction LR
         S1["Kuveyt Türk"] ~~~ S2["Albaraka"] ~~~ S3["Vakıf"] ~~~ S4["Emlak"] ~~~ S5["Dünya"]
         S6["Ziraat"] ~~~ S7["Türkiye Finans"] ~~~ S8["Hayat"] ~~~ S9["T.O.M."] ~~~ S10["Adil"]
     end
 
-    subgraph TOOLS["<b>Every specialist's own toolkit</b> — open only to its own bank"]
+    subgraph TOOLS["<b>Every specialist's own toolkit</b>: open only to its own bank"]
         direction LR
-        T1["The bank's live calculator<br/><i>rates, instalments, FX — the number right now</i>"]
+        T1["The bank's live calculator<br/><i>rates, instalments, FX: the number right now</i>"]
         T2[("The bank's own documents<br/><i>pages and PDFs</i>")]
         T3["Search on the bank's site<br/><i>only when needed</i>"]
     end
@@ -1110,13 +1086,13 @@ flowchart TB
     SPEC -->|"finding + source link"| SUP
 
     SUP --> G{"Output check<br/>does it follow the rules?"}
-    G -->|"no — back, with reasons"| SUP
+    G -->|"no, with reasons"| SUP
     G -->|"yes"| OUT(["The answer, with its sources"])
 
     SUP -.->|"its own two tools"| SUPT["Find a table in the catalogue<br/>Create and list automations"]
 ```
 
-Read it top to bottom, not left to right: **the question enters at the top, evidence is gathered at the bottom, and the answer only leaves after passing the check.** The arrow coming back from the check is a real path — when a rule is broken the answer does not go to the user, it returns to the supervisor with the reason attached.
+Read it top to bottom, not left to right: **the question enters at the top, evidence is gathered at the bottom, and the answer only leaves after passing the check.** The arrow coming back from the check is a real path: when a rule is broken the answer does not go to the user, it returns to the supervisor with the reason attached.
 
 The supervisor's own two tools carry no facts, they do work: finding the address of a table the site already publishes on that topic, and storing the recurring tasks a user has set up. **Every bank fact comes from a specialist.**
 
@@ -1137,7 +1113,7 @@ This is what you see when one of the boxes above is opened. The example is the K
 flowchart LR
     A["<b>Kuveyt Türk specialist</b><br/><i>can neither see nor query<br/>any other bank</i>"]
 
-    subgraph LIVE["<b>Live</b> — the bank's own calculation service"]
+    subgraph LIVE["<b>Live</b>: the bank's own calculation service"]
         direction TB
         L1["list_products<br/><i>what it sells in this category</i>"]
         L2["finance_quote<br/><i>a financing quote: rate and instalment</i>"]
@@ -1147,14 +1123,14 @@ flowchart LR
         L6["check_live_endpoint_health<br/><i>is the service up right now</i>"]
     end
 
-    subgraph DOCS["<b>Documents</b> — the pages and PDFs the bank published"]
+    subgraph DOCS["<b>Documents</b>: the pages and PDFs the bank published"]
         direction TB
         D1["search_bank<br/><i>search the corpus in Turkish</i>"]
         D2["expand_chunk<br/><i>fetch the rest of a cut passage</i>"]
         D3["read_full_page<br/><i>read the whole document</i>"]
     end
 
-    subgraph WEB["<b>Web</b> — opened only on request"]
+    subgraph WEB["<b>Web</b>: opened only on request"]
         direction TB
         W1["search_bank_web<br/><i>search the bank's site</i>"]
         W2["read_bank_source<br/><i>open the page it found</i>"]
@@ -1167,9 +1143,9 @@ flowchart LR
 
 The three groups answer three different questions and **do not substitute for one another:**
 
-**Live** is the number that holds *right now*. A rate or instalment question is answered from the calculator the bank shows its own customers, not from the index. A calculator a bank does not publish never appears in that specialist's tool list at all — so the model cannot even try to call a service that does not exist.
+**Live** is the number that holds *right now*. A rate or instalment question is answered from the calculator the bank shows its own customers, not from the index. A calculator a bank does not publish never appears in that specialist's tool list at all, so the model cannot even try to call a service that does not exist.
 
-**Documents** are what the bank *published*: product terms, fee tables, campaign conditions. That is evidence, but it is not a quote, and the specialist is told so explicitly — a figure read off a page is never presented as a live rate.
+**Documents** are what the bank *published*: product terms, fee tables, campaign conditions. That is evidence, but it is not a quote, and the specialist is told so explicitly: a figure read off a page is never presented as a live rate.
 
 **Web** is off by default, and even when it is on it discards every result outside its own bank's domain.
 
@@ -1233,7 +1209,7 @@ sequenceDiagram
     participant S as Speech
 
     rect rgb(15, 23, 42)
-    Note over U,C: Typed — the short road
+    Note over U,C: Typed (the short road)
     U->>UI: Types the question
     UI->>API: POST /chat/ask
     API->>AG: Hand out the question, gather evidence
@@ -1245,7 +1221,7 @@ sequenceDiagram
     end
 
     rect rgb(9, 13, 22)
-    Note over U,S: Spoken — space bar held down
+    Note over U,S: Spoken (space bar held down)
     U->>UI: Holds space and speaks
     UI->>API: POST /voice/transcriptions
     API->>W: Transcribe on the machine itself
@@ -1254,7 +1230,7 @@ sequenceDiagram
     UI->>API: POST /chat/ask
     API-->>UI: The checked answer
     UI->>API: POST /voice/response
-    API->>R: Rewrite the table for the ear
+    API->>R: Optimise the answer for voice
     R-->>UI: Text to be spoken
     UI->>API: POST /voice/speech
     API->>S: Stream from the remote service
@@ -1263,11 +1239,11 @@ sequenceDiagram
     end
 ```
 
-**Voice is not a separate track.** The middle of a spoken question is the whole of a typed one: same supervisor, same ten specialists, same output check. The difference is only at the ends — one step in front that turns speech into text, and two behind that rewrite the answer for the ear and then speak it. That is what keeps voice from being a second-class way in: there is no answer generator specific to the voice channel, so a question asked out loud never sees less evidence than one that was typed.
+**Voice is not a separate track.** The middle of a spoken question is the whole of a typed one: same supervisor, same ten specialists, same output check. The difference is only at the ends: one step in front that turns speech into text, and two behind that optimise the answer for voice and then speak it. That is what keeps voice from being a second-class way in: there is no answer generator specific to the voice channel, so a question asked out loud never sees less evidence than one that was typed.
 
-**The answer is rewritten for the ear.** The supervisor is told to write comparisons as tables with a link after every claim — right on screen, unbearable aloud. The writer step in between turns the finished answer into something meant to be heard. If that step fails the voice does not go silent: the browser's own converter takes over. It cannot phrase a table as well, but it also **cannot invent a rate that does not exist**, which is exactly what makes it the right thing to fall back to.
+**The answer is optimised for voice.** The supervisor is told to write comparisons as tables with a link after every claim: right on screen, unbearable aloud. The optimisation step in between turns the finished answer into something built to be heard. If that step fails the voice does not go silent: the browser's own converter takes over. It cannot phrase a table as well, but it also **cannot invent a rate that does not exist**, which is exactly what makes it the right thing to fall back to.
 
-**The wait is filled.** A ten-bank comparison can take thirty seconds, and in voice mode there is no screen to watch — a minute of silence is indistinguishable from a crash. So an acknowledgement is spoken the moment the transcript lands, then a holding line every ten seconds, over music playing underneath. The music stops as the answer begins.
+**The wait is filled.** A ten-bank comparison can take thirty seconds, and in voice mode there is no screen to watch; a minute of silence is indistinguishable from a crash. So an acknowledgement is spoken the moment the transcript lands, then a holding line every ten seconds, over music playing underneath. The music stops as the answer begins.
 
 **The user can interrupt.** Pressing space while the assistant is reading cuts the reading off mid-sentence and starts the new recording. The conversation history stays; only the audio is cut.
 
@@ -1337,8 +1313,8 @@ flowchart LR
 # The interface
 
 <div align="center">
-  <img src="assets/Kar%C5%9Fla%C5%9Ft%C4%B1r-page.png" alt="Compare — the way into a six-page dashboard" width="880" />
-  <br/><sub><b>Compare — the way into a six-page dashboard</b></sub>
+  <img src="assets/Kar%C5%9Fla%C5%9Ft%C4%B1r-page.png" alt="Compare: the way into a six-page dashboard" width="880" />
+  <br/><sub><b>Compare: the way into a six-page dashboard</b></sub>
 </div>
 
 | Page | What it does |
@@ -1350,30 +1326,32 @@ flowchart LR
 | **AI Overview** | Fast summaries that reduce long product terms, crowded tables and market movements to a few points. |
 | **Automations** | Recurring tasks set up in plain language: *"Tell me if the vehicle financing rate drops below 3.5%."* When the condition is met, an email and an in-app notification go out. |
 
-## Comparison — the question is a form, the answer comes from the bank
+## Comparison: the question is a form, the answer comes from the bank
 
 <div align="center">
-  <img src="assets/live-comparison%20tables.png" alt="Six banks asked at once, sorted by instalment — with an AI summary read off the table above it" width="880" />
-  <br/><sub><b>Six banks asked at once, sorted by instalment — with an AI summary read off the table above it</b></sub>
+  <img src="assets/live-comparison%20tables.png" alt="Six banks asked at once, sorted by instalment; with an AI summary read off the table above it" width="880" />
+  <br/><sub><b>Six banks asked at once, sorted by instalment; with an AI summary read off the table above it</b></sub>
 </div>
 
-The user picks what to compare and enters the amount and term; the banks are queried **in parallel**. A bank that does not offer it is reported as “does not offer”, a bank that could not be reached as “could not be reached” — the two never look alike.
+The user picks what to compare and enters the amount and term; the banks are queried **in parallel**. A bank that does not offer it is reported as “does not offer”, a bank that could not be reached as “could not be reached”; the two never look alike.
 
-## Products — 283 ready-made tables
+## Products and Campaigns: ready-made comparison tables
+
+The catalogue is split across two pages: **Products** compares bank products, **Campaigns** compares time-limited offers. Both use the same layout; the shots below are examples taken from Products.
 
 <div align="center">
-  <img src="assets/comparison-tables-of-pr%C4%B1ducts.png" alt="The catalogue: one table per topic, filterable by sub-category" width="880" />
-  <br/><sub><b>The catalogue: one table per topic, filterable by sub-category</b></sub>
+  <img src="assets/comparison-tables-of-pr%C4%B1ducts.png" alt="The catalogue: one table per topic, filterable by sub-category (example: Products)" width="880" />
+  <br/><sub><b>The catalogue: one table per topic, filterable by sub-category (example: Products)</b></sub>
 </div>
 
 <div align="center">
-  <img src="assets/an-example-comparison-table.png" alt="One table opened, with a summary written from that table above it" width="880" />
-  <br/><sub><b>One table opened, with a summary written from that table above it</b></sub>
+  <img src="assets/an-example-comparison-table.png" alt="One table opened, with a summary written from that table above it (example)" width="880" />
+  <br/><sub><b>One table opened, with a summary written from that table above it (example)</b></sub>
 </div>
 
 The summary is always written **from the table**; the rows beneath it are the source of record.
 
-## The assistant — every figure carries its source
+## The assistant: every figure carries its source
 
 <div align="center">
   <img src="assets/chatbot.png" alt="A campaign question: every claim is followed by a link to the bank's own page" width="880" />
@@ -1381,8 +1359,8 @@ The summary is always written **from the table**; the rows beneath it are the so
 </div>
 
 <div align="center">
-  <img src="assets/prompt-guard.png" alt="The output check at work: the question says “interest”, the answer corrects the terminology and answers in profit-share terms — bank, rate, source and time on every row" width="880" />
-  <br/><sub><b>The output check at work: the question says “interest”, the answer corrects the terminology and answers in profit-share terms — bank, rate, source and time on every row</b></sub>
+  <img src="assets/prompt-guard.png" alt="The output check at work: the question says “interest”, the answer corrects the terminology and answers in profit-share terms; bank, rate, source and time on every row" width="880" />
+  <br/><sub><b>The output check at work: the question says “interest”, the answer corrects the terminology and answers in profit-share terms; bank, rate, source and time on every row</b></sub>
 </div>
 
 The second shot also shows the light theme: the whole interface works in both.
@@ -1390,8 +1368,8 @@ The second shot also shows the light theme: the whole interface works in both.
 ## The user picks the model and the depth of reasoning
 
 <div align="center">
-  <img src="assets/different-model-providers.png" alt="Three models and a Think switch — changeable mid-conversation" width="880" />
-  <br/><sub><b>Three models and a Think switch — changeable mid-conversation</b></sub>
+  <img src="assets/different-model-providers.png" alt="Three models and a Think switch; changeable mid-conversation" width="880" />
+  <br/><sub><b>Three models and a Think switch; changeable mid-conversation</b></sub>
 </div>
 
 Because the history belongs to the checkpointer and not to the model, switching does not lose the conversation built up so far.
@@ -1413,11 +1391,11 @@ The second shot is the whole point of the design: the question is nearly always 
 ## The assistant does not leave the page
 
 <div align="center">
-  <img src="assets/chatbot-popup.png" alt="The assistant open over the profile page — the conversation survives changing pages" width="880" />
-  <br/><sub><b>The assistant open over the profile page — the conversation survives changing pages</b></sub>
+  <img src="assets/chatbot-popup.png" alt="The assistant open over the profile page; the conversation survives changing pages" width="880" />
+  <br/><sub><b>The assistant open over the profile page; the conversation survives changing pages</b></sub>
 </div>
 
-## AI Overview — saved tables and export
+## AI Overview: saved tables and export
 
 <div align="center">
   <img src="assets/specialized-tables.png" alt="Tables saved out of a conversation, each with a note on what it was built for" width="880" />
@@ -1429,7 +1407,7 @@ The second shot is the whole point of the design: the question is nearly always 
   <br/><sub><b>Four formats; every cell carries both its number and its on-screen form</b></sub>
 </div>
 
-## Automations — set up in a sentence
+## Automations: set up in a sentence
 
 <div align="center">
   <img src="assets/automation-system.png" alt="Automations already running: next run, last run, pause and manual trigger" width="880" />
@@ -1444,14 +1422,14 @@ The hour and days can be picked by hand but need not be: left blank, the assista
 |---|---|
 | **Asking by voice** | Speech recognition runs **on the machine itself** (Whisper large-v3, MLX 4-bit); audio never leaves it for a third-party service. The source language is pinned to Turkish, so a two-word question is never misclassified into another one. |
 | **Hold space to talk** | Hold the space bar anywhere on the dashboard and ask; there is no separate page to go to. The page being looked at travels with the question, because "which of these is better?" only means something beside the table it was asked in front of. Pressing again while the assistant is speaking interrupts it. |
-| **Spoken answers** | The answer is rewritten for the ear first, then synthesised as a stream; the first sound is audible in about **0.13 seconds**, so the user does not wait for the whole thing to be generated. |
+| **Spoken answers** | The answer is optimised for voice first, then synthesised as a stream; the first sound is audible in about **0.13 seconds**, so the user does not wait for the whole thing to be generated. |
 | **Typed chat** | The answer streams as it is written. Model choice, extended reasoning and web search are each toggleable. Accepts spreadsheets, PDFs, images and documents. |
 | **Seeing the screen** | The assistant can see the table or calculation currently open, and any text on the page can be selected and asked about directly. |
 | **Comparison tables** | It builds tables inside the conversation, and those can be saved to the catalogue; a saved table can be attached back into a new conversation in one click. |
 | **Live connections** | Rates, instalments and FX come from the bank's **own calculation service** on the spot, not from the index. Banks are queried at once: 11.99s in sequence, 0.59s in parallel. |
 | **Sourced answers** | Every figure carries the official page it came from as a clickable link. A claim with no source behind it does not pass the output check. |
 | **Tool-using agents** | Built on LangChain / LangGraph: the supervisor calls ten bank specialists **as tools**, and each specialist calls its own bank's tools. |
-| **Automations** | Set up in plain language — *"Tell me if the vehicle financing rate drops below 3.5%."* The user writes no schedule and no threshold syntax; they describe what they want. When the condition is met, an email and an in-app notification go out. |
+| **Automations** | Set up in plain language: *"Tell me if the vehicle financing rate drops below 3.5%."* The user writes no schedule and no threshold syntax; they describe what they want. When the condition is met, an email and an in-app notification go out. |
 | **Profile** | Saved tables, conversation history, notification and report preferences in one place. |
 | **Export** | Excel, PDF, Word and CSV. Every cell carries both its numeric value and its on-screen form. |
 
@@ -1520,9 +1498,9 @@ Versions are pinned in `requirements.txt` and `UI/package.json`; what follows is
 | **Identity** | `argon2-cffi` · `pyjwt` · `email-validator` | Password hashing and session tokens |
 | **Corpus** | `trafilatura` · `lxml` · `pymupdf` · `pypdf` · `pillow` · `playwright` · `curl_cffi` | HTML to markdown, PDF decoding, image handling, and a real browser for pages that build their interface dynamically |
 | **Voice** | `mlx-whisper` (Apple Silicon only) · `voxcpm` | On-device recognition, streamed synthesis |
-| **Export** | `weasyprint` · `XlsxWriter` · `markdown-it-py` · Pandoc | PDF, Excel, Word and CSV — all from one intermediate representation |
+| **Export** | `weasyprint` · `XlsxWriter` · `markdown-it-py` · Pandoc | PDF, Excel, Word and CSV, all from one intermediate representation |
 | **Interface** | `next` 16 · `react` 19 · `tailwindcss` v4 · `@mui/material` · `@tanstack/react-query` · `next-intl` · `streamdown` | App Router, server state, two languages, and drawing a streaming answer as markdown |
-| **Interface — visual** | `recharts` · `apexcharts` · `lucide-react` · `ogl` · `@zumer/snapdom` | Charts, one icon set, voice mode's WebGL orb, and screenshotting |
+| **Interface (visual)** | `recharts` · `apexcharts` · `lucide-react` · `ogl` · `@zumer/snapdom` | Charts, one icon set, voice mode's WebGL orb, and screenshotting |
 | **Tests** | `pytest` · `pytest-asyncio` · `node --test` | pytest on the Python side, Node's own runner on the interface side |
 
 ---
@@ -1561,32 +1539,6 @@ python -m index                 # sync changed documents into the index
 ```
 
 The last three are meant to run nightly. `python -m corpus.schedule`, `python -m index.schedule` and `python -m banks.schedule` each print a ready scheduler entry, staggered so they do not overlap.
-
----
-
-<a id="future-work"></a>
-
-# Future work
-
-**A multilingual interface.** The interface currently ships in Turkish only, but the groundwork for more was deliberately left in place: routing keeps the language prefix on every URL, all copy lives in translation catalogues outside the code, and old `/en` addresses are served by a temporary rather than a permanent redirect, precisely because those paths become real again the day a second language arrives. What remains is a translation catalogue and a language toggle in the navigation bar.
-
-**A participation-banking evaluation set.** Answer accuracy is currently protected by source auditing and live service checks. On top of that, a fixed evaluation set of expert-approved question and answer pairs would make it measurable whether a prompt change has quietly degraded accuracy, before a user is the one to find out.
-
-**More institutions and a wider product surface.** The provider interface reduces adding a bank to writing a single module. The same structure carries over to participation insurance and private pension products.
-
-**Personalised decision support.** Recommendations grounded in a user's own saved scenarios and past comparisons are the natural continuation of the automation layer that already exists.
-
----
-
-# Tests
-
-101 unit tests, plus 11 integration tests that reach the banks' live services. The unit tests run against recorded bank responses and need no network.
-
-```bash
-pytest tests/unit                                     # offline, fast
-pytest tests/integration                              # live services
-cd UI && npm run test
-```
 
 ---
 
