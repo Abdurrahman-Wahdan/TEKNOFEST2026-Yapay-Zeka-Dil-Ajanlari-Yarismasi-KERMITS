@@ -546,10 +546,26 @@ flowchart LR
 | **Canlı karşılaştırma** | İhtiyaç, taşıt ve konut finansmanı, katılma hesapları, döviz ve kart taksitleri. Bankalar paralel sorgulanır. Kullanıcının kendi varsayımları, bankanın yayınladığı oranlardan görsel olarak ayrı tutulur. |
 | **Ürünler** | Küratörlü çok bankalı tablolar, kullanıcının sohbetten kaydettiği kendi tablolarıyla yan yana. Herhangi biri tek tıkla konuşmaya geri iliştirilebilir. |
 | **Kampanyalar** | On bankanın kampanyaları; aktif, bitmek üzere ve süresi dolmuş olarak etiketlenmiş halde. |
-| **AI Overview** | Uzun ürün şartlarını, kalabalık tabloları ve piyasa hareketlerini birkaç maddeye indiren hızlı özetler. |
-| **Otomasyonlar** | Doğal dille kurulan tekrarlayan görevler: *"Taşıt finansman oranı %3,5'in altına inerse haber ver."* Koşul sağlandığında e-posta ve uygulama içi bildirim gönderilir. |
+| **AI Görünümü** | Kişisel panonuz: sohbette beğendiğiniz tabloları buraya kaydediyorsunuz. Her kartın üstünde tablonun ne için kurulduğunu anlatan bir not ve kaydedilme tarihi, altında da dört formatta indirme düğmesi var. |
+| **Otomasyonlar** | Doğal dille kurulan tekrarlayan görevler: *"Taşıt finansman oranı %3,5'in altına inerse haber ver."* Her çalışmanın raporu e-postayla gönderilir; koşul sağlandığında ayrıca uygulama içi bildirim düşer. |
+
+### Arayüzde tekrar eden parçalar
+
+Pano birkaç basit parçadan kurulu ve bunlar her sayfada aynı işi yapıyor; birini bir kere öğrenince diğer sayfalarda arayacak bir şey kalmıyor.
+
+| Parça | Ne işe yarıyor |
+|---|---|
+| **Sol menü** | Altı sayfanın listesi. Daraltılabilir; hangi sayfada olduğunuz işaretli durur. |
+| **Tablo kartı** | Karşılaştırmaların tamamı aynı kart içinde gösterilir: başlık, süzme kutusu, sıralanabilir sütunlar ve altta indirme düğmesi. Ürünler, Kampanyalar, AI Görünümü ve sohbetin ürettiği tablolar hep bu aynı karttır. |
+| **AI özeti** | Bir tablonun üstünde duran kısa özet kutusu. İçindeki maddeler o tablodan yazılır, başka bir yerden değil. |
+| **Asistan penceresi** | Sağ alt köşedeki düğme, asistanı sayfanın üstünde küçük bir pencere olarak açar. Sayfa değiştirseniz de konuşma durduğu yerden devam eder. |
+| **Sesli mod** | Boşluk tuşunu basılı tuttuğunuzda ekranın altından yükselen, konuşurken hareket eden küre. Arkadaki sayfayı kapatmaz, çünkü soru genellikle o sayfa hakkındadır. |
+| **Otomasyon kartı** | Kurduğunuz her iş için bir kart: cümlenin kendisi, sonraki ve son çalışma zamanı, duraklatma anahtarı ve "şimdi çalıştır" düğmesi. |
+| **Tema anahtarı** | Açık ve koyu tema. Grafikler, tablolar ve sesli mod dahil arayüzün tamamı iki temada da çalışır. |
 
 ## Karşılaştırma: soru bir form, cevap canlı bankadan
+
+Bir ürün seçip tutarı ve vadeyi yazıyorsunuz. Sistem aynı soruyu o anda bütün bankalara soruyor ve dönen cevapları tek bir tabloda yan yana koyuyor; rakamlar kayıtlı bir listeden değil, bankanın kendi hesaplama ekranından geliyor.
 
 <div align="center">
   <img src="assets/live-comparison%20tables.png" alt="Aynı anda sorulan altı banka, taksite göre sıralanmış; üstünde tabloyu okuyan yapay zekâ özeti" width="880" />
@@ -576,6 +592,8 @@ Katalog iki sayfaya ayrılır: **Ürünler** banka ürünlerini, **Kampanyalar**
 
 ## Asistan: her sayının yanında kaynağı
 
+Serbest yazdığınız soruyu cevaplayan sohbet ekranı. Sıradan bir sohbet robotundan farkı şu: söylediği her rakamın yanında o rakamı aldığı banka sayfasının bağlantısı duruyor, yani cevabı kontrol edebiliyorsunuz.
+
 <div align="center">
   <img src="assets/chatbot.png" alt="Kampanya sorusu: her iddianın ardından bankanın kendi sayfasına giden bağlantı" width="880" />
   <br/><sub><b>Kampanya sorusu: her iddianın ardından bankanın kendi sayfasına giden bağlantı</b></sub>
@@ -590,6 +608,8 @@ Katalog iki sayfaya ayrılır: **Ürünler** banka ürünlerini, **Kampanyalar**
 
 ## Modeli ve düşünme derinliğini kullanıcı seçer
 
+Cevabı hangi yapay zekâ modelinin yazacağını siz seçiyorsunuz; üçü de farklı işlerde iyi. Yanındaki **Düşün** anahtarı açıkken model cevaplamadan önce adım adım akıl yürütüyor: daha yavaş, ama karışık sorularda daha isabetli.
+
 <div align="center">
   <img src="assets/different-model-providers.png" alt="Üç model, bir de Düşün anahtarı; konuşmanın ortasında değiştirilebilir" width="880" />
   <br/><sub><b>Üç model, bir de Düşün anahtarı; konuşmanın ortasında değiştirilebilir</b></sub>
@@ -597,7 +617,9 @@ Katalog iki sayfaya ayrılır: **Ürünler** banka ürünlerini, **Kampanyalar**
 
 Geçmiş modelin değil checkpoint'in olduğu için, model değiştirmek biriken konuşmayı kaybettirmez.
 
-## Sesle sorma
+## Sesli sohbet: siz konuşuyorsunuz, asistan sesle cevap veriyor
+
+Klavyeye hiç dokunmadan konuşabilirsiniz. Boşluk tuşunu basılı tutup sorunuzu söylüyorsunuz; bıraktığınızda asistan cevabını **sesli olarak okuyor**. Yani tek yönlü bir dikte değil, karşılıklı ve canlı bir konuşma: asistan okurken boşluğa yeniden basmak sözünü keser ve sıradaki sorunuzu başlatır, tıpkı telefonda birinin sözünü kesmek gibi.
 
 <div align="center">
   <img src="assets/stt.png" alt="Kayıt sırasında besleyici: süre, canlı dalga biçimi ve tek dokunuşla durdurma" width="880" />
@@ -613,12 +635,16 @@ Geçmiş modelin değil checkpoint'in olduğu için, model değiştirmek biriken
 
 ## Asistan sayfayı terk etmez
 
+Asistan ayrı bir sayfa değil. Hangi ekranda olursanız olun köşedeki düğmeyle açılıyor, üstte küçük bir pencere olarak duruyor ve sayfa değiştirdiğinizde konuşma silinmiyor.
+
 <div align="center">
   <img src="assets/chatbot-popup.png" alt="Profil sayfasının üstünde açılmış asistan; konuşma sayfa değiştirince kaybolmaz" width="880" />
   <br/><sub><b>Profil sayfasının üstünde açılmış asistan; konuşma sayfa değiştirince kaybolmaz</b></sub>
 </div>
 
 ## AI Görünümü: kaydedilen tablolar ve dışa aktarma
+
+Sohbet sırasında asistanın kurduğu bir tabloyu beğenirseniz kaydedebiliyorsunuz; **AI Görünümü** o kayıtlı tabloların durduğu sayfa. Her tablonun üstünde ne için kurulduğunu ve ne zaman kaydedildiğini anlatan bir not var, altındaki düğmeyle de dört ayrı dosya biçiminde indirilebiliyor.
 
 <div align="center">
   <img src="assets/specialized-tables.png" alt="Konuşmadan kaydedilmiş tablolar, ne için kurulduklarını anlatan notlarıyla" width="880" />
@@ -632,6 +658,8 @@ Geçmiş modelin değil checkpoint'in olduğu için, model değiştirmek biriken
 
 ## Otomasyonlar: cümleyle kurulur
 
+Otomasyon, asistanın sizin yerinize düzenli olarak tekrarladığı bir iş. Ne istediğinizi gündelik bir cümleyle yazıyorsunuz, asistan bunu bir programa çeviriyor. Her çalışmanın sonucu size **e-postayla rapor olarak** gönderiliyor: otomasyonun ne aradığı, o koşu neyi bulduğu ve varsa bankaların güncel oranları e-postanın içinde duruyor. Koşul gerçekleştiğinde ayrıca uygulama içi bildirim de düşüyor.
+
 <div align="center">
   <img src="assets/automation-system.png" alt="Kurulmuş otomasyonlar: sonraki çalışma, son çalışma, duraklatma ve elle tetikleme" width="880" />
   <br/><sub><b>Kurulmuş otomasyonlar: sonraki çalışma, son çalışma, duraklatma ve elle tetikleme</b></sub>
@@ -643,7 +671,7 @@ Saat ve gün elle seçilebilir ama gerekmez: boş bırakılırsa sıklığı **c
 
 | Yetenek | Nasıl çalışıyor |
 |---|---|
-| **Sesle sorma** | Konuşma tanıma **cihazın kendi üzerinde** çalışır (Whisper large-v3, MLX 4-bit); ses hiçbir zaman üçüncü taraf bir servise gitmez. Kaynak dil Türkçe olarak sabitlenmiştir, böylece iki kelimelik bir soru yanlış dile atanmaz. |
+| **Canlı sesli konuşma** | Karşılıklı bir konuşma: siz sesle soruyorsunuz, **asistan da sesle cevap veriyor**; okurken sözünü kesip yeni soru sorabiliyorsunuz. Konuşma tanıma **cihazın kendi üzerinde** çalışır (Whisper large-v3, MLX 4-bit); ses hiçbir zaman üçüncü taraf bir servise gitmez. Kaynak dil Türkçe olarak sabitlenmiştir, böylece iki kelimelik bir soru yanlış dile atanmaz. |
 | **Boşluk tuşuyla konuşma** | Panonun herhangi bir yerinde boşluğu basılı tutup sormak yeterli; ayrı bir sayfaya gitmek gerekmez. Bakılan sayfa soruyla birlikte gider, çünkü "bunlardan hangisi daha iyi?" ancak önünde durduğu tablonun yanında bir anlam taşır. Asistan konuşurken tekrar basmak sözünü keser. |
 | **Sesli cevap** | Cevap önce sesli yanıt için optimize edilir, sonra akış halinde okunur; ilk ses yaklaşık **0,13 saniyede** duyulur, kullanıcı tamamının üretilmesini beklemez. |
 | **Yazılı sohbet** | Cevap üretildikçe akar. Model seçimi, uzun düşünme ve web araması ayrı ayrı açılıp kapatılabilir. Tablo dosyası, PDF, görsel ve belge eki kabul eder. |
@@ -652,7 +680,7 @@ Saat ve gün elle seçilebilir ama gerekmez: boş bırakılırsa sıklığı **c
 | **Canlı bağlantı** | Oran, taksit ve kur, indeksten değil bankanın **kendi hesaplama servisinden** anlık gelir. Bankalar aynı anda sorulur: sırayla 11,99 sn, paralel 0,59 sn. |
 | **Kaynaklı cevap** | Her sayının yanında geldiği resmi sayfa tıklanabilir bir bağlantı olarak durur. Arkasında kaynak olmayan iddia çıktı denetiminden geçemez. |
 | **Araç kullanan ajanlar** | LangChain / LangGraph üzerine kurulu; süpervizör on banka uzmanını **araç olarak** çağırır, her uzman da kendi bankasının araçlarını. |
-| **Otomasyonlar** | Doğal dille kurulur: *"Taşıt finansman oranı %3,5'in altına inerse haber ver."* Kullanıcı zamanlama ya da eşik sözdizimi yazmaz; ne istediğini tarif eder. Koşul sağlandığında e-posta ve uygulama içi bildirim gider. |
+| **Otomasyonlar** | Doğal dille kurulur: *"Taşıt finansman oranı %3,5'in altına inerse haber ver."* Kullanıcı zamanlama ya da eşik sözdizimi yazmaz; ne istediğini tarif eder. Her koşunun raporu e-postayla gider; koşul sağlandığında üstüne uygulama içi bildirim de düşer. |
 | **Profil** | Kayıtlı tablolar, konuşma geçmişi, bildirim ve rapor tercihleri tek yerde. |
 | **Dışa aktarma** | Excel, PDF, Word ve CSV. Her hücre hem sayısal değerini hem ekrandaki biçimini taşır. |
 
@@ -1323,10 +1351,26 @@ flowchart LR
 | **Live comparison** | General-purpose, vehicle and housing financing, participation accounts, FX and card instalments. Banks are queried in parallel. The user's own assumptions are kept visually separate from the rates the bank published. |
 | **Products** | Curated multi-bank tables alongside the user's own tables from chat. Any of them can be attached back into a conversation in one click. |
 | **Campaigns** | Campaigns across all ten banks, labelled active, ending soon, or expired. |
-| **AI Overview** | Fast summaries that reduce long product terms, crowded tables and market movements to a few points. |
-| **Automations** | Recurring tasks set up in plain language: *"Tell me if the vehicle financing rate drops below 3.5%."* When the condition is met, an email and an in-app notification go out. |
+| **AI Overview** | Your own board: the tables you liked in chat get saved here. Each card carries a note on what the table was built for and when it was saved, with a download button underneath in four formats. |
+| **Automations** | Recurring tasks set up in plain language: *"Tell me if the vehicle financing rate drops below 3.5%."* Every run is emailed to you as a report; when the condition is met, an in-app notification lands as well. |
+
+### The pieces that recur across the interface
+
+The dashboard is built out of a handful of simple pieces, and each one does the same job on every page; learn one and there is nothing to look for on the next screen.
+
+| Piece | What it is for |
+|---|---|
+| **Left menu** | The list of the six pages. Collapsible, with the page you are on marked. |
+| **Table card** | Every comparison is shown inside the same card: title, filter box, sortable columns and a download button at the bottom. Products, Campaigns, AI Overview and the tables chat builds are all this one card. |
+| **AI summary** | The short summary box sitting above a table. Its points are written off that table and nowhere else. |
+| **Assistant window** | The button in the bottom corner opens the assistant as a small window over the page. Change pages and the conversation carries on where it left off. |
+| **Voice mode** | Hold the space bar and a sphere rises from the bottom of the screen, moving as you speak. It does not cover the page behind it, because the question is usually about that page. |
+| **Automation card** | One card per job you set up: the sentence itself, the next and last run, a pause switch and a "run now" button. |
+| **Theme switch** | Light and dark. The whole interface works in both, charts, tables and voice mode included. |
 
 ## Comparison: the question is a form, the answer comes from the bank
+
+You pick a product and type in the amount and the term. The system asks every bank the same question at that moment and lays the answers side by side in one table; the figures come from each bank's own calculator, not from a stored list.
 
 <div align="center">
   <img src="assets/live-comparison%20tables.png" alt="Six banks asked at once, sorted by instalment; with an AI summary read off the table above it" width="880" />
@@ -1353,6 +1397,8 @@ The summary is always written **from the table**; the rows beneath it are the so
 
 ## The assistant: every figure carries its source
 
+The chat screen, where you can ask anything in your own words. What separates it from an ordinary chatbot: every figure it gives you carries a link to the bank page it came from, so you can check the answer rather than trust it.
+
 <div align="center">
   <img src="assets/chatbot.png" alt="A campaign question: every claim is followed by a link to the bank's own page" width="880" />
   <br/><sub><b>A campaign question: every claim is followed by a link to the bank's own page</b></sub>
@@ -1367,6 +1413,8 @@ The second shot also shows the light theme: the whole interface works in both.
 
 ## The user picks the model and the depth of reasoning
 
+You choose which AI model writes the answer; each of the three is good at different work. With the **Think** switch on, the model reasons step by step before answering: slower, but more accurate on tangled questions.
+
 <div align="center">
   <img src="assets/different-model-providers.png" alt="Three models and a Think switch; changeable mid-conversation" width="880" />
   <br/><sub><b>Three models and a Think switch; changeable mid-conversation</b></sub>
@@ -1374,7 +1422,9 @@ The second shot also shows the light theme: the whole interface works in both.
 
 Because the history belongs to the checkpointer and not to the model, switching does not lose the conversation built up so far.
 
-## Asking by voice
+## Live voice conversation: you speak, the assistant speaks back
+
+You can use it without touching the keyboard. Hold the space bar, ask your question, and when you let go the assistant **reads its answer out loud**. So it is not one-way dictation but a live, two-way conversation: pressing space again while it is speaking cuts it off and starts your next question, the same way you would interrupt someone on the phone.
 
 <div align="center">
   <img src="assets/stt.png" alt="The composer while recording: elapsed time, a live waveform, and one tap to stop" width="880" />
@@ -1390,12 +1440,16 @@ The second shot is the whole point of the design: the question is nearly always 
 
 ## The assistant does not leave the page
 
+The assistant is not a separate page. Whatever screen you are on, a button in the corner opens it as a small window on top, and changing pages does not wipe the conversation.
+
 <div align="center">
   <img src="assets/chatbot-popup.png" alt="The assistant open over the profile page; the conversation survives changing pages" width="880" />
   <br/><sub><b>The assistant open over the profile page; the conversation survives changing pages</b></sub>
 </div>
 
 ## AI Overview: saved tables and export
+
+If you like a table the assistant built during a conversation, you can save it; **AI Overview** is the page those saved tables live on. Each one carries a note saying what it was built for and when it was saved, and a button to download it in four different file formats.
 
 <div align="center">
   <img src="assets/specialized-tables.png" alt="Tables saved out of a conversation, each with a note on what it was built for" width="880" />
@@ -1409,6 +1463,8 @@ The second shot is the whole point of the design: the question is nearly always 
 
 ## Automations: set up in a sentence
 
+An automation is a job the assistant repeats for you on a schedule. You write what you want in an everyday sentence and the assistant turns it into a schedule. The result of every run reaches you **as an emailed report**: what the automation was looking for, what that run found, and the banks' current rates where there are any. When the condition is met, an in-app notification lands too.
+
 <div align="center">
   <img src="assets/automation-system.png" alt="Automations already running: next run, last run, pause and manual trigger" width="880" />
   <br/><sub><b>Automations already running: next run, last run, pause and manual trigger</b></sub>
@@ -1420,7 +1476,7 @@ The hour and days can be picked by hand but need not be: left blank, the assista
 
 | Capability | How it works |
 |---|---|
-| **Asking by voice** | Speech recognition runs **on the machine itself** (Whisper large-v3, MLX 4-bit); audio never leaves it for a third-party service. The source language is pinned to Turkish, so a two-word question is never misclassified into another one. |
+| **Live voice conversation** | A two-way conversation: you ask out loud and **the assistant answers out loud**; you can cut it off mid-sentence and ask the next thing. Speech recognition runs **on the machine itself** (Whisper large-v3, MLX 4-bit); audio never leaves it for a third-party service. The source language is pinned to Turkish, so a two-word question is never misclassified into another one. |
 | **Hold space to talk** | Hold the space bar anywhere on the dashboard and ask; there is no separate page to go to. The page being looked at travels with the question, because "which of these is better?" only means something beside the table it was asked in front of. Pressing again while the assistant is speaking interrupts it. |
 | **Spoken answers** | The answer is optimised for voice first, then synthesised as a stream; the first sound is audible in about **0.13 seconds**, so the user does not wait for the whole thing to be generated. |
 | **Typed chat** | The answer streams as it is written. Model choice, extended reasoning and web search are each toggleable. Accepts spreadsheets, PDFs, images and documents. |
@@ -1429,7 +1485,7 @@ The hour and days can be picked by hand but need not be: left blank, the assista
 | **Live connections** | Rates, instalments and FX come from the bank's **own calculation service** on the spot, not from the index. Banks are queried at once: 11.99s in sequence, 0.59s in parallel. |
 | **Sourced answers** | Every figure carries the official page it came from as a clickable link. A claim with no source behind it does not pass the output check. |
 | **Tool-using agents** | Built on LangChain / LangGraph: the supervisor calls ten bank specialists **as tools**, and each specialist calls its own bank's tools. |
-| **Automations** | Set up in plain language: *"Tell me if the vehicle financing rate drops below 3.5%."* The user writes no schedule and no threshold syntax; they describe what they want. When the condition is met, an email and an in-app notification go out. |
+| **Automations** | Set up in plain language: *"Tell me if the vehicle financing rate drops below 3.5%."* The user writes no schedule and no threshold syntax; they describe what they want. Every run is emailed as a report; when the condition is met, an in-app notification lands on top of that. |
 | **Profile** | Saved tables, conversation history, notification and report preferences in one place. |
 | **Export** | Excel, PDF, Word and CSV. Every cell carries both its numeric value and its on-screen form. |
 
