@@ -47,7 +47,6 @@ def test_active_only_adds_the_expiry_disjunction():
 
 
 def test_active_only_can_be_turned_off():
-    from qdrant_client.models import Filter
     f = _filter(None, None, None, None, active_only=False, today="2026-08-09")
     assert f is None      # nothing else constrains it, so no filter at all
 

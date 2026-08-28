@@ -5,7 +5,6 @@ Canlı koşuda kanıtlandı: 'kadınlara özel kritik hastalıklar sigortası'
 URL'den — PAGE_WORKERS=5 paralelliğinde check-then-act yarışı.
 """
 import threading
-import pytest
 
 from dataprep.compare import pipeline
 

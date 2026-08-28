@@ -10,7 +10,6 @@ import pytest
 
 from banks import compare, families, get_bank, status
 from banks.models import CardInstallmentQuote, FinanceQuote, Product
-from banks.providers import BANKS
 from banks.providers.base import TemporarilyUnavailable, UnsupportedProduct
 from banks.tools import build_tools
 

@@ -5,7 +5,6 @@ live collection, because none of these failures raise: they write a row that is
 subtly wrong and nothing complains until someone follows a citation.
 """
 
-import pytest
 
 from dataprep import embed
 

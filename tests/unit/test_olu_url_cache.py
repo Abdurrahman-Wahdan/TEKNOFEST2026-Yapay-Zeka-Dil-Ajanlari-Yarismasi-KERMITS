@@ -8,7 +8,6 @@ RİSK YOK ilkesi: karar kalıp tahminiyle değil, URL'in GERÇEK yanıtıyla ver
 Her URL en az bir kez denenir; yalnızca sonucu hatırlanır.
 """
 
-import json
 
 import pytest
 

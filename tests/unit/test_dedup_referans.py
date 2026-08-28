@@ -3,7 +3,6 @@
 sources.update() aynı bankanın canon'daki kaynaklarını dup'ınkilerle EZİYORDU;
 birleşen tablonun yarısının referansı sessizce kayboluyordu.
 """
-import json
 import pytest
 
 from dataprep.compare import dedup, store, synth

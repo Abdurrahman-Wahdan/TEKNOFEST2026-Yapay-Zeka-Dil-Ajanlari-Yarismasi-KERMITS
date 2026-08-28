@@ -586,8 +586,11 @@ class Settings(BaseSettings):
 
     # ===== Speech synthesis (reading answers aloud) =====
     SPEECH_REMOTE_URL: str = Field(
-        default="http://10.249.0.76:8000/speech",
-        description="Remote streaming TTS endpoint. It returns raw s16le PCM.",
+        default="",
+        description="Remote streaming TTS endpoint. It returns raw s16le PCM. "
+        "Empty by default rather than pointing at a machine on someone's LAN: "
+        "the address is deployment-specific, and `voice_speech.speak` already "
+        "answers an unset value with a 503 that says so. Set it in .env.",
     )
     SPEECH_REMOTE_SEGMENT_CHARS: int = Field(
         default=1_500,

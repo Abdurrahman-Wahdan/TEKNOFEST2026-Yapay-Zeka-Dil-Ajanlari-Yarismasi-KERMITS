@@ -44,7 +44,7 @@ from llm.providers.vllm_provider import reset_http_pool
 from ..net_limit import NET_SEM
 from .json_mod import llm_kwargs
 from . import store
-from .retrieval import _kanonik_tarih, _kanonik_url, _url_kosulu, _shared, COLLECTION
+from .retrieval import _kanonik_tarih, _url_kosulu, _shared, COLLECTION
 from qdrant_client import models
 
 log = logging.getLogger("dataprep.compare.tablo_denetim")
@@ -304,7 +304,7 @@ def _tarih_damgala(tablo: dict, raporlar: list[dict]) -> int:
     for r in raporlar:
         if r["tarihler"]:
             banka_tarih.setdefault(r["bank"], []).extend(r["tarihler"])
-    from .tablo_tarih import bicimle, TARIH_SUTUNU_SONEKI
+    from .tablo_tarih import bicimle
     sutun = "Geçerlilik"
     n = 0
     for bank, satir in (tablo.get("rows") or {}).items():

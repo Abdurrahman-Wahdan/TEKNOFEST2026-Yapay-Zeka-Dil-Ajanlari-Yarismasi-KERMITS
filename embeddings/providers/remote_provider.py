@@ -13,7 +13,6 @@ every index write, every table lookup, all 404 with nothing in the logs
 suggesting the reason is a URL that moved.
 """
 
-import json
 import logging
 import time
 

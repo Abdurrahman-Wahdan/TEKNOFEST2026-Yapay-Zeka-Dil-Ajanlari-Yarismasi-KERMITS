@@ -366,7 +366,6 @@ class TestTunnelAwareEmbeddings:
     def test_an_application_error_is_not_treated_as_a_rotation(self, monkeypatch):
         """A 400 is the request being wrong, not the URL having moved. Fetching
         the Gist for it would turn every bad payload into a tunnel round-trip."""
-        from config import tunnel
         from embeddings.providers import remote_provider
 
         boom = ValueError("bad input")

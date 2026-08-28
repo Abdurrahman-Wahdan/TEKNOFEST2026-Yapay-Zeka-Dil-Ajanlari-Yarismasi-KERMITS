@@ -19,7 +19,6 @@ Kararlar:
 """
 from __future__ import annotations
 
-import base64
 import json
 import logging
 import os
@@ -27,8 +26,6 @@ from pathlib import Path
 
 import pymupdf
 
-from config import tunnel
-from config.settings import settings
 from dataprep import vlm
 from dataprep.ledger import Ledger
 from dataprep.vlm import ImageCache

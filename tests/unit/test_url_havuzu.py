@@ -4,7 +4,6 @@ URL/tarih bağlaması en sonda toplu+agentic yapılacağı için, tablo üretimi
 sırasında görülen her kaynak banka bazında ve benzersiz olarak biriktirilir.
 Aynı URL birçok hücrede/tabloda tekrar geçer — havuz tek kayda indirger.
 """
-import json
 import pytest
 
 from dataprep.compare import store

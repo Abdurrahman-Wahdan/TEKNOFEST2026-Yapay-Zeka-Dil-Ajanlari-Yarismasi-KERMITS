@@ -50,7 +50,7 @@ from . import store
 from ..net_limit import NET_SEM
 from .json_mod import llm_kwargs
 from .retrieval import make_table_search_tool
-from .synth import _compact_reports, _restore_lost_values, _subcat_block
+from .synth import _restore_lost_values, _subcat_block
 
 log = logging.getLogger("dataprep.compare.classify_agent")
 

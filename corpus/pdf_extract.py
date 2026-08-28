@@ -35,7 +35,7 @@ from pydantic import Field as PydanticField
 from config.settings import settings
 
 from . import pdftools, quality
-from .models import Block, Item, Page
+from .models import Item, Page
 from .urls import text_hash
 
 logger = logging.getLogger(__name__)

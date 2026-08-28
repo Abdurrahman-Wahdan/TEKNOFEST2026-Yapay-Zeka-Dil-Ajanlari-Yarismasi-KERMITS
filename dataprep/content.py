@@ -164,7 +164,7 @@ _TAM_SAYFA_ESIK = int(os.environ.get("PDF_TAM_SAYFA_ESIK", "400"))
 # 2026-08-22: "3 ve 4 birebir aynı süreç, sadece birisi PDF birisi page".
 # Talimat TEK kaynaktan gelir (dataprep/temizleme_prompt.py); eskiden burada
 # ve pages.py'de AYRI tanımlıydı ve ayrışmışlardı (bkz. o modülün docstring'i).
-from dataprep.temizleme_prompt import (ETIKET_Q, BASLIK as _BASLIK, GOAL as _GOAL,
+from dataprep.temizleme_prompt import (ETIKET_Q, GOAL as _GOAL,
                                         DATE_RULE as _DATE_RULE,
                                         RELEVANCE_RULE as _RELEVANCE_RULE,
                                         JSON_HEAD as _JSON_HEAD,

@@ -175,7 +175,7 @@ async def fetch(client: "httpx.AsyncClient", url: str, retries: int = 3):
         try:
             # HOST BAŞINA 1 istek/sn (bkz. dataprep/site_hizi.py) — kullanıcı
             # kararı 2026-08-23. WAF/IP bloklarının kökü buydu.
-            from dataprep.site_hizi import bekle_async, olu_host, olu_isaretle
+            from dataprep.site_hizi import bekle_async, olu_host
             # DNS'i çözülmeyen host'a hiç gitme (ölü test/staging alt alan
             # adları): kalıcı hata, retry ile düzelmez, sadece zaman yakar.
             if olu_host(url):

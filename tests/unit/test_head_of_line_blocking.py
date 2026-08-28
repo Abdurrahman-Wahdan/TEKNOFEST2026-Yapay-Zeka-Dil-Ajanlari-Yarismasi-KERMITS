@@ -7,7 +7,6 @@ hiç ilerlemedi ve o sayfalar sonraki koşuda baştan işlenecekti (veri kaybı 
 ama saatlerce iş tekrarı). as_completed BİTEN'i hemen verir.
 """
 
-import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 

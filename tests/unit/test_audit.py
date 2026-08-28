@@ -6,8 +6,8 @@ recording and the escalation rules are exercised without touching a bank.
 
 import pytest
 
-from banks import audit, families, get_bank, notify, schedule, status
-from banks.health import DOWN, KNOWN, OK
+from banks import audit, get_bank, notify, schedule, status
+from banks.health import DOWN, KNOWN
 from banks.models import Product
 from banks.providers import base
 from banks.providers.base import TemporarilyUnavailable, UnsupportedProduct

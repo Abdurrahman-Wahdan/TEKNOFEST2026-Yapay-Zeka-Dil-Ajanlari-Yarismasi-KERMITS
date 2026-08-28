@@ -45,10 +45,8 @@ import os
 import re
 import time
 import uuid
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-from qdrant_client import models
 
 from embeddings import get_embedding
 from vector_stores.client import get_qdrant_client
@@ -366,12 +364,8 @@ def main() -> None:
     ap.add_argument("--dry-run", action="store_true", help="yazma, sadece say")
     args = ap.parse_args()
 
-    from concurrent.futures import ThreadPoolExecutor
     from qdrant_client.models import PointStruct
-    from vector_stores.client import get_qdrant_client
     from vector_stores import ensure_collection
-    from embeddings import get_embedding
-    import uuid
 
     client = get_qdrant_client()
     if args.recreate:

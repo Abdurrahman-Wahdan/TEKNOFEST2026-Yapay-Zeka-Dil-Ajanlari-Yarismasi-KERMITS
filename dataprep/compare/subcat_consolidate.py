@@ -148,7 +148,7 @@ def apply_plan(plan: dict) -> dict:
     all_subs = store.load_subcategories()
     pruned = [s for s in all_subs if s in live_subs]
     dropped = [s for s in all_subs if s not in live_subs]
-    from .store import ROOT as _TROOT, SUBCATS as _SUBCATS
+    from .store import SUBCATS as _SUBCATS
     _SUBCATS.write_text(json.dumps(pruned, ensure_ascii=False, indent=1), encoding="utf-8")
 
     return {"tables_changed": len(changed), "changes": changed,

@@ -4,7 +4,6 @@ context header that rides into each vector."""
 import pytest
 
 from config.settings import settings
-from index import chunk
 from index.chunk import chunks, linked_from_map
 from index.embed_text import header_for, passage_text, query_text
 

@@ -1,6 +1,5 @@
 """Tablo denetim ajanı: kaynak başına ajan, chunk chunk denetim, tarih damgası."""
 import json
-import pytest
 
 from dataprep.compare import store, tablo_denetim as T
 
