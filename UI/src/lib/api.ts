@@ -52,6 +52,7 @@ export type TokenPair = Schemas["TokenPair"];
 export type User = Schemas["UserOut"];
 export type ResetPasswordResponse = Schemas["ResetPasswordResponse"];
 export type VoiceTranscription = Schemas["VoiceTranscriptionOut"];
+export type VoiceResponse = Schemas["VoiceResponseOut"];
 export type UserStats = Schemas["StatsOut"];
 export type Automation = Schemas["AutomationOut"];
 export type AutomationReport = Schemas["ReportOut"];
@@ -610,6 +611,21 @@ export const api = {
       signal,
     });
   },
+
+  /**
+   * Rewrite a finished answer as prose, for voice mode.
+   *
+   * Separate from `speakText` below rather than folded into it: only voice mode
+   * wants this, the speaker button on a message keeps using the browser's own
+   * converter, and a 503 here is not a failure -- it is the caller being told to
+   * fall back to `speakableText` and read the answer anyway.
+   */
+  voiceResponse: (body: Schemas["VoiceResponseRequest"], signal?: AbortSignal) =>
+    request<VoiceResponse>("/voice/response", {
+      method: "POST",
+      body: JSON.stringify(body),
+      signal,
+    }),
 
   // ----- chat attachments -----
   prepareChatAttachment: (file: File, signal?: AbortSignal) => {

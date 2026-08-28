@@ -585,6 +585,18 @@ class Settings(BaseSettings):
     )
 
     # ===== Speech synthesis (reading answers aloud) =====
+    SPEECH_REMOTE_URL: str = Field(
+        default="http://10.249.0.76:8000/speech",
+        description="Remote streaming TTS endpoint. It returns raw s16le PCM.",
+    )
+    SPEECH_REMOTE_SEGMENT_CHARS: int = Field(
+        default=1_500,
+        gt=0,
+        description="Maximum text sent per remote speech request.",
+    )
+    SPEECH_REMOTE_CONNECT_TIMEOUT_SECONDS: float = Field(default=10.0, gt=0)
+    SPEECH_REMOTE_READ_TIMEOUT_SECONDS: float = Field(default=300.0, gt=0)
+    SPEECH_REMOTE_WRITE_TIMEOUT_SECONDS: float = Field(default=30.0, gt=0)
     SPEECH_MODEL_PATH: str = Field(
         default=str(PROJECT_ROOT / "TF26_data" / "models" / "Trendyol-TTS"),
         description="Local checkpoint for Turkish speech output, downloaded by "
@@ -698,6 +710,35 @@ class Settings(BaseSettings):
         "one safetensors, and the ready-made mlx-community/VoxCPM2-4bit port is "
         "base VoxCPM2 rather than the Turkish finetune. Set to `cpu` to prove a "
         "Metal problem is a Metal problem.",
+    )
+
+    # ===== Spoken answer shaping (voice mode only) =====
+    #
+    # A finished answer is markdown -- the supervisor is told to write
+    # comparisons as tables with a link after every claim -- and markdown read
+    # aloud is asterisks and addresses. This stage rewrites it as prose.
+    #
+    # Voice mode only. The speaker button on a message keeps using the browser's
+    # deterministic converter, which is also the fallback here whenever the
+    # route is unavailable: it cannot invent a number, so it is the safe answer
+    # to "the model is down", not a second-class one.
+    VOICE_RESPONSE_MODEL: str = Field(
+        default="gemma",
+        description="Fast local model that rewrites one finished answer for speech.",
+    )
+    VOICE_RESPONSE_MAX_TOKENS: int = Field(
+        default=4000,
+        ge=300,
+        description="Room for a whole answer restated. Larger than the output "
+        "guard's budget on purpose: the guard returns a verdict, this returns "
+        "the answer again, and a cap that truncates speech mid-sentence is the "
+        "failure SPEECH_MAX_CHARS already refuses to commit.",
+    )
+    VOICE_RESPONSE_MAX_INPUT_CHARS: int = Field(
+        default=12_000,
+        gt=0,
+        description="Longest answer accepted for rewriting. Refused rather than "
+        "truncated -- half an answer spoken confidently is worse than none.",
     )
 
     # ===== Chat attachments =====

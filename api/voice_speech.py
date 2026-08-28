@@ -1,299 +1,51 @@
-"""Warm, serialized Trendyol-TTS inference for reading answers aloud.
+"""Streaming client for the remote Trendyol speech service.
 
-The sibling of `voice_transcription.py` and deliberately built the same way: one
-model resident in the process, a lock so two requests cannot use it at once, and
-a lazy import so a machine without the optional dependency still serves banking,
-comparison and text chat.
-
-What differs is the shape of the work. Whisper takes a whole recording and
-returns a whole string; this streams -- `generate_streaming` yields ~160 ms of
-audio at a time and the first chunk arrives in ~0.13 s, so the user hears the
-answer begin while the rest of it is still being generated. Holding the whole
-utterance to send it in one piece would throw that away and replace it with the
-several seconds of silence the streaming exists to remove.
-
-Measured on an M5 Max / 128 GB / MPS, per `TTS_ENTEGRASYON.md`:
-
-    model load    ~5.6 s   once per process
-    first audio   ~0.13 s  at inference_timesteps=10
-    generation    ~1.9x real time
-    chunk         ~160 ms, 48 kHz mono float32
+The speech server exposes ``POST /speech`` and returns raw signed 16-bit PCM
+at 48 kHz, mono. The response must be consumed through ``Client.stream``:
+``httpx.post`` buffers the whole response and removes low-latency playback.
 """
 
 from __future__ import annotations
 
-import gc
 import logging
-import os
 import re
 import threading
-import time
 from collections import OrderedDict
-from pathlib import Path
 
-from config.settings import PROJECT_ROOT, settings
+import httpx
+
+from config.settings import settings
 
 logger = logging.getLogger(__name__)
 
-# The model is not thread-safe: two requests sharing one instance corrupt each
-# other's output. One instance behind one lock rather than N instances, because
-# each is ~5 GB and MPS exhausts memory long before it exhausts patience --
-# generation runs ~1.9x faster than speech, so one instance keeps up with several
-# readers by queueing.
 _INFERENCE_LOCK = threading.Lock()
-_MODEL_LOCK = threading.Lock()
-_MODEL = None
-
-# Set before torch is imported so its MPS allocator cannot exceed the
-# recommended working set and take the API/UI down on unified-memory Macs.
-os.environ.setdefault(
-    "PYTORCH_MPS_HIGH_WATERMARK_RATIO",
-    str(settings.SPEECH_MPS_HIGH_WATERMARK_RATIO),
-)
-
-# Completed readings are safe to reuse because the voice and generation settings
-# belong to this API process. Keep this deliberately small: a long answer at
-# 48kHz mono PCM can consume several megabytes, and the cache must never compete
-# with the resident model for MPS/unified memory.
 _AUDIO_CACHE_LOCK = threading.Lock()
 _AUDIO_CACHE: OrderedDict[str, tuple[bytes, ...]] = OrderedDict()
-_AUDIO_CACHE_BYTES = 0
 _AUDIO_CACHE_MAX_ENTRIES = 2
 _AUDIO_CACHE_MAX_BYTES = 8 * 1024 * 1024
+_CHUNK_BYTES = 8192
 
 
 class VoiceSpeechUnavailable(RuntimeError):
-    """The optional runtime or checkpoint is not ready."""
+    """The remote speech service cannot be reached or is not configured."""
 
 
 class VoiceSpeechFailed(RuntimeError):
-    """The text could not be spoken."""
+    """The remote speech service rejected or interrupted the reading."""
 
 
-def _runtime():
-    """Import the optional dependency lazily.
-
-    `voxcpm` pulls in `datasets`, which pins `fsspec` down to 2025.3.0. That is
-    compatible with what this project already requires (`huggingface_hub` asks
-    for >=2023.5.0 and `torch` for >=0.8.5), so it shares the environment -- but
-    the import still belongs here rather than at module scope, so that an
-    install without the speech extra starts the API instead of failing it.
-    """
-    try:
-        from voxcpm.core import VoxCPM
-    except (ImportError, OSError) as exc:
-        raise VoiceSpeechUnavailable(
-            "Trendyol-TTS is unavailable: install the speech dependencies "
-            "(`pip install voxcpm soundfile`)."
-        ) from exc
-    return VoxCPM
-
-
-def _model_path() -> Path:
-    configured = Path(settings.SPEECH_MODEL_PATH).expanduser()
-    if not configured.is_absolute():
-        configured = PROJECT_ROOT / configured
-    return configured.resolve()
-
-
-def _require_model() -> Path:
-    """The local checkpoint, or a clear reason why there is not one.
-
-    The same rule the Whisper side applies, for the same reason: a request must
-    never be able to start a multi-gigabyte download. `from_pretrained` would
-    happily fetch from the Hub on a cache miss, so the path is checked *here*
-    and the loader is then pinned to local files only -- otherwise the failure
-    mode is not an error but a user waiting several minutes inside one HTTP
-    request with nothing on screen.
-
-    Verified more loosely than Whisper's single `weights.npz`, and deliberately:
-    this checkpoint is a directory of safetensors shards plus a separate
-    `audiovae.pth`, so there is no one file to checksum. `config.json` is the
-    cheap proof that a real checkpoint is present rather than the empty shell an
-    interrupted download leaves; anything corrupt past that point surfaces when
-    the model loads, which is at startup and not inside a request.
-    """
-    path = _model_path()
-    if not path.is_dir() or not (path / "config.json").is_file():
-        raise VoiceSpeechUnavailable(
-            f"The local speech checkpoint is missing at {path}. "
-            "Run `python scripts/download_speech_model.py`."
-        )
-    # `snapshot_download` writes part files under `.cache/huggingface/download/`
-    # and renames them into place as each one finishes, so a leftover means the
-    # checkpoint is either mid-download or was interrupted. Both are the same
-    # thing to a reader -- some of the weights are not there -- and both are
-    # fixed by re-running the script, which resumes.
-    if any(path.rglob("*.incomplete")) or any(path.rglob("*.aria2")):
-        raise VoiceSpeechUnavailable(
-            f"The local speech checkpoint at {path} is incomplete — it is still "
-            "downloading, or a download was interrupted. Run "
-            "`python scripts/download_speech_model.py` to finish it."
-        )
-    return path
-
-
-def _load_model():
-    """The one resident model, loaded at most once per process.
-
-    Double-checked under `_MODEL_LOCK` rather than `_INFERENCE_LOCK`: loading
-    takes ~5.6 s and two requests arriving cold would otherwise both pay it and
-    leave 10 GB resident. The inference lock stays free while this runs so the
-    wait is reported as a wait, not as a hang.
-    """
-    global _MODEL
-    if _MODEL is not None:
-        return _MODEL
-    VoxCPM = _runtime()
-    path = _require_model()
-    with _MODEL_LOCK:
-        if _MODEL is not None:
-            return _MODEL
-        started = time.perf_counter()
-        try:
-            model = VoxCPM.from_pretrained(
-                # A local directory, not a repo id. `from_pretrained` tests
-                # `os.path.isdir` on this argument and loads it directly when it
-                # is one, which is how the checkpoint stays under TF26_data
-                # beside the Whisper one instead of in ~/.cache.
-                hf_model_id=str(path),
-                # Belt and braces on top of that: nothing in a request may reach
-                # the network, whatever the path turns out to be.
-                local_files_only=True,
-                # No input audio anywhere in this path, so the denoiser is weight
-                # we would load and never call.
-                load_denoiser=False,
-                optimize=True,
-                # No `lora_config`/`lora_weights_path`, and that is correct
-                # rather than an omission. The checkpoint's `merge_manifest.json`
-                # reports `artifact_type: merged_voxcpm2_lora` -- the Turkish
-                # adapter is already merged into `model.safetensors`, and the
-                # `lora_adapter/` directory beside it is preserved for reference
-                # only. Passing it again would re-apply an adapter that is
-                # already in the weights.
-                # MPS, and named rather than left to `auto`. This is the Metal
-                # path for this model and what every measurement in
-                # TTS_ENTEGRASYON.md was taken on -- and *not* MLX, which section
-                # 9 of that guide records as tried and eliminated: Trendyol keeps
-                # audiovae.pth as a separate PyTorch file where mlx-audio wants a
-                # single safetensors, so the weights fail to load, and the
-                # ready-made MLX port is base VoxCPM2 without the Turkish LoRA.
-                device=settings.SPEECH_DEVICE,
-            )
-        except Exception as exc:
-            raise VoiceSpeechUnavailable(
-                f"Trendyol-TTS could not be loaded from {path}: {exc}"
-            ) from exc
-        _MODEL = model
-        logger.info(
-            "Speech model warm — path=%s device=%s elapsed=%.2fs sample_rate=%s",
-            path,
-            settings.SPEECH_DEVICE,
-            time.perf_counter() - started,
-            sample_rate(),
-        )
-        return _MODEL
+_TERMINATOR = re.compile(r"[.!?…]+")
 
 
 def sample_rate() -> int:
-    """The rate the model generates at. 48 kHz, and the client must match it.
-
-    Read off the loaded model rather than hardcoded, and sent to the browser on
-    the response so the two cannot drift: an `AudioContext` built at the wrong
-    rate does not fail, it plays the answer at the wrong pitch.
-    """
-    if _MODEL is None:
-        return settings.SPEECH_SAMPLE_RATE
-    try:
-        return int(_MODEL.tts_model.sample_rate)
-    except AttributeError:
-        return settings.SPEECH_SAMPLE_RATE
-
-
-def warm_speech_model() -> None:
-    """Load the checkpoint during startup so the first reader does not wait 5.6 s."""
-    _load_model()
-
-
-def cached_audio(text: str) -> tuple[bytes, ...] | None:
-    """Return a completed reading, promoting it as the most-recent cache item."""
-    with _AUDIO_CACHE_LOCK:
-        chunks = _AUDIO_CACHE.get(text)
-        if chunks is None:
-            return None
-        _AUDIO_CACHE.move_to_end(text)
-        return chunks
-
-
-def remember_audio(text: str, chunks: list[bytes]) -> None:
-    """Store only a fully generated reading, bounded by entries and bytes."""
-    global _AUDIO_CACHE_BYTES
-    frozen = tuple(chunks)
-    size = sum(len(chunk) for chunk in frozen)
-    if not frozen or size > _AUDIO_CACHE_MAX_BYTES:
-        return
-    with _AUDIO_CACHE_LOCK:
-        previous = _AUDIO_CACHE.pop(text, None)
-        if previous is not None:
-            _AUDIO_CACHE_BYTES -= sum(len(chunk) for chunk in previous)
-        _AUDIO_CACHE[text] = frozen
-        _AUDIO_CACHE_BYTES += size
-        while (
-            len(_AUDIO_CACHE) > _AUDIO_CACHE_MAX_ENTRIES
-            or _AUDIO_CACHE_BYTES > _AUDIO_CACHE_MAX_BYTES
-        ):
-            _, evicted = _AUDIO_CACHE.popitem(last=False)
-            _AUDIO_CACHE_BYTES -= sum(len(chunk) for chunk in evicted)
-
-
-def clear_audio_cache() -> None:
-    """Clear completed readings, primarily for tests and local model changes."""
-    global _AUDIO_CACHE_BYTES
-    with _AUDIO_CACHE_LOCK:
-        _AUDIO_CACHE.clear()
-        _AUDIO_CACHE_BYTES = 0
-
-
-def audio_cache_max_bytes() -> int:
-    """Return the maximum completed audio retained for one reading."""
-    return _AUDIO_CACHE_MAX_BYTES
-
-
-def release_memory() -> None:
-    """Return unused inference allocations to the MPS allocator after a read."""
-    try:
-        import torch
-
-        if torch.backends.mps.is_available():
-            torch.mps.synchronize()
-            torch.mps.empty_cache()
-    except (ImportError, RuntimeError):
-        logger.debug("Could not release MPS cache", exc_info=True)
-    finally:
-        gc.collect()
+    return settings.SPEECH_SAMPLE_RATE
 
 
 def prepare() -> int:
-    """Make sure the model is loaded, and report the rate it generates at.
-
-    Called before the response starts, and that is the whole point of it being
-    separate from `speak`. Loading is where "the speech dependency is not
-    installed" and "the checkpoint will not load" are discovered, and both need
-    to reach the caller as a 503 -- inside the generator they would arrive after
-    the status line had already gone out as 200, and the browser would see a
-    successful, empty reading.
-    """
-    _load_model()
+    """Return the remote stream's PCM rate without making a model request."""
+    if not settings.SPEECH_REMOTE_URL.strip():
+        raise VoiceSpeechUnavailable("SPEECH_REMOTE_URL is not configured.")
     return sample_rate()
-
-
-#: Sentence terminators, and the rule for which ones actually end a sentence.
-#:
-#: A full stop only ends one when whitespace or the end of the text follows it.
-#: Turkish groups thousands with full stops and writes dates as 27.08.2026, and
-#: these answers are made of both -- the same rule `speech-text.ts` applies in the
-#: browser, for the same reason.
-_TERMINATOR = re.compile(r"[.!?…]+")
 
 
 def _sentences(text: str) -> list[str]:
@@ -312,20 +64,8 @@ def _sentences(text: str) -> list[str]:
 
 
 def segments(text: str, budget: int | None = None) -> list[str]:
-    """Cut the text into pieces the model generates in one pass, losing nothing.
-
-    `max_len` bounds what one `generate_streaming` call will produce, and a text
-    over that bound comes back *silently short* -- the end of the answer simply
-    never gets spoken, with no error to notice. Segmenting first and generating
-    each piece into the same stream is what makes that impossible: the listener
-    hears one continuous reading either way, and nothing is dropped.
-
-    Cut on sentence boundaries, never mid-sentence, because the seam between two
-    segments is audible and a seam in the middle of a clause sounds like a fault.
-    A single sentence over the budget is passed whole rather than cut: a wrong
-    pause is worse than a long segment.
-    """
-    limit = budget or settings.SPEECH_SEGMENT_CHARS
+    """Keep long answers within the remote service's practical request size."""
+    limit = budget or settings.SPEECH_REMOTE_SEGMENT_CHARS
     pieces: list[str] = []
     current = ""
     for sentence in _sentences(text):
@@ -341,72 +81,76 @@ def segments(text: str, budget: int | None = None) -> list[str]:
 
 
 def speak(text: str):
-    """Stream one answer as 16-bit PCM at `sample_rate()`, chunk by chunk.
+    """Yield remote PCM bytes as the server generates them.
 
-    A generator of `bytes`, not of arrays: the caller is an HTTP response, and
-    converting here keeps the numpy dependency and the clipping rule in one
-    place. 16-bit because that is what a browser `AudioContext` wants and it
-    halves the bytes on the wire against float32, with no audible cost at 48 kHz.
-
-    The inference lock is held for the whole reading. That is the queueing the
-    model's thread-unsafety requires, and it is why the caller acquires the lock
-    *before* the response starts -- a second reader is told the model is busy
-    while it can still be told anything.
+    The stream contexts live inside this generator, so closing it on browser
+    Stop closes the upstream response and releases the remote connection.
     """
-    import numpy as np
+    url = settings.SPEECH_REMOTE_URL.strip()
+    if not url:
+        raise VoiceSpeechUnavailable("SPEECH_REMOTE_URL is not configured.")
 
-    model = _load_model()
-    started = time.perf_counter()
-    first_audio: float | None = None
-    total = 0
-
+    timeout = httpx.Timeout(
+        connect=settings.SPEECH_REMOTE_CONNECT_TIMEOUT_SECONDS,
+        read=settings.SPEECH_REMOTE_READ_TIMEOUT_SECONDS,
+        write=settings.SPEECH_REMOTE_WRITE_TIMEOUT_SECONDS,
+        pool=settings.SPEECH_REMOTE_CONNECT_TIMEOUT_SECONDS,
+    )
     try:
-        for segment in segments(text):
-            for chunk in model.generate_streaming(
-                text=segment,
-                # Every value below is measured, not chosen. See the guide:
-                # timesteps=10 is counter-intuitively better than 4 -- lower is
-                # faster overall but delays and destabilises the *first* chunk
-                # (±0.44 s), and in streaming the delay a user feels is the first
-                # one. 2 makes the model skip parts of the text outright.
-                cfg_value=settings.SPEECH_CFG_VALUE,
-                inference_timesteps=settings.SPEECH_TIMESTEPS,
-                max_len=settings.SPEECH_MAX_LEN,
-                # Off, and against the guide's advice -- see SPEECH_NORMALIZE.
-                # voxcpm's normaliser is wetext's *English* model: it raises on
-                # `%2,89`, reads the Turkish thousands separator as a decimal
-                # point, and says "teraliters" for TL.
-                normalize=settings.SPEECH_NORMALIZE,
-                denoise=False,
-            ):
-                if first_audio is None:
-                    first_audio = time.perf_counter() - started
-                pcm = (np.clip(chunk, -1.0, 1.0) * 32767).astype(np.int16)
-                total += pcm.size
-                yield pcm.tobytes()
-    except VoiceSpeechUnavailable:
+        # A fresh client prevents a stopped request from reusing a stale
+        # keep-alive connection against the remote single-worker server.
+        with httpx.Client(timeout=timeout, headers={"Connection": "close"}) as client:
+            with client.stream("POST", url, json={"text": text}) as response:
+                if response.status_code >= 400:
+                    detail = response.read()[:200].decode("utf-8", "replace")
+                    raise VoiceSpeechFailed(
+                        f"Remote TTS returned HTTP {response.status_code}: {detail}"
+                    )
+                yield from response.iter_bytes(_CHUNK_BYTES)
+    except VoiceSpeechFailed:
         raise
-    except Exception as exc:
-        raise VoiceSpeechFailed("The answer could not be spoken.") from exc
+    except httpx.HTTPError as exc:
+        raise VoiceSpeechUnavailable(f"Remote TTS is unreachable: {exc}") from exc
     finally:
-        release_memory()
-        rate = sample_rate()
-        logger.info(
-            "speech_read chars=%d first_audio=%s audio=%.1fs elapsed=%.1fs",
-            len(text),
-            f"{first_audio:.2f}s" if first_audio is not None else "none",
-            total / rate if rate else 0.0,
-            time.perf_counter() - started,
-        )
+        logger.info("remote_speech_closed chars=%d", len(text))
+
+
+def cached_audio(text: str) -> tuple[bytes, ...] | None:
+    with _AUDIO_CACHE_LOCK:
+        chunks = _AUDIO_CACHE.get(text)
+        if chunks is not None:
+            _AUDIO_CACHE.move_to_end(text)
+        return chunks
+
+
+def remember_audio(text: str, chunks: list[bytes]) -> None:
+    frozen = tuple(chunks)
+    size = sum(len(chunk) for chunk in frozen)
+    if not frozen or size > _AUDIO_CACHE_MAX_BYTES:
+        return
+    with _AUDIO_CACHE_LOCK:
+        previous = _AUDIO_CACHE.pop(text, None)
+        if previous is not None:
+            size -= sum(len(chunk) for chunk in previous)
+        _AUDIO_CACHE[text] = frozen
+        while (
+            len(_AUDIO_CACHE) > _AUDIO_CACHE_MAX_ENTRIES
+            or sum(sum(len(chunk) for chunk in value) for value in _AUDIO_CACHE.values())
+            > _AUDIO_CACHE_MAX_BYTES
+        ):
+            _AUDIO_CACHE.popitem(last=False)
+
+
+def clear_audio_cache() -> None:
+    with _AUDIO_CACHE_LOCK:
+        _AUDIO_CACHE.clear()
+
+
+def audio_cache_max_bytes() -> int:
+    return _AUDIO_CACHE_MAX_BYTES
 
 
 def acquire(timeout: float | None = None) -> bool:
-    """Take the inference lock, or report that the model is busy.
-
-    Separate from `speak` on purpose. The model serves one reader at a time, and
-    a second one has to be refused *before* the response body starts -- once the
-    first byte of a stream is out, there is no status code left to send.
-    """
     return _INFERENCE_LOCK.acquire(
         timeout=settings.SPEECH_QUEUE_TIMEOUT_SECONDS if timeout is None else timeout
     )
@@ -416,6 +160,4 @@ def release() -> None:
     try:
         _INFERENCE_LOCK.release()
     except RuntimeError:
-        # Already released. Releasing twice is a bug in the caller, not a reason
-        # to fail a request that has otherwise finished.
         logger.warning("Speech lock released twice")
