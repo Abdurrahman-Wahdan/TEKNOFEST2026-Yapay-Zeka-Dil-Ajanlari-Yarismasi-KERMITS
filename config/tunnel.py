@@ -21,11 +21,6 @@ from config.settings import ENV_FILE, settings
 
 log = logging.getLogger("config.tunnel")
 
-_GIST_URL = getattr(
-    settings,
-    "TUNNEL_GIST_URL",
-    "https://gist.githubusercontent.com/dijitalkariyermerkezi/e91ef0ddbc60b3e241c6b3e602cad5c8/raw/tunnel_url.txt"
-)
 # Aynı süreçte paralel hata patlaması olduğunda hepsi aynı anda gist'e
 # gitmesin diye: bir kontrolden sonra bu kadar saniye yeni kontrol yapılmaz.
 # 10s -> 3s (2026-08-23): ANLIK URL değişimini hızlı yakalamak için. Bu bir
@@ -43,13 +38,27 @@ _last_check = 0.0
 
 
 def _fetch_live_url() -> str | None:
+    """The address the deployment is currently publishing, if it publishes one.
+
+    Read from `settings` at call time rather than into a module constant: the
+    ladder below rewrites .env while the process runs, and a value captured at
+    import would be the one from before that.
+
+    Unset is an ordinary answer, not an error. The gist is one deployment's
+    private channel -- see `TUNNEL_GIST_URL` -- so a checkout without one simply
+    has one fewer candidate, and `_merdiven_yokla` still tries .env and the
+    address already in hand.
+    """
+    gist = settings.TUNNEL_GIST_URL.strip()
+    if not gist:
+        return None
     try:
         # CACHE KIRICI (kanıtlı 2026-08-19): GitHub'ın CDN'i gist /raw/ yolunu
         # önbelleğe alıyor ve "Cache-Control: no-cache" başlığını YOK SAYIYOR —
         # canlı ölçümde başlıkla ESKİ URL (515725a3...) döndü, URL'e benzersiz
         # bir sorgu eklenince GERÇEK adres (c70c6f67...) geldi. Bu sessiz bir
         # arıza: süreç tünel değiştiğinde ölü bir adrese bağlanmayı sürdürürdü.
-        url = f"{_GIST_URL}?t={int(time.time())}"
+        url = f"{gist}?t={int(time.time())}"
         req = urllib.request.Request(
             url, headers={"User-Agent": "Mozilla/5.0", "Cache-Control": "no-cache"})
         with urllib.request.urlopen(req, timeout=5) as r:
@@ -153,45 +162,6 @@ def _merdiven_yokla() -> bool:
                 "mevcut adresle denemeye devam (iş KAYBOLMAZ)", sum(_MERDIVEN))
     return False
 
-
-def _kullanilmayan_eski_yol() -> bool:
-    # GİST GEÇ GÜNCELLENEBİLİR — bu yüzden TEK KAYNAĞA GÜVENİLMEZ
-        # (kullanıcı kararı 2026-08-23: "gist geç güncellenir diye garanti
-        # altına al"). Adaylar SIRAYLA denenir ve SAĞLIK YOKLAMASINDAN geçen
-        # ilk adres kullanılır. Yani "adres değişti mi?" değil, "hangi adres
-        # ÇALIŞIYOR?" sorusu sorulur.
-        adaylar: list[str] = []
-        for kaynak in (_fetch_live_url(), _env_url(), settings.VLLM_BASE_URL):
-            if kaynak and kaynak not in adaylar:
-                adaylar.append(kaynak)
-
-        live = None
-        for aday in adaylar:
-            if _saglikli(aday):
-                live = aday
-                break
-
-        if live is None:
-            # HİÇBİRİ çalışmıyor -> sunucu gerçekten düşmüş. Adresi
-            # DEĞİŞTİRME (mevcutla retry sürsün); çağıran sonsuz retry'da
-            # bekler, veri kaybı olmaz.
-            log.warning("  [TÜNEL] hiçbir aday adres yanıt vermiyor (%d aday "
-                        "denendi) — sunucu düşmüş olmalı, mevcut adresle "
-                        "denemeye devam", len(adaylar))
-            return False
-
-        if live == settings.VLLM_BASE_URL:
-            return False
-        old = settings.VLLM_BASE_URL
-        settings.VLLM_BASE_URL = live
-        _persist_to_env(live)
-        log.warning("  [TÜNEL] URL değişti: %s -> %s", old, live)
-        return True
-
-
-# --- Uzak daldan gelen ortak API (llm/providers, embeddings/providers ve
-# llm/context.py bu ikisini çağırır; testler de doğrudan kullanır). Gövdeleri
-# bu modülün KENDİ altyapısına (_lock, log, _fetch_live_url) bağlandı.
 
 def is_tunnel_failure(exc: BaseException) -> bool:
     """Yeni yayınlanmış bir tünele karşı tekrar denemenin işe yarayıp

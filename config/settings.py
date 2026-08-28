@@ -30,10 +30,20 @@ class Settings(BaseSettings):
     )
 
     # ===== LLM (local vLLM) =====
-    VLLM_BASE_URL: str = "https://unbundle-semisoft-mouth.ngrok-free.dev"
-    TUNNEL_GIST_URL: str = (
-        "https://gist.githubusercontent.com/dijitalkariyermerkezi/"
-        "e91ef0ddbc60b3e241c6b3e602cad5c8/raw/tunnel_url.txt"
+    VLLM_BASE_URL: str = Field(
+        default="http://127.0.0.1:9000",
+        description="Where the vLLM server answers. Localhost by default, and "
+        "matching .env.example: the working address is a tunnel that rotates, "
+        "so it belongs in .env rather than baked in here.",
+    )
+    TUNNEL_GIST_URL: str = Field(
+        default="",
+        description="A plain-text URL publishing the current VLLM_BASE_URL, "
+        "read by config/tunnel.py when a request fails and the tunnel has "
+        "probably moved. Empty by default and deliberately so: it is one "
+        "deployment's private channel, not a property of this repository. "
+        "Unset simply removes that candidate from the ladder -- .env and the "
+        "current address are still tried, so nothing breaks without it.",
     )
     VLLM_API_KEY: str = Field(
         default="EMPTY",

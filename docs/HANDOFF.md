@@ -56,16 +56,18 @@ kullanılır. Tek istisna yerleşik ürün adı olan "kredi kartı".
 
 ### Tünel: adres kendiliğinden değişir
 
-vLLM sunucusu `lhr.life` tüneli arkasında ve **adres periyodik olarak
-değişir.** Canlı adres bir GitHub gist'inde tutulur; `config/tunnel.py` onu
-çekip `.env`'e yazar.
+vLLM sunucusu bir tünel arkasında ve **adres periyodik olarak değişir.**
+Canlı adres düz metin bir URL'de yayımlanır; `config/tunnel.py` onu çekip
+`.env`'e yazar.
+
+Adresin kendisi **kodda değil, `.env`'de** durur: `TUNNEL_GIST_URL` bir
+dağıtımın özel kanalıdır, bu deponun bir özelliği değil. Boş bırakılırsa o
+aday merdivenden düşer, gerisi (`.env` ve eldeki adres) aynen denenir.
 
 ```python
 # config/tunnel.py
-_GIST_URL = ("https://gist.githubusercontent.com/dijitalkariyermerkezi/"
-             "e91ef0ddbc60b3e241c6b3e602cad5c8/raw/tunnel_url.txt")
-
-url = f"{_GIST_URL}?t={int(time.time())}"   # CDN önbelleğini kırar
+gist = settings.TUNNEL_GIST_URL.strip()      # .env'den; boşsa None döner
+url = f"{gist}?t={int(time.time())}"         # CDN önbelleğini kırar
 tunnel.refresh_if_needed()                   # her hatadan sonra çağrılır
 ```
 
